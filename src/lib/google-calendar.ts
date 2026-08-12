@@ -307,7 +307,13 @@ export async function getBusyRangesStrict(
   if (!isGoogleConfigured()) return [];
   try {
     const refresh = await getConfig("google_refresh_token");
-    if (!refresh) throw new GoogleCalendarUnavailableError("not_bound");
+    // 「從來沒綁過日曆」≠「日曆壞了」。沒綁過就沒有日曆事件會衝突，回空陣列即可；
+    // fail-closed 要留給「綁過但現在讀不到」（token 失效 / API 掛掉）—— 那才是真的看不見衝突。
+    //
+    // 這裡不能只看 isGoogleConfigured()：CLIENT_ID/SECRET 會沿用 AUTH_GOOGLE_*（後台登入用的），
+    // 所以「只設了後台登入、完全沒碰日曆」也會讓 isGoogleConfigured() 為 true，
+    // 舊寫法會因此把整條前台預約打成 503。
+    if (!refresh) return [];
     const token = await getAccessToken();
     if (!token) throw new GoogleCalendarUnavailableError("token_unavailable");
     return await fetchBusyRanges(token, fromIso, toIso, options?.excludeEventId);
