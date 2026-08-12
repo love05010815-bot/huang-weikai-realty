@@ -1,4 +1,6 @@
-import { isCurrentUserAdmin } from "@/lib/admin-check";
+import { redirect } from "next/navigation";
+import { getAdminCheckArgs, isCurrentUserAdmin } from "@/lib/admin-check";
+import { adminEmails } from "@/auth";
 import {
   intentEmoji,
   intentLabel,
@@ -22,6 +24,7 @@ import RateLimitPanel from "./RateLimitPanel";
 import { appointmentMapsUrl, formatSlotRangeTw } from "@/lib/appointment-notify";
 import { CIS, CHIP, type ChipTone } from "@/app/admin/_components/cis";
 import { Icon, StatusDot } from "@/app/admin/_ui/icons";
+import AdminGateNotice from "./AdminGateNotice";
 import AppointmentActions from "./AppointmentActions";
 import CustomLocationApprovalPanel from "./CustomLocationApprovalPanel";
 import { listAppointmentOutboxSnapshots, type AppointmentOutboxSnapshot } from "./data";
@@ -299,7 +302,15 @@ export default async function AppointmentsAdminPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  if (!(await isCurrentUserAdmin())) throw new Error("權限不足");
+  // 四種擋法要分開，否則「沒設定」「沒登入」「登了但沒權限」都變成同一個 500 白畫面，
+  // 自己被擋在外面時根本查不出是哪一種。
+  if (!process.env.AUTH_GOOGLE_ID || !process.env.AUTH_GOOGLE_SECRET) {
+    return <AdminGateNotice kind="no_provider" />;
+  }
+  if (adminEmails().length === 0) return <AdminGateNotice kind="no_whitelist" />;
+  const { email } = await getAdminCheckArgs();
+  if (!email) redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent("/admin/appointments")}`);
+  if (!(await isCurrentUserAdmin())) return <AdminGateNotice kind="not_allowed" email={email} />;
 
   const sp = await searchParams;
   const queue = QUEUES.some((item) => item.key === sp.queue) ? (sp.queue as AppointmentQueue) : "all";
