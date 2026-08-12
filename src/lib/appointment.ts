@@ -1136,7 +1136,7 @@ export async function isSlotTaken(slotAt: Date, excludeId?: string): Promise<boo
     `SELECT COUNT(*) AS c
        FROM appointment_slot_lock
       WHERE slot_at = ?
-        AND appointment_id NOT LIKE '__%'
+        AND LEFT(appointment_id, 2) <> '__'
         ${excludeId ? "AND appointment_id <> ?" : ""}`,
     ...(excludeId ? [slotAt, excludeId] : [slotAt]),
   );
@@ -1151,7 +1151,7 @@ export async function getBookedSlots(from: Date, to: Date): Promise<Date[]> {
        FROM appointment_slot_lock
       WHERE slot_at >= ?
         AND slot_at < ?
-        AND appointment_id NOT LIKE '__%'
+        AND LEFT(appointment_id, 2) <> '__'
       ORDER BY slot_at ASC`,
     from,
     to,

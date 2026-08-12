@@ -17,3 +17,9 @@ Thumbs.db
 *.tsbuildinfo
 next-env.d.ts
 /prisma/*.db
+
+.vercel
+.env*
+
+# 本機一次性除錯腳本
+_q*.js
