@@ -24,7 +24,9 @@ import {
   appointmentMapsUrl,
   buildAppointmentCalendarUrl,
   formatSlotRangeTw,
+  notifyNewAppointment,
 } from "@/lib/appointment-notify";
+import { toNotifyInput } from "@/lib/appointment-notify-input";
 import {
   PublicAppointmentValidationError,
   appointmentIdempotencyKey,
@@ -471,6 +473,22 @@ export async function POST(req: NextRequest) {
         },
         { status: 503, headers: { "Retry-After": "30" } },
       );
+    }
+
+    // 🔴 同步寄通知：appointment_outbox 目前沒有 worker 在消化（Vercel 免費方案的 cron
+    //    一天只能跑一次，用來送預約通知沒有意義），所以不能只排隊就回應——
+    //    否則客戶約好了，你要自己開後台才會知道。
+    //
+    //    寄信失敗絕不能讓預約失敗：預約已經寫進資料庫了，這裡回錯會讓客戶再送一次。
+    //    onlyPending:true 會先查這封是否已送過，之後補上 worker 也不會重複寄。
+    if (createdNew) {
+      await notifyNewAppointment(toNotifyInput(existing), { onlyPending: true })
+        .then((result) => {
+          if (result.adminEmail === "failed" || result.customerEmail === "failed") {
+            console.error("[appointment/create] 通知寄送失敗:", JSON.stringify(result));
+          }
+        })
+        .catch((error) => console.error("[appointment/create] 通知寄送例外:", error));
     }
 
     if (createdNew) {
