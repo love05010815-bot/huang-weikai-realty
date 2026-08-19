@@ -1,0 +1,50 @@
+# 保溫排程：定期喚醒 Vercel 函式與 TiDB，避免閒置後的第一位客戶等 25–35 秒。
+#
+# 為什麼不用 Vercel Cron：免費方案一天只能跑一次，而且觸發時間在該小時內浮動，
+# 拿來保溫完全沒有意義。GitHub Actions 對 public repo 免費且沒有這個限制。
+#
+# ⚠️ 已知限制：
+#   1. GitHub 的排程在尖峰時段會延遲數分鐘，不保證準時（保溫不需要準時，可接受）。
+#   2. repo 連續 60 天沒有任何 commit，GitHub 會自動停用排程工作流程。
+#      真的停了，到 Actions 分頁按 "Enable workflow" 重新啟用即可。
+name: keep-warm
+
+on:
+  schedule:
+    # 每 10 分鐘。再密沒有意義，也只是多燒 Actions 額度。
+    - cron: "*/10 * * * *"
+  # 允許手動觸發，方便驗證有沒有真的通。
+  workflow_dispatch:
+
+# 只保留最新一次，避免 GitHub 延遲補跑時堆積。
+concurrency:
+  group: keep-warm
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping health endpoint
+        run: |
+          URL="https://huang-weikai-realty.vercel.app/api/health"
+
+          # 第一次多半是冷啟動，會很慢，所以給 60 秒；失敗就重試兩次。
+          for attempt in 1 2 3; do
+            echo "── 第 $attempt 次 ──"
+            HTTP=$(curl -sS -o /tmp/body.json -w '%{http_code}' --max-time 60 "$URL") && {
+              echo "HTTP $HTTP"
+              cat /tmp/body.json
+              echo ""
+              if [ "$HTTP" = "200" ]; then
+                echo "✅ 保溫成功"
+                exit 0
+              fi
+            }
+            echo "⚠️ 這次沒成功，等 15 秒再試"
+            sleep 15
+          done
+
+          echo "❌ 三次都失敗，網站或資料庫可能真的有問題"
+          exit 1
