@@ -28,7 +28,7 @@ jobs:
     steps:
       - name: Ping health endpoint
         run: |
-          URL="https://huang-weikai-realty.vercel.app/api/health"
+          URL="https://weikaihouse.com/api/health"
 
           # 第一次多半是冷啟動，會很慢，所以給 60 秒；失敗就重試兩次。
           for attempt in 1 2 3; do
