@@ -111,10 +111,19 @@ export default function HomePage() {
       <header className={styles.header}>
         <div className={styles.navWrap}>
           <a href="#top" className={styles.brand}>
-            <span className={styles.brandMark}>黃</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className={styles.brandLogo}
+              src="/kaixing-mark.png"
+              alt="凱心成家"
+              width={40}
+              height={40}
+            />
             <span>
-              {OWNER.name}
-              <small className={styles.brandSub}>{OWNER.company}・台中海線房仲</small>
+              凱心成家
+              <small className={styles.brandSub}>
+                {OWNER.company} 台中海線房仲
+              </small>
             </span>
           </a>
           <ul className={styles.nav}>
