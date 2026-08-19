@@ -22,6 +22,7 @@ import {
 } from "@/lib/appointment-constants";
 import { SOCIAL } from "../_links";
 import styles from "./Booking.module.css";
+import TurnstileWidget, { TURNSTILE_SITE_KEY } from "./TurnstileWidget";
 import {
   TRACKING_CONSENT_CHANGED_EVENT,
   hasVerifiedTrackingConsent,
@@ -269,6 +270,9 @@ export default function BookingForm() {
   const [qualification, setQualification] = useState<Qualification>({});
   const [note, setNote] = useState("");
   const [website, setWebsite] = useState("");
+  // Turnstile：沒設 site key 時 widget 不渲染，這個值永遠是空字串，行為等同沒有人機驗證。
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileReset, setTurnstileReset] = useState(0);
 
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState("");
@@ -657,6 +661,7 @@ export default function BookingForm() {
           qualification: qualificationPayload,
           note: note.trim(),
           website,
+          turnstileToken,
           funnelSessionId: trackingEnabled ? sessionId : "",
           idempotencyKey: key,
           tracking: {
@@ -695,6 +700,7 @@ export default function BookingForm() {
           setDuration(0);
           setErrors({ slot: `${message} 系統已更新可選時段，請重新選擇。` });
           setSubmitError("你選的時間已變動，其他資料都已保留。");
+          setTurnstileReset((n) => n + 1);
           await loadSlots(meetType);
           focusFirstError({ slot: message });
           setIdempotencyKey("");
@@ -704,6 +710,7 @@ export default function BookingForm() {
           setIdempotencyKey("");
         }
         setSubmitError(message);
+        setTurnstileReset((n) => n + 1);
         track("submit_error", String(response.status));
         return;
       }
@@ -723,6 +730,7 @@ export default function BookingForm() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch {
       setSubmitError("網路連線中斷，資料尚未確認送出。請重試；系統會用同一組識別碼避免重複預約。");
+      setTurnstileReset((n) => n + 1);
       track("submit_error", "network");
     } finally {
       setSubmitting(false);
@@ -1179,8 +1187,20 @@ export default function BookingForm() {
               </div>
 
               {submitError ? <div className={styles.errorNotice} role="alert">{submitError}</div> : null}
-              <button className={styles.submit} type="submit" disabled={submitting}>
-                {submitting ? "正在保留時段…" : "送出並保留時段"}
+
+              {/* 人機驗證。沒設 NEXT_PUBLIC_TURNSTILE_SITE_KEY 時整段不渲染、也不擋送出。 */}
+              <TurnstileWidget onToken={setTurnstileToken} resetSignal={turnstileReset} />
+
+              <button
+                className={styles.submit}
+                type="submit"
+                disabled={submitting || (Boolean(TURNSTILE_SITE_KEY) && !turnstileToken)}
+              >
+                {submitting
+                  ? "正在保留時段…"
+                  : TURNSTILE_SITE_KEY && !turnstileToken
+                    ? "請先完成上方人機驗證"
+                    : "送出並保留時段"}
               </button>
               <p className={styles.submitHint}>
                 送出後時段先保留 {BOOKING_CONFIRMATION_HOLD_MINUTES} 分鐘。請到 Email 點確認連結，才算正式預約完成。
