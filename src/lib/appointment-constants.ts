@@ -45,7 +45,7 @@ export const URGENCIES = [
 ] as const;
 
 export const MEET_TYPES = [
-  { key: "office", label: "公司面談", emoji: "🏢", desc: "太平洋房屋（請在 src/config/owner.ts 填實際門市地址）" },
+  { key: "office", label: "公司面談", emoji: "🏢", desc: "太平洋房屋梧棲新市鎮旗艦店・台中市梧棲區四維中路338號" },
   { key: "phone", label: "電話聯繫", emoji: "📞", desc: "瑋凱主動來電" },
   { key: "video", label: "線上視訊", emoji: "💻", desc: "Google Meet / LINE 視訊" },
   // 2026-06-25 第 4 種:客戶自己指定見面地點（Google Places 自動完成 + 純文字備案）

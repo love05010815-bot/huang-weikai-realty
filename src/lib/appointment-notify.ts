@@ -24,25 +24,8 @@ const APPOINTMENT_BASE_URL = process.env.APPOINTMENT_BASE_URL || "https://exampl
 const GENDER_HONOR: Record<string, string> = { male: "先生", female: "小姐" };
 const ABIN_PRIVATE_LINE_URL = "https://line.me/R/ti/p/@a8865";
 const ABIN_OFFICE_LOCATION: MeetLocation = {
-  name: "太平洋房屋",
-  address: "台中市海線服務處（請填實際門市地址）",
-  lat: null,
-  lng: null,
-  placeId: null,
-  source: "manual",
-};
-const SHONKO_STUDIO_LOCATION: MeetLocation = {
-  name: "太平洋房屋工作室",
-  address: "台中市西屯區烈美街55巷12號",
-  lat: null,
-  lng: null,
-  placeId: null,
-  source: "manual",
-};
-// 2026-07-17 新增：分公司（範例）
-const GOVIEW_HQ_LOCATION: MeetLocation = {
-  name: "分公司",
-  address: "台中市西屯區台灣大道三段660號4F-2（範例大樓）",
+  name: "太平洋房屋梧棲新市鎮旗艦店",
+  address: "台中市梧棲區四維中路338號",
   lat: null,
   lng: null,
   placeId: null,
@@ -161,8 +144,6 @@ function icsEsc(s: string | null | undefined): string {
 function appointmentLocation(meetType: string, meetLocation?: MeetLocation | null): MeetLocation | null {
   if (meetType === "custom" && meetLocation) return meetLocation;
   if (meetType === "office") return ABIN_OFFICE_LOCATION;
-  if (meetType === "hq") return GOVIEW_HQ_LOCATION;
-  if (meetType === "studio") return SHONKO_STUDIO_LOCATION;
   return null;
 }
 

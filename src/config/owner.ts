@@ -21,9 +21,9 @@ export const OWNER = {
   /** 手機（純數字，撥號連結與 LINE 加好友用） */
   phoneRaw: "0909787865",
   /** 聯絡信箱（客戶回信會到這裡） */
-  email: "your-email@example.com",
+  email: "love05010815@gmail.com",
   /** 公司地址（「公司面談」這個選項會顯示它） */
-  address: "台中市海線服務處（請填實際門市地址）",
+  address: "台中市梧棲區四維中路338號（太平洋房屋梧棲新市鎮旗艦店）",
   /** 公司／品牌名 */
   company: "太平洋房屋",
   /** 大頭照放 public/card/ 底下 */
