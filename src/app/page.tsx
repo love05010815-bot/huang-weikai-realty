@@ -141,7 +141,7 @@ export default function HomePage() {
             <div>
               <span className={styles.eyebrow}>台中海線資產配置專家</span>
               <h1 className={styles.heroTitle}>
-                {OWNER.name} <span>Realtor</span>
+                <span>房產找瑋凱</span> <span className={styles.accent}>安心不踩雷</span>
               </h1>
               <p className={styles.heroRole}>{OWNER.title}</p>
               <p className={styles.heroTagline}>

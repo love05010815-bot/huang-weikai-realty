@@ -227,7 +227,13 @@
   margin: 0 0 10px;
 }
 
-.heroTitle span {
+/* 兩個短句各自不斷行，只在中間的空白換行。
+   不加這行，手機上會斷成「房產找瑋凱 安心不 / 踩雷」。 */
+.heroTitle > span {
+  white-space: nowrap;
+}
+
+.heroTitle .accent {
   color: var(--red);
 }
 
