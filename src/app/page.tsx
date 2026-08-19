@@ -78,6 +78,27 @@ const SERVICES = [
   },
 ];
 
+/**
+ * 稅費試算工具。都是連到外部的官方／銀行網站，我們不自己算 ——
+ * 自己算等於在給稅務意見，而且稅率一改就會過期。
+ */
+const TOOLS = [
+  {
+    icon: "🏠",
+    title: "房地合一稅試算",
+    desc: "賣房前先算清楚要繳多少稅。填入取得與出售的時間、價格，就能估出應納稅額，不會等到簽了約才發現稅金吃掉獲利。",
+    source: "財政部電子稅務入口網",
+    href: "https://www.etax.nat.gov.tw/etwmain/tax-info/house-land-transfer-taxtation-calculation-area/sale/online-taxable-amount-calculation",
+  },
+  {
+    icon: "🏦",
+    title: "房貸試算",
+    desc: "先抓出每個月要還多少。填入貸款金額、利率、年限與寬限期，算出月付金，買房的預算才抓得準。",
+    source: "內政部不動產資訊平台",
+    href: "https://pip.moi.gov.tw/V3/c/SCRC0201.aspx?Func=3",
+  },
+];
+
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "RealEstateAgent",
@@ -130,6 +151,7 @@ export default function HomePage() {
             <li><a href="#area">服務區域</a></li>
             <li><a href="#results">我的戰績</a></li>
             <li><a href="#services">服務項目</a></li>
+            <li><a href="#tools">稅費試算</a></li>
             <li><a href="#booking">預約諮詢</a></li>
           </ul>
           <div className={styles.navCta}>
@@ -264,6 +286,42 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* ---------------- 稅費試算 ---------------- */}
+        <section id="tools" className={styles.section}>
+          <div className={`${styles.container} ${styles.center}`}>
+            <span className={styles.eyebrow}>TOOLS</span>
+            <h2 className={styles.sectionTitle}>稅費試算</h2>
+            <p className={styles.sectionDesc}>
+              買賣房子最怕算漏了。這兩個是政府與銀行提供的官方試算工具，先自己跑一輪、心裡有底，再來談會更踏實。
+            </p>
+          </div>
+          <div className={styles.container}>
+            <div className={styles.toolGrid}>
+              {TOOLS.map((tool) => (
+                <a
+                  key={tool.title}
+                  className={styles.toolCard}
+                  href={tool.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <div className={styles.toolIcon}>{tool.icon}</div>
+                  <h3>{tool.title}</h3>
+                  <p>{tool.desc}</p>
+                  <span className={styles.toolSource}>資料來源：{tool.source}</span>
+                  <span className={styles.toolGo}>前往試算 ↗</span>
+                </a>
+              ))}
+            </div>
+            <p className={styles.toolDisclaimer}>
+              ⚠️ 以上連結皆為<strong>外部網站提供的試算工具，僅供試算參考</strong>。
+              房地合一稅之<strong>實際稅額以國稅局核定為準</strong>；貸款條件與利率以各銀行實際審核結果為準。
+              稅率與相關法規會調整，請以連結頁面當下的官方規定為準。試算結果不構成稅務或財務意見。
+            </p>
+          </div>
+        </section>
+
 
         {/* ---------------- 預約系統 ---------------- */}
         <section id="booking" className={`${styles.section} ${styles.contact}`}>
