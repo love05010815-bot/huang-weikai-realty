@@ -8,9 +8,10 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { RCIS } from "./_cis";
 import { SOCIAL, ABIN } from "./_links";
+import { SITE_URL } from "@/config/owner";
 import { FacebookIcon, YoutubeIcon, LineIcon, InstagramIcon, PhoneIcon, MailIcon, PinIcon, CalendarIcon } from "./_icons";
 
-const OG_IMAGE = `https://example.com${ABIN.photoUrl}`;
+const OG_IMAGE = `${SITE_URL}${ABIN.photoUrl}`;
 
 export const metadata: Metadata = {
   title: `${ABIN.name}（${ABIN.alias}）‧ ${ABIN.title} | 預約諮詢`,
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: `${ABIN.name}（${ABIN.alias}）‧ ${ABIN.title}`,
     description: `${ABIN.slogan} 線上預約瑋凱、加 LINE 諮詢買賣租賃。`,
-    url: "https://card.example.com",
+    url: `${SITE_URL}/card`,
     siteName: "太平洋房屋 ‧ 黃瑋凱",
     type: "profile",
     locale: "zh_TW",
