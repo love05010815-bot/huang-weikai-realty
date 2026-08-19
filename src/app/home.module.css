@@ -1,20 +1,40 @@
 /* 個人官網首頁 — 太平洋房屋 CIS 亮色版（給客戶看） */
 
+/* ---------- 配色 ----------
+   凱心成家 logo 色系：深藍 #01354D ＋ 米色 #DAB38A。
+   2026-08-19 從太平洋房屋 CIS 的紅粉系整體換過來。
+
+   ⚠️ 以下顏色刻意不在這組變數裡，也不要換成品牌色：
+      錯誤 #c9473e／成功 #176a43／警告 #e7c47d（在 booking/Booking.module.css）
+        —— 這些是用來傳達狀態的，換成品牌色客戶就看不出哪裡出錯了。
+      LINE 綠 #06c755（--line-green）—— 那是 LINE 的品牌色，不是我們的。
+
+   米色 --accent 只能用在深色底上（白底對比僅 1.9:1，當文字會看不清楚）。
+
+   ⚠️ --pacific-red 是刻意保留的例外，不是漏改的。首頁主標「房產找瑋凱」深藍、
+      「安心不踩雷」太平洋紅 —— 個人品牌與加盟體系各佔一半。除了那一處，
+      全站不要再用這個紅色。 */
 .page {
-  --red: #e00000;
-  --red-dark: #b70000;
-  --brown: #231815;
-  --pink: #ee828a;
-  --pink-light: #f5c0c4;
-  --muted: #6a6a6a;
-  --line: #eee0e0;
-  --soft: #fbf4f4;
+  --primary: #01354D;
+  --primary-dark: #012738;
+  --ink: #122A38;
+  --accent: #DAB38A;
+  --accent-soft: #EFDCC4;
+  --muted: #5C6A73;
+  --line: #DCE4E9;
+  --soft: #F7F0E2;
+  /* 米色系的卡片邊框。原本藍灰框於白底只有 1.29 對比，幾乎看不見；
+     這個是 1.66，明顯但不搶戲。 */
+  --line-warm: #DCC6A5;
+  /* 太平洋房屋企業紅。只給首頁主標的「安心不踩雷」用，
+     刻意跟凱心成家的品牌主色分開，避免日後有人拿它當一般強調色。 */
+  --pacific-red: #e00000;
   --radius: 14px;
-  --shadow: 0 12px 30px rgba(35, 24, 21, 0.1);
+  --shadow: 0 12px 30px rgba(18, 42, 56, 0.1);
   --line-green: #06c755;
 
   font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif;
-  color: var(--brown);
+  color: var(--ink);
   background: #fff;
   line-height: 1.7;
   -webkit-font-smoothing: antialiased;
@@ -38,8 +58,8 @@
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 2px;
-  color: var(--red);
-  background: var(--pink-light);
+  color: var(--primary);
+  background: var(--accent-soft);
   padding: 6px 16px;
   border-radius: 999px;
   margin-bottom: 16px;
@@ -124,12 +144,12 @@
 .nav a {
   font-size: 14.5px;
   font-weight: 700;
-  color: var(--brown);
+  color: var(--ink);
   text-decoration: none;
 }
 
 .nav a:hover {
-  color: var(--red);
+  color: var(--primary);
 }
 
 .navCta {
@@ -174,13 +194,13 @@
 }
 
 .btnPrimary {
-  background: var(--red);
+  background: var(--primary);
   color: #fff;
-  box-shadow: 0 8px 20px rgba(224, 0, 0, 0.28);
+  box-shadow: 0 8px 20px rgba(1, 53, 77, 0.28);
 }
 
 .btnPrimary:hover {
-  background: var(--red-dark);
+  background: var(--primary-dark);
 }
 
 .btnLine {
@@ -191,13 +211,13 @@
 
 .btnOutline {
   background: transparent;
-  border-color: var(--brown);
-  color: var(--brown);
+  border-color: var(--ink);
+  color: var(--ink);
 }
 
 .btnOutline:hover {
-  border-color: var(--red);
-  color: var(--red);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .btnSm {
@@ -209,7 +229,7 @@
 .hero {
   padding: 64px 20px 90px;
   background:
-    radial-gradient(circle at 85% 10%, var(--pink-light) 0%, rgba(245, 192, 196, 0) 55%),
+    radial-gradient(circle at 85% 10%, var(--accent-soft) 0%, rgba(239, 220, 196, 0) 55%),
     linear-gradient(180deg, var(--soft) 0%, #fff 100%);
 }
 
@@ -236,7 +256,8 @@
 }
 
 .heroTitle .accent {
-  color: var(--red);
+  /* 太平洋房屋企業紅。深藍主字 ＋ 紅色副句，兩個品牌各據一半。 */
+  color: var(--pacific-red);
 }
 
 .heroRole {
@@ -268,8 +289,8 @@
   padding: 8px 14px;
   border-radius: 999px;
   background: #fff;
-  border: 1.5px solid var(--pink);
-  color: var(--red-dark);
+  border: 1.5px solid var(--accent);
+  color: var(--primary-dark);
 }
 
 .heroCta {
@@ -287,7 +308,7 @@
   content: "";
   position: absolute;
   inset: 18px -18px -18px 18px;
-  background: var(--red);
+  background: var(--primary);
   border-radius: 20px;
   z-index: 0;
 }
@@ -310,7 +331,7 @@
   bottom: -16px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--brown);
+  background: var(--ink);
   color: #fff;
   font-size: 13px;
   font-weight: 800;
@@ -357,7 +378,7 @@
 
 .areaCard {
   background: var(--soft);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-warm);
   border-radius: var(--radius);
   padding: 26px 20px;
   text-align: center;
@@ -373,7 +394,7 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: var(--red);
+  background: var(--primary);
   color: #fff;
   display: flex;
   align-items: center;
@@ -394,7 +415,7 @@
 }
 
 .areaNote {
-  background: var(--brown);
+  background: var(--ink);
   color: #fff;
   border-radius: var(--radius);
   padding: 24px 28px;
@@ -405,7 +426,7 @@
 }
 
 .areaNote strong {
-  color: var(--pink);
+  color: var(--accent);
 }
 
 @media (max-width: 760px) {
@@ -425,7 +446,7 @@
 }
 
 .awardBanner {
-  background: var(--brown);
+  background: var(--ink);
   border-radius: 20px;
   padding: 44px 32px;
   text-align: center;
@@ -440,8 +461,8 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 15% 20%, rgba(224, 0, 0, 0.35), transparent 45%),
-    radial-gradient(circle at 85% 80%, rgba(238, 130, 138, 0.28), transparent 45%);
+    radial-gradient(circle at 15% 20%, rgba(1, 53, 77, 0.35), transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(218, 179, 138, 0.28), transparent 45%);
 }
 
 .awardBannerInner {
@@ -454,7 +475,7 @@
   height: 56px;
   margin: 0 auto 16px;
   border-radius: 50%;
-  background: var(--red);
+  background: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -486,7 +507,7 @@
 
 .yearCard {
   background: #fff;
-  border: 2px solid var(--pink-light);
+  border: 2px solid var(--accent);
   border-radius: var(--radius);
   padding: 30px 20px;
   text-align: center;
@@ -495,7 +516,7 @@
 .yearNum {
   font-size: 42px;
   font-weight: 900;
-  color: var(--red);
+  color: var(--primary);
   line-height: 1;
   margin-bottom: 10px;
 }
@@ -526,7 +547,7 @@
 
 .serviceCard {
   background: #fff;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-warm);
   border-radius: var(--radius);
   padding: 32px 26px;
   box-shadow: var(--shadow);
@@ -541,8 +562,8 @@
   width: 54px;
   height: 54px;
   border-radius: 14px;
-  background: var(--pink-light);
-  color: var(--red-dark);
+  background: var(--accent-soft);
+  color: var(--primary-dark);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -566,8 +587,8 @@
   margin-top: 16px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--red);
-  background: var(--soft);
+  color: var(--primary);
+  background: var(--accent-soft);
   padding: 5px 12px;
   border-radius: 999px;
 }
@@ -580,7 +601,7 @@
 
 /* ---------- 預約 / 聯絡 ---------- */
 .contact {
-  background: var(--brown);
+  background: var(--ink);
   color: #fff;
 }
 
@@ -589,8 +610,8 @@
 }
 
 .contact .eyebrow {
-  background: rgba(238, 130, 138, 0.2);
-  color: var(--pink);
+  background: rgba(218, 179, 138, 0.2);
+  color: var(--accent);
 }
 
 .contact .sectionDesc {
@@ -627,7 +648,7 @@
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: var(--red);
+  background: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -652,7 +673,7 @@
 /* 線上預約主打卡 */
 .bookingCard {
   background: #fff;
-  color: var(--brown);
+  color: var(--ink);
   border-radius: var(--radius);
   padding: 30px;
   text-align: center;
@@ -690,14 +711,14 @@
   align-items: flex-start;
   gap: 10px;
   font-size: 14px;
-  color: var(--brown);
+  color: var(--ink);
 }
 
 .bookingStepNum {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--red);
+  background: var(--primary);
   color: #fff;
   font-size: 12px;
   font-weight: 900;
