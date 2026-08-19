@@ -29,13 +29,24 @@ Next.js 16 ＋ TypeScript ＋ Prisma ＋ MySQL。
 ## 本機開發
 
 ```bash
+git clone https://github.com/love05010815-bot/huang-weikai-realty.git
+cd huang-weikai-realty
 npm install
-cp .env.example .env.local   # 填入設定，見下方
-npx prisma db push
 npm run dev
 ```
 
-`.env.local` 必填四項：
+開 http://localhost:3000 即可。
+
+### 設定檔
+
+專案需要 `.env.local` 才跑得起來（`src/lib/db.ts` 在載入時就會建立資料庫連線，
+沒有 `DATABASE_URL` 會直接拋錯，不是只有預約頁受影響）。
+
+**協作者**：跟專案負責人索取 `.env.designer`，改名成 `.env.local` 放在專案根目錄即可。
+裡面接的是**開發專用資料庫**，與正式站完全隔離——不同 cluster、不同帳號、不同資料庫名稱，
+你建立的測試預約不會進正式後台，也讀不到任何真實客戶資料。
+
+**自行架設**：複製 `.env.example` 成 `.env.local`，必填四項：
 
 ```env
 DATABASE_URL="mysql://..."          # MySQL 或 TiDB Cloud
@@ -44,7 +55,26 @@ APPOINTMENT_TOKEN_SECRET=""         # node -e "console.log(require('crypto').ran
 APPOINTMENT_ADMIN_EMAIL=""          # 收預約通知的信箱
 ```
 
+然後 `npx prisma db push` 建資料表。
 其餘（Google 日曆、寄信、防機器人）不填也能跑，只是對應功能關閉。
+
+### 改樣式改哪裡
+
+| 想改什麼 | 檔案 |
+|---|---|
+| 首頁版面與文案 | [`src/app/page.tsx`](src/app/page.tsx) ／ [`src/app/home.module.css`](src/app/home.module.css) |
+| 首頁配色變數 | `home.module.css` 最上方的 `.page { --red / --brown / --pink … }` |
+| 數位名片 | [`src/app/card/`](src/app/card/)，配色在 [`_cis.ts`](src/app/card/_cis.ts) |
+| 預約表單 | [`src/app/card/booking/`](src/app/card/booking/)，配色在 [`Booking.module.css`](src/app/card/booking/Booking.module.css) |
+| 後台（深色） | [`src/app/admin/`](src/app/admin/)，配色在 [`_components/cis.ts`](src/app/admin/_components/cis.ts) |
+
+⚠️ 改配色時請保留**語意色**：錯誤紅 `#c9473e`、成功綠 `#176a43`、警告黃 `#e7c47d`。
+這幾個顏色是用來傳達狀態的，換成品牌色客戶就看不出哪裡出錯了。
+
+### 部署
+
+部署權限目前只在專案負責人手上（Vercel 免費方案只有一個席位）。
+推 code 到 `main` 後，請通知負責人部署。
 
 ## 上線前必補
 
