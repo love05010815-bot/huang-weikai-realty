@@ -92,6 +92,7 @@
   font-size: 18px;
   text-decoration: none;
   color: inherit;
+  flex-shrink: 0;
 }
 
 /* 凱心成家 logo 的建築標記（已裁掉原 logo 下方的直式文字，
@@ -108,6 +109,8 @@
   font-weight: 500;
   font-size: 11px;
   color: var(--muted);
+  /* 中文可逐字斷行，不鎖住的話 flex 會把它壓成一行一個字，header 高度爆成 300px */
+  white-space: nowrap;
 }
 
 .nav {
@@ -141,7 +144,10 @@
 }
 
 @media (max-width: 560px) {
-  .navCtaPhone {
+  /* 必須用 .navCta 提高權重。原本只寫 .navCtaPhone，跟後面的
+     .btn { display: inline-flex } 同權重（0-1-0），而 .btn 排在後面，
+     同權重後者勝 —— 這條其實一直沒生效，手機上電話按鈕都還在。 */
+  .navCta .navCtaPhone {
     display: none;
   }
 }
