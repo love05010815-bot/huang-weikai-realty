@@ -1203,7 +1203,10 @@ export default function BookingForm() {
                     : "送出並保留時段"}
               </button>
               <p className={styles.submitHint}>
-                送出後時段先保留 {BOOKING_CONFIRMATION_HOLD_MINUTES} 分鐘。請到 Email 點確認連結，才算正式預約完成。
+                {/* ⚠️ 這句必須跟 APPOINTMENT_REQUIRE_CONFIRMATION 一致。
+                    該環境變數沒設＝送出當下就成立（目前狀態），所以不能寫「要點 Email 確認」。
+                    哪天把它設成 "1" 開啟兩段式確認，這句要改回保留 N 分鐘的版本。 */}
+                送出後預約即成立，確認信會立即寄出。
               </p>
             </section>
           ) : null}
