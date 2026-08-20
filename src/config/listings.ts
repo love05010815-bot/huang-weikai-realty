@@ -45,7 +45,7 @@ export const LISTINGS: Listing[] = [
     slug: "qingshui-lianyueju",
     title: "中高樓無限視野兩房平車",
     points: [
-      "開價低於實登｜無限棟距｜視野開闊",
+      "無限棟距｜視野開闊",
       "主＋附 20 坪大兩房，配 B2 柱邊平車位",
     ],
     area: "清水區・聯悦聚",
@@ -104,7 +104,7 @@ export const LISTINGS: Listing[] = [
     slug: "qingshui-changhong-tianyun",
     title: "長虹建設新市鎮二期兩房平車",
     points: [
-      "品牌知名建商，長虹建設新市鎮第二期，品質速材優良保證。",
+      "品牌知名建商，長虹建設新市鎮第二期，品質速材優良。",
       "兩房 B3 平車，大工作陽台，泡澡浴缸，洗碗機，電動曬衣桿全部有。",
     ],
     area: "清水區・長虹天韻",
