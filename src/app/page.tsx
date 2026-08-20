@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { OWNER, SOCIAL, SITE_URL } from "@/config/owner";
 import { ACTIVE_LISTINGS, HOME_FEATURED_COUNT } from "@/config/listings";
+import { INTRO_LINES, AREAS } from "@/config/profile";
 import styles from "./home.module.css";
 // 卡片樣式跟 /listings 共用同一份，改一處兩邊都會變
 import lst from "./listings/listings.module.css";
@@ -51,14 +52,7 @@ export const metadata: Metadata = {
   },
 };
 
-const AREAS = [
-  { name: "沙鹿區", desc: "生活機能成熟，透天與大樓交易熱絡" },
-  { name: "梧棲區", desc: "重劃區發展快速，置產投資詢問度高" },
-  { name: "清水區", desc: "生活圈完整，首購換屋族群熱門選擇" },
-  { name: "龍井區", desc: "交通建設題材多，未來發展潛力受關注" },
-];
 
-const YEARS = ["112", "113", "114"];
 
 const SERVICES = [
   {
@@ -151,9 +145,8 @@ export default function HomePage() {
             </span>
           </a>
           <ul className={styles.nav}>
-            <li><a href="#area">服務區域</a></li>
+            <li><a href="#about">關於我</a></li>
             <li><a href="#listings">精選好案</a></li>
-            <li><a href="#results">我的戰績</a></li>
             <li><a href="#services">服務項目</a></li>
             <li><a href="#tools">稅費試算</a></li>
             <li><a href="#booking">預約諮詢</a></li>
@@ -212,30 +205,33 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ---------------- 服務區域 ---------------- */}
-        <section id="area" className={styles.section}>
+        {/* ---------------- 關於我（導引；完整內容在 /about）----------------
+            原本自我介紹＋服務區域＋戰績整包都在首頁，光這段就佔首頁 26%
+            的長度（手機 2426px）。搬到 /about 之後這裡只留自我介紹當鉤子，
+            剩下的靠按鈕帶過去 —— 跟精選好案同一個模式。
+            戰績與服務區域不放這裡也沒關係，hero 的兩個徽章已經寫著
+            「連續三年千萬經紀人」與「服務區域：沙鹿・梧棲・清水・龍井」。 */}
+        <section id="about" className={styles.section}>
           <div className={`${styles.container} ${styles.center}`}>
-            <span className={styles.eyebrow}>SERVICE AREA</span>
-            <h2 className={styles.sectionTitle}>我服務的區域</h2>
-            <p className={styles.sectionDesc}>
-              主力深耕台中海線，熟悉沙鹿買房、梧棲置產、清水換屋、龍井投資等在地生活圈與重劃區行情，買賣房都能給您最在地的判斷。
-            </p>
-          </div>
-          <div className={styles.container}>
-            <div className={styles.areaGrid}>
-              {AREAS.map((area) => (
-                <div key={area.name} className={styles.areaCard}>
-                  <div className={styles.pin}>📍</div>
-                  <h3>{area.name}</h3>
-                  <p>{area.desc}</p>
-                </div>
-              ))}
+            <span className={styles.eyebrow}>ABOUT ME</span>
+            <h2 className={styles.sectionTitle}>關於我</h2>
+            <div className={styles.aboutIntro}>
+              <div className={styles.aboutIntroLines}>
+                {INTRO_LINES.map((line) => (
+                  <p key={line.text} className={styles.aboutIntroLine}>
+                    {/* 圖示是裝飾，語意已經在文字裡，所以對螢幕閱讀器隱藏 */}
+                    <span className={styles.aboutIntroIcon} aria-hidden="true">
+                      {line.icon}
+                    </span>
+                    {line.text}
+                  </p>
+                ))}
+              </div>
             </div>
-            <div className={styles.areaNote}>
-              <span>💬</span>
-              <span>
-                不論您是<strong>首購、換屋、置產或投資</strong>，只要物件在台中海線，我都能提供最即時、最在地的行情分析與建議。
-              </span>
+            <div className={styles.aboutMore}>
+              <Link className={`${styles.btn} ${styles.btnPrimary}`} href="/about">
+                更多關於我
+              </Link>
             </div>
           </div>
         </section>
@@ -287,37 +283,6 @@ export default function HomePage() {
               <Link className={`${styles.btn} ${styles.btnPrimary}`} href="/listings">
                 看全部好案
               </Link>
-            </div>
-          </div>
-        </section>
-
-
-        {/* ---------------- 戰績 ---------------- */}
-        <section id="results" className={`${styles.section} ${styles.results}`}>
-          <div className={`${styles.container} ${styles.center}`}>
-            <span className={styles.eyebrow}>TRACK RECORD</span>
-            <h2 className={styles.sectionTitle}>我的戰績</h2>
-            <p className={styles.sectionDesc}>用穩定的成交實力，證明專業與信任值得託付。</p>
-          </div>
-          <div className={styles.container}>
-            <div className={styles.awardBanner}>
-              <div className={styles.awardBannerInner}>
-                <div className={styles.trophy}>🏆</div>
-                <h2>連續三年 年度千萬經紀人</h2>
-                <p>民國112年・113年・114年　連續三年榮獲年度千萬經紀人殊榮</p>
-                <p className={styles.awardBannerNote}>
-                  這些數字背後，是每一位客戶願意把買房、賣房這麼重要的決定託付給我
-                </p>
-              </div>
-            </div>
-            <div className={styles.yearsRow}>
-              {YEARS.map((year) => (
-                <div key={year} className={styles.yearCard}>
-                  <div className={styles.yearNum}>{year}</div>
-                  <div className={styles.yearLabel}>年度千萬經紀人</div>
-                  <div className={styles.yearSub}>Year of Excellence</div>
-                </div>
-              ))}
             </div>
           </div>
         </section>

@@ -84,6 +84,157 @@
   margin-right: auto;
 }
 
+/* ---------- 關於我 ---------- */
+
+/* 自我介紹方塊。六句刻意寫成等長（每句 12 個字），排起來會是一個整齊的
+   方塊 —— 那個形狀就是重點，所以下面的做法都在保護它：
+     .aboutIntroLines 用 width:fit-content ＋ margin:auto 把六行當「一整塊」置中，
+     行內則靠左對齊，這樣圖示才會排成整齊的一直排。
+     （若改成六行各自置中，句子等長時看起來一樣，但圖示會跟著句子浮動。）
+   改文案時維持每句 12 個字，不然方塊會參差不齊。 */
+.aboutIntro {
+  position: relative;
+  max-width: 620px;
+  margin: 0 auto;
+  /* 右上角一抹米色暈染，比整塊平塗有層次，又不會搶走文字 */
+  background:
+    radial-gradient(circle at 100% 0%, var(--accent-soft) 0%, transparent 58%),
+    var(--soft);
+  border: 1px solid var(--line-warm);
+  border-radius: 20px;
+  padding: clamp(30px, 5vw, 46px) clamp(18px, 4vw, 34px);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+/* 角落的裝飾引號。用 ::before/::after 而不是真的文字 —— 它是裝飾不是內容，
+   螢幕閱讀器不該把它念出來。壓低透明度，不要跟正文搶。 */
+.aboutIntro::before,
+.aboutIntro::after {
+  position: absolute;
+  font-size: clamp(64px, 12vw, 96px);
+  line-height: 1;
+  font-weight: 900;
+  color: var(--accent);
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.aboutIntro::before {
+  content: "「";
+  top: 2px;
+  left: 8px;
+}
+
+.aboutIntro::after {
+  content: "」";
+  right: 8px;
+  bottom: -16px;
+}
+
+/* 六行當成一整塊置中（見上面說明），行內靠左 */
+.aboutIntroLines {
+  position: relative;
+  width: fit-content;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.6vw, 15px);
+  text-align: left;
+}
+
+.aboutIntroLine {
+  display: flex;
+  align-items: center;
+  gap: clamp(9px, 1.4vw, 13px);
+  font-size: clamp(15px, 2.2vw, 18px);
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+
+/* 圖示做成固定寬度的白色圓片，六行才會對齊成一直排。
+   包一層圓片而不是裸放 emoji —— 裸 emoji 在不同系統的大小差很多，
+   包起來之後行高與對齊才穩定。 */
+.aboutIntroIcon {
+  /* 這個專案沒有全域 box-sizing reset（globals.css 沒有被任何檔案 import），
+     所以要自己寫，不然 1px 邊框會讓實際寬度變成設定值 +2px、六行對齊出現誤差。 */
+  box-sizing: border-box;
+  flex-shrink: 0;
+  width: clamp(30px, 4.6vw, 36px);
+  height: clamp(30px, 4.6vw, 36px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  font-size: clamp(15px, 2.2vw, 18px);
+  line-height: 1;
+}
+
+/* 子區塊標題（我服務的區域／我的戰績）。比 .sectionTitle 小一階，
+   讓「關於我」維持這一區唯一的主標，層級才不會打架。 */
+.aboutSubTitle {
+  font-size: clamp(20px, 3vw, 26px);
+  font-weight: 900;
+  line-height: 1.4;
+  margin: 0 0 12px;
+  color: var(--ink);
+}
+
+/* 360px 以下（iPhone SE 這類最窄的機型）：12 個字 ＋ 圖示 ＋ 間距 ＋ 字距
+   合計 236px，超過卡內可用的 228px，文字會折成兩行、方塊就散了。
+   把內距、圖示、間距、字距一起收一點，讓六行維持單行。
+   數字是實測出來的：收完約 227px，剛好進得去。 */
+@media (max-width: 360px) {
+  .aboutIntro {
+    padding: 26px 12px;
+  }
+
+  .aboutIntroLine {
+    gap: 7px;
+    letter-spacing: 0.01em;
+    /* 實測：15px 時這 12 個字需要 214px，加圖示與間距共 252px，
+       超過卡內可用的 240px 就會折行、方塊結構就散了。
+       收到 13.5px 之後約 226px，留 14px 餘裕。 */
+    font-size: 13.5px;
+  }
+
+  .aboutIntroIcon {
+    width: 26px;
+    height: 26px;
+    font-size: 13px;
+  }
+}
+
+/* 首頁導引區塊裡「更多關於我」按鈕與自我介紹之間的間距 */
+.aboutMore {
+  margin-top: 28px;
+}
+
+/* /about 頁最下方的回首頁連結。放在預約按鈕下面，不要搶它的視覺重心 */
+.aboutBackLink {
+  display: inline-block;
+  margin-top: 20px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.aboutBackLink:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+/* 子區塊之間的呼吸。原本兩個各自是獨立 section、靠 section 的 72px
+   上下內距分開，合併之後那個間距沒了，要自己補回來。 */
+.aboutBlock {
+  margin-top: 66px;
+}
+
 /* ---------- Header ---------- */
 .header {
   position: sticky;
@@ -171,14 +322,15 @@
   }
 }
 
-/* 電話鈕 154px，是 header 裡最先該讓位的東西 —— 頁尾聯絡區還有電話，
-   但導覽列一旦隱藏就真的沒有替代品了。原本設 560px，導覽列變 6 項之後
-   拉到 1000px，讓 920–1000 這段能同時容納 6 項導覽與「線上預約」。
+/* 電話鈕 154px。導覽列曾經有 6 項、header 要 981px 才放得下，那時把這個
+   斷點從 560 拉到 1000 讓電話鈕先讓位。2026-08-20 服務區域與戰績併成
+   「關於我」之後導覽列變回 5 項、只需要 859px，壓力解除，斷點放回 560 ——
+   平板與小筆電重新看得到一鍵撥號，對房仲來說那顆按鈕值得留著。
 
    必須用 .navCta 提高權重。原本只寫 .navCtaPhone，跟後面的
    .btn { display: inline-flex } 同權重（0-1-0），而 .btn 排在後面，
    同權重後者勝 —— 那條其實一直沒生效。 */
-@media (max-width: 1000px) {
+@media (max-width: 560px) {
   .navCta .navCtaPhone {
     display: none;
   }
@@ -453,10 +605,6 @@
 }
 
 /* ---------- 戰績 ---------- */
-.results {
-  background: linear-gradient(180deg, #fff 0%, var(--soft) 100%);
-}
-
 .awardBanner {
   background: var(--ink);
   border-radius: 20px;
@@ -493,7 +641,9 @@
   justify-content: center;
 }
 
-.awardBanner h2 {
+/* /about 用 h3（該頁 h1 是「關於我」），首頁若之後又放回來可能是 h2 —— 兩種都吃 */
+.awardBanner h2,
+.awardBanner h3 {
   font-size: clamp(20px, 3.4vw, 28px);
   font-weight: 900;
   margin: 0 0 8px;
