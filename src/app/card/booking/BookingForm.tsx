@@ -1197,10 +1197,10 @@ export default function BookingForm() {
                 disabled={submitting || (Boolean(TURNSTILE_SITE_KEY) && !turnstileToken)}
               >
                 {submitting
-                  ? "正在保留時段…"
+                  ? "正在送出…"
                   : TURNSTILE_SITE_KEY && !turnstileToken
                     ? "請先完成上方人機驗證"
-                    : "送出並保留時段"}
+                    : "送出預約"}
               </button>
               <p className={styles.submitHint}>
                 {/* ⚠️ 這句必須跟 APPOINTMENT_REQUIRE_CONFIRMATION 一致。
