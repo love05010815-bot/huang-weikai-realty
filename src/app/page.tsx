@@ -1,11 +1,14 @@
 /**
- * / — 黃瑋凱個人官網首頁（形象照 → 服務區域 → 戰績 → 服務項目 → 預約）
+ * / — 黃瑋凱個人官網首頁
  * 預約區塊直接導到本站的線上預約系統 /card/booking，不再只丟 LINE。
  */
 import type { Metadata } from "next";
 import Link from "next/link";
 import { OWNER, SOCIAL, SITE_URL } from "@/config/owner";
+import { ACTIVE_LISTINGS, HOME_FEATURED_COUNT } from "@/config/listings";
 import styles from "./home.module.css";
+// 卡片樣式跟 /listings 共用同一份，改一處兩邊都會變
+import lst from "./listings/listings.module.css";
 
 const TITLE = `台中海線房仲${OWNER.name}｜資產配置・稅務諮詢・簡易裝潢｜沙鹿梧棲清水龍井`;
 const DESCRIPTION = `${OWNER.name}，${OWNER.company}資深不動產經紀人，112、113、114年連續三年榮獲年度千萬經紀人。深耕台中海線沙鹿、梧棲、清水、龍井，提供資產配置、稅務諮詢、簡易裝潢一站式服務，歡迎線上預約或加LINE諮詢。`;
@@ -149,6 +152,7 @@ export default function HomePage() {
           </a>
           <ul className={styles.nav}>
             <li><a href="#area">服務區域</a></li>
+            <li><a href="#listings">精選好案</a></li>
             <li><a href="#results">我的戰績</a></li>
             <li><a href="#services">服務項目</a></li>
             <li><a href="#tools">稅費試算</a></li>
@@ -235,6 +239,58 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* ---------------- 精選好案 ---------------- */}
+        <section id="listings" className={styles.section}>
+          <div className={`${styles.container} ${styles.center}`}>
+            <span className={styles.eyebrow}>LISTINGS</span>
+            <h2 className={styles.sectionTitle}>精選好案</h2>
+            <p className={styles.sectionDesc}>
+              台中海線目前主打的物件。看中意的直接約時間，我陪您一間一間看清楚再決定。
+            </p>
+          </div>
+          <div className={styles.container}>
+            {ACTIVE_LISTINGS.length > 0 && (
+              <div className={lst.grid}>
+                {ACTIVE_LISTINGS.slice(0, HOME_FEATURED_COUNT).map((item) => (
+                  <Link key={item.slug} className={lst.card} href="/listings">
+                    {item.photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        className={lst.photo}
+                        src={`/listings/${item.photo}`}
+                        alt={`${item.area}－${item.title}`}
+                        width={640}
+                        height={480}
+                      />
+                    ) : (
+                      <div className={lst.photoPlaceholder} aria-label="照片準備中">
+                        <span>🏠</span>
+                        <span>照片準備中</span>
+                      </div>
+                    )}
+                    <div className={lst.body}>
+                      <span className={lst.area}>{item.area}</span>
+                      <h3 className={lst.title}>{item.title}</h3>
+                      <ul className={lst.points}>
+                        {item.points.map((p) => (
+                          <li key={p}>{p}</li>
+                        ))}
+                      </ul>
+                      <span className={lst.action}>物件資訊 →</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+            <div className={`${styles.center} ${styles.listingsMore}`}>
+              <Link className={`${styles.btn} ${styles.btnPrimary}`} href="/listings">
+                看全部好案
+              </Link>
+            </div>
+          </div>
+        </section>
+
 
         {/* ---------------- 戰績 ---------------- */}
         <section id="results" className={`${styles.section} ${styles.results}`}>

@@ -135,7 +135,9 @@
 
 .nav {
   display: flex;
-  gap: 26px;
+  /* 6 個項目。gap 從 26 縮到 20 是為了讓整條在 1000px 就放得下，
+     再寬一點的話 981px 的需求會頂到 1000 的斷點。 */
+  gap: 20px;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -169,10 +171,14 @@
   }
 }
 
-@media (max-width: 560px) {
-  /* 必須用 .navCta 提高權重。原本只寫 .navCtaPhone，跟後面的
-     .btn { display: inline-flex } 同權重（0-1-0），而 .btn 排在後面，
-     同權重後者勝 —— 這條其實一直沒生效，手機上電話按鈕都還在。 */
+/* 電話鈕 154px，是 header 裡最先該讓位的東西 —— 頁尾聯絡區還有電話，
+   但導覽列一旦隱藏就真的沒有替代品了。原本設 560px，導覽列變 6 項之後
+   拉到 1000px，讓 920–1000 這段能同時容納 6 項導覽與「線上預約」。
+
+   必須用 .navCta 提高權重。原本只寫 .navCtaPhone，跟後面的
+   .btn { display: inline-flex } 同權重（0-1-0），而 .btn 排在後面，
+   同權重後者勝 —— 那條其實一直沒生效。 */
+@media (max-width: 1000px) {
   .navCta .navCtaPhone {
     display: none;
   }
@@ -604,6 +610,12 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* 「看全部好案」按鈕與卡片之間留白 */
+.listingsMore {
+  margin-top: 30px;
+}
+
 
 /* ---------- 稅費試算 ---------- */
 .toolGrid {
