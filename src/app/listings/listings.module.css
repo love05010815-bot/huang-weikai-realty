@@ -30,12 +30,15 @@
   border-color: var(--accent);
 }
 
-/* 固定 4:3，照片還沒到位時佔位塊也撐一樣的高度，之後換圖版面不會跳 */
+/* 固定 3:2。九張照片裡有七張是 1.54（約 3:2），兩張是 1.33（4:3）——
+   選 3:2 讓多數幾乎不被裁（2.6%），少數那兩張改裁上下約 11%。
+   房屋照少一點天花板，比左右少一截牆面好。
+   佔位塊也用同一個比例，之後補圖版面不會跳。 */
 .photo {
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 3 / 2;
   width: 100%;
   /* 必須寫 height: auto。<img> 上的 height="480" 屬性會被當成實際高度，
-     壓過 aspect-ratio，圖會被拉成 343x480 而不是 4:3。
+     壓過 aspect-ratio，圖會被垂直拉長而不是照設定的比例。
      屬性本身要留著 —— 瀏覽器靠它預留空間，避免載圖時版面跳動。 */
   height: auto;
   object-fit: cover;
@@ -44,7 +47,7 @@
 
 /* 佔位塊。刻意做成看得出來是佔位的樣子，不要讓人誤以為是實際照片 */
 .photoPlaceholder {
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 3 / 2;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -123,6 +126,35 @@
   font-weight: 800;
   color: var(--primary);
   text-align: center;
+}
+
+/* 外部連結（FB 影片／591 物件頁）。次要動作，做成外框按鈕，
+   讓實心的「預約看屋」還是視覺重心。margin-top:auto 推到底部，
+   不同長度的卡片按鈕才會對齊。 */
+.actionLink {
+  display: block;
+  margin-top: auto;
+  margin-bottom: 10px;
+  border: 1.5px solid var(--line-warm);
+  color: var(--primary);
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 10px 18px;
+  border-radius: 999px;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.actionLink:hover {
+  border-color: var(--accent);
+  background: var(--soft);
+}
+
+/* 有外部連結時，上面那顆已經吃掉 margin-top:auto，
+   這顆就不要再推一次，否則中間會多一段空白 */
+.actionLink + .actionBtn {
+  margin-top: 0;
 }
 
 .actionBtn {

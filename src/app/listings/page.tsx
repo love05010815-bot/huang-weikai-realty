@@ -111,6 +111,18 @@ export default function ListingsPage() {
                           <li key={p}>{p}</li>
                         ))}
                       </ul>
+                      {/* 外部連結（FB 影片／591）放在預約按鈕上面當次要動作 ——
+                          先讓客戶看得更清楚，再引導到預約，順序不要顛倒。 */}
+                      {item.link && (
+                        <a
+                          className={lst.actionLink}
+                          href={item.link.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {item.link.label} ↗
+                        </a>
+                      )}
                       <Link className={lst.actionBtn} href="/card/booking">
                         預約看屋
                       </Link>
