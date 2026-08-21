@@ -168,7 +168,7 @@ function toRecord(row: Row): ListingRecord {
     // photos 是後來才加的欄位。萬一 ALTER 或遷移沒跑到，就退回舊的單張 photo，
     // 讓畫面至少還有封面圖，不要整片變成「照片準備中」。
     photos: parseStringArray(row.photos, () => (row.photo ? [row.photo] : [])),
-    link: row.link_href ? { label: row.link_label || "物件資訊", href: row.link_href } : null,
+    link: row.link_href ? { label: "物件資訊", href: row.link_href } : null,
     video: row.video_href ? { label: "影片賞析", href: row.video_href } : null,
     status: row.status === "sold" ? "sold" : "active",
     sortOrder: Number(row.sort_order) || 0,
@@ -253,12 +253,12 @@ export function validateListing(input: ListingInput): { ok: true; value: Listing
 
   const points = input.points.map((p) => p.trim()).filter(Boolean).slice(0, 8);
 
-  const linkHref = input.linkHref.trim().slice(0, 500);
+  const linkHref = (input.linkHref ?? "").trim().slice(0, 500);
   if (linkHref && !/^https?:\/\//i.test(linkHref)) {
     return { ok: false, error: "外部連結要以 http:// 或 https:// 開頭" };
   }
 
-  const videoHref = input.videoHref.trim().slice(0, 500);
+  const videoHref = (input.videoHref ?? "").trim().slice(0, 500);
   if (videoHref && !/^https?:\/\//i.test(videoHref)) {
     return { ok: false, error: "影片賞析連結要以 http:// 或 https:// 開頭" };
   }
@@ -272,7 +272,7 @@ export function validateListing(input: ListingInput): { ok: true; value: Listing
       points,
       // 同一張挑兩次沒有意義（相簿會出現兩張一樣的），順手去重。
       photos: [...new Set(input.photos.map((p) => p.trim()).filter(Boolean))].slice(0, MAX_PHOTOS),
-      linkLabel: input.linkLabel.trim().slice(0, 80),
+      linkLabel: (input.linkLabel ?? "").trim().slice(0, 80),
       linkHref,
       videoHref,
       status: input.status === "sold" ? "sold" : "active",
@@ -313,7 +313,7 @@ export async function updateListing(id: string, input: ListingInput): Promise<vo
       area = ${input.area},
       photos = ${JSON.stringify(input.photos)},
       photo = ${input.photos[0] ?? null},
-      link_label = ${input.linkLabel || null},
+      link_label = NULL,
       link_href = ${input.linkHref || null},
       video_href = ${input.videoHref || null},
       status = ${input.status}

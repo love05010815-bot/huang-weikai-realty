@@ -61,7 +61,7 @@ function toForm(row: ListingRecord): FormState {
     pointsText: row.points.join("\n"),
     area: row.area,
     photos: row.photos,
-    linkLabel: row.link?.label || "",
+    linkLabel: "",
     linkHref: row.link?.href || "",
     videoHref: row.video?.href || "",
     status: row.status,
