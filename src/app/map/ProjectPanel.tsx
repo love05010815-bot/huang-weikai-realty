@@ -19,12 +19,14 @@ import {
 import styles from "./Map.module.css";
 
 type Filter = "all" | ProjectStatus;
+type DistrictFilter = "all" | "梧棲" | "清水";
 type Sort = "units" | "name";
 
 const fmt = (n: number) => n.toLocaleString("zh-TW");
 
 export default function ProjectPanel() {
   const [filter, setFilter] = useState<Filter>("all");
+  const [district, setDistrict] = useState<DistrictFilter>("all");
   const [sort, setSort] = useState<Sort>("units");
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -35,6 +37,7 @@ export default function ProjectPanel() {
     const q = query.trim().toLowerCase();
     return PROJECTS.filter((p) => {
       if (filter !== "all" && p.status !== filter) return false;
+      if (district !== "all" && p.district !== district) return false;
       if (!q) return true;
       return (
         p.name.toLowerCase().includes(q) ||
@@ -47,7 +50,7 @@ export default function ProjectPanel() {
         ? (b.units ?? 0) - (a.units ?? 0)
         : a.name.localeCompare(b.name, "zh-Hant")
     );
-  }, [filter, sort, query]);
+  }, [filter, district, sort, query]);
 
   const shownUnits = rows.reduce((s, p) => s + (p.units ?? 0), 0);
 
@@ -74,6 +77,10 @@ export default function ProjectPanel() {
         <li>
           <b>{stats.builders}</b>
           <span>家建商</span>
+        </li>
+        <li>
+          <b>2</b>
+          <span>個行政區</span>
         </li>
       </ul>
 
@@ -121,8 +128,32 @@ export default function ProjectPanel() {
         </label>
       </div>
 
+      {/* 重劃區橫跨梧棲與清水，清水客戶會想只看清水的案子 */}
+      <div className={styles.chips} role="group" aria-label="依行政區篩選">
+        {([
+          ["all", `全區（${stats.total}）`],
+          ["梧棲", `梧棲區（${stats.wuqi}）`],
+          ["清水", `清水區（${stats.qingshui}）`],
+        ] as Array<[DistrictFilter, string]>).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            className={district === key ? styles.chipOn : styles.chip}
+            onClick={() => setDistrict(key)}
+            aria-pressed={district === key}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <p className={styles.resultCount}>
         {`顯示 ${rows.length} 個建案，共 ${fmt(shownUnits)} 戶`}
+        {stats.districtUnknown > 0 && district !== "all" && (
+          <span className={styles.warnNote}>
+            {`另有 ${stats.districtUnknown} 案的行政區尚未查證，不會出現在梧棲／清水的篩選結果裡`}
+          </span>
+        )}
       </p>
 
       {/* ── 清單 ── */}
@@ -173,6 +204,11 @@ function ProjectCard({
             <span className={styles.muted}>建商待確認</span>
           )}
           {p.units != null && <span>{`${fmt(p.units)} 戶`}</span>}
+          {p.district ? (
+            <span className={styles.districtTag}>{`${p.district}區`}</span>
+          ) : (
+            <span className={styles.districtTagMuted}>行政區待確認</span>
+          )}
         </span>
       </button>
 
