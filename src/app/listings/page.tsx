@@ -13,6 +13,7 @@ import { OWNER, SITE_URL } from "@/config/owner";
 import { getPublicListings } from "@/lib/listings";
 import styles from "../home.module.css";
 import lst from "./listings.module.css";
+import FeaturedTitle from "./FeaturedTitle";
 import PhotoCarousel from "./PhotoCarousel";
 
 const TITLE = `精選好案｜台中海線房仲${OWNER.name}｜沙鹿梧棲清水龍井`;
@@ -81,7 +82,7 @@ export default async function ListingsPage() {
         <section className={styles.section}>
           <div className={`${styles.container} ${styles.center}`}>
             <span className={styles.eyebrow}>LISTINGS</span>
-            <h1 className={styles.sectionTitle}>精選好案</h1>
+            <FeaturedTitle as="h1" className={styles.sectionTitle} />
             <p className={styles.sectionDesc}>
               台中海線目前主打的物件。看中意的直接約時間看屋，我陪您一間一間看清楚再決定。
             </p>

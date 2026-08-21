@@ -382,3 +382,39 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------------- 「本月瑋凱推薦好案」標題裝飾 ---------------- */
+
+/*
+ * 「推薦」底下的暖金螢光筆。
+ *
+ * 用 background-image 畫，不用 ::after ＋ 絕對定位 ＋ z-index:-1 ——
+ * 後者只要外層有 transform 或 overflow 就會變成色塊蓋住字。
+ * 尺寸用 em，跟著 clamp() 出來的字級一起縮放，手機上不會失衡。
+ */
+.titleHighlight {
+  background-image: linear-gradient(var(--accent-soft), var(--accent-soft));
+  background-repeat: no-repeat;
+  background-position: 0 82%;
+  background-size: 100% 0.36em;
+  padding: 0 0.08em;
+  /* 中文字不該被拆到兩行中間，螢光筆會斷成兩截 */
+  white-space: nowrap;
+}
+
+.titleStar {
+  color: var(--accent);
+  /* 比標題小一點、往上提一些，才像裝飾不像另一個字 */
+  font-size: 0.62em;
+  vertical-align: 0.35em;
+  margin: 0 0.4em;
+  /* 星星只是裝飾，不要跟著標題那麼粗 */
+  font-weight: 400;
+}
+
+/* 手機版面窄，兩顆星會把標題擠到換行，縮小間距 */
+@media (max-width: 480px) {
+  .titleStar {
+    margin: 0 0.22em;
+  }
+}

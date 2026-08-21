@@ -20,8 +20,8 @@ import styles from "./Map.module.css";
 
 const stats = projectStats();
 
-const TITLE = `台中港市鎮中心建案總覽｜梧棲市政重劃區 ${stats.total} 個建案一次看｜台中海線房仲${OWNER.name}`;
-const DESCRIPTION = `台中港市鎮中心（梧棲市政重劃區）${stats.total} 個建案總覽：遠雄幸福成、聯悅馨、長虹天擎、聯虹鉑玥等，可依預售／成屋與建商篩選，另附土地使用分區互動地圖。由台中海線房仲${OWNER.name}整理自公開資訊。`;
+const TITLE = `台中港市鎮中心建案總覽｜梧棲・清水重劃區 ${stats.total} 個建案一次看｜台中海線房仲${OWNER.name}`;
+const DESCRIPTION = `台中港市鎮中心重劃區（橫跨梧棲區與清水區）${stats.total} 個建案總覽：遠雄幸福成、聯悅馨、長虹天擎、聯虹鉑玥、遠雄之星系列等，可依行政區、預售／成屋與建商篩選，另附土地使用分區互動地圖。由台中海線房仲${OWNER.name}整理自公開資訊。`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -29,11 +29,15 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   keywords: [
     "台中港市鎮中心",
+    "梧棲重劃區",
+    "清水重劃區",
     "梧棲市政重劃區",
     "梧棲重劃區建案",
+    "清水重劃區建案",
     "台中港特定區",
     "梧棲建案",
     "清水建案",
+    "遠雄之星",
     "遠雄幸福成",
     "聯悅馨",
     "台中海線建商",

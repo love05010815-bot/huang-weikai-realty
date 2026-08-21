@@ -11,6 +11,7 @@ import { getPublicListings } from "@/lib/listings";
 import styles from "./home.module.css";
 // 卡片樣式跟 /listings 共用同一份，改一處兩邊都會變
 import lst from "./listings/listings.module.css";
+import FeaturedTitle from "./listings/FeaturedTitle";
 import PhotoCarousel from "./listings/PhotoCarousel";
 
 const TITLE = `台中海線房仲${OWNER.name}｜資產配置・稅務諮詢・簡易裝潢｜沙鹿梧棲清水龍井`;
@@ -253,9 +254,9 @@ export default async function HomePage() {
         <section id="listings" className={styles.section}>
           <div className={`${styles.container} ${styles.center}`}>
             <span className={styles.eyebrow}>LISTINGS</span>
-            {/* 導覽列那項維持「精選好案」，這裡刻意用不一樣的說法 ——
-                這區只放九筆裡的前三筆，是「本月主打」不是全部 */}
-            <h2 className={styles.sectionTitle}>本月瑋凱強推好案</h2>
+            {/* 標題與 /listings 共用同一個元件，兩邊講的話保證一致。
+                導覽列那項維持短的「精選好案」—— 那是選單，塞不下整句 */}
+            <FeaturedTitle as="h2" className={styles.sectionTitle} />
             <p className={styles.sectionDesc}>
               台中海線目前主打的物件。看中意的直接約時間，我陪您一間一間看清楚再決定。
             </p>
