@@ -403,3 +403,29 @@
   border-radius: 9px;
   font-size: 13.5px;
 }
+
+/* ---------------- 照片：上傳按鈕列 ---------------- */
+
+/* 「換掉」比 ↑↓✕ 多兩個字，方形塞不下 */
+.photoBtnWide {
+  width: auto;
+  padding: 0 10px;
+  font-size: 12.5px;
+}
+
+.photoAddRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.photoAddBtn {
+  border: 1px dashed;
+  padding: 9px 16px;
+}
+
+.photoAddBtn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}

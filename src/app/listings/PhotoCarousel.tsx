@@ -14,6 +14,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { resolvePhotoSrc } from "@/lib/photo-src";
 import styles from "./listings.module.css";
 
 type Props = {
@@ -74,7 +75,8 @@ export default function PhotoCarousel({ photos, alt, eager = false }: Props) {
           <img
             key={file}
             className={styles.photo}
-            src={`/listings/${file}`}
+            /* 可能是 Blob 網址、repo 舊檔路徑、或更舊的裸檔名，統一解析 */
+            src={resolvePhotoSrc(file)}
             alt={i === 0 ? alt : `${alt}（照片 ${i + 1}）`}
             width={640}
             height={480}

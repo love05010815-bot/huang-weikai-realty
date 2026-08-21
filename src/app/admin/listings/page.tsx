@@ -13,7 +13,7 @@ import { adminEmails } from "@/auth";
 import { CIS } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
 import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
-import { listAllListings, listPhotoFiles, type ListingRecord } from "@/lib/listings";
+import { listAllListings, type ListingRecord } from "@/lib/listings";
 import { findCopyRisks } from "@/lib/listing-copy-risk";
 import ListingsManager from "./ListingsManager";
 import styles from "./listings-admin.module.css";
@@ -37,12 +37,6 @@ export default async function ListingsAdminPage() {
   } catch (e) {
     loadError = e instanceof Error ? e.message : String(e);
   }
-  // 檔案系統列得到就用它；萬一列不到（Vercel 打包沒帶到），至少要保住「現在已經在用的那幾張」，
-  // 不然一進編輯畫面下拉是空的，會以為照片全不見了。
-  const fromDisk = await listPhotoFiles();
-  const inUse = rows.flatMap((row) => row.photos);
-  const photoFiles = [...new Set([...fromDisk, ...inUse])].sort((a, b) => a.localeCompare(b));
-
   const activeCount = rows.filter((row) => row.status === "active").length;
   const soldCount = rows.length - activeCount;
   const noPhotoCount = rows.filter((row) => row.status === "active" && row.photos.length === 0).length;
@@ -112,16 +106,9 @@ export default async function ListingsAdminPage() {
         >
           <b>成交了就按「成交／下架」，不要按刪除。</b>
           賣掉的物件還掛在網站上是廣告不實，但整筆刪掉之後就查不到你曾經賣過什麼了。
-          {fromDisk.length === 0 ? (
-            <>
-              <br />
-              ⚠️ 這次列不出 <code>public/listings/</code> 的檔案，下拉只剩「已經在用的那幾張」。
-              要選新照片得手動打檔名。
-            </>
-          ) : null}
         </div>
 
-        <ListingsManager initial={rows} photoFiles={photoFiles} />
+        <ListingsManager initial={rows} />
       </div>
     </main>
   );

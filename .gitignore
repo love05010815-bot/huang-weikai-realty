@@ -24,4 +24,5 @@ next-env.d.ts
 # 本機一次性除錯腳本
 _q*.js
 _q*.ts
+_q*.mjs
 _linebot_*.mjs

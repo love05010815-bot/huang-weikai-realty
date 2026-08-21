@@ -9,11 +9,12 @@
  * ⚠️ 「成交／下架」用的是狀態切換不是刪除。刪除鈕留給建錯的資料，而且會再問一次。
  */
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CIS, CHIP } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
 import { MAX_PHOTOS } from "@/config/listings";
 import { findCopyRisks } from "@/lib/listing-copy-risk";
+import { photoDisplayName, resolvePhotoSrc } from "@/lib/photo-src";
 import type { ListingInput, ListingRecord, ListingStatus } from "@/lib/listings";
 import styles from "./listings-admin.module.css";
 
@@ -65,13 +66,7 @@ function toForm(row: ListingRecord): FormState {
   };
 }
 
-export default function ListingsManager({
-  initial,
-  photoFiles,
-}: {
-  initial: ListingRecord[];
-  photoFiles: string[];
-}) {
+export default function ListingsManager({ initial }: { initial: ListingRecord[] }) {
   const router = useRouter();
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -174,7 +169,7 @@ export default function ListingsManager({
           <ListingForm
             form={form}
             setForm={setForm}
-            photoFiles={photoFiles}
+
             risks={formRisks}
             busy={busy === "save"}
             onSave={save}
@@ -206,7 +201,7 @@ export default function ListingsManager({
                 <ListingForm
                   form={form}
                   setForm={setForm}
-                  photoFiles={photoFiles}
+
                   risks={formRisks}
                   busy={busy === "save"}
                   onSave={save}
@@ -225,7 +220,7 @@ export default function ListingsManager({
               {row.photos.length > 0 ? (
                 <div className={styles.thumbWrap}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img className={styles.thumb} src={`/listings/${row.photos[0]}`} alt="" width={132} height={88} />
+                  <img className={styles.thumb} src={resolvePhotoSrc(row.photos[0])} alt="" width={132} height={88} />
                   {/* 多張才標數量 —— 一張的時候標「1」是廢話 */}
                   {row.photos.length > 1 ? (
                     <span className={styles.thumbCount}>{row.photos.length} 張</span>
@@ -356,7 +351,6 @@ export default function ListingsManager({
 function ListingForm({
   form,
   setForm,
-  photoFiles,
   risks,
   busy,
   onSave,
@@ -365,7 +359,6 @@ function ListingForm({
 }: {
   form: FormState;
   setForm: React.Dispatch<React.SetStateAction<FormState>>;
-  photoFiles: string[];
   risks: ReturnType<typeof findCopyRisks>;
   busy: boolean;
   onSave: () => void;
@@ -374,6 +367,79 @@ function ListingForm({
 }) {
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // null = 這次是「加在後面」；數字 = 這次是「換掉第幾張」
+  const replaceAtRef = useRef<number | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [brokenPhotos, setBrokenPhotos] = useState<Set<string>>(new Set());
+
+  const markBroken = (file: string) =>
+    setBrokenPhotos((prev) => (prev.has(file) ? prev : new Set(prev).add(file)));
+
+  const pickFiles = ({ replaceAt }: { replaceAt: number | null }) => {
+    replaceAtRef.current = replaceAt;
+    const el = fileInputRef.current;
+    if (!el) return;
+    // 「換掉」一次只換一張，「加入」可以複選
+    el.multiple = replaceAt === null;
+    // 清掉上次的值，不然連續選同一個檔案不會觸發 change
+    el.value = "";
+    el.click();
+  };
+
+  const onFilesChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const replaceAt = replaceAtRef.current;
+    const room = MAX_PHOTOS - (replaceAt === null ? form.photos.length : form.photos.length - 1);
+    const take = files.slice(0, Math.max(0, room));
+    if (take.length === 0) {
+      setUploadMsg({ ok: false, text: `已經有 ${MAX_PHOTOS} 張了，要先移除幾張才能再加` });
+      return;
+    }
+
+    setUploading(true);
+    setUploadMsg(null);
+    try {
+      const body = new FormData();
+      for (const f of take) body.append("file", f);
+
+      const res = await fetch("/api/admin/listings/photo", { method: "POST", body });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || `上傳失敗（${res.status}）`);
+
+      const urls: string[] = (data.uploaded || []).map((u: { url: string }) => u.url);
+      const failed: Array<{ name: string; error: string }> = data.failed || [];
+
+      if (urls.length > 0) {
+        setForm((prev) => {
+          const next = [...prev.photos];
+          if (replaceAt === null) next.push(...urls);
+          else next.splice(replaceAt, 1, urls[0]);
+          return { ...prev, photos: next.slice(0, MAX_PHOTOS) };
+        });
+      }
+
+      const skipped = files.length - take.length;
+      const parts: string[] = [];
+      if (urls.length > 0) {
+        parts.push(replaceAt === null ? `已上傳 ${urls.length} 張` : "已換掉這張");
+      }
+      if (failed.length > 0) parts.push(`${failed.length} 張失敗：${failed.map((f) => `${f.name}（${f.error}）`).join("、")}`);
+      if (skipped > 0) parts.push(`${skipped} 張超過上限沒收`);
+      parts.push("記得按「儲存」才會真的寫進網站");
+
+      setUploadMsg({ ok: failed.length === 0 && urls.length > 0, text: parts.join("；") });
+    } catch (err) {
+      setUploadMsg({ ok: false, text: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setUploading(false);
+      replaceAtRef.current = null;
+    }
+  };
 
   return (
     <>
@@ -435,41 +501,43 @@ function ListingForm({
         </div>
 
         <div className={`${styles.field} ${styles.fieldWide}`}>
-          <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="lst-photo-add">
+          <label className={styles.label} style={{ color: CIS.textSub }}>
             照片
           </label>
 
           {form.photos.length > 0 ? (
             <ul className={styles.photoList}>
               {form.photos.map((file, i) => {
-                // 檔案被從 repo 拿掉、或當初手打錯字，都會落到這裡。
+                // 圖載不出來（Blob 被刪掉、repo 舊檔被移走）就標紅留著，
                 // 不自動清掉 —— 悄悄消失比留著一個看得見的警告更難查。
-                const missing = !photoFiles.includes(file);
+                const broken = brokenPhotos.has(file);
                 return (
                   <li key={file} className={styles.photoItem} style={{ borderColor: CIS.cardBorder }}>
-                    {missing ? (
+                    {broken ? (
                       <div
                         className={`${styles.photoItemThumb} ${styles.photoItemMissing}`}
                         style={{ color: CIS.textMute }}
                       >
-                        找不到
+                        載不到
                       </div>
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         className={styles.photoItemThumb}
-                        src={`/listings/${file}`}
+                        src={resolvePhotoSrc(file)}
                         alt=""
                         width={72}
                         height={48}
+                        onError={() => markBroken(file)}
                       />
                     )}
                     <span
                       className={styles.photoItemName}
-                      style={{ color: missing ? "#fdba74" : CIS.text }}
+                      style={{ color: broken ? "#fdba74" : CIS.text }}
+                      title={file}
                     >
-                      {file}
-                      {missing ? "（檔案找不到）" : ""}
+                      {photoDisplayName(file)}
+                      {broken ? "（載不到）" : ""}
                     </span>
                     {i === 0 ? <span className={styles.photoCover}>封面</span> : null}
                     <div className={styles.photoItemBtns}>
@@ -478,8 +546,8 @@ function ListingForm({
                         className={styles.photoBtn}
                         style={{ borderColor: CIS.cardBorder, color: CIS.textSub }}
                         onClick={() => set("photos", movePhoto(form.photos, i, i - 1))}
-                        disabled={i === 0}
-                        aria-label={`${file} 往前一張`}
+                        disabled={i === 0 || uploading}
+                        aria-label={`${photoDisplayName(file)} 往前一張`}
                         title="往前"
                       >
                         ↑
@@ -489,19 +557,31 @@ function ListingForm({
                         className={styles.photoBtn}
                         style={{ borderColor: CIS.cardBorder, color: CIS.textSub }}
                         onClick={() => set("photos", movePhoto(form.photos, i, i + 1))}
-                        disabled={i === form.photos.length - 1}
-                        aria-label={`${file} 往後一張`}
+                        disabled={i === form.photos.length - 1 || uploading}
+                        aria-label={`${photoDisplayName(file)} 往後一張`}
                         title="往後"
                       >
                         ↓
                       </button>
                       <button
                         type="button"
+                        className={`${styles.photoBtn} ${styles.photoBtnWide}`}
+                        style={{ borderColor: CIS.cardBorder, color: CIS.textSub }}
+                        onClick={() => pickFiles({ replaceAt: i })}
+                        disabled={uploading}
+                        aria-label={`換掉 ${photoDisplayName(file)}`}
+                        title="從電腦選一張換掉這張"
+                      >
+                        換掉
+                      </button>
+                      <button
+                        type="button"
                         className={styles.photoBtn}
                         style={{ borderColor: CIS.cardBorder, color: "#f87171" }}
                         onClick={() => set("photos", form.photos.filter((_, n) => n !== i))}
-                        aria-label={`移除 ${file}`}
-                        title="移除"
+                        disabled={uploading}
+                        aria-label={`移除 ${photoDisplayName(file)}`}
+                        title="從這筆物件移除"
                       >
                         ✕
                       </button>
@@ -515,37 +595,61 @@ function ListingForm({
               className={styles.photoEmpty}
               style={{ color: CIS.textMute, borderColor: CIS.cardBorder }}
             >
-              還沒挑照片，前台會顯示「照片準備中」佔位塊（版面不會歪）。
+              還沒有照片，前台會顯示「照片準備中」佔位塊（版面不會歪）。
             </div>
           )}
 
-          <select
-            id="lst-photo-add"
-            className={styles.select}
-            style={inputStyle}
-            value=""
-            disabled={form.photos.length >= MAX_PHOTOS}
-            onChange={(e) => {
-              const file = e.target.value;
-              if (file) set("photos", [...form.photos, file]);
-            }}
-          >
-            <option value="">
-              {form.photos.length >= MAX_PHOTOS ? `已達上限 ${MAX_PHOTOS} 張` : "＋ 加入照片…"}
-            </option>
-            {photoFiles
-              .filter((file) => !form.photos.includes(file))
-              .map((file) => (
-                <option key={file} value={file}>
-                  {file}
-                </option>
-              ))}
-          </select>
+          {/* 真正的 file input 藏起來，用按鈕去戳它 —— 原生的樣子在後台很突兀，
+              而且它的文字沒辦法改成中文 */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={onFilesChosen}
+          />
+
+          <div className={styles.photoAddRow}>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.photoAddBtn}`}
+              style={{ borderColor: CIS.cardBorder, color: CIS.text }}
+              onClick={() => pickFiles({ replaceAt: null })}
+              disabled={uploading || form.photos.length >= MAX_PHOTOS}
+            >
+              {uploading
+                ? "上傳中…"
+                : form.photos.length >= MAX_PHOTOS
+                  ? `已達上限 ${MAX_PHOTOS} 張`
+                  : "＋ 從電腦選照片"}
+            </button>
+            {uploading ? (
+              <span style={{ color: CIS.textMute, fontSize: 13 }}>
+                正在壓縮並上傳，大張的照片可能要幾秒鐘，先別關掉這頁
+              </span>
+            ) : null}
+          </div>
+
+          {uploadMsg ? (
+            <div
+              className={styles.msg}
+              style={{
+                marginTop: 10,
+                background: uploadMsg.ok ? CHIP.success.bg : CHIP.warn.bg,
+                borderColor: uploadMsg.ok ? CHIP.success.border : CHIP.warn.border,
+                color: uploadMsg.ok ? CHIP.success.color : CHIP.warn.color,
+              }}
+            >
+              {uploadMsg.text}
+            </div>
+          ) : null}
 
           <div className={styles.hint} style={{ color: CIS.textMute }}>
             <b>第一張是封面</b>，兩張以上前台卡片會自動變成可左右滑的相簿。用 ↑↓ 調順序，
             建議客廳 → 主臥 → 視野或外觀，最多 {MAX_PHOTOS} 張。
-            只能從 <code>public/listings/</code> 現有的圖檔挑；要放全新照片，把圖檔給我、部署一次才會出現在這個清單裡。
+            上傳時會自動轉正、縮到 1600px、壓成 WebP，所以直接丟手機拍的原圖就好。
+            <b>照片是存檔的時候才寫進資料庫的</b> —— 傳完記得按下面的「儲存」。
           </div>
         </div>
 
@@ -618,15 +722,16 @@ function ListingForm({
       </div>
 
       {/* 上面的清單縮圖太小看不出裁切，這裡用卡片實際的 3:2 尺寸再放一次封面 */}
-      {form.photos.length > 0 && photoFiles.includes(form.photos[0]) ? (
+      {form.photos.length > 0 && !brokenPhotos.has(form.photos[0]) ? (
         <div className={styles.formPreview}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             className={styles.previewThumb}
-            src={`/listings/${form.photos[0]}`}
+            src={resolvePhotoSrc(form.photos[0])}
             alt=""
             width={132}
             height={88}
+            onError={() => markBroken(form.photos[0])}
           />
           <span style={{ color: CIS.textMute, fontSize: 13.5 }}>
             封面在卡片上是 3:2 裁切，比例不合會被切掉上下或左右。

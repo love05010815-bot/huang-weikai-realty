@@ -12,17 +12,16 @@
  * appointment_config、appointment_case_sequence 全都是），跟著走才不會有人下次
  * `prisma migrate` 把別人的表洗掉。
  *
- * 📷 照片仍然是 public/listings/ 底下的檔案 —— 後台是「從現有檔案挑」，
- *    不是上傳。要放全新照片還是得把圖檔加進 repo 部署一次。
- *    **一筆物件可以挑多張**（存在 photos 陣列，第一張是封面），
+ * 📷 2026-08-21 起照片改成**後台直接從電腦上傳**（存 Vercel Blob，見 lib/listing-photos.ts），
+ *    不用再把圖檔加進 repo 部署一次。**一筆物件可以放多張**（photos 陣列，第一張是封面），
  *    兩張以上前台卡片會自動變成可左右滑的相簿。
+ *    photos 裡存的是可直接顯示的網址，舊資料的 `/listings/xxx.jpg` 也還讀得動。
  */
-import { readdir } from "node:fs/promises";
-import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { getConfig, setConfig } from "@/lib/google-calendar";
 import { LISTINGS, MAX_PHOTOS, type Listing } from "@/config/listings";
+import { deleteListingPhoto } from "@/lib/listing-photos";
 
 export type ListingStatus = "active" | "sold";
 
@@ -285,6 +284,7 @@ export async function createListing(input: ListingInput): Promise<string> {
 
 export async function updateListing(id: string, input: ListingInput): Promise<void> {
   await ensureListingTable();
+  const before = await getListingPhotos(id);
   // 舊的單張 photo 欄位一起維護（寫入封面那張）：萬一要回滾到上一版程式碼
   // （那版只讀 photo），封面圖還是對的，不會整片變成「照片準備中」。
   await db.$executeRaw`
@@ -300,6 +300,9 @@ export async function updateListing(id: string, input: ListingInput): Promise<vo
       status = ${input.status}
     WHERE id = ${id}
   `;
+  // 存檔成功之後才清掉被移除的照片 —— 順序相反的話，萬一 UPDATE 失敗，
+  // 照片已經刪了但資料庫還指著它，畫面就會出現一堆破圖。
+  await purgeUnusedPhotos(before, input.photos);
 }
 
 export async function setListingStatus(id: string, status: ListingStatus): Promise<void> {
@@ -309,7 +312,45 @@ export async function setListingStatus(id: string, status: ListingStatus): Promi
 
 export async function deleteListing(id: string): Promise<void> {
   await ensureListingTable();
+  const before = await getListingPhotos(id);
   await db.$executeRaw`DELETE FROM listing WHERE id = ${id}`;
+  await purgeUnusedPhotos(before, []);
+}
+
+/** 某一筆現在掛著哪些照片。查不到就回空陣列。 */
+async function getListingPhotos(id: string): Promise<string[]> {
+  const rows = await db.$queryRaw<Array<{ photos: string | null; photo: string | null }>>`
+    SELECT photos, photo FROM listing WHERE id = ${id}
+  `;
+  const row = rows[0];
+  if (!row) return [];
+  return parseStringArray(row.photos, () => (row.photo ? [row.photo] : []));
+}
+
+/**
+ * 把「這次被移除、而且沒有別筆物件還在用」的照片從 Blob 上刪掉。
+ *
+ * 🔴 為什麼要再查一次有沒有別筆在用：每次上傳都會產生新的亂數檔名，
+ *    正常情況下一張照片只會屬於一筆物件。但人是會手動複製網址的，
+ *    真的發生時「刪掉 A 的照片順便弄破 B」是很難查的災難，
+ *    多一次查詢換掉這個風險很划算。
+ *
+ * repo 裡的舊檔（`/listings/xxx.jpg`）由 deleteListingPhoto 自己跳過，這裡不用管。
+ */
+async function purgeUnusedPhotos(before: string[], after: string[]): Promise<void> {
+  const kept = new Set(after);
+  const removed = before.filter((url) => !kept.has(url));
+  if (removed.length === 0) return;
+
+  const stillUsed = await db.$queryRawUnsafe<Array<{ photos: string | null }>>(
+    `SELECT photos FROM listing`,
+  );
+  const inUse = new Set(stillUsed.flatMap((row) => parseStringArray(row.photos)));
+
+  for (const url of removed) {
+    if (inUse.has(url)) continue;
+    await deleteListingPhoto(url);
+  }
 }
 
 /**
@@ -333,22 +374,3 @@ export async function moveListing(id: string, direction: "up" | "down"): Promise
   await db.$executeRaw`UPDATE listing SET sort_order = ${index} WHERE id = ${b.id}`;
 }
 
-// ---------------------------------------------------------------- 照片
-
-/**
- * public/listings/ 底下現有的圖檔清單，給後台的下拉選單用。
- *
- * 讀不到（權限、路徑、執行環境不同）就回空陣列 —— 後台會退成手動填檔名，
- * 不會因為列不出檔案就整頁壞掉。
- */
-export async function listPhotoFiles(): Promise<string[]> {
-  try {
-    const dir = path.join(process.cwd(), "public", "listings");
-    const files = await readdir(dir);
-    return files
-      .filter((name) => /\.(jpe?g|png|webp|avif)$/i.test(name))
-      .sort((a, b) => a.localeCompare(b));
-  } catch {
-    return [];
-  }
-}

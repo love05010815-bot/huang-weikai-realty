@@ -4,16 +4,13 @@ const nextConfig: NextConfig = {
   // 名片頁的大頭照如果放外部網址（例如 CDN），把網域加進來
   images: { remotePatterns: [] },
 
-  /**
-   * 後台 /admin/listings 的照片下拉，是用 fs.readdir 去列 public/listings/ 的檔案。
+  /*
+   * 這裡本來有 outputFileTracingIncludes，把 public/listings/** 帶進 /admin/listings
+   * 的 bundle，供舊的「從 repo 現有檔案挑照片」下拉用 fs.readdir 去列。
    *
-   * 🔴 Vercel 上 public/ 的檔案預設**不會**被打包進 serverless function
-   *    （它們是丟給 CDN 直接送的），所以不加這行的話，本機看得到、線上就變成空清單，
-   *    照片欄只能手動打檔名。這行是叫 Vercel 把那些圖一起帶進那個 route 的 bundle。
+   * 2026-08-21 照片改成後台直接上傳到 Vercel Blob，那個下拉整個拿掉了，
+   * 沒有人再 readdir，這段就變成純粹把 3MB 圖檔塞進 function bundle 的浪費。
    */
-  outputFileTracingIncludes: {
-    "/admin/listings": ["./public/listings/**"],
-  },
 };
 
 export default nextConfig;
