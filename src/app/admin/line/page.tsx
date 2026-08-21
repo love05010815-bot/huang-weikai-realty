@@ -17,7 +17,9 @@ import { Icon } from "@/app/admin/_ui/icons";
 import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
 import { BOT_ENABLED } from "@/config/line-bot";
 import { getBotStats, getConversation, listBotUsers } from "@/lib/line-bot/store";
+import { getMessageQuota } from "@/lib/line-bot/client";
 import { toggleBotMuted } from "@/lib/actions/line-bot";
+import ReplyBox from "./ReplyBox";
 import styles from "./line.module.css";
 
 export const dynamic = "force-dynamic";
@@ -79,6 +81,10 @@ export default async function AdminLinePage({
   );
   const hasAiKey = Boolean(process.env.ANTHROPIC_API_KEY);
 
+  // 後台回覆走 push，每則都吃免費額度。查不到就顯示「查不到」，不要假裝還有。
+  const quota = await getMessageQuota();
+  const quotaExhausted = quota?.remaining === 0;
+
   const health: Health[] = [
     {
       label: "LINE 金鑰",
@@ -103,6 +109,21 @@ export default async function AdminLinePage({
       detail: BOT_ENABLED
         ? "機器人會自動回覆"
         : "在 src/config/line-bot.ts 把 BOT_ENABLED 改回 true 才會回話",
+    },
+    {
+      // 這顆跟機器人開不開無關 —— 它管的是「你本人在後台還能回幾則」
+      label: "本月訊息額度",
+      tone: !quota ? "neutral" : quota.remaining === null ? "success" : quota.remaining === 0 ? "danger" : quota.remaining < 20 ? "warn" : "success",
+      status: !quota
+        ? "查不到"
+        : quota.remaining === null
+          ? "不限量"
+          : `剩 ${quota.remaining} 則`,
+      detail: !quota
+        ? "問不到 LINE（沒 token 或對方沒回應）。不影響收訊息，只是這裡顯示不出來。"
+        : quota.remaining === null
+          ? "這個方案不限量，後台回覆不用擔心額度"
+          : `本月已用 ${quota.used}／${quota.limit} 則。在後台回一則就用掉一則，用完就送不出去。`,
     },
   ];
 
@@ -323,7 +344,7 @@ export default async function AdminLinePage({
 
                   {selected.muted && (
                     <div className={styles.mutedBar} style={{ color: CHIP.warn.color }}>
-                      機器人對這位客戶已停止回覆，請自己在 LINE 回。他說的話還是會記錄在這裡。
+                      機器人對這位客戶已停止回覆，由你本人接手。直接用下面的框回他就好。
                     </div>
                   )}
 

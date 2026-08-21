@@ -296,3 +296,54 @@
   margin-top: 3px;
   font-size: 11px;
 }
+
+/* ---------------- 後台直接回客戶 ---------------- */
+
+.replyBox {
+  border-top: 1px solid;
+  padding: 12px 14px 14px;
+}
+
+.replyInput {
+  width: 100%;
+  min-height: 76px;
+  border: 1px solid;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.75;
+  resize: vertical;
+}
+
+.replyInput:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.replyBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 9px;
+}
+
+/* 提示字吃掉剩餘寬度，送出鈕永遠靠右 */
+.replyHint {
+  flex: 1 1 220px;
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.replyMsg {
+  margin-top: 9px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+/* 本人回的訊息：跟機器人的泡泡分色，回頭看紀錄才知道哪句是自己講的 */
+.humanTag {
+  font-weight: 800;
+}

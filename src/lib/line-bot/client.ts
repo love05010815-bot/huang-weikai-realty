@@ -124,6 +124,54 @@ export async function showLoading(userId: string, seconds = 15): Promise<void> {
   }
 }
 
+export type MessageQuota = {
+  /** 本月免費額度上限。null = LINE 回報這個帳號不限量（付費方案） */
+  limit: number | null;
+  /** 本月已用掉幾則 */
+  used: number;
+  /** 還剩幾則。limit 為 null 時也是 null */
+  remaining: number | null;
+};
+
+/**
+ * 本月還能推幾則訊息。
+ *
+ * 🔴 為什麼後台需要看這個：用 replyToken 回覆是**免費**的，但那個 token 只在客戶
+ *    傳訊息後約 1 分鐘內有效。你在後台看到訊息時多半早就過期了，所以後台回覆
+ *    只能用 push —— 而 **push 每一則都吃免費額度**。額度用完就再也推不出去，
+ *    而且失敗是靜默的（客戶不會知道你回過），所以要在畫面上看得到。
+ *
+ * 查不到就回 null（沒設 token、LINE 掛掉、方案不支援），畫面上顯示「查不到」而不是騙你 0。
+ */
+export async function getMessageQuota(): Promise<MessageQuota | null> {
+  const token = getLineBotToken();
+  if (!token) return null;
+
+  try {
+    const headers = { Authorization: `Bearer ${token}` };
+    const [quotaRes, usedRes] = await Promise.all([
+      fetch(`${LINE_API}/message/quota`, { headers, cache: "no-store" }),
+      fetch(`${LINE_API}/message/quota/consumption`, { headers, cache: "no-store" }),
+    ]);
+    if (!quotaRes.ok || !usedRes.ok) return null;
+
+    const quota = (await quotaRes.json()) as { type?: string; value?: number };
+    const used = (await usedRes.json()) as { totalUsage?: number };
+
+    // type "none" = 不限量方案，這時 value 不會出現
+    const limit = quota.type === "limited" && typeof quota.value === "number" ? quota.value : null;
+    const totalUsage = Number(used.totalUsage ?? 0);
+
+    return {
+      limit,
+      used: totalUsage,
+      remaining: limit === null ? null : Math.max(0, limit - totalUsage),
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** 取客戶在 LINE 上的顯示名稱，純粹讓你在後台看紀錄時知道是誰。失敗回 null 不影響對話。 */
 export async function getProfileName(userId: string): Promise<string | null> {
   const token = getLineBotToken();

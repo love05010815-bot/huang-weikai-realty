@@ -28,6 +28,21 @@ async function ensureTables(): Promise<void> {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
+  // 2026-08-21 後台可以直接回客戶了，所以要分得出「這句是機器人講的」還是
+  // 「這句是本人在後台打的」。兩者在 AI 眼中都是 assistant（客戶看到的都是官方帳號），
+  // 差別只在畫面上要標對，不然你回頭看對話會以為是機器人講的。
+  //
+  // 先查再加，不用 try/catch 吞錯 —— 那樣每次啟動都印一行 prisma:error，
+  // 久了就會習慣性忽略 log。
+  const hasSentBy = await db.$queryRawUnsafe<unknown[]>(
+    `SHOW COLUMNS FROM line_bot_message LIKE 'sent_by'`,
+  );
+  if (hasSentBy.length === 0) {
+    await db.$executeRawUnsafe(
+      `ALTER TABLE line_bot_message ADD COLUMN sent_by VARCHAR(16) NULL AFTER role`,
+    );
+  }
+
   await db.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS line_bot_user (
       line_user_id VARCHAR(64)  NOT NULL,
@@ -48,18 +63,23 @@ export type StoredMessage = {
   content: string;
 };
 
+/** 誰送的。null／"bot" = 機器人；"human" = 本人在後台打的。客戶端看起來都一樣。 */
+export type SentBy = "bot" | "human";
+
 /** 寫一則訊息進對話記錄。 */
 export async function saveMessage(
   lineUserId: string,
   role: "user" | "assistant",
   content: string,
+  sentBy: SentBy | null = null,
 ): Promise<void> {
   await ensureTables();
   await db.$executeRawUnsafe(
-    `INSERT INTO line_bot_message (id, line_user_id, role, content) VALUES (?, ?, ?, ?)`,
+    `INSERT INTO line_bot_message (id, line_user_id, role, sent_by, content) VALUES (?, ?, ?, ?, ?)`,
     randomUUID().replace(/-/g, ""),
     lineUserId,
     role,
+    sentBy,
     content.slice(0, 8000),
   );
 }
@@ -219,6 +239,8 @@ export type ConversationTurn = {
   role: "user" | "assistant";
   content: string;
   createdAt: Date;
+  /** assistant 的訊息才有意義：是機器人講的還是你本人在後台回的 */
+  sentBy: SentBy | null;
 };
 
 /** 後台看單一客戶的完整對話，由舊到新（跟聊天視窗一樣的順序）。 */
@@ -230,9 +252,9 @@ export async function getConversation(
   const safeLimit = Math.min(500, Math.max(1, Math.floor(limit)));
 
   const rows = await db.$queryRawUnsafe<
-    { role: string; content: string; created_at: Date }[]
+    { role: string; sent_by: string | null; content: string; created_at: Date }[]
   >(
-    `SELECT role, content, created_at FROM line_bot_message
+    `SELECT role, sent_by, content, created_at FROM line_bot_message
      WHERE line_user_id = ?
      ORDER BY created_at ASC, id ASC
      LIMIT ${safeLimit}`,
@@ -243,6 +265,7 @@ export async function getConversation(
     role: r.role === "assistant" ? ("assistant" as const) : ("user" as const),
     content: r.content,
     createdAt: r.created_at,
+    sentBy: r.sent_by === "human" ? ("human" as const) : r.sent_by === "bot" ? ("bot" as const) : null,
   }));
 }
 
