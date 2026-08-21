@@ -15,7 +15,6 @@
  * 三種都要能顯示，所以讀的那一側一律先過 `resolvePhotoSrc()`。
  */
 import { del, put } from "@vercel/blob";
-import sharp from "sharp";
 import { isBlobUrl } from "@/lib/photo-src";
 
 export { isBlobUrl, photoDisplayName, resolvePhotoSrc } from "@/lib/photo-src";
@@ -52,6 +51,13 @@ export async function uploadListingPhoto(file: File): Promise<UploadResult> {
   if (file.size === 0) throw new Error("檔案是空的");
 
   const input = Buffer.from(await file.arrayBuffer());
+
+  // 🔴 sharp 是原生模組，**故意等到真的要用才載**。
+  //    module 頂層 import 的話，任何 import 到這支檔案的東西都會連帶載入 sharp ——
+  //    2026-08-21 就是這樣讓 /admin/listings 整頁 500 的：那頁只是讀資料，
+  //    卻因為 lib/listings.ts 間接指到這裡而被 sharp 拖垮。
+  //    現在 sharp 壞掉最多只會讓「上傳」這個動作失敗，後台其他功能照常。
+  const sharp = (await import("sharp")).default;
 
   let output: Buffer;
   let width = 0;

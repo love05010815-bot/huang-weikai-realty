@@ -21,7 +21,6 @@ import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { getConfig, setConfig } from "@/lib/google-calendar";
 import { LISTINGS, MAX_PHOTOS, type Listing } from "@/config/listings";
-import { deleteListingPhoto } from "@/lib/listing-photos";
 
 export type ListingStatus = "active" | "sold";
 
@@ -347,6 +346,9 @@ async function purgeUnusedPhotos(before: string[], after: string[]): Promise<voi
   );
   const inUse = new Set(stillUsed.flatMap((row) => parseStringArray(row.photos)));
 
+  // 動態載入而不是頂層 import：這支檔案被首頁與 /listings 這些公開頁面讀取，
+  // 不該為了「刪照片」這個罕見路徑就把 @vercel/blob 拖進每一次頁面渲染。
+  const { deleteListingPhoto } = await import("@/lib/listing-photos");
   for (const url of removed) {
     if (inUse.has(url)) continue;
     await deleteListingPhoto(url);
