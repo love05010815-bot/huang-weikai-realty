@@ -14,8 +14,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { OWNER, SITE_URL } from "@/config/owner";
 import { DISTRICT, PROJECTS, SOURCES, projectStats } from "@/data/port-projects";
+import { getListingsByProject } from "@/lib/project-listings";
+import { resolvePhotoSrc } from "@/lib/photo-src";
 import MapCanvas from "./MapCanvas";
-import ProjectPanel from "./ProjectPanel";
+import ProjectPanel, { type ProjectListing } from "./ProjectPanel";
 import styles from "./Map.module.css";
 
 const stats = projectStats();
@@ -100,8 +102,8 @@ const JSON_LD = {
 
 const NOTES = [
   {
-    title: "「市政重劃區」是哪裡",
-    body: `在地習慣叫「梧棲市政重劃區」，正式名稱是「${DISTRICT.name}」，也常被叫做「${DISTRICT.alias}」。「市政」來自梧棲區公所、戶政所、衛生所將遷入本區。`,
+    title: "梧棲重劃區、清水重劃區，是同一個地方嗎",
+    body: `是。正式名稱是「${DISTRICT.name}」，業界常稱「${DISTRICT.alias}」。它橫跨梧棲與清水兩個行政區，所以在地習慣按行政區拆成兩半來講，但它是同一個重劃案。梧棲側涵蓋${DISTRICT.sections.梧棲區.join("、")}，清水側是${DISTRICT.sections.清水區.join("、")}。至於「市政」這個俗稱，來自梧棲區公所、戶政所、衛生所將遷入本區。`,
   },
   {
     title: "為什麼不標價格",
@@ -113,7 +115,27 @@ const NOTES = [
   },
 ];
 
-export default function MapPage() {
+/**
+ * 這頁現在會讀資料庫（把在售物件掛到建案底下），所以不再是純靜態。
+ * 跟首頁同一個做法：靜態產生 ＋ 定時重生，物件改了最慢 5 分鐘會反映。
+ * 資料庫連不上時 `getPublicListings()` 會退回種子資料，頁面不會開天窗。
+ */
+export const revalidate = 300;
+
+export default async function MapPage() {
+  const byProject = await getListingsByProject();
+
+  // 只挑畫面用得到的欄位傳給 client component，整包 Listing 丟過去是浪費
+  const listings: Record<string, ProjectListing[]> = {};
+  for (const [projectId, list] of byProject) {
+    listings[projectId] = list.map((l) => ({
+      slug: l.slug,
+      title: l.title,
+      area: l.area,
+      photo: l.photos?.[0] ? resolvePhotoSrc(l.photos[0]) : null,
+    }));
+  }
+
   return (
     <main className={styles.page}>
       <script
@@ -136,14 +158,22 @@ export default function MapPage() {
       <section className={styles.hero}>
         <div className={styles.container}>
           <span className={styles.eyebrow}>台中海線・區域研究</span>
-          <h1 className={styles.title}>台中港市鎮中心・梧棲市政重劃區</h1>
+          <h1 className={styles.title}>台中港市鎮中心重劃區・梧棲＋清水</h1>
           <p className={styles.lede}>
-            {`重劃區面積 ${DISTRICT.areaHa} 公頃，${DISTRICT.completedYear}竣工，橫跨梧棲與清水兩區。這裡整理了區內 ${stats.total} 個建案、合計 ${stats.units.toLocaleString("zh-TW")} 戶，並附上土地使用分區互動地圖。`}
+            {`重劃區面積 ${DISTRICT.areaHa} 公頃，${DISTRICT.completedYear}竣工，橫跨梧棲與清水兩個行政區。這裡整理了區內 ${stats.total} 個建案、合計 ${stats.units.toLocaleString("zh-TW")} 戶，並附上土地使用分區互動地圖。`}
           </p>
 
           <p className={styles.bounds}>
             <b>重劃區四至：</b>
             {DISTRICT.bounds}
+            <br />
+            <b>涵蓋地段：</b>
+            {`梧棲區${DISTRICT.sections.梧棲區.join("、")}，清水區${DISTRICT.sections.清水區.join("、")}`}
+            <br />
+            <span className={styles.boundsNote}>
+              在地習慣把它拆成「梧棲重劃區」與「清水重劃區」兩半來稱呼，但那是
+              <b>同一個重劃案</b>跨兩個行政區，不是兩個重劃區。
+            </span>
           </p>
         </div>
       </section>
@@ -180,10 +210,12 @@ export default function MapPage() {
             建案總覽
           </h2>
           <p className={styles.layerDesc}>
-            {`區內 ${stats.total} 個建案，可依預售／成屋與建商篩選。點建案看坐落、房型與資料出處。`}
+            {`區內 ${stats.total} 個建案，可依行政區、預售／成屋與建商篩選。點建案看坐落、房型與資料出處；`}
+            {OWNER.alias}
+            {`目前有物件在售的建案會標示出來。`}
           </p>
 
-          <ProjectPanel />
+          <ProjectPanel listings={listings} />
         </div>
       </section>
 

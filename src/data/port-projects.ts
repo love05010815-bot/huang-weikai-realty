@@ -61,8 +61,13 @@ export type Project = {
   id: string;
   /** 建案名。原文照錄，不要改字 */
   name: string;
-  /** 別名／舊名，例如「遠雄之星9」 */
+  /** 別名／舊名，例如「遠雄之星9」。會顯示在卡片上 */
   alias?: string;
+  /**
+   * 其他寫法，只用來比對物件、不顯示。
+   * 例：「聯悅聚」在各處也被寫成「聯悦聚」（悅／悦異體字）。
+   */
+  aliases?: string[];
   /** 建商。沒把握留空 */
   builder?: string;
   /** true = 建商是從建案名推定的，尚未查證 */
@@ -247,10 +252,14 @@ export const PROJECTS: Project[] = [
   {
     id: "lianyue-ju",
     name: "聯悅聚",
+    /** 房產網站與系統擁有者的物件都寫「聯悦聚」（異體字），比對物件時要一起認 */
+    aliases: ["聯悦聚"],
     builder: "聯悅建設",
     units: 389,
+    district: "清水",
     status: "completed",
-    sources: ["housefeel"],
+    note: "行政區依系統擁有者在售物件「清水區・聯悦聚」確認。",
+    sources: ["housefeel", "owner"],
   },
   {
     id: "hezhu-haohaowo",
@@ -265,8 +274,36 @@ export const PROJECTS: Project[] = [
     name: "長虹天韻",
     builder: "長虹建設",
     units: 370,
+    district: "清水",
     status: "completed",
-    sources: ["housefeel", "mrjoewang"],
+    note: "行政區依系統擁有者在售物件「清水區・長虹天韻」確認。",
+    sources: ["housefeel", "mrjoewang", "owner"],
+  },
+  {
+    id: "jiahong-xinyi",
+    name: "佳鋐新邑",
+    builder: "佳鋐建設",
+    units: 243,
+    district: "梧棲",
+    status: "completed",
+    streets: "大仁路二段 291 巷 50 號",
+    layout: "2～4 房，約 27～45 坪",
+    floors: "地上 15 層／地下 4 層",
+    siteAreaPing: 979,
+    note: "佳鋐建設屬寶佳機構。公設比約 32.6%，坡道平面車位 248 個。這案原本不在我查到的清單裡，是從系統擁有者的在售物件反查出來的。",
+    sources: ["owner", "leju"],
+  },
+  {
+    id: "sakura-shizhenzhiying",
+    name: "櫻花市鎮之櫻",
+    alias: "市鎮之櫻",
+    builder: "櫻花建設",
+    district: "清水",
+    status: "completed",
+    streets: "港新三路、港埠路三段",
+    layout: "2～4 房，約 25～49 坪",
+    note: "⚠️ 總戶數尚未查到。這案原本不在我查到的清單裡，是從系統擁有者的在售物件反查出來的。",
+    sources: ["owner", "leju", "h591"],
   },
   {
     id: "farglory-star7",
