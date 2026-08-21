@@ -290,3 +290,116 @@
     height: 168px;
   }
 }
+
+/* ---------------- 照片：列表縮圖上的張數標記 ---------------- */
+
+.thumbWrap {
+  position: relative;
+  flex: 0 0 auto;
+  line-height: 0;
+}
+
+.thumbCount {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+/* ---------------- 照片：後台的多張挑選器 ---------------- */
+
+.photoList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.photoItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 9px;
+  border: 1px solid;
+  border-radius: 9px;
+}
+
+.photoItemThumb {
+  flex: 0 0 auto;
+  width: 72px;
+  height: 48px;
+  border-radius: 5px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* 檔案不在了：用虛線框跟文字說明，不要留一張破圖 */
+.photoItemMissing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+  font-size: 12px;
+}
+
+.photoItemName {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.photoCover {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(212, 165, 116, 0.16);
+  color: #d4a574;
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.photoItemBtns {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+}
+
+/* 32×32 是為了手機也點得準（WCAG 2.5.8 的最小可點目標是 24×24） */
+.photoBtn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.photoBtn:disabled {
+  cursor: default;
+  opacity: 0.3;
+}
+
+.photoBtn:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.photoEmpty {
+  margin-bottom: 10px;
+  padding: 12px;
+  border: 1px dashed;
+  border-radius: 9px;
+  font-size: 13.5px;
+}

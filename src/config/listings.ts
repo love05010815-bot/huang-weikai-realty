@@ -197,3 +197,11 @@ export const ACTIVE_LISTINGS = LISTINGS.filter((l) => l.status === "active");
 
 /** 首頁「精選好案」最多放幾張。放太多會把首頁拉得太長，看不到下面的預約入口 */
 export const HOME_FEATURED_COUNT = 3;
+
+/**
+ * 一筆物件最多幾張照片。
+ *
+ * 放這裡而不是 lib/listings.ts，是因為後台那支是 client component ——
+ * 從 lib 拿常數會把整包 server 端的 db／node:fs 拖進瀏覽器 bundle。
+ */
+export const MAX_PHOTOS = 8;

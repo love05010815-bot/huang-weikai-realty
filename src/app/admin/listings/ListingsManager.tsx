@@ -12,11 +12,21 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CIS, CHIP } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
+import { MAX_PHOTOS } from "@/config/listings";
 import { findCopyRisks } from "@/lib/listing-copy-risk";
 import type { ListingInput, ListingRecord, ListingStatus } from "@/lib/listings";
 import styles from "./listings-admin.module.css";
 
 type FormState = ListingInput & { pointsText: string };
+
+/** 把第 from 張搬到第 to 張，回一份新陣列。越界就原封不動退回。 */
+function movePhoto(photos: string[], from: number, to: number): string[] {
+  if (to < 0 || to >= photos.length) return photos;
+  const next = [...photos];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+}
 
 const inputStyle: React.CSSProperties = {
   background: "#141414",
@@ -34,7 +44,7 @@ function emptyForm(): FormState {
     points: [],
     pointsText: "",
     area: "",
-    photo: null,
+    photos: [],
     linkLabel: "",
     linkHref: "",
     status: "active",
@@ -48,7 +58,7 @@ function toForm(row: ListingRecord): FormState {
     points: row.points,
     pointsText: row.points.join("\n"),
     area: row.area,
-    photo: row.photo,
+    photos: row.photos,
     linkLabel: row.link?.label || "",
     linkHref: row.link?.href || "",
     status: row.status,
@@ -103,7 +113,7 @@ export default function ListingsManager({
       area: form.area,
       // 一行一條賣點。空行自動丟掉，貼上來的時候常常多幾個換行。
       points: form.pointsText.split("\n").map((s) => s.trim()).filter(Boolean),
-      photo: form.photo,
+      photos: form.photos,
       linkLabel: form.linkLabel,
       linkHref: form.linkHref,
       status: form.status,
@@ -212,9 +222,15 @@ export default function ListingsManager({
               className={`${styles.row}${sold ? ` ${styles.rowSold}` : ""}`}
               style={{ background: CIS.card, borderColor: CIS.cardBorder }}
             >
-              {row.photo ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img className={styles.thumb} src={`/listings/${row.photo}`} alt="" width={132} height={88} />
+              {row.photos.length > 0 ? (
+                <div className={styles.thumbWrap}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img className={styles.thumb} src={`/listings/${row.photos[0]}`} alt="" width={132} height={88} />
+                  {/* 多張才標數量 —— 一張的時候標「1」是廢話 */}
+                  {row.photos.length > 1 ? (
+                    <span className={styles.thumbCount}>{row.photos.length} 張</span>
+                  ) : null}
+                </div>
               ) : (
                 <div className={`${styles.thumb} ${styles.thumbEmpty}`} style={{ color: CIS.textMute }}>
                   照片
@@ -418,29 +434,118 @@ function ListingForm({
           </div>
         </div>
 
-        <div className={styles.field}>
-          <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="lst-photo">
+        <div className={`${styles.field} ${styles.fieldWide}`}>
+          <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="lst-photo-add">
             照片
           </label>
+
+          {form.photos.length > 0 ? (
+            <ul className={styles.photoList}>
+              {form.photos.map((file, i) => {
+                // 檔案被從 repo 拿掉、或當初手打錯字，都會落到這裡。
+                // 不自動清掉 —— 悄悄消失比留著一個看得見的警告更難查。
+                const missing = !photoFiles.includes(file);
+                return (
+                  <li key={file} className={styles.photoItem} style={{ borderColor: CIS.cardBorder }}>
+                    {missing ? (
+                      <div
+                        className={`${styles.photoItemThumb} ${styles.photoItemMissing}`}
+                        style={{ color: CIS.textMute }}
+                      >
+                        找不到
+                      </div>
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        className={styles.photoItemThumb}
+                        src={`/listings/${file}`}
+                        alt=""
+                        width={72}
+                        height={48}
+                      />
+                    )}
+                    <span
+                      className={styles.photoItemName}
+                      style={{ color: missing ? "#fdba74" : CIS.text }}
+                    >
+                      {file}
+                      {missing ? "（檔案找不到）" : ""}
+                    </span>
+                    {i === 0 ? <span className={styles.photoCover}>封面</span> : null}
+                    <div className={styles.photoItemBtns}>
+                      <button
+                        type="button"
+                        className={styles.photoBtn}
+                        style={{ borderColor: CIS.cardBorder, color: CIS.textSub }}
+                        onClick={() => set("photos", movePhoto(form.photos, i, i - 1))}
+                        disabled={i === 0}
+                        aria-label={`${file} 往前一張`}
+                        title="往前"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.photoBtn}
+                        style={{ borderColor: CIS.cardBorder, color: CIS.textSub }}
+                        onClick={() => set("photos", movePhoto(form.photos, i, i + 1))}
+                        disabled={i === form.photos.length - 1}
+                        aria-label={`${file} 往後一張`}
+                        title="往後"
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.photoBtn}
+                        style={{ borderColor: CIS.cardBorder, color: "#f87171" }}
+                        onClick={() => set("photos", form.photos.filter((_, n) => n !== i))}
+                        aria-label={`移除 ${file}`}
+                        title="移除"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <div
+              className={styles.photoEmpty}
+              style={{ color: CIS.textMute, borderColor: CIS.cardBorder }}
+            >
+              還沒挑照片，前台會顯示「照片準備中」佔位塊（版面不會歪）。
+            </div>
+          )}
+
           <select
-            id="lst-photo"
+            id="lst-photo-add"
             className={styles.select}
             style={inputStyle}
-            value={form.photo || ""}
-            onChange={(e) => set("photo", e.target.value || null)}
+            value=""
+            disabled={form.photos.length >= MAX_PHOTOS}
+            onChange={(e) => {
+              const file = e.target.value;
+              if (file) set("photos", [...form.photos, file]);
+            }}
           >
-            <option value="">（沒有照片，顯示佔位塊）</option>
-            {photoFiles.map((file) => (
-              <option key={file} value={file}>
-                {file}
-              </option>
-            ))}
-            {form.photo && !photoFiles.includes(form.photo) ? (
-              <option value={form.photo}>{form.photo}（檔案找不到）</option>
-            ) : null}
+            <option value="">
+              {form.photos.length >= MAX_PHOTOS ? `已達上限 ${MAX_PHOTOS} 張` : "＋ 加入照片…"}
+            </option>
+            {photoFiles
+              .filter((file) => !form.photos.includes(file))
+              .map((file) => (
+                <option key={file} value={file}>
+                  {file}
+                </option>
+              ))}
           </select>
+
           <div className={styles.hint} style={{ color: CIS.textMute }}>
-            只能從 <code>public/listings/</code> 現有的圖檔挑。要放全新照片，把圖檔給我、部署一次才會出現在這個清單裡。
+            <b>第一張是封面</b>，兩張以上前台卡片會自動變成可左右滑的相簿。用 ↑↓ 調順序，
+            建議客廳 → 主臥 → 視野或外觀，最多 {MAX_PHOTOS} 張。
+            只能從 <code>public/listings/</code> 現有的圖檔挑；要放全新照片，把圖檔給我、部署一次才會出現在這個清單裡。
           </div>
         </div>
 
@@ -512,12 +617,20 @@ function ListingForm({
         </div>
       </div>
 
-      {form.photo ? (
+      {/* 上面的清單縮圖太小看不出裁切，這裡用卡片實際的 3:2 尺寸再放一次封面 */}
+      {form.photos.length > 0 && photoFiles.includes(form.photos[0]) ? (
         <div className={styles.formPreview}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className={styles.previewThumb} src={`/listings/${form.photo}`} alt="" width={132} height={88} />
+          <img
+            className={styles.previewThumb}
+            src={`/listings/${form.photos[0]}`}
+            alt=""
+            width={132}
+            height={88}
+          />
           <span style={{ color: CIS.textMute, fontSize: 13.5 }}>
-            卡片是 3:2 裁切，比例不合會被切掉上下或左右。
+            封面在卡片上是 3:2 裁切，比例不合會被切掉上下或左右。
+            {form.photos.length > 1 ? `後面還有 ${form.photos.length - 1} 張，客戶可以左右滑。` : ""}
           </span>
         </div>
       ) : null}

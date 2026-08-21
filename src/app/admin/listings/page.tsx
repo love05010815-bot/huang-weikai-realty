@@ -40,12 +40,12 @@ export default async function ListingsAdminPage() {
   // 檔案系統列得到就用它；萬一列不到（Vercel 打包沒帶到），至少要保住「現在已經在用的那幾張」，
   // 不然一進編輯畫面下拉是空的，會以為照片全不見了。
   const fromDisk = await listPhotoFiles();
-  const inUse = rows.map((row) => row.photo).filter((p): p is string => Boolean(p));
+  const inUse = rows.flatMap((row) => row.photos);
   const photoFiles = [...new Set([...fromDisk, ...inUse])].sort((a, b) => a.localeCompare(b));
 
   const activeCount = rows.filter((row) => row.status === "active").length;
   const soldCount = rows.length - activeCount;
-  const noPhotoCount = rows.filter((row) => row.status === "active" && !row.photo).length;
+  const noPhotoCount = rows.filter((row) => row.status === "active" && row.photos.length === 0).length;
   const riskCount = rows.filter((row) => findCopyRisks(row.title, ...row.points).length > 0).length;
 
   return (

@@ -12,15 +12,17 @@
  * appointment_config、appointment_case_sequence 全都是），跟著走才不會有人下次
  * `prisma migrate` 把別人的表洗掉。
  *
- * 📷 照片仍然是 public/listings/ 底下的檔案 —— 後台是「從現有檔案挑一張」，
+ * 📷 照片仍然是 public/listings/ 底下的檔案 —— 後台是「從現有檔案挑」，
  *    不是上傳。要放全新照片還是得把圖檔加進 repo 部署一次。
+ *    **一筆物件可以挑多張**（存在 photos 陣列，第一張是封面），
+ *    兩張以上前台卡片會自動變成可左右滑的相簿。
  */
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { getConfig, setConfig } from "@/lib/google-calendar";
-import { LISTINGS, type Listing } from "@/config/listings";
+import { LISTINGS, MAX_PHOTOS, type Listing } from "@/config/listings";
 
 export type ListingStatus = "active" | "sold";
 
@@ -31,7 +33,8 @@ export type ListingRecord = {
   title: string;
   points: string[];
   area: string;
-  photo: string | null;
+  /** 第一張是封面。空陣列＝還沒有照片，畫面顯示佔位塊。 */
+  photos: string[];
   link: { label: string; href: string } | null;
   status: ListingStatus;
   sortOrder: number;
@@ -44,7 +47,7 @@ export type ListingInput = {
   title: string;
   points: string[];
   area: string;
-  photo: string | null;
+  photos: string[];
   linkLabel: string;
   linkHref: string;
   status: ListingStatus;
@@ -52,6 +55,9 @@ export type ListingInput = {
 
 /** 種子只灌一次的旗標，存在 appointment_config */
 const SEEDED_KEY = "listings_seeded_v1";
+
+/** 單張 photo 搬成 photos 陣列的一次性遷移旗標 */
+const PHOTOS_MIGRATED_KEY = "listings_photos_migrated_v1";
 
 // ---------------------------------------------------------------- 建表 / 種子
 
@@ -73,6 +79,7 @@ export async function ensureListingTable(): Promise<void> {
       title       VARCHAR(255) NOT NULL,
       points      TEXT         NULL,
       area        VARCHAR(120) NOT NULL DEFAULT '',
+      photos      TEXT         NULL,
       photo       VARCHAR(160) NULL,
       link_label  VARCHAR(80)  NULL,
       link_href   VARCHAR(500) NULL,
@@ -85,14 +92,36 @@ export async function ensureListingTable(): Promise<void> {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
+  // 這張表 2026-08-20 就在正式庫建好了，當時照片只有單張的 photo 欄。
+  // CREATE TABLE IF NOT EXISTS 不會替既有的表補欄位，所以要另外 ALTER 一次。
+  //
+  // 先查再加，不用 try/catch 吞「重複欄位」—— 那樣每次啟動都會在 log 印一行
+  // prisma:error，久了就會習慣性忽略 log，真的出事時反而看不見。
+  const hasPhotos = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM listing LIKE 'photos'`);
+  if (hasPhotos.length === 0) {
+    await db.$executeRawUnsafe(`ALTER TABLE listing ADD COLUMN photos TEXT NULL AFTER area`);
+  }
+
+  // 舊資料的單張 photo 搬進 photos 陣列，只跑一次。
+  // 就算這段沒跑成功也不會壞 —— toRecord 讀不到 photos 時會自己退回 [photo]。
+  if (!(await getConfig(PHOTOS_MIGRATED_KEY))) {
+    await db.$executeRawUnsafe(
+      `UPDATE listing SET photos = JSON_ARRAY(photo)
+        WHERE photos IS NULL AND photo IS NOT NULL AND photo <> ''`,
+    );
+    await db.$executeRawUnsafe(`UPDATE listing SET photos = '[]' WHERE photos IS NULL`);
+    await setConfig(PHOTOS_MIGRATED_KEY, new Date().toISOString());
+  }
+
   if (!(await getConfig(SEEDED_KEY))) {
     for (const [index, item] of LISTINGS.entries()) {
       await db.$executeRaw`
         INSERT IGNORE INTO listing
-          (id, slug, title, points, area, photo, link_label, link_href, status, sort_order)
+          (id, slug, title, points, area, photos, photo, link_label, link_href, status, sort_order)
         VALUES (
           ${randomUUID()}, ${item.slug}, ${item.title}, ${JSON.stringify(item.points)},
-          ${item.area}, ${item.photo}, ${item.link?.label ?? null}, ${item.link?.href ?? null},
+          ${item.area}, ${JSON.stringify(item.photos)}, ${item.photos[0] ?? null},
+          ${item.link?.label ?? null}, ${item.link?.href ?? null},
           ${item.status}, ${index}
         )
       `;
@@ -111,6 +140,7 @@ type Row = {
   title: string;
   points: string | null;
   area: string;
+  photos: string | null;
   photo: string | null;
   link_label: string | null;
   link_href: string | null;
@@ -124,9 +154,11 @@ function toRecord(row: Row): ListingRecord {
     id: row.id,
     slug: row.slug,
     title: row.title,
-    points: parsePoints(row.points),
+    points: parseStringArray(row.points),
     area: row.area,
-    photo: row.photo,
+    // photos 是後來才加的欄位。萬一 ALTER 或遷移沒跑到，就退回舊的單張 photo，
+    // 讓畫面至少還有封面圖，不要整片變成「照片準備中」。
+    photos: parseStringArray(row.photos, () => (row.photo ? [row.photo] : [])),
     link: row.link_href ? { label: row.link_label || "物件資訊", href: row.link_href } : null,
     status: row.status === "sold" ? "sold" : "active",
     sortOrder: Number(row.sort_order) || 0,
@@ -134,13 +166,20 @@ function toRecord(row: Row): ListingRecord {
   };
 }
 
-function parsePoints(raw: string | null): string[] {
-  if (!raw) return [];
+/**
+ * 資料庫裡的 JSON 字串陣列（points、photos 共用）。
+ *
+ * 解不出來就走 fallback，不丟錯 —— 一筆資料格式壞掉不該讓整頁掛掉。
+ */
+function parseStringArray(raw: string | null, fallback: () => string[] = () => []): string[] {
+  if (!raw) return fallback();
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
+    if (!Array.isArray(parsed)) return fallback();
+    const values = parsed.filter((v): v is string => typeof v === "string" && v.trim() !== "");
+    return values.length > 0 ? values : fallback();
   } catch {
-    return [];
+    return fallback();
   }
 }
 
@@ -148,7 +187,7 @@ function parsePoints(raw: string | null): string[] {
 export async function listAllListings(): Promise<ListingRecord[]> {
   await ensureListingTable();
   const rows = await db.$queryRawUnsafe<Row[]>(
-    `SELECT id, slug, title, points, area, photo, link_label, link_href, status, sort_order, updated_at
+    `SELECT id, slug, title, points, area, photos, photo, link_label, link_href, status, sort_order, updated_at
        FROM listing ORDER BY sort_order ASC, created_at ASC`,
   );
   return rows.map(toRecord);
@@ -170,7 +209,7 @@ export async function getPublicListings(): Promise<Listing[]> {
         title: row.title,
         points: row.points,
         area: row.area,
-        photo: row.photo,
+        photos: row.photos,
         link: row.link,
         status: "active" as const,
       }));
@@ -216,7 +255,8 @@ export function validateListing(input: ListingInput): { ok: true; value: Listing
       title,
       area,
       points,
-      photo: input.photo?.trim() || null,
+      // 同一張挑兩次沒有意義（相簿會出現兩張一樣的），順手去重。
+      photos: [...new Set(input.photos.map((p) => p.trim()).filter(Boolean))].slice(0, MAX_PHOTOS),
       linkLabel: input.linkLabel.trim().slice(0, 80),
       linkHref,
       status: input.status === "sold" ? "sold" : "active",
@@ -233,10 +273,11 @@ export async function createListing(input: ListingInput): Promise<string> {
   );
   const sortOrder = Number(rows[0]?.next ?? -1) + 1;
   await db.$executeRaw`
-    INSERT INTO listing (id, slug, title, points, area, photo, link_label, link_href, status, sort_order)
+    INSERT INTO listing (id, slug, title, points, area, photos, photo, link_label, link_href, status, sort_order)
     VALUES (
       ${id}, ${input.slug}, ${input.title}, ${JSON.stringify(input.points)}, ${input.area},
-      ${input.photo}, ${input.linkLabel || null}, ${input.linkHref || null}, ${input.status}, ${sortOrder}
+      ${JSON.stringify(input.photos)}, ${input.photos[0] ?? null},
+      ${input.linkLabel || null}, ${input.linkHref || null}, ${input.status}, ${sortOrder}
     )
   `;
   return id;
@@ -244,13 +285,16 @@ export async function createListing(input: ListingInput): Promise<string> {
 
 export async function updateListing(id: string, input: ListingInput): Promise<void> {
   await ensureListingTable();
+  // 舊的單張 photo 欄位一起維護（寫入封面那張）：萬一要回滾到上一版程式碼
+  // （那版只讀 photo），封面圖還是對的，不會整片變成「照片準備中」。
   await db.$executeRaw`
     UPDATE listing SET
       slug = ${input.slug},
       title = ${input.title},
       points = ${JSON.stringify(input.points)},
       area = ${input.area},
-      photo = ${input.photo},
+      photos = ${JSON.stringify(input.photos)},
+      photo = ${input.photos[0] ?? null},
       link_label = ${input.linkLabel || null},
       link_href = ${input.linkHref || null},
       status = ${input.status}
