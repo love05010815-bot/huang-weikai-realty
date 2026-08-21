@@ -202,7 +202,8 @@ export const PARCELS: Parcel[] = [
   /* ── A1 西側街廓 ── */
   P("a1-1", A1La[0], "utility", { name: "台灣中油", note: "台中港區加油站", status: "public" }),
   P("a1-2", A1La[1], "residential", { name: "益陽建設", areaM2: 1026.0908 }),
-  P("a1-3", A1La[2], "commercial", { name: "聖賢建設", note: "中港雲頂", areaM2: 1736.87 }),
+  // 建商經系統擁有者確認為「聖璽建設」。原先從截圖誤讀成「聖賢建設」，2026-08-21 更正。
+  P("a1-3", A1La[2], "commercial", { name: "聖璽建設", note: "中港雲頂", areaM2: 1736.87, verified: true }),
   P("a1-4", A1Ra[0], "residential"),
   P("a1-5", A1Ra[1], "commercial"),
   P("a1-6", A1Ra[2], "residential"),
