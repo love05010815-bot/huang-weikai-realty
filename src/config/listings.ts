@@ -13,6 +13,8 @@
  *    **每次要改物件時順手點一遍**。已知 591 物件頁下架後會被導回首頁，不會給 404 畫面。
  *
  * 📷 照片放 public/listings/，檔名用英數（中文檔名進網址會被編碼，容易出事）。
+ *    **每個物件可以放多張**（建議 3 張），寫在 photos 陣列裡，第一張是封面。
+ *    例：photos: ["shalu-langjing.jpg", "shalu-langjing-2.jpg", "shalu-langjing-3.jpg"]
  *    建議 3:2，卡片是照這個比例切的，比例不合會被裁掉上下或左右。
  */
 
@@ -27,9 +29,13 @@ export type Listing = {
   area: string;
   /**
    * 照片檔名，放在 public/listings/ 底下，這裡只填檔名。
-   * 還沒有照片就填 null，畫面會顯示佔位色塊，版面不會歪。
+   *
+   * **第一張是封面**，卡片預設顯示它。
+   * 放第二張以上，卡片會自動變成可以左右滑的相簿（右上角出現「1/3」、下方出現圓點）。
+   * 建議每個物件 3 張：客廳 → 主臥 → 視野或外觀，順序就是這裡的順序。
+   * 還沒有照片就填空陣列 []，畫面顯示佔位色塊，版面不會歪。
    */
-  photo: string | null;
+  photos: string[];
   /**
    * 外部連結（FB 影片賞析、591 物件頁）。沒有就填 null。
    * label 就是按鈕上的字，會自動加「↗」表示會開新分頁。
@@ -49,7 +55,7 @@ export const LISTINGS: Listing[] = [
       "主＋附 20 坪大兩房，配 B2 柱邊平車位",
     ],
     area: "清水區・聯悦聚",
-    photo: "qingshui-lianyueju.jpg",
+    photos: ["qingshui-lianyueju.jpg"],
     link: null,
     status: "active",
   },
@@ -61,7 +67,7 @@ export const LISTINGS: Listing[] = [
       "全新交屋、雙衛浴開窗，配 B1 平車位",
     ],
     area: "沙鹿區・德光聚",
-    photo: "shalu-deguangju.jpg",
+    photos: ["shalu-deguangju.jpg"],
     link: null,
     status: "active",
   },
@@ -74,7 +80,7 @@ export const LISTINGS: Listing[] = [
       "全室輕裝潢，一卡皮箱即可入住。",
     ],
     area: "清水・沙鹿・梧棲交界",
-    photo: "xinhaicheng-2f2b.jpg",
+    photos: ["xinhaicheng-2f2b.jpg"],
     link: {
       label: "物件資訊",
       href: "https://sale.591.com.tw/home/house/detail/2/20691547.html",
@@ -91,7 +97,7 @@ export const LISTINGS: Listing[] = [
       "此戶頂樓兩房配一機械車位，空間好規劃，衛浴開窗不潮溼。",
     ],
     area: "龍井區・昇佳景邑",
-    photo: "longjing-shengjiajingyi.jpg",
+    photos: ["longjing-shengjiajingyi.jpg"],
     link: {
       label: "影片賞析",
       href: "https://www.facebook.com/reel/2068271100757837",
@@ -108,7 +114,7 @@ export const LISTINGS: Listing[] = [
       "兩房 B3 平車，大工作陽台，泡澡浴缸，洗碗機，電動曬衣桿全部有。",
     ],
     area: "清水區・長虹天韻",
-    photo: "qingshui-changhong-tianyun.jpg",
+    photos: ["qingshui-changhong-tianyun.jpg"],
     link: {
       label: "影片賞析",
       href: "https://www.facebook.com/reel/4591925977796313",
@@ -123,7 +129,7 @@ export const LISTINGS: Listing[] = [
       "近未來藍線捷運 B6 站、特三特五號。",
     ],
     area: "沙鹿區・樾山丘",
-    photo: "shalu-yueshanqiu.jpg",
+    photos: ["shalu-yueshanqiu.jpg"],
     link: {
       label: "影片賞析",
       href: "https://www.facebook.com/reel/1018190994158967",
@@ -138,7 +144,7 @@ export const LISTINGS: Listing[] = [
       "一層五戶雙電梯，單純小型社區，不複雜好安心。",
     ],
     area: "梧棲區・佳鋐新邑",
-    photo: "wuqi-jiahong-xinyi.jpg",
+    photos: ["wuqi-jiahong-xinyi.jpg"],
     link: {
       label: "影片賞析",
       href: "https://www.facebook.com/reel/1556328146079414",
@@ -155,7 +161,7 @@ export const LISTINGS: Listing[] = [
       "四房間間套房，配有電梯，可停雙車，車庫旁有側空地，地坪大好利用。",
     ],
     area: "沙鹿區・朗境",
-    photo: "shalu-langjing.jpg",
+    photos: ["shalu-langjing.jpg"],
     link: null,
     status: "active",
   },
@@ -167,7 +173,7 @@ export const LISTINGS: Listing[] = [
       "兩房輕裝潢，空間好規劃，防火獨立廚房，油煙不混雜，首購成家好選擇！",
     ],
     area: "清水區・市鎮之櫻",
-    photo: "qingshui-shizhenzhiying.jpg",
+    photos: ["qingshui-shizhenzhiying.jpg"],
     link: {
       label: "影片賞析",
       href: "https://www.facebook.com/reel/1406526767983537",

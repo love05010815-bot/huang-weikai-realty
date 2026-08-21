@@ -10,6 +10,7 @@ import { INTRO_LINES, AREAS } from "@/config/profile";
 import styles from "./home.module.css";
 // 卡片樣式跟 /listings 共用同一份，改一處兩邊都會變
 import lst from "./listings/listings.module.css";
+import PhotoCarousel from "./listings/PhotoCarousel";
 
 const TITLE = `台中海線房仲${OWNER.name}｜資產配置・稅務諮詢・簡易裝潢｜沙鹿梧棲清水龍井`;
 const DESCRIPTION = `${OWNER.name}，${OWNER.company}資深不動產經紀人，112、113、114年連續三年榮獲年度千萬經紀人。深耕台中海線沙鹿、梧棲、清水、龍井，提供資產配置、稅務諮詢、簡易裝潢一站式服務，歡迎線上預約或加LINE諮詢。`;
@@ -240,7 +241,9 @@ export default function HomePage() {
         <section id="listings" className={styles.section}>
           <div className={`${styles.container} ${styles.center}`}>
             <span className={styles.eyebrow}>LISTINGS</span>
-            <h2 className={styles.sectionTitle}>精選好案</h2>
+            {/* 導覽列那項維持「精選好案」，這裡刻意用不一樣的說法 ——
+                這區只放九筆裡的前三筆，是「本月主打」不是全部 */}
+            <h2 className={styles.sectionTitle}>本月瑋凱強推好案</h2>
             <p className={styles.sectionDesc}>
               台中海線目前主打的物件。看中意的直接約時間，我陪您一間一間看清楚再決定。
             </p>
@@ -248,24 +251,17 @@ export default function HomePage() {
           <div className={styles.container}>
             {ACTIVE_LISTINGS.length > 0 && (
               <div className={lst.grid}>
-                {ACTIVE_LISTINGS.slice(0, HOME_FEATURED_COUNT).map((item) => (
-                  <Link key={item.slug} className={lst.card} href="/listings">
-                    {item.photo ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        className={lst.photo}
-                        src={`/listings/${item.photo}`}
-                        alt={`${item.area}－${item.title}`}
-                        width={640}
-                        height={480}
-                      />
-                    ) : (
-                      <div className={lst.photoPlaceholder} aria-label="照片準備中">
-                        <span>🏠</span>
-                        <span>照片準備中</span>
-                      </div>
-                    )}
-                    <div className={lst.body}>
+                {ACTIVE_LISTINGS.slice(0, HOME_FEATURED_COUNT).map((item, i) => (
+                  /* 卡片不能整張包在 <a> 裡了 —— 相簿有圓點與箭頭，
+                     按鈕放進連結裡是無效的 HTML，點擊行為也會打架。
+                     改成照片區獨立，文字區整塊當連結。 */
+                  <article key={item.slug} className={lst.card}>
+                    <PhotoCarousel
+                      photos={item.photos}
+                      alt={`${item.area}－${item.title}`}
+                      eager={i === 0}
+                    />
+                    <Link className={lst.body} href="/listings">
                       <span className={lst.area}>{item.area}</span>
                       <h3 className={lst.title}>{item.title}</h3>
                       <ul className={lst.points}>
@@ -274,8 +270,8 @@ export default function HomePage() {
                         ))}
                       </ul>
                       <span className={lst.action}>物件資訊 →</span>
-                    </div>
-                  </Link>
+                    </Link>
+                  </article>
                 ))}
               </div>
             )}

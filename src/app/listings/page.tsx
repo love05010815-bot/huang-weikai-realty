@@ -13,6 +13,7 @@ import { OWNER, SITE_URL } from "@/config/owner";
 import { ACTIVE_LISTINGS } from "@/config/listings";
 import styles from "../home.module.css";
 import lst from "./listings.module.css";
+import PhotoCarousel from "./PhotoCarousel";
 
 const TITLE = `精選好案｜台中海線房仲${OWNER.name}｜沙鹿梧棲清水龍井`;
 const DESCRIPTION = `${OWNER.name}目前主打的台中海線精選物件。沙鹿、梧棲、清水、龍井的透天與大樓，格局、屋況、生活機能一次看清楚，看中意可直接線上預約看屋。`;
@@ -86,23 +87,15 @@ export default function ListingsPage() {
               </p>
             ) : (
               <div className={lst.grid}>
-                {ACTIVE_LISTINGS.map((item) => (
+                {ACTIVE_LISTINGS.map((item, i) => (
                   <article key={item.slug} className={lst.card}>
-                    {item.photo ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        className={lst.photo}
-                        src={`/listings/${item.photo}`}
-                        alt={`${item.area}－${item.title}`}
-                        width={640}
-                        height={480}
-                      />
-                    ) : (
-                      <div className={lst.photoPlaceholder} aria-label="照片準備中">
-                        <span>🏠</span>
-                        <span>照片準備中</span>
-                      </div>
-                    )}
+                    {/* 一張照片就是一張圖；兩張以上會自動變成可左右滑的相簿。
+                        第一排三張是首屏，封面圖立刻載；其餘等捲到才載。 */}
+                    <PhotoCarousel
+                      photos={item.photos}
+                      alt={`${item.area}－${item.title}`}
+                      eager={i < 3}
+                    />
                     <div className={lst.body}>
                       <span className={lst.area}>{item.area}</span>
                       <h2 className={lst.title}>{item.title}</h2>
