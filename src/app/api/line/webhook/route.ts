@@ -99,10 +99,14 @@ async function handleEvent(event: LineEvent): Promise<void> {
   if (event.source?.type !== "user" || !userId) return;
 
   // 新朋友加好友 —— 回罐頭歡迎詞，不經過 AI，零成本零風險
+  //
+  // 🔴 2026-08-21：這裡原本沒看 BOT_ENABLED，所以總開關關著時「加好友」還是會被
+  //    機器人打招呼 —— 跟 config 註解寫的「false = 完全不回應」不符。總開關要是
+  //    擋不住所有出口，它就不是總開關。現在關著只認人、不出聲。
   if (event.type === "follow") {
     const displayName = await getProfileName(userId);
     await touchUser(userId, displayName);
-    if (event.replyToken) {
+    if (BOT_ENABLED && event.replyToken) {
       await replyMessage(event.replyToken, WELCOME_MESSAGE);
     }
     return;
@@ -111,8 +115,9 @@ async function handleEvent(event: LineEvent): Promise<void> {
   if (event.type !== "message") return;
 
   // 貼圖、照片、語音等非文字訊息：給個回應就好，不要丟給 AI
+  // （同上，總開關關著就不出聲）
   if (event.message?.type !== "text") {
-    if (event.replyToken) {
+    if (BOT_ENABLED && event.replyToken) {
       await replyMessage(
         event.replyToken,
         "我目前只看得懂文字訊息 🙏 麻煩您打字告訴我，或直接來電。",
