@@ -1,0 +1,292 @@
+/* 精選好案後台 —— 列表 ＋ 展開式編輯表單 */
+
+.page {
+  min-height: 100dvh;
+  padding: 24px 18px 56px;
+}
+
+.shell {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 6px;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.25;
+}
+
+.subtitle {
+  margin: 6px 0 0;
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.notice {
+  margin: 18px 0;
+  padding: 11px 15px;
+  border: 1px solid;
+  border-radius: 10px;
+  font-size: 14.5px;
+  line-height: 1.85;
+}
+
+.summaryRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.summary {
+  flex: 1 1 150px;
+  min-width: 0;
+  padding: 13px 16px;
+  border: 1px solid;
+  border-radius: 8px;
+}
+
+.summaryLabel {
+  font-size: 14px;
+}
+
+.summaryValue {
+  margin-top: 3px;
+  font-size: 26px;
+  font-weight: 900;
+}
+
+/* ---------- 列表 ---------- */
+
+.list {
+  display: grid;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.row {
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid;
+  border-radius: 10px;
+}
+
+.rowSold {
+  opacity: 0.62;
+}
+
+.thumb {
+  flex: 0 0 auto;
+  width: 132px;
+  height: 88px;
+  border-radius: 7px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.thumbEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12.5px;
+  text-align: center;
+  line-height: 1.4;
+  padding: 4px;
+}
+
+.rowBody {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rowHead {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rowTitle {
+  flex: 1 1 220px;
+  min-width: 0;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.4;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid;
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.rowMeta {
+  margin-top: 5px;
+  font-size: 14px;
+}
+
+.points {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 14.5px;
+  line-height: 1.8;
+}
+
+.riskBox {
+  margin-top: 9px;
+  padding: 8px 12px;
+  border: 1px solid;
+  border-radius: 8px;
+  font-size: 13.5px;
+  line-height: 1.75;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-top: 11px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 38px;
+  padding: 7px 12px;
+  border: 1px solid;
+  border-radius: 7px;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btnIcon {
+  padding: 7px 9px;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+/* ---------- 表單 ---------- */
+
+.form {
+  padding: 16px 18px 18px;
+  border: 1px solid;
+  border-radius: 10px;
+  margin-top: 6px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.field {
+  min-width: 0;
+}
+
+.fieldWide {
+  grid-column: 1 / -1;
+}
+
+.label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 13.5px;
+  font-weight: 800;
+}
+
+.hint {
+  margin-top: 4px;
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid;
+  border-radius: 7px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 15px;
+}
+
+.textarea {
+  min-height: 96px;
+  resize: vertical;
+  line-height: 1.8;
+}
+
+.formPreview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.previewThumb {
+  width: 132px;
+  height: 88px;
+  border-radius: 7px;
+  object-fit: cover;
+}
+
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.msg {
+  margin-top: 12px;
+  font-size: 14.5px;
+  line-height: 1.75;
+}
+
+@media (max-width: 640px) {
+  .row {
+    flex-direction: column;
+  }
+
+  .thumb {
+    width: 100%;
+    height: 168px;
+  }
+}

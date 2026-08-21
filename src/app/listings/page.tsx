@@ -1,8 +1,8 @@
 /**
  * /listings —— 好案總覽
  *
- * 首頁「精選好案」的卡片都指到這裡。物件資料在 src/config/listings.ts，
- * 要改物件只改那個檔，這頁不用動。
+ * 首頁「精選好案」的卡片都指到這裡。物件資料在資料庫，
+ * 要改物件請到 /admin/listings 後台，這頁不用動。
  *
  * 版面沿用首頁那套（home.module.css 的 .page 裡定義了配色變數），
  * 卡片本身的樣式在同目錄的 listings.module.css。
@@ -10,7 +10,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { OWNER, SITE_URL } from "@/config/owner";
-import { ACTIVE_LISTINGS } from "@/config/listings";
+import { getPublicListings } from "@/lib/listings";
 import styles from "../home.module.css";
 import lst from "./listings.module.css";
 import PhotoCarousel from "./PhotoCarousel";
@@ -42,7 +42,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ListingsPage() {
+/**
+ * 物件在資料庫裡，但這頁仍然是「靜態產生 ＋ 定時重生」的。
+ * 後台存檔時 server action 會 revalidatePath("/listings")，所以改完是立刻生效，
+ * 下面這個秒數只是萬一 revalidate 沒跑到的保險。
+ */
+export const revalidate = 300;
+
+export default async function ListingsPage() {
+  const listings = await getPublicListings();
   return (
     <div className={styles.page}>
       <header className={styles.header}>
@@ -80,14 +88,14 @@ export default function ListingsPage() {
           </div>
 
           <div className={styles.container}>
-            {ACTIVE_LISTINGS.length === 0 ? (
+            {listings.length === 0 ? (
               <p className={lst.empty}>
                 目前沒有正在推的物件。有新案子我會第一時間放上來，
                 也歡迎先<Link href="/card/booking">預約諮詢</Link>聊聊您的需求。
               </p>
             ) : (
               <div className={lst.grid}>
-                {ACTIVE_LISTINGS.map((item, i) => (
+                {listings.map((item, i) => (
                   <article key={item.slug} className={lst.card}>
                     {/* 一張照片就是一張圖；兩張以上會自動變成可左右滑的相簿。
                         第一排三張是首屏，封面圖立刻載；其餘等捲到才載。 */}

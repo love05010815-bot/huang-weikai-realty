@@ -5,8 +5,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { OWNER, SOCIAL, SITE_URL } from "@/config/owner";
-import { ACTIVE_LISTINGS, HOME_FEATURED_COUNT } from "@/config/listings";
 import { INTRO_LINES, AREAS } from "@/config/profile";
+import { HOME_FEATURED_COUNT } from "@/config/listings";
+import { getPublicListings } from "@/lib/listings";
 import styles from "./home.module.css";
 // 卡片樣式跟 /listings 共用同一份，改一處兩邊都會變
 import lst from "./listings/listings.module.css";
@@ -119,7 +120,14 @@ const jsonLd = {
   sameAs: [SOCIAL.line],
 };
 
-export default function HomePage() {
+/**
+ * 物件在資料庫裡，但首頁仍然是「靜態產生 ＋ 定時重生」——首頁不能為了讀物件變慢。
+ * 後台存檔時會 revalidatePath("/")，所以改完立刻生效；下面的秒數只是保險。
+ */
+export const revalidate = 300;
+
+export default async function HomePage() {
+  const listings = await getPublicListings();
   return (
     <div className={styles.page}>
       <script
@@ -149,6 +157,10 @@ export default function HomePage() {
             <li><a href="#about">關於我</a></li>
             <li><a href="#listings">精選好案</a></li>
             <li><a href="#services">服務項目</a></li>
+            {/* 2026-08-20 系統擁有者拍板：/map 的資料還沒核對完（25 筆建商名與面積只有 3 筆
+                verified、33 塊未命名、開發狀態全是「待確認」），先不對外掛入口。
+                頁面本身還在，打網址進得去。核對完把下面這行取消註解就恢復。 */}
+            {/* <li><Link href="/map">區域地圖</Link></li> */}
             <li><a href="#tools">稅費試算</a></li>
             <li><a href="#booking">預約諮詢</a></li>
           </ul>
@@ -249,9 +261,9 @@ export default function HomePage() {
             </p>
           </div>
           <div className={styles.container}>
-            {ACTIVE_LISTINGS.length > 0 && (
+            {listings.length > 0 && (
               <div className={lst.grid}>
-                {ACTIVE_LISTINGS.slice(0, HOME_FEATURED_COUNT).map((item, i) => (
+                {listings.slice(0, HOME_FEATURED_COUNT).map((item, i) => (
                   /* 卡片不能整張包在 <a> 裡了 —— 相簿有圓點與箭頭，
                      按鈕放進連結裡是無效的 HTML，點擊行為也會打架。
                      改成照片區獨立，文字區整塊當連結。 */
@@ -262,6 +274,7 @@ export default function HomePage() {
                       eager={i === 0}
                     />
                     <Link className={lst.body} href="/listings">
+
                       <span className={lst.area}>{item.area}</span>
                       <h3 className={lst.title}>{item.title}</h3>
                       <ul className={lst.points}>

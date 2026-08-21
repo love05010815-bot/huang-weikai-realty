@@ -12,6 +12,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
     "@prisma/client": "^6.16.0",
     "googleapis": "^171.4.0",
     "lucide-react": "^1.8.0",
