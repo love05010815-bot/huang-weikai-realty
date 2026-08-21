@@ -33,7 +33,10 @@ export type ListingRecord = {
   area: string;
   /** 第一張是封面。空陣列＝還沒有照片，畫面顯示佔位塊。 */
   photos: string[];
+  /** 物件詳情頁（例如 591）。null＝後台留空，前台就不顯示這顆按鈕。 */
   link: { label: string; href: string } | null;
+  /** 影片賞析（例如 YouTube）。null＝後台留空，前台就不顯示這顆按鈕。 */
+  video: { label: string; href: string } | null;
   status: ListingStatus;
   sortOrder: number;
   updatedAt: Date | null;
@@ -48,6 +51,7 @@ export type ListingInput = {
   photos: string[];
   linkLabel: string;
   linkHref: string;
+  videoHref: string;
   status: ListingStatus;
 };
 
@@ -81,6 +85,7 @@ export async function ensureListingTable(): Promise<void> {
       photo       VARCHAR(160) NULL,
       link_label  VARCHAR(80)  NULL,
       link_href   VARCHAR(500) NULL,
+      video_href  VARCHAR(500) NULL,
       status      VARCHAR(16)  NOT NULL DEFAULT 'active',
       sort_order  INT          NOT NULL DEFAULT 0,
       created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -100,6 +105,11 @@ export async function ensureListingTable(): Promise<void> {
     await db.$executeRawUnsafe(`ALTER TABLE listing ADD COLUMN photos TEXT NULL AFTER area`);
   }
 
+  const hasVideoHref = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM listing LIKE 'video_href'`);
+  if (hasVideoHref.length === 0) {
+    await db.$executeRawUnsafe(`ALTER TABLE listing ADD COLUMN video_href VARCHAR(500) NULL AFTER link_href`);
+  }
+
   // 舊資料的單張 photo 搬進 photos 陣列，只跑一次。
   // 就算這段沒跑成功也不會壞 —— toRecord 讀不到 photos 時會自己退回 [photo]。
   if (!(await getConfig(PHOTOS_MIGRATED_KEY))) {
@@ -115,11 +125,11 @@ export async function ensureListingTable(): Promise<void> {
     for (const [index, item] of LISTINGS.entries()) {
       await db.$executeRaw`
         INSERT IGNORE INTO listing
-          (id, slug, title, points, area, photos, photo, link_label, link_href, status, sort_order)
+          (id, slug, title, points, area, photos, photo, link_label, link_href, video_href, status, sort_order)
         VALUES (
           ${randomUUID()}, ${item.slug}, ${item.title}, ${JSON.stringify(item.points)},
           ${item.area}, ${JSON.stringify(item.photos)}, ${item.photos[0] ?? null},
-          ${item.link?.label ?? null}, ${item.link?.href ?? null},
+          ${item.link?.label ?? null}, ${item.link?.href ?? null}, ${item.video?.href ?? null},
           ${item.status}, ${index}
         )
       `;
@@ -142,6 +152,7 @@ type Row = {
   photo: string | null;
   link_label: string | null;
   link_href: string | null;
+  video_href: string | null;
   status: string;
   sort_order: number;
   updated_at: Date | null;
@@ -158,6 +169,7 @@ function toRecord(row: Row): ListingRecord {
     // 讓畫面至少還有封面圖，不要整片變成「照片準備中」。
     photos: parseStringArray(row.photos, () => (row.photo ? [row.photo] : [])),
     link: row.link_href ? { label: row.link_label || "物件資訊", href: row.link_href } : null,
+    video: row.video_href ? { label: "影片賞析", href: row.video_href } : null,
     status: row.status === "sold" ? "sold" : "active",
     sortOrder: Number(row.sort_order) || 0,
     updatedAt: row.updated_at,
@@ -185,7 +197,7 @@ function parseStringArray(raw: string | null, fallback: () => string[] = () => [
 export async function listAllListings(): Promise<ListingRecord[]> {
   await ensureListingTable();
   const rows = await db.$queryRawUnsafe<Row[]>(
-    `SELECT id, slug, title, points, area, photos, photo, link_label, link_href, status, sort_order, updated_at
+    `SELECT id, slug, title, points, area, photos, photo, link_label, link_href, video_href, status, sort_order, updated_at
        FROM listing ORDER BY sort_order ASC, created_at ASC`,
   );
   return rows.map(toRecord);
@@ -246,6 +258,11 @@ export function validateListing(input: ListingInput): { ok: true; value: Listing
     return { ok: false, error: "外部連結要以 http:// 或 https:// 開頭" };
   }
 
+  const videoHref = input.videoHref.trim().slice(0, 500);
+  if (videoHref && !/^https?:\/\//i.test(videoHref)) {
+    return { ok: false, error: "影片賞析連結要以 http:// 或 https:// 開頭" };
+  }
+
   return {
     ok: true,
     value: {
@@ -257,6 +274,7 @@ export function validateListing(input: ListingInput): { ok: true; value: Listing
       photos: [...new Set(input.photos.map((p) => p.trim()).filter(Boolean))].slice(0, MAX_PHOTOS),
       linkLabel: input.linkLabel.trim().slice(0, 80),
       linkHref,
+      videoHref,
       status: input.status === "sold" ? "sold" : "active",
     },
   };
@@ -271,11 +289,12 @@ export async function createListing(input: ListingInput): Promise<string> {
   );
   const sortOrder = Number(rows[0]?.next ?? -1) + 1;
   await db.$executeRaw`
-    INSERT INTO listing (id, slug, title, points, area, photos, photo, link_label, link_href, status, sort_order)
+    INSERT INTO listing (id, slug, title, points, area, photos, photo, link_label, link_href, video_href, status, sort_order)
     VALUES (
       ${id}, ${input.slug}, ${input.title}, ${JSON.stringify(input.points)}, ${input.area},
       ${JSON.stringify(input.photos)}, ${input.photos[0] ?? null},
-      ${input.linkLabel || null}, ${input.linkHref || null}, ${input.status}, ${sortOrder}
+      ${input.linkLabel || null}, ${input.linkHref || null}, ${input.videoHref || null},
+      ${input.status}, ${sortOrder}
     )
   `;
   return id;
@@ -296,6 +315,7 @@ export async function updateListing(id: string, input: ListingInput): Promise<vo
       photo = ${input.photos[0] ?? null},
       link_label = ${input.linkLabel || null},
       link_href = ${input.linkHref || null},
+      video_href = ${input.videoHref || null},
       status = ${input.status}
     WHERE id = ${id}
   `;

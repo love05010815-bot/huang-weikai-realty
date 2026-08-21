@@ -48,6 +48,7 @@ function emptyForm(): FormState {
     photos: [],
     linkLabel: "",
     linkHref: "",
+    videoHref: "",
     status: "active",
   };
 }
@@ -62,6 +63,7 @@ function toForm(row: ListingRecord): FormState {
     photos: row.photos,
     linkLabel: row.link?.label || "",
     linkHref: row.link?.href || "",
+    videoHref: row.video?.href || "",
     status: row.status,
   };
 }
@@ -111,6 +113,7 @@ export default function ListingsManager({ initial }: { initial: ListingRecord[] 
       photos: form.photos,
       linkLabel: form.linkLabel,
       linkHref: form.linkHref,
+      videoHref: form.videoHref,
       status: form.status,
     };
     const r = await run(
@@ -673,22 +676,8 @@ function ListingForm({
         </div>
 
         <div className={styles.field}>
-          <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="lst-link-label">
-            外部連結文字
-          </label>
-          <input
-            id="lst-link-label"
-            className={styles.input}
-            style={inputStyle}
-            value={form.linkLabel}
-            onChange={(e) => set("linkLabel", e.target.value)}
-            placeholder="影片賞析"
-          />
-        </div>
-
-        <div className={styles.field}>
           <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="lst-link-href">
-            外部連結網址
+            「物件資訊」網址
           </label>
           <input
             id="lst-link-href"
@@ -696,10 +685,29 @@ function ListingForm({
             style={inputStyle}
             value={form.linkHref}
             onChange={(e) => set("linkHref", e.target.value)}
-            placeholder="https://www.facebook.com/reel/..."
+            placeholder="https://www.591.com.tw/..."
           />
           <div className={styles.hint} style={{ color: CIS.textMute }}>
-            外部頁面下架之後連結就變死的，改物件時順手點一遍。留空就不顯示按鈕。
+            物件詳情頁，例如 591。**留空這顆按鈕就不會出現**，不會在卡片上留空位。
+          </div>
+        </div>
+
+        <div className={styles.field}>
+          <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="lst-video-href">
+            「影片賞析」網址
+          </label>
+          <input
+            id="lst-video-href"
+            className={styles.input}
+            style={inputStyle}
+            value={form.videoHref}
+            onChange={(e) => set("videoHref", e.target.value)}
+            placeholder="https://www.youtube.com/watch?v=..."
+          />
+          <div className={styles.hint} style={{ color: CIS.textMute }}>
+            影片連結，例如 YouTube 或 FB 影片。**留空這顆按鈕就不會出現**。
+            兩欄都留空，卡片上就只有「預約看屋」一顆。
+            外部頁面下架之後連結會變死的，改物件時順手點一遍。
           </div>
         </div>
 

@@ -51,6 +51,8 @@ export type Listing = {
    * label 就是按鈕上的字，會自動加「↗」表示會開新分頁。
    */
   link: { label: string; href: string } | null;
+  /** 影片賞析連結。種子資料一律沒有，實際內容進後台填。 */
+  video?: { label: string; href: string } | null;
   /** active = 顯示在網站上；sold = 已成交／已下架，不顯示 */
   status: "active" | "sold";
 };

@@ -115,16 +115,19 @@ export default async function ListingsPage() {
                       </ul>
                       {/* 外部連結（FB 影片／591）放在預約按鈕上面當次要動作 ——
                           先讓客戶看得更清楚，再引導到預約，順序不要顛倒。 */}
-                      {item.link && (
+                      {/* 兩顆連結各自獨立：後台哪一欄留空，那顆就不出現。
+                          兩個都留空的話這區塊整個不渲染，卡片不會留一塊空白。 */}
+                      {[item.link, item.video].filter(Boolean).map((l) => (
                         <a
+                          key={l!.href}
                           className={lst.actionLink}
-                          href={item.link.href}
+                          href={l!.href}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          {item.link.label} ↗
+                          {l!.label} ↗
                         </a>
-                      )}
+                      ))}
                       <Link className={lst.actionBtn} href="/card/booking">
                         預約看屋
                       </Link>
