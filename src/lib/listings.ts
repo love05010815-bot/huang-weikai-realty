@@ -221,6 +221,10 @@ export async function getPublicListings(): Promise<Listing[]> {
         area: row.area,
         photos: row.photos,
         link: row.link,
+        // ⚠️ 這一行漏掉過一次：/listings 有讀 item.video，但這裡沒帶出去，
+        //    結果後台填了影片網址、存檔成功、資料庫也有，前台按鈕就是不出現，
+        //    而且完全不報錯。新增對外欄位時記得這裡也要補。
+        video: row.video,
         status: "active" as const,
       }));
   } catch {

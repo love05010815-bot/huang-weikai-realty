@@ -352,28 +352,50 @@ export default async function AdminLinePage({
                     {conversation.length === 0 ? (
                       <p style={{ color: CIS.textMute }}>這位客戶還沒有訊息記錄。</p>
                     ) : (
-                      conversation.map((m, i) => (
-                        <div
-                          key={i}
-                          className={m.role === "user" ? styles.turnUser : styles.turnBot}
-                        >
+                      conversation.map((m, i) => {
+                        // 客戶看到的都是同一個官方帳號，但你回頭看紀錄時要分得出
+                        // 哪句是機器人講的、哪句是你自己打的，否則會誤判機器人的表現。
+                        const byHuman = m.role === "assistant" && m.sentBy === "human";
+                        return (
                           <div
-                            className={styles.bubble}
-                            style={
-                              m.role === "user"
-                                ? { background: "rgba(255,255,255,.07)", color: CIS.text }
-                                : { background: "rgba(238,130,138,.14)", color: CIS.text }
-                            }
+                            key={i}
+                            className={m.role === "user" ? styles.turnUser : styles.turnBot}
                           >
-                            {m.content}
+                            <div
+                              className={styles.bubble}
+                              style={
+                                m.role === "user"
+                                  ? { background: "rgba(255,255,255,.07)", color: CIS.text }
+                                  : byHuman
+                                    ? { background: "rgba(74,222,128,.14)", color: CIS.text }
+                                    : { background: "rgba(238,130,138,.14)", color: CIS.text }
+                              }
+                            >
+                              {m.content}
+                            </div>
+                            <div className={styles.turnTime} style={{ color: CIS.textMute }}>
+                              {m.role === "user" ? (
+                                "客戶"
+                              ) : byHuman ? (
+                                <span className={styles.humanTag} style={{ color: "#4ade80" }}>
+                                  你回的
+                                </span>
+                              ) : (
+                                "機器人"
+                              )}
+                              ・{fmtTime(m.createdAt)}
+                            </div>
                           </div>
-                          <div className={styles.turnTime} style={{ color: CIS.textMute }}>
-                            {m.role === "user" ? "客戶" : "機器人"}・{fmtTime(m.createdAt)}
-                          </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
+
+                  <ReplyBox
+                    lineUserId={selected.lineUserId}
+                    displayName={selected.displayName}
+                    quotaExhausted={Boolean(quotaExhausted)}
+                  />
                 </div>
               )}
             </div>
