@@ -9,18 +9,20 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  AREA_LABEL,
   PROJECTS,
   SOURCES,
   STATUS_LABEL,
   projectStats,
   type Project,
+  type ProjectArea,
   type ProjectStatus,
 } from "@/data/port-projects";
 import styles from "./Map.module.css";
 
-type Filter = "all" | ProjectStatus;
-type DistrictFilter = "all" | "梧棲" | "清水";
-type Sort = "units" | "name" | "mine";
+type StatusFilter = "all" | ProjectStatus;
+type AreaFilter = "all" | ProjectArea;
+type Sort = "completion" | "units" | "name" | "mine";
 
 /** 掛在建案底下的在售物件。只帶畫面用得到的欄位 */
 export type ProjectListing = {
@@ -32,15 +34,25 @@ export type ProjectListing = {
 
 const fmt = (n: number) => n.toLocaleString("zh-TW");
 
+/**
+ * 從「2023」「約 2016～17」「興建中」抓出排序用的年份。
+ * 「興建中」還沒完工，排最前面（用一個比任何年份都大的數）。
+ */
+function completionYear(raw: string): number {
+  if (raw.includes("興建中")) return 9999;
+  const m = raw.match(/\d{4}/);
+  return m ? Number(m[0]) : 0;
+}
+
 export default function ProjectPanel({
   listings = {},
 }: {
   /** 建案 id → 該建案的在售物件。由 page.tsx 從資料庫撈好傳進來 */
   listings?: Record<string, ProjectListing[]>;
 }) {
-  const [filter, setFilter] = useState<Filter>("all");
-  const [district, setDistrict] = useState<DistrictFilter>("all");
-  const [sort, setSort] = useState<Sort>("units");
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [area, setArea] = useState<AreaFilter>("all");
+  const [sort, setSort] = useState<Sort>("completion");
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -57,26 +69,28 @@ export default function ProjectPanel({
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return PROJECTS.filter((p) => {
-      if (filter !== "all" && p.status !== filter) return false;
-      if (district !== "all" && p.district !== district) return false;
+      if (status !== "all" && p.status !== status) return false;
+      if (area !== "all" && p.area !== area) return false;
       if (!q) return true;
       return (
         p.name.toLowerCase().includes(q) ||
         p.alias?.toLowerCase().includes(q) ||
-        p.builder?.toLowerCase().includes(q) ||
+        p.builder.toLowerCase().includes(q) ||
         p.streets?.toLowerCase().includes(q)
       );
     }).sort((a, b) => {
       if (sort === "mine") {
-        // 有在售物件的排前面，其次才比戶數
         const diff = (listings[b.id]?.length ?? 0) - (listings[a.id]?.length ?? 0);
         if (diff !== 0) return diff;
-        return (b.units ?? 0) - (a.units ?? 0);
+        return completionYear(b.completion) - completionYear(a.completion);
       }
       if (sort === "units") return (b.units ?? 0) - (a.units ?? 0);
-      return a.name.localeCompare(b.name, "zh-Hant");
+      if (sort === "name") return a.name.localeCompare(b.name, "zh-Hant");
+      // 預設：新的排前面，同年再比戶數
+      const diff = completionYear(b.completion) - completionYear(a.completion);
+      return diff !== 0 ? diff : (b.units ?? 0) - (a.units ?? 0);
     });
-  }, [filter, district, sort, query, listings]);
+  }, [status, area, sort, query, listings]);
 
   const shownUnits = rows.reduce((s, p) => s + (p.units ?? 0), 0);
 
@@ -89,41 +103,42 @@ export default function ProjectPanel({
           <span>個建案</span>
         </li>
         <li>
-          <b>{fmt(stats.units)}</b>
-          <span>總戶數</span>
+          <b>{stats.builders}</b>
+          <span>家建商</span>
         </li>
         <li>
           <b>{stats.presale}</b>
           <span>預售中</span>
         </li>
         <li>
+          <b>{stats.newly}</b>
+          <span>新成屋</span>
+        </li>
+        <li>
           <b>{stats.completed}</b>
           <span>成屋</span>
         </li>
         <li>
-          <b>{stats.builders}</b>
-          <span>家建商</span>
-        </li>
-        <li>
-          <b>2</b>
-          <span>個行政區</span>
+          <b>{fmt(stats.units)}</b>
+          <span>{`戶（${stats.withUnits} 案合計）`}</span>
         </li>
       </ul>
 
       {/* ── 篩選 ── */}
       <div className={styles.filterBar}>
-        <div className={styles.chips} role="group" aria-label="依狀態篩選">
+        <div className={styles.chips} role="group" aria-label="依銷售階段篩選">
           {([
-            ["all", "全部"],
-            ["presale", "預售中"],
-            ["completed", "成屋"],
-          ] as Array<[Filter, string]>).map(([key, label]) => (
+            ["all", `全部（${stats.total}）`],
+            ["presale", `預售中（${stats.presale}）`],
+            ["newly", `新成屋（${stats.newly}）`],
+            ["completed", `成屋（${stats.completed}）`],
+          ] as Array<[StatusFilter, string]>).map(([key, label]) => (
             <button
               key={key}
               type="button"
-              className={filter === key ? styles.chipOn : styles.chip}
-              onClick={() => setFilter(key)}
-              aria-pressed={filter === key}
+              className={status === key ? styles.chipOn : styles.chip}
+              onClick={() => setStatus(key)}
+              aria-pressed={status === key}
             >
               {label}
             </button>
@@ -148,6 +163,7 @@ export default function ProjectPanel({
             value={sort}
             onChange={(e) => setSort(e.target.value as Sort)}
           >
+            <option value="completion">新的排前面</option>
             <option value="units">戶數多到少</option>
             <option value="name">依名稱</option>
             {mineCount > 0 && <option value="mine">有在售物件優先</option>}
@@ -156,18 +172,19 @@ export default function ProjectPanel({
       </div>
 
       {/* 重劃區橫跨梧棲與清水，清水客戶會想只看清水的案子 */}
-      <div className={styles.chips} role="group" aria-label="依行政區篩選">
+      <div className={styles.chips} role="group" aria-label="依位置篩選">
         {([
           ["all", `全區（${stats.total}）`],
           ["梧棲", `梧棲區（${stats.wuqi}）`],
           ["清水", `清水區（${stats.qingshui}）`],
-        ] as Array<[DistrictFilter, string]>).map(([key, label]) => (
+          ["市鎮中心", `核心區（${stats.core}）`],
+        ] as Array<[AreaFilter, string]>).map(([key, label]) => (
           <button
             key={key}
             type="button"
-            className={district === key ? styles.chipOn : styles.chip}
-            onClick={() => setDistrict(key)}
-            aria-pressed={district === key}
+            className={area === key ? styles.chipOn : styles.chip}
+            onClick={() => setArea(key)}
+            aria-pressed={area === key}
           >
             {label}
           </button>
@@ -175,12 +192,8 @@ export default function ProjectPanel({
       </div>
 
       <p className={styles.resultCount}>
-        {`顯示 ${rows.length} 個建案，共 ${fmt(shownUnits)} 戶`}
-        {stats.districtUnknown > 0 && district !== "all" && (
-          <span className={styles.warnNote}>
-            {`另有 ${stats.districtUnknown} 案的行政區尚未查證，不會出現在梧棲／清水的篩選結果裡`}
-          </span>
-        )}
+        {`顯示 ${rows.length} 個建案`}
+        {shownUnits > 0 && `，已登錄 ${fmt(shownUnits)} 戶`}
       </p>
 
       {/* ── 清單 ── */}
@@ -210,6 +223,12 @@ export default function ProjectPanel({
   );
 }
 
+function statusClass(s: ProjectStatus) {
+  if (s === "presale") return styles.badgePresale;
+  if (s === "newly") return styles.badgeNewly;
+  return styles.badgeDone;
+}
+
 function ProjectCard({
   project: p,
   listings,
@@ -231,36 +250,35 @@ function ProjectCard({
       <button type="button" className={styles.projectHead} onClick={onToggle} aria-expanded={open}>
         <span className={styles.projectTitleRow}>
           <span className={styles.projectName}>{p.name}</span>
-          <span className={p.status === "presale" ? styles.badgePresale : styles.badgeDone}>
-            {STATUS_LABEL[p.status]}
-          </span>
+          <span className={statusClass(p.status)}>{STATUS_LABEL[p.status]}</span>
         </span>
+
+        {p.alias && <span className={styles.projectAlias}>{`又稱 ${p.alias}`}</span>}
 
         {hasMine && (
           <span className={styles.mineBadge}>{`🏠 我有 ${listings.length} 件在售`}</span>
         )}
-        {p.alias && <span className={styles.projectAlias}>{`又稱 ${p.alias}`}</span>}
+
         <span className={styles.projectMeta}>
-          {p.builder ? (
-            <span>
-              {p.builder}
-              {p.builderGuess && <em className={styles.guess}>建商推定</em>}
-            </span>
-          ) : (
-            <span className={styles.muted}>建商待確認</span>
-          )}
+          <span>{p.builder}</span>
           {p.units != null && <span>{`${fmt(p.units)} 戶`}</span>}
-          {p.district ? (
-            <span className={styles.districtTag}>{`${p.district}區`}</span>
-          ) : (
-            <span className={styles.districtTagMuted}>行政區待確認</span>
-          )}
+          <span className={styles.districtTag}>{AREA_LABEL[p.area]}</span>
+          {/* 「興建中」本身就是狀態，後面再接「完工」會變成「興建中完工」 */}
+          <span className={styles.yearTag}>
+            {p.completion.includes("興建中") ? p.completion : `${p.completion} 完工`}
+          </span>
         </span>
       </button>
 
       {open && (
         <div className={styles.projectBody}>
           <dl className={styles.detailList}>
+            {p.statusNote && (
+              <div>
+                <dt>銷售狀態</dt>
+                <dd>{p.statusNote}</dd>
+              </div>
+            )}
             {p.streets && (
               <div>
                 <dt>坐落</dt>
@@ -293,10 +311,7 @@ function ProjectCard({
             )}
             <div>
               <dt>資料出處</dt>
-              <dd>
-                {p.sources.map((key) => SOURCES[key]?.label ?? key).join("、")}
-                {!p.verified && <span className={styles.unverified}>尚未人工核對</span>}
-              </dd>
+              <dd>{p.sources.map((key) => SOURCES[key]?.label ?? key).join("、")}</dd>
             </div>
           </dl>
 

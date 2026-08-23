@@ -14,8 +14,10 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",
     "@prisma/client": "^6.16.0",
+    "@types/leaflet": "^1.9.22",
     "@vercel/blob": "^2.8.0",
     "googleapis": "^171.4.0",
+    "leaflet": "^1.9.4",
     "lucide-react": "^1.8.0",
     "next": "16.2.12",
     "next-auth": "5.0.0-beta.32",

@@ -186,10 +186,9 @@ export default async function HomePage() {
             <li><a href="#about">關於我</a></li>
             <li><a href="#listings">精選好案</a></li>
             <li><a href="#services">服務項目</a></li>
-            {/* 2026-08-20 系統擁有者拍板：/map 的資料還沒核對完（25 筆建商名與面積只有 3 筆
-                verified、33 塊未命名、開發狀態全是「待確認」），先不對外掛入口。
-                頁面本身還在，打網址進得去。核對完把下面這行取消註解就恢復。 */}
-            {/* <li><Link href="/map">區域地圖</Link></li> */}
+            {/* 2026-08-21 恢復入口。原本雪藏是因為「土地使用分區」那層的建商名沒核對完；
+                該層已從 /map 移除，現在頁面上是系統擁有者自己確認過的 39 個建案。 */}
+            <li><Link href="/map">重劃區建案</Link></li>
             <li><a href="#tools">稅費試算</a></li>
             <li><a href="#booking">預約諮詢</a></li>
           </ul>

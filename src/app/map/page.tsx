@@ -1,14 +1,16 @@
 /**
- * /map — 台中港市鎮中心（梧棲市政重劃區）區域頁
+ * /map — 台中港市鎮中心（梧棲＋清水重劃區）區域頁
  *
- * 兩層：
- *   ① 土地分佈圖  資料在 src/data/port-district.ts   —— 示意圖，未核對完
- *   ② 建案總覽    資料在 src/data/port-projects.ts   —— 23 案，有出處
+ * 兩層，資料都在 src/data/port-projects.ts：
+ *   ① 建案分佈圖  ProjectMap.tsx    —— 組成示意圖，不是位置圖（元件檔頭有說明）
+ *   ② 建案總覽    ProjectPanel.tsx  —— 39 案，可篩可搜，掛上在售物件
  *
- * 這頁的商業目的：讓在地客戶「看懂這一區 → 想問行情 → 點預約」。
+ * 這頁的商業目的：讓在地客戶「看懂這一區 → 點到有興趣的建案 → 看到我的物件或留下線索」。
  *
- * ⚠️ 這頁目前沒有對外入口（首頁導覽與 sitemap 那兩行被刻意註解掉了），
- *    因為①的地塊資料還沒核對完。要恢復入口請看 src/app/page.tsx 與 src/app/sitemap.ts 的註解。
+ * ⚠️ 2026-08-21 系統擁有者拍板：**「土地使用分區」那一層已從本頁移除**。
+ *    理由：地塊界線是從截圖重建的，上面 24 個建商名沒核對過，公開等於發表未查證資料。
+ *    元件（MapCanvas.tsx）與資料（port-district.ts）都還留著，要復原就把
+ *    `<MapCanvas />` 加回來。**要加回來之前先把建商名核對完。**
  */
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -16,14 +18,14 @@ import { OWNER, SITE_URL } from "@/config/owner";
 import { DISTRICT, PROJECTS, SOURCES, projectStats } from "@/data/port-projects";
 import { getListingsByProject } from "@/lib/project-listings";
 import { resolvePhotoSrc } from "@/lib/photo-src";
-import MapCanvas from "./MapCanvas";
+import LeafletMap from "./LeafletMap";
 import ProjectPanel, { type ProjectListing } from "./ProjectPanel";
 import styles from "./Map.module.css";
 
 const stats = projectStats();
 
 const TITLE = `台中港市鎮中心建案總覽｜梧棲・清水重劃區 ${stats.total} 個建案一次看｜台中海線房仲${OWNER.name}`;
-const DESCRIPTION = `台中港市鎮中心重劃區（橫跨梧棲區與清水區）${stats.total} 個建案總覽：遠雄幸福成、聯悅馨、長虹天擎、聯虹鉑玥、遠雄之星系列等，可依行政區、預售／成屋與建商篩選，另附土地使用分區互動地圖。由台中海線房仲${OWNER.name}整理自公開資訊。`;
+const DESCRIPTION = `台中港市鎮中心重劃區（橫跨梧棲區與清水區）${stats.total} 個建案總覽：遠雄幸福成、聯悅馨、長虹天擎、聯虹鉑玥、遠雄之星系列等，可依行政區、預售／成屋與建商篩選，並標示規模與銷售階段。由台中海線房仲${OWNER.name}整理自公開資訊。`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -52,7 +54,7 @@ export const metadata: Metadata = {
     type: "article",
     locale: "zh_TW",
     title: `台中港市鎮中心建案總覽｜梧棲市政重劃區 ${stats.total} 個建案`,
-    description: `${stats.total} 個建案、共 ${stats.units.toLocaleString("zh-TW")} 戶，可依預售／成屋與建商篩選，另附土地使用分區互動地圖。`,
+    description: `${stats.total} 個建案、共 ${stats.units.toLocaleString("zh-TW")} 戶，可依行政區、預售／成屋與建商篩選。`,
     url: "/map",
     siteName: `${OWNER.name}｜台中海線房仲`,
     images: [{ url: "/profile.jpg", width: 1029, height: 1543, alt: `${OWNER.name}形象照` }],
@@ -111,7 +113,7 @@ const NOTES = [
   },
   {
     title: "資料怎麼來的",
-    body: "建案名稱與戶數整理自公開的建案資訊平台與區域專文，來源列在頁面最下方。預售屋依法須申報實價登錄，這類資料查得到、可追溯，但仍可能有時間差。",
+    body: `建商、所在行政區、完工年與銷售階段來自${OWNER.alias}自己整理的在地建案總表；戶數、坪數、樓層等細節則整理自公開的建案資訊平台，來源列在頁面最下方。房市變動快，資料仍可能有時間差，實際請以建商公告為準。`,
   },
 ];
 
@@ -127,6 +129,7 @@ export default async function MapPage() {
 
   // 只挑畫面用得到的欄位傳給 client component，整包 Listing 丟過去是浪費
   const listings: Record<string, ProjectListing[]> = {};
+  const listingCounts: Record<string, number> = {};
   for (const [projectId, list] of byProject) {
     listings[projectId] = list.map((l) => ({
       slug: l.slug,
@@ -134,6 +137,7 @@ export default async function MapPage() {
       area: l.area,
       photo: l.photos?.[0] ? resolvePhotoSrc(l.photos[0]) : null,
     }));
+    listingCounts[projectId] = list.length;
   }
 
   return (
@@ -160,7 +164,7 @@ export default async function MapPage() {
           <span className={styles.eyebrow}>台中海線・區域研究</span>
           <h1 className={styles.title}>台中港市鎮中心重劃區・梧棲＋清水</h1>
           <p className={styles.lede}>
-            {`重劃區面積 ${DISTRICT.areaHa} 公頃，${DISTRICT.completedYear}竣工，橫跨梧棲與清水兩個行政區。這裡整理了區內 ${stats.total} 個建案、合計 ${stats.units.toLocaleString("zh-TW")} 戶，並附上土地使用分區互動地圖。`}
+            {`重劃區面積 ${DISTRICT.areaHa} 公頃，${DISTRICT.completedYear}竣工，橫跨梧棲與清水兩個行政區。這裡整理了區內 ${stats.total} 個建案、合計 ${stats.units.toLocaleString("zh-TW")} 戶。`}
           </p>
 
           <p className={styles.bounds}>
@@ -178,27 +182,18 @@ export default async function MapPage() {
         </div>
       </section>
 
-      {/* ── 第一層：土地分佈圖 ── */}
-      <section className={styles.layer} id="land">
+      {/* ── 第一層：建案組成圖 ── */}
+      <section className={styles.layer} id="projects-map">
         <div className={styles.container}>
           <h2 className={styles.layerTitle}>
             <span className={styles.layerNo}>01</span>
-            土地使用分區圖
+            建案地圖
           </h2>
           <p className={styles.layerDesc}>
-            點任一地塊看使用分區與土地面積。可切換成開發狀態上色，也可以搜尋建商。
+            {`大樓圖示標的是建案位置，顏色代表銷售階段，點圖示看詳情。目前已標出 ${stats.located} / ${stats.total} 個建案，其餘陸續補上。`}
           </p>
 
-          <p className={styles.disclaimer}>
-            <b>看圖前請先讀這段：</b>
-            本圖為<b>示意圖</b>，街廓與地塊界線係依公開圖資重建，非地籍測量成果，
-            <b>不得作為界址、產權或交易依據</b>。 地塊上的建商名稱整理自公開資訊，
-            <b>多數尚未經人工核對</b>，點開會標示「待確認」。 實際情形請以主管機關公告與土地登記謄本為準。
-          </p>
-        </div>
-
-        <div className={styles.container}>
-          <MapCanvas />
+          <LeafletMap listings={listingCounts} />
         </div>
       </section>
 
@@ -218,6 +213,8 @@ export default async function MapPage() {
           <ProjectPanel listings={listings} />
         </div>
       </section>
+
+
 
       {/* ── 說明 ── */}
       <section className={styles.notes}>
