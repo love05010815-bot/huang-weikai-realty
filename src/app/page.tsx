@@ -73,31 +73,31 @@ const SERVICES = [
   {
     icon: "🏘️",
     title: "買賣／租賃",
-    desc: "買房、賣房、出租、找租屋都能處理。從帶看、議價、簽約到過戶點交，每一步先講清楚再往下走，不會讓您在狀況外。",
+    desc: "買、賣、出租、找租屋都能處理。從帶看議價到過戶點交，每一步先說清楚。",
     tag: "Sales & Leasing",
   },
   {
     icon: "💰",
     title: "資金配置規劃",
-    desc: "先把自備款、貸款成數與每月負擔一起算出來，抓出真正買得起的價格帶。買得起也住得安穩，比勉強撐著重要。",
+    desc: "把自備款、貸款成數與每月負擔一起算出來，抓出真正買得起的價格帶。",
     tag: "Financial Planning",
   },
   {
     icon: "🧾",
     title: "稅費諮詢",
-    desc: "房地合一稅、契稅、印花稅、代書費，交易前先把成本算清楚，避免多繳一毛不該繳的稅。站上就能自己先試算一輪。",
+    desc: "房地合一稅、契稅、代書費先算清楚，不多繳不該繳的稅。站上就能自己試算。",
     tag: "Tax Consulting",
   },
   {
     icon: "📊",
     title: "市場分析",
-    desc: "用實價登錄與海線在地的成交行情，告訴您這個開價合不合理、這一區近期怎麼走，讓出價與訂價都有依據，不是憑感覺。",
+    desc: "用實價登錄與海線在地成交行情，告訴您這個價格合不合理，出價訂價都有依據。",
     tag: "Market Analysis",
   },
   {
     icon: "🛠️",
     title: "裝潢資源媒合",
-    desc: "提供簡易裝潢建議與資源媒合，讓房子在交屋前後都能以最合適的預算呈現最好的樣貌，賣相與住感一次到位。",
+    desc: "簡易裝潢建議與資源媒合，用最合適的預算讓房子呈現最好的樣貌。",
     tag: "Renovation",
   },
 ];
@@ -394,7 +394,7 @@ export default async function HomePage() {
                 <ol className={styles.bookingSteps}>
                   <li className={styles.bookingStep}>
                     <span className={styles.bookingStepNum}>1</span>
-                    <span>選擇諮詢主題：資產配置、稅務、簡易裝潢或買賣房</span>
+                    <span>選擇諮詢主題：買賣租賃、資金規劃、稅費、市場分析或裝潢</span>
                   </li>
                   <li className={styles.bookingStep}>
                     <span className={styles.bookingStepNum}>2</span>

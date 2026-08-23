@@ -47,7 +47,7 @@ type IntentOption = {
   key: string;
   label: string;
   description: string;
-  apiIntent: "buy" | "sell" | "asset" | "tax" | "reno" | "interview" | "other";
+  apiIntent: "buy" | "sell" | "lease" | "asset" | "tax" | "market" | "reno" | "interview" | "other";
 };
 
 function readCookie(name: string): string {
@@ -61,7 +61,7 @@ function readGaClientId(): string {
 }
 
 const MODE_DESCRIPTIONS: Record<BookingMode, string> = {
-  realtor: "買賣房產、資產配置、稅務諮詢或簡易裝潢問題",
+  realtor: "買賣租賃、資金配置規劃、稅費諮詢、市場分析或裝潢問題",
   collaboration: "拍片、課程、品牌、媒體或商務合作",
   interview: "應徵太平洋房屋相關職務",
 };
@@ -70,9 +70,11 @@ const MODE_INTENTS: Record<BookingMode, IntentOption[]> = {
   realtor: [
     { key: "buy", label: "買房", description: "找自住、置產或換屋物件", apiIntent: "buy" },
     { key: "sell", label: "賣房", description: "估價、出售或換屋規劃", apiIntent: "sell" },
-    { key: "asset", label: "資產配置", description: "房產配置策略、收租置產規劃", apiIntent: "asset" },
-    { key: "tax", label: "稅務諮詢", description: "房地合一稅、重購退稅等稅務問題", apiIntent: "tax" },
-    { key: "reno", label: "簡易裝潢", description: "交屋前後的簡易裝潢建議", apiIntent: "reno" },
+    { key: "lease", label: "租賃", description: "想出租手上的房子，或想找租屋", apiIntent: "lease" },
+    { key: "asset", label: "資金配置規劃", description: "自備款、貸款成數與每月負擔怎麼抓", apiIntent: "asset" },
+    { key: "tax", label: "稅費諮詢", description: "房地合一稅、重購退稅等稅費問題", apiIntent: "tax" },
+    { key: "market", label: "市場分析", description: "海線行情、開價合不合理、區域走勢", apiIntent: "market" },
+    { key: "reno", label: "裝潢資源媒合", description: "交屋前後的裝潢建議與資源介紹", apiIntent: "reno" },
     { key: "other", label: "其他房產問題", description: "不確定分類也可以先說明", apiIntent: "other" },
   ],
   collaboration: [
@@ -177,11 +179,28 @@ function qualificationFields(mode: BookingMode, intent: string) {
       { key: "targetDate", label: "希望出售時間", placeholder: "例：3 個月內、先評估", required: true },
     ];
   }
+  if (intent === "lease") {
+    return [
+      { key: "purpose", label: "要出租還是承租", placeholder: "例：房子空著想出租／工作調到海線想找租屋", required: true, multiline: true },
+      { key: "area", label: "區域", placeholder: "例：沙鹿、梧棲、清水、龍井", required: true },
+      { key: "budget", label: "租金範圍", placeholder: "例：想租 1.5 萬以內／想出租，開價還沒定", required: true },
+      { key: "targetDate", label: "希望時間", placeholder: "例：下個月、先了解行情", required: true },
+    ];
+  }
   if (intent === "asset") {
     return [
       { key: "budget", label: "可運用資金／預算", placeholder: "例：500 萬，含貸款規劃", required: true },
-      { key: "purpose", label: "配置目標", placeholder: "例：收租置產、資產增值、退休規劃", required: true, multiline: true },
+      // 這裡不要出現「增值」「保證」這類字 —— 不動產廣告不能給報酬承諾
+      { key: "purpose", label: "規劃目標", placeholder: "例：換屋、收租置產、退休後的居住安排", required: true, multiline: true },
       { key: "targetDate", label: "希望開始規劃的時間", placeholder: "例：這個月、先了解", required: true },
+    ];
+  }
+  if (intent === "market") {
+    return [
+      { key: "area", label: "想了解的區域", placeholder: "例：沙鹿北勢、梧棲新市鎮", required: true },
+      { key: "propertyType", label: "物件類型", placeholder: "例：電梯大樓三房、透天", required: true },
+      { key: "purpose", label: "想知道什麼", placeholder: "例：這個開價合不合理、這一區這半年怎麼走", required: true, multiline: true },
+      { key: "targetDate", label: "是否有時間壓力", placeholder: "例：這個月要決定；目前沒有", required: true },
     ];
   }
   if (intent === "tax") {

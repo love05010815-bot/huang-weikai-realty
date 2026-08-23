@@ -28,12 +28,20 @@ export const LEGACY_DEFAULT_DURATION_MIN = 60;
 
 // ---- 意圖（含動態 placeholder:選哪類,備註提示就換哪句）----
 // interviewOnly 的（面試）只在 /card/booking?type=interview 專用連結顯示;預設客戶端不出現。2026-07-17
+// ⚠️ **key 一個都不能改，只能改 label。**
+//    歷史預約紀錄的 intent 欄位存的就是 key，intentLabel() 找不到會 fallback 回原始字串，
+//    改了 key 會讓後台的舊案件顯示成「asset」這種原始字。要換說法就只動 label。
+//    新增主題可以直接加 —— schema 的 intent 是 String 不是 enum，不用跑 migration。
+//    2026-08-23：跟首頁的五項服務改齊（買賣租賃／資金配置規劃／稅費諮詢／市場分析／裝潢資源媒合）。
+//    買、賣、租拆成三項是刻意的 —— 三者要問的資格欄位完全不一樣，合成一項會問不到重點。
 export const INTENTS = [
   { key: "buy", label: "買房", emoji: "🏠", placeholder: "例:想找沙鹿三房、預算 1,000 萬、自住自用" },
   { key: "sell", label: "賣房", emoji: "🏷️", placeholder: "例:梧棲透天想賣、換屋週轉、希望盡快出售" },
-  { key: "asset", label: "資產配置", emoji: "💼", placeholder: "例:手上有一筆資金想規劃房產配置、收租置產" },
-  { key: "tax", label: "稅務諮詢", emoji: "🧾", placeholder: "例:房地合一稅試算、重購退稅、持有稅務問題" },
-  { key: "reno", label: "簡易裝潢", emoji: "🛠️", placeholder: "例:交屋前想簡單整理、預算範圍、想要的風格" },
+  { key: "lease", label: "租賃", emoji: "🔑", placeholder: "例:房子空著想出租、或工作調到海線想找租屋" },
+  { key: "asset", label: "資金配置規劃", emoji: "💰", placeholder: "例:手上有一筆資金,想抓買得起的價格帶與貸款規劃" },
+  { key: "tax", label: "稅費諮詢", emoji: "🧾", placeholder: "例:房地合一稅試算、重購退稅、持有稅務問題" },
+  { key: "market", label: "市場分析", emoji: "📊", placeholder: "例:想知道沙鹿北勢這半年行情、這個開價合不合理" },
+  { key: "reno", label: "裝潢資源媒合", emoji: "🛠️", placeholder: "例:交屋前想簡單整理、預算範圍、想要的風格" },
   { key: "interview", label: "面試", emoji: "🧑‍💼", placeholder: "例:應徵職位、方便聯絡的時間、想先了解的事", interviewOnly: true },
   { key: "other", label: "其他", emoji: "💬", placeholder: "簡單描述你想找瑋凱聊的事" },
 ] as const;
