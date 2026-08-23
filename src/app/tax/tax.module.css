@@ -1,0 +1,480 @@
+/* ---------- 稅費試算 ----------
+   配色變數定義在 home.module.css 的 .page，這頁一起套用那個 class。
+
+   ⚠️ 這個專案沒有全域 box-sizing reset（globals.css 沒有被任何檔案 import），
+      所以底下每個有邊框或內距又設了寬度的元素，都要自己寫 box-sizing。 */
+
+/* ---------- 分頁切換 ---------- */
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 0 auto 28px;
+  padding: 6px;
+  width: fit-content;
+  max-width: 100%;
+  background: var(--soft);
+  border: 1px solid var(--line-warm);
+  border-radius: 999px;
+}
+
+.tab {
+  box-sizing: border-box;
+  border: 0;
+  background: none;
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tab:hover {
+  color: var(--primary);
+}
+
+.tabOn {
+  background: var(--primary);
+  color: #fff;
+}
+
+.tabOn:hover {
+  color: #fff;
+}
+
+/* ---------- 表單 ---------- */
+
+.form {
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: clamp(20px, 3.4vw, 30px);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 20px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+/* 佔滿整列的欄位（例如相關費用那組有切換鈕） */
+.wide {
+  grid-column: 1 / -1;
+}
+
+.label {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--ink);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.labelHint {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 16px; /* 16px 以下 iOS Safari 會自動放大整頁 */
+  color: var(--ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(218, 179, 138, 0.35);
+}
+
+/* 金額欄位右邊掛一個「萬」，跟房仲平常講話的單位一致 */
+.amountWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.amountWrap .input {
+  padding-right: 46px;
+}
+
+.unit {
+  position: absolute;
+  right: 13px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+/* 換算成「元」即時顯示，避免有人把 1300 萬打成 13000000 又不確定 */
+.echo {
+  font-size: 12px;
+  color: var(--muted);
+  min-height: 18px;
+}
+
+.seg {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.segBtn {
+  box-sizing: border-box;
+  flex: 1;
+  border: 0;
+  background: #fff;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.segBtn + .segBtn {
+  border-left: 1px solid var(--line);
+}
+
+.segOn {
+  background: var(--accent-soft);
+  color: var(--primary);
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 13px 15px;
+  border: 1px solid var(--line-warm);
+  border-radius: 10px;
+  background: var(--soft);
+  cursor: pointer;
+}
+
+.check input {
+  /* 勾選框要夠大，手指才點得到 */
+  width: 19px;
+  height: 19px;
+  margin: 2px 0 0;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.checkBody {
+  min-width: 0;
+}
+
+.checkTitle {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.checkDesc {
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+.checkDesc ol,
+.checkDesc ul {
+  margin: 5px 0 0;
+  padding-left: 18px;
+}
+
+.checkDesc li {
+  margin-bottom: 2px;
+}
+
+/* 展開才看得到細節，不然表單一眼看下去太可怕 */
+.more {
+  margin-top: 6px;
+}
+
+.more summary {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+/* ---------- 結果 ---------- */
+
+.result {
+  margin-top: 22px;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.resultHead {
+  background: var(--primary);
+  color: #fff;
+  padding: clamp(20px, 3.4vw, 28px);
+  text-align: center;
+}
+
+.resultLabel {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  opacity: 0.85;
+}
+
+.resultBig {
+  font-size: clamp(30px, 7vw, 44px);
+  font-weight: 900;
+  line-height: 1.25;
+  margin: 6px 0 2px;
+  letter-spacing: -0.01em;
+}
+
+.resultUnit {
+  font-size: 0.5em;
+  font-weight: 700;
+  margin-left: 4px;
+}
+
+.resultSub {
+  font-size: 13.5px;
+  opacity: 0.9;
+}
+
+.resultFacts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.fact {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  padding: 5px 13px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.resultBody {
+  background: #fff;
+  padding: clamp(18px, 3vw, 26px);
+}
+
+.stepsTitle {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.steps {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.steps td {
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--line);
+  vertical-align: top;
+}
+
+.steps tr:last-child td {
+  border-bottom: 0;
+}
+
+.stepLabel {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.stepNote {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+  line-height: 1.55;
+  margin-top: 2px;
+}
+
+.stepAmount {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  padding-left: 12px !important;
+  color: var(--ink);
+}
+
+/* 小計那幾行加粗，一眼看得出段落 */
+.stepTotal .stepLabel,
+.stepTotal .stepAmount {
+  font-weight: 900;
+  color: var(--primary);
+}
+
+.stepTotal td {
+  border-bottom: 1px solid var(--line-warm);
+}
+
+.notes {
+  margin: 20px 0 0;
+  padding: 16px 18px;
+  background: var(--soft);
+  border: 1px solid var(--line-warm);
+  border-radius: 10px;
+  list-style: none;
+}
+
+.notes li {
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--muted);
+  padding-left: 22px;
+  position: relative;
+}
+
+.notes li + li {
+  margin-top: 9px;
+}
+
+.notes li::before {
+  content: "💡";
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.deadline {
+  margin: 14px 0 0;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--ink);
+  background: var(--accent-soft);
+  border-radius: 10px;
+  padding: 13px 16px;
+}
+
+/* 舊制或輸入有錯時的整塊提示 */
+.alert {
+  margin-top: 22px;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  background: var(--soft);
+  padding: clamp(18px, 3vw, 26px);
+}
+
+.alertTitle {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--primary);
+  margin: 0 0 8px;
+}
+
+.alertBody {
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--muted);
+  margin: 0;
+}
+
+.alertBody + .alertBody {
+  margin-top: 8px;
+}
+
+/* ---------- 結果之後的動作 ---------- */
+
+.cta {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.ctaText {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+
+/* ---------- 免責與法源 ---------- */
+
+.disclaimer {
+  margin-top: 30px;
+  background: var(--soft);
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  font-size: 13px;
+  line-height: 1.85;
+  color: var(--muted);
+}
+
+.disclaimer strong {
+  color: var(--ink);
+}
+
+.sources {
+  margin-top: 14px;
+  font-size: 12.5px;
+  line-height: 1.9;
+  color: var(--muted);
+}
+
+.sources a {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.backLink {
+  display: inline-block;
+  margin-top: 28px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tab {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+}

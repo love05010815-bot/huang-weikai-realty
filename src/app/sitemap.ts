@@ -20,6 +20,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE_URL}/card/booking`, lastModified, changeFrequency: "monthly", priority: 0.9 },
     { url: `${SITE_URL}/about`, lastModified, changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE_URL}/listings`, lastModified, changeFrequency: "weekly", priority: 0.8 },
+    // 稅費試算是很強的搜尋入口（「房地合一稅試算」搜尋量高），優先度給高一點
+    { url: `${SITE_URL}/tax`, lastModified, changeFrequency: "monthly", priority: 0.9 },
     // 2026-08-20 系統擁有者拍板：/map 資料未核對完，先不送給 Google。
     // 核對完把下面這行取消註解，並到 Search Console 送一次 /map。
     // { url: `${SITE_URL}/map`, lastModified, changeFrequency: "monthly", priority: 0.8 },

@@ -79,23 +79,27 @@ const SERVICES = [
 ];
 
 /**
- * 稅費試算工具。都是連到外部的官方／銀行網站，我們不自己算 ——
- * 自己算等於在給稅務意見，而且稅率一改就會過期。
+ * 稅費試算工具。2026-08-23 系統擁有者拍板：改成自己站上算，不再把客戶丟到外部網站。
+ *
+ * 原本的顧慮是「自己算等於給稅務意見，而且稅率一改就會過期」。
+ * 處理方式：算法抽到 src/lib/land-tax.ts，每個數字都註明官方出處；
+ * /tax 頁把計算過程整個攤開、標明法規核對日期，並保留免責聲明。
+ * 稅率變動時只要改 land-tax.ts 一個檔。
  */
 const TOOLS = [
   {
     icon: "🏠",
     title: "房地合一稅試算",
-    desc: "賣房前先算清楚要繳多少稅。填入取得與出售的時間、價格，就能估出應納稅額，不會等到簽了約才發現稅金吃掉獲利。",
-    source: "財政部電子稅務入口網",
-    href: "https://www.etax.nat.gov.tw/etwmain/tax-info/house-land-transfer-taxtation-calculation-area/sale/online-taxable-amount-calculation",
+    desc: "賣房前先算清楚要繳多少稅。填入取得與出售的日期與價格，馬上算出持有期間、適用稅率與應納稅額，還會把每一步怎麼來的攤開給你看。",
+    source: "所得稅法第 14 條之 4 與財政部規定",
+    href: "/tax",
   },
   {
     icon: "🏦",
-    title: "房貸試算",
-    desc: "先抓出每個月要還多少。填入貸款金額、利率、年限與寬限期，算出月付金，買房的預算才抓得準。",
-    source: "內政部不動產資訊平台",
-    href: "https://pip.moi.gov.tw/V3/c/SCRC0201.aspx?Func=3",
+    title: "房貸月付金試算",
+    desc: "先抓出每個月要還多少。填入貸款金額、利率、年限與寬限期，算出月付金與總利息，買房的預算才抓得準。",
+    source: "本息平均攤還公式",
+    href: "/tax",
   },
 ];
 
@@ -324,31 +328,25 @@ export default async function HomePage() {
             <span className={styles.eyebrow}>TOOLS</span>
             <h2 className={styles.sectionTitle}>稅費試算</h2>
             <p className={styles.sectionDesc}>
-              買賣房子最怕算漏了。這兩個是政府與銀行提供的官方試算工具，先自己跑一輪、心裡有底，再來談會更踏實。
+              買賣房子最怕算漏了。這兩個試算就在站上，不用跳到別的網站，算完還看得到每一步怎麼來的。
             </p>
           </div>
           <div className={styles.container}>
             <div className={styles.toolGrid}>
               {TOOLS.map((tool) => (
-                <a
-                  key={tool.title}
-                  className={styles.toolCard}
-                  href={tool.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+                <Link key={tool.title} className={styles.toolCard} href={tool.href}>
                   <div className={styles.toolIcon}>{tool.icon}</div>
                   <h3>{tool.title}</h3>
                   <p>{tool.desc}</p>
-                  <span className={styles.toolSource}>資料來源：{tool.source}</span>
-                  <span className={styles.toolGo}>前往試算 ↗</span>
-                </a>
+                  <span className={styles.toolSource}>依據：{tool.source}</span>
+                  <span className={styles.toolGo}>開始試算 →</span>
+                </Link>
               ))}
             </div>
             <p className={styles.toolDisclaimer}>
-              ⚠️ 以上連結皆為<strong>外部網站提供的試算工具，僅供試算參考</strong>。
-              房地合一稅之<strong>實際稅額以國稅局核定為準</strong>；貸款條件與利率以各銀行實際審核結果為準。
-              稅率與相關法規會調整，請以連結頁面當下的官方規定為準。試算結果不構成稅務或財務意見。
+              ⚠️ 試算<strong>僅供參考</strong>。房地合一稅之<strong>實際稅額以國稅局核定為準</strong>；
+              貸款條件與利率以各銀行實際審核結果為準。稅率與相關法規會調整，
+              試算頁面上有標明法規核對日期與法源出處。試算結果不構成稅務或財務意見。
             </p>
           </div>
         </section>
