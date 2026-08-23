@@ -329,6 +329,12 @@ function TaxResultCard({ result }: { result: TaxResult }) {
           )}
 
           <p className={styles.deadline}>📅 {result.deadline}</p>
+
+          {/* 客戶常常只截「結果」這一塊丟給別人看，所以免責要跟結果黏在一起，
+              不能只放在頁面最下面 */}
+          <p className={styles.inlineNote}>
+            ⚠️ 本試算<strong>僅供參考</strong>，實際稅額<strong>以國稅局核定為準</strong>，不構成稅務意見。
+          </p>
         </div>
       </div>
 
@@ -466,6 +472,9 @@ function LoanResultCard({ result }: { result: LoanResult }) {
               <li key={n}>{n}</li>
             ))}
           </ul>
+          <p className={styles.inlineNote}>
+            ⚠️ 本試算<strong>僅供參考</strong>，實際利率、成數與寬限期<strong>以銀行核定為準</strong>。
+          </p>
         </div>
       </div>
 

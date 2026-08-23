@@ -84,7 +84,7 @@ export default function TaxPage() {
             <TaxCalculator />
 
             <div className={tax.disclaimer}>
-              <strong>⚠️ 這是試算，不是核定結果。</strong>
+              <strong>⚠️ 試算結果僅供參考，不是核定結果。</strong>
               房地合一稅的<strong>實際稅額以國稅局核定為準</strong>；房貸的利率、成數與寬限期，以銀行實際審核結果為準。
               試算只涵蓋<strong>個人買賣</strong>的一般情況，
               <strong>公司名下的房地、預售屋轉售、股份交易、重購退稅、繼承併計持有期間</strong>

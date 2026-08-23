@@ -376,6 +376,19 @@
   top: 0;
 }
 
+/* 跟結果黏在一起的免責。客戶截圖常常只截結果那一塊，
+   免責只放在頁面最下面等於沒有。 */
+.inlineNote {
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.inlineNote strong {
+  color: var(--ink);
+}
+
 .deadline {
   margin: 14px 0 0;
   font-size: 13px;
