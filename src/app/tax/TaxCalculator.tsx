@@ -119,6 +119,9 @@ function LandTaxForm() {
     }
   }, [acquiredAt, soldAt, priceWan, costWan, expenseMode, expenseWan, landWan, residency, selfUse, special]);
 
+  // 勾了卻沒套用的，訊息要貼在那個勾選框旁邊 —— 使用者的視線就在那裡
+  const ignored = outcome && outcome.ok ? outcome.data.ignored : null;
+
   return (
     <>
       <div className={styles.form}>
@@ -215,6 +218,9 @@ function LandTaxForm() {
                 </span>
               </span>
             </label>
+            {ignored?.selfUse && (
+              <p className={styles.ignoredNote}>⚠️ <strong>這筆沒有套用到</strong>：{ignored.selfUse}</p>
+            )}
           </div>
 
           <div className={`${styles.field} ${styles.wide}`}>
@@ -240,6 +246,9 @@ function LandTaxForm() {
                 </span>
               </span>
             </label>
+            {ignored?.special && (
+              <p className={styles.ignoredNote}>⚠️ <strong>這筆沒有套用到</strong>：{ignored.special}</p>
+            )}
           </div>
         </div>
       </div>
@@ -302,6 +311,17 @@ function TaxResultCard({ result }: { result: TaxResult }) {
         </div>
 
         <div className={styles.resultBody}>
+          {/* 勾了卻沒套用的，結果卡上面也要講一次 —— 有人是直接看結果不看表單的 */}
+          {(result.ignored.selfUse || result.ignored.special) && (
+            <div className={styles.resultWarn}>
+              {result.ignored.selfUse && (
+                <p>⚠️ 你勾的「自住優惠」<strong>沒有套用到這個結果</strong> —— {result.ignored.selfUse}</p>
+              )}
+              {result.ignored.special && (
+                <p>⚠️ 你勾的「非自願因素等」<strong>沒有套用到這個結果</strong> —— {result.ignored.special}</p>
+              )}
+            </div>
+          )}
           <p className={styles.stepsTitle}>怎麼算出來的</p>
           <table className={styles.steps}>
             <tbody>

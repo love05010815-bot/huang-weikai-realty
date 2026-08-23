@@ -376,6 +376,40 @@
   top: 0;
 }
 
+/* 勾了卻沒套用時的說明。刻意用警告黃、貼在勾選框正下方 ——
+   使用者按了一個勾、畫面卻沒反應，會以為功能壞掉。
+   這裡用的是專案既有的語意色（警告黃），不是品牌色。 */
+.ignoredNote {
+  margin: 8px 0 0;
+  padding: 10px 13px;
+  background: #fff8e8;
+  border: 1px solid #e7c47d;
+  border-radius: 9px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+/* 結果卡裡的同一件事。有人只看結果不看表單，那裡也要擋一下 */
+.resultWarn {
+  margin: 0 0 18px;
+  padding: 13px 16px;
+  background: #fff8e8;
+  border: 1px solid #e7c47d;
+  border-radius: 10px;
+}
+
+.resultWarn p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.resultWarn p + p {
+  margin-top: 8px;
+}
+
 /* 跟結果黏在一起的免責。客戶截圖常常只截結果那一塊，
    免責只放在頁面最下面等於沒有。 */
 .inlineNote {

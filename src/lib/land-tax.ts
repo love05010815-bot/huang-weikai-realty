@@ -87,6 +87,12 @@ export type TaxResult = {
   notes: string[];
   /** 申報期限說明 */
   deadline: string;
+  /**
+   * 使用者勾了、但實際沒有套用的選項，以及為什麼。
+   * 畫面要顯示在「那個勾選框旁邊」—— 按了勾卻沒反應，使用者會以為壞掉。
+   * null 代表沒勾，或勾了而且有套用。
+   */
+  ignored: { selfUse: string | null; special: string | null };
 };
 
 function toDate(s: string): Date | null {
@@ -208,6 +214,7 @@ export function calcLandTax(input: TaxInput): TaxResult {
       rateLabel: "不適用房地合一稅",
       tax: 0,
       netAfterTax: 0,
+      ignored: { selfUse: null, special: null },
       steps: [],
       notes: [
         "這間房子是民國 105 年（2016 年）1 月 1 日之前取得的，適用「舊制」：房屋部分按財產交易所得併入當年度綜合所得稅，土地部分只課土地增值稅。",
@@ -278,6 +285,8 @@ export function calcLandTax(input: TaxInput): TaxResult {
       rateLabel: "賠售，無應納稅額",
       tax: 0,
       netAfterTax: input.price - input.cost - expenseUsed,
+      // 賠售本來就不課稅，勾了什麼都不影響結果，不用在這裡囉嗦
+      ignored: { selfUse: null, special: null },
       steps,
       notes,
       deadline,
@@ -285,10 +294,13 @@ export function calcLandTax(input: TaxInput): TaxResult {
   }
 
   const selfUseEligible = input.selfUse && sold >= addYears(acquired, SELF_USE_YEARS);
+  const ignored: { selfUse: string | null; special: string | null } = { selfUse: null, special: null };
   if (input.selfUse && !selfUseEligible) {
-    notes.push(
-      "自住優惠要求「持有並設籍居住連續滿 6 年」，這筆的持有期間還不到 6 年，所以沒有套用，改用一般級距稅率。"
-    );
+    // 只寫原因，開場白由畫面各自接（表單旁邊與結果卡的講法不一樣）
+    ignored.selfUse =
+      "自住優惠要「持有並設籍居住連續滿 6 年」，這筆只持有 " +
+      holding.label +
+      "，所以改用一般級距稅率。";
   }
 
   let rate: number;
@@ -311,9 +323,10 @@ export function calcLandTax(input: TaxInput): TaxResult {
         ? Math.round(rate * 100) + "%（境內居住者，" + BUCKET_LABEL[bucket] + "）"
         : Math.round(rate * 100) + "%（非境內居住者，持有" + (bucket === "le2" ? " 2 年以內" : "超過 2 年") + "）";
     if (input.special) {
-      notes.push(
-        "非自願因素等情形的 20% 稅率，是給「持有 5 年以下」用的。這筆已經持有超過 5 年，一般級距稅率本來就等於或低於 20%，所以直接用級距稅率。"
-      );
+      ignored.special =
+        "20% 是給「持有 5 年以下」用的，這筆已經持有 " +
+        holding.label +
+        "。一般級距稅率本來就等於或低於 20%，所以直接用級距，不會比較貴。";
     }
   }
 
@@ -337,6 +350,7 @@ export function calcLandTax(input: TaxInput): TaxResult {
     rateLabel,
     tax,
     netAfterTax: input.price - input.cost - expenseUsed - tax,
+    ignored,
     steps,
     notes,
     deadline,
