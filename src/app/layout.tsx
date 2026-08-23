@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "黃瑋凱｜台中海線房仲・線上預約",
-  description: "台中海線房仲黃瑋凱。資產配置、稅務諮詢、簡易裝潢，線上預約諮詢。",
+  description: "台中海線房仲黃瑋凱。買賣租賃、資金配置規劃、稅費諮詢、市場分析、裝潢資源媒合，線上預約諮詢。",
   /**
    * Google Search Console 的「HTML 標記」驗證碼。
    *

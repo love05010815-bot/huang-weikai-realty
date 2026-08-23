@@ -14,8 +14,10 @@ import lst from "./listings/listings.module.css";
 import FeaturedTitle from "./listings/FeaturedTitle";
 import PhotoCarousel from "./listings/PhotoCarousel";
 
-const TITLE = `台中海線房仲${OWNER.name}｜資產配置・稅務諮詢・簡易裝潢｜沙鹿梧棲清水龍井`;
-const DESCRIPTION = `${OWNER.name}，${OWNER.company}資深不動產經紀人，112、113、114年連續三年榮獲年度千萬經紀人。深耕台中海線沙鹿、梧棲、清水、龍井，提供資產配置、稅務諮詢、簡易裝潢一站式服務，歡迎線上預約或加LINE諮詢。`;
+// 標題只放三項最有搜尋量的 —— <title> 太長會被 Google 截掉，五項塞不下。
+// 完整五項寫在下面的 description 裡。
+const TITLE = `台中海線房仲${OWNER.name}｜買賣租賃・稅費諮詢・市場分析｜沙鹿梧棲清水龍井`;
+const DESCRIPTION = `${OWNER.name}，${OWNER.company}資深不動產經紀人，112、113、114年連續三年榮獲年度千萬經紀人。深耕台中海線沙鹿、梧棲、清水、龍井，提供買賣租賃、資金配置規劃、稅費諮詢、市場分析、裝潢資源媒合一站式服務，歡迎線上預約或加LINE諮詢。`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -30,8 +32,8 @@ export const metadata: Metadata = {
     "龍井房仲",
     OWNER.name,
     OWNER.company,
-    "資產配置專家",
-    "房產稅務諮詢",
+    "海線房價行情",
+    "房產稅費諮詢",
     "千萬經紀人",
   ],
   authors: [{ name: OWNER.name }],
@@ -40,16 +42,16 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "zh_TW",
-    title: `台中海線房仲${OWNER.name}｜資產配置・稅務諮詢・簡易裝潢`,
+    title: `台中海線房仲${OWNER.name}｜買賣租賃・稅費諮詢・市場分析`,
     description:
-      "112、113、114年連續三年年度千萬經紀人。深耕台中海線沙鹿、梧棲、清水、龍井，提供資產配置、稅務諮詢、簡易裝潢一站式服務。",
+      "112、113、114年連續三年年度千萬經紀人。深耕台中海線沙鹿、梧棲、清水、龍井，提供買賣租賃、資金配置規劃、稅費諮詢、市場分析、裝潢資源媒合一站式服務。",
     url: "/",
     siteName: `${OWNER.name}｜台中海線房仲`,
     images: [{ url: "/profile.jpg", width: 1029, height: 1543, alt: `${OWNER.name}形象照` }],
   },
   twitter: {
     card: "summary_large_image",
-    title: `台中海線房仲${OWNER.name}｜資產配置・稅務諮詢・簡易裝潢`,
+    title: `台中海線房仲${OWNER.name}｜買賣租賃・稅費諮詢・市場分析`,
     description: "112、113、114年連續三年年度千萬經紀人。深耕台中海線沙鹿、梧棲、清水、龍井。",
     images: ["/profile.jpg"],
   },
@@ -57,22 +59,44 @@ export const metadata: Metadata = {
 
 
 
+/**
+ * 服務項目。2026-08-23 系統擁有者拍板：從三項擴成五項。
+ *
+ * ⚠️ 文案避開「保證」「一定」「增值」這類字眼 —— 不動產廣告不能給報酬承諾。
+ *    原本「資產配置」寫的是「兼顧長期資產增值」，改名成「資金配置規劃」時
+ *    一併改成談「買得起的價格帶」，不談增值。
+ *
+ * ⚠️ 卡片數量改變時記得看一眼版面：.serviceGrid 是「最後一排置中」的排法，
+ *    3 或 6 張會剛好填滿，4、5 張最後一排會置中，不會靠左留一個洞。
+ */
 const SERVICES = [
   {
-    icon: "💼",
-    title: "資產配置",
-    desc: "依照您的財務狀況與人生階段，規劃房產配置策略，兼顧自住需求與長期資產增值，讓每一筆資金都用在刀口上。",
-    tag: "Asset Planning",
+    icon: "🏘️",
+    title: "買賣／租賃",
+    desc: "買房、賣房、出租、找租屋都能處理。從帶看、議價、簽約到過戶點交，每一步先講清楚再往下走，不會讓您在狀況外。",
+    tag: "Sales & Leasing",
+  },
+  {
+    icon: "💰",
+    title: "資金配置規劃",
+    desc: "先把自備款、貸款成數與每月負擔一起算出來，抓出真正買得起的價格帶。買得起也住得安穩，比勉強撐著重要。",
+    tag: "Financial Planning",
   },
   {
     icon: "🧾",
-    title: "稅務諮詢",
-    desc: "房地合一稅、重購退稅、持有稅務等相關試算與諮詢，交易前先了解成本，避免多繳一毛不該繳的稅。",
+    title: "稅費諮詢",
+    desc: "房地合一稅、契稅、印花稅、代書費，交易前先把成本算清楚，避免多繳一毛不該繳的稅。站上就能自己先試算一輪。",
     tag: "Tax Consulting",
   },
   {
+    icon: "📊",
+    title: "市場分析",
+    desc: "用實價登錄與海線在地的成交行情，告訴您這個開價合不合理、這一區近期怎麼走，讓出價與訂價都有依據，不是憑感覺。",
+    tag: "Market Analysis",
+  },
+  {
     icon: "🛠️",
-    title: "簡易裝潢",
+    title: "裝潢資源媒合",
     desc: "提供簡易裝潢建議與資源媒合，讓房子在交屋前後都能以最合適的預算呈現最好的樣貌，賣相與住感一次到位。",
     tag: "Renovation",
   },

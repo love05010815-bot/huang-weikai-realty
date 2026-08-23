@@ -701,13 +701,22 @@
 }
 
 /* ---------- 服務項目 ---------- */
+/* 一排三張。刻意用 flex 不用 grid —— 服務項目不見得剛好是 3 的倍數，
+   grid 在最後一排會靠左留一個洞，看起來像做壞的；
+   flex 配 justify-content:center 則會把不滿的那一排置中。 */
 .serviceGrid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 22px;
 }
 
 .serviceCard {
+  /* 這個專案沒有全域 box-sizing reset，有邊框又設寬度就得自己寫 */
+  box-sizing: border-box;
+  /* 扣掉兩道 22px 間距後的三分之一，剛好一排三張 */
+  flex: 1 1 calc((100% - 44px) / 3);
+  max-width: calc((100% - 44px) / 3);
   background: #fff;
   border: 1px solid var(--line-warm);
   border-radius: var(--radius);
@@ -756,8 +765,10 @@
 }
 
 @media (max-width: 860px) {
-  .serviceGrid {
-    grid-template-columns: 1fr;
+  /* 改成 flex 之後，一欄要由卡片自己撐滿，不再是 grid 的欄數控制 */
+  .serviceCard {
+    flex-basis: 100%;
+    max-width: 100%;
   }
 }
 
