@@ -216,7 +216,15 @@ export default async function HomePage() {
                 {/* 太平洋房屋 logo。owner.ts 的 companyLogo 沒填就整個不出現，不會破圖 */}
                 {OWNER.companyLogo && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img className={styles.heroRoleLogo} src={OWNER.companyLogo} alt={OWNER.company} />
+                  <img
+                    className={styles.heroRoleLogo}
+                    src={OWNER.companyLogo}
+                    alt={OWNER.company}
+                    /* 寫死原圖尺寸讓瀏覽器先把位置留好，圖載進來時整行不會跳。
+                       實際顯示尺寸由 CSS 的 height:1.35em 決定，這兩個值只是比例來源。 */
+                    width={287}
+                    height={286}
+                  />
                 )}
                 {OWNER.title}
               </p>

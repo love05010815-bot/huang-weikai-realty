@@ -29,7 +29,7 @@ export const OWNER = {
    *    不要拿網路上搜到的圖或自己重畫 —— 比例與色值跑掉就是把加盟品牌用錯。
    *    建議去背 PNG 或 SVG，正方形附近的比例最好排。
    */
-  companyLogo: "",
+  companyLogo: "/pacific-mark.png",
   /** 手機（顯示用，含分隔線） */
   phone: "0909-787-865",
   /** 手機（純數字，撥號連結與 LINE 加好友用） */
