@@ -111,7 +111,15 @@ export default function ProjectExplorer({
         p.alias?.toLowerCase().includes(q) ||
         p.builder.toLowerCase().includes(q)
       );
-    }).sort((a, b) => (b.units ?? 0) - (a.units ?? 0));
+    }).sort((a, b) => {
+      // 依建商名稱排序（系統擁有者拍板，原本是戶數多到少）。
+      // 中文要用 localeCompare 指定 zh-Hant，不能用原生字串比較 ——
+      // 原生是照 Unicode 編碼排，跟人類直覺的順序對不上，同一家建商也不會排在一起。
+      const byBuilder = a.builder.localeCompare(b.builder, "zh-Hant");
+      if (byBuilder !== 0) return byBuilder;
+      // 同一家建商蓋了不只一案時（例：遠雄建設 9 案），案子之間維持戶數多到少
+      return (b.units ?? 0) - (a.units ?? 0);
+    });
   }, [status, area, query]);
 
   const selected = useMemo(
