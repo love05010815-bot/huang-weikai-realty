@@ -143,7 +143,7 @@ export const SOURCES: Record<string, { label: string; url: string }> = {
  */
 export const PROJECTS: Project[] = [
   // ───── 安美建設 ─────
-  { id: "anmei-xue", name: "安美學", builder: "安美建設", area: "梧棲", status: "completed", completion: "2023", sources: ["owner"] },
+  { id: "anmei-xue", name: "安美學", builder: "安美建設", area: "梧棲", status: "completed", completion: "2023", units: 168, sources: ["owner"] },
 
   // ───── 佳泰建設 ─────
   {
@@ -152,12 +152,12 @@ export const PROJECTS: Project[] = [
   },
 
   // ───── 佳福建設 ─────
-  { id: "jiafu-bosishi", name: "佳福伯斯市", builder: "佳福建設", area: "梧棲", status: "completed", completion: "2024", sources: ["owner"] },
+  { id: "jiafu-bosishi", name: "佳福伯斯市", builder: "佳福建設", area: "梧棲", status: "completed", completion: "2024", units: 301, sources: ["owner"] },
 
   // ───── 佳鋐建設（寶佳機構） ─────
-  { id: "jiahong-lewan", name: "佳鋐樂灣", builder: "佳鋐建設", area: "梧棲", status: "completed", completion: "2018", sources: ["owner"] },
-  { id: "jiahong-qingwan", name: "佳鋐晴灣", builder: "佳鋐建設", area: "清水", status: "completed", completion: "2020", sources: ["owner"] },
-  { id: "jiahong-leyi", name: "佳鋐樂邑", builder: "佳鋐建設", area: "梧棲", status: "completed", completion: "2023", sources: ["owner"] },
+  { id: "jiahong-lewan", name: "佳鋐樂灣", builder: "佳鋐建設", area: "梧棲", status: "completed", completion: "2018", units: 144, sources: ["owner"] },
+  { id: "jiahong-qingwan", name: "佳鋐晴灣", builder: "佳鋐建設", area: "清水", status: "completed", completion: "2020", units: 194, sources: ["owner"] },
+  { id: "jiahong-leyi", name: "佳鋐樂邑", builder: "佳鋐建設", area: "梧棲", status: "completed", completion: "2023", units: 115, sources: ["owner"] },
   {
     id: "jiahong-xinyi", name: "佳鋐新邑", builder: "佳鋐建設", area: "梧棲",
     status: "completed", completion: "2024", units: 243,
@@ -168,10 +168,10 @@ export const PROJECTS: Project[] = [
   },
 
   // ───── 佳瓚建設 ─────
-  { id: "jiazan-dahe", name: "佳瓚大賀", builder: "佳瓚建設", area: "梧棲", status: "completed", completion: "2024", sources: ["owner"] },
+  { id: "jiazan-dahe", name: "佳瓚大賀", builder: "佳瓚建設", area: "梧棲", status: "completed", completion: "2024", units: 234, sources: ["owner"] },
 
   // ───── 協和建設 ─────
-  { id: "xiehe-fengjing", name: "協和丰景", builder: "協和建設", area: "清水", status: "completed", completion: "2024", sources: ["owner"] },
+  { id: "xiehe-fengjing", name: "協和丰景", builder: "協和建設", area: "清水", status: "completed", completion: "2024", units: 230, sources: ["owner"] },
   {
     id: "xiehe-fengfu", name: "協和豐馥", builder: "協和建設", area: "清水",
     status: "completed", completion: "2024", units: 246, sources: ["owner", "housefeel"],
@@ -202,7 +202,7 @@ export const PROJECTS: Project[] = [
   },
   {
     id: "changhong-tianlai", name: "長虹天籟", builder: "長虹建設", area: "市鎮中心",
-    status: "presale", completion: "興建中", sources: ["owner", "mrjoewang"],
+    status: "presale", completion: "興建中", units: 373, sources: ["owner", "mrjoewang"],
   },
 
   // ───── 益翔建設 ─────
@@ -239,7 +239,7 @@ export const PROJECTS: Project[] = [
   },
 
   // ───── 聚佳建設 ─────
-  { id: "jujia-xinshidai", name: "聚佳欣世代", builder: "聚佳建設", area: "梧棲", status: "completed", completion: "2023", sources: ["owner"] },
+  { id: "jujia-xinshidai", name: "聚佳欣世代", builder: "聚佳建設", area: "梧棲", status: "completed", completion: "2023", units: 173, sources: ["owner"] },
 
   // ───── 聖璽建設 ─────
   {
@@ -265,8 +265,8 @@ export const PROJECTS: Project[] = [
     id: "lianyue-ju", name: "聯悅聚", aliases: ["聯悦聚"], builder: "聯悅建設", area: "清水",
     status: "completed", completion: "2021", units: 389, sources: ["owner", "housefeel"],
   },
-  { id: "lianyue-fu", name: "聯悅馥", aliases: ["聯悦馥"], builder: "聯悅建設", area: "梧棲", status: "completed", completion: "2024", sources: ["owner"] },
-  { id: "lianyue-zhen", name: "聯悅臻", aliases: ["聯悦臻"], builder: "聯悅建設", area: "梧棲", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "lianyue-fu", name: "聯悅馥", aliases: ["聯悦馥"], builder: "聯悅建設", area: "梧棲", status: "completed", completion: "2024", units: 494, sources: ["owner"] },
+  { id: "lianyue-zhen", name: "聯悅臻", aliases: ["聯悦臻"], builder: "聯悅建設", area: "梧棲", status: "newly", completion: "約 2025", units: 883, sources: ["owner"] },
   {
     id: "lianyue-xin", name: "聯悅馨", aliases: ["聯悦馨"], builder: "聯悅建設", area: "梧棲",
     status: "presale", completion: "約 2026～27", units: 765,
@@ -278,7 +278,7 @@ export const PROJECTS: Project[] = [
   // ───── 櫻花建設 ─────
   {
     id: "sakura-shizhenzhiying", name: "櫻花市鎮之櫻", alias: "市鎮之櫻", builder: "櫻花建設",
-    area: "清水", status: "newly", statusNote: "成屋／新成屋", completion: "約 2025",
+    area: "清水", status: "newly", statusNote: "成屋／新成屋", completion: "約 2025", units: 461,
     street: "港新三路", streets: "港新三路、港埠路三段",
     layout: "2～4 房，約 25～49 坪",
     sources: ["owner", "leju", "h591"],
@@ -310,9 +310,8 @@ export const PROJECTS: Project[] = [
   },
   {
     id: "farglory-star6", name: "遠雄之星6", builder: "遠雄建設", area: "清水",
-    status: "completed", completion: "2020",
+    status: "completed", completion: "2020", units: 642,
     street: "港都路", streets: "港都路 151 號",
-    note: "⚠️ 總戶數尚未查到，待補。",
     sources: ["owner", "leju"],
   },
   {
