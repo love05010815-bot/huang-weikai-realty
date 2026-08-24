@@ -359,22 +359,55 @@ export const PROJECTS: Project[] = [
 export type Coord = { lat: number; lng: number; precision: "exact" | "street" };
 
 export const COORDS: Record<string, Coord> = {
-  // 有巷弄，較準
-  "jujia-xinshidai": { lat: 24.26227, lng: 120.5332, precision: "exact" }, // 八德路82巷
-  "anmei-xue": { lat: 24.26233, lng: 120.53532, precision: "exact" }, // 大仁路二段311巷
-  "jiahong-xinyi": { lat: 24.26235, lng: 120.53583, precision: "exact" }, // 大仁路二段291巷
+  /* ── 系統擁有者本人用 /map?fix=1 在地圖上點的（2026-08-23）──
+     這是最可信的一批。他是在地房仲，每一棟都親眼看過。
+     覆蓋掉我先前用路網推的位置時，落差最大到 270 公尺（遠雄之星2），
+     印證了「只查到路名」那種座標真的會差一兩個街廓。 */
+  "farglory-star2": { lat: 24.26866, lng: 120.53918, precision: "exact" },
+  "lianyue-ju": { lat: 24.26959, lng: 120.53942, precision: "exact" },
+  "xiehe-fengjing": { lat: 24.26852, lng: 120.54107, precision: "exact" },
+  "xiehe-fengfu": { lat: 24.26867, lng: 120.54062, precision: "exact" },
+  "lianyue-fu": { lat: 24.26704, lng: 120.5411, precision: "exact" },
+  "shengmei-xinhengbin": { lat: 24.26725, lng: 120.54305, precision: "exact" },
+  "hezhu-jingtianxia": { lat: 24.26861, lng: 120.54179, precision: "exact" },
+  "sakura-shizhenzhiying": { lat: 24.26604, lng: 120.5425, precision: "exact" },
+  "farglory-star7": { lat: 24.26633, lng: 120.54178, precision: "exact" },
+  "jiatai-zhuoyue": { lat: 24.26265, lng: 120.54106, precision: "exact" },
+  "lianhong-boyue": { lat: 24.26209, lng: 120.54037, precision: "exact" },
+  "shengxing-fengjing": { lat: 24.2626, lng: 120.53901, precision: "exact" },
+  "jiafu-bosishi": { lat: 24.26045, lng: 120.53844, precision: "exact" },
+  "jujia-xinshidai": { lat: 24.2622, lng: 120.5327, precision: "exact" },
+  "hezhu-haohaowo": { lat: 24.26239, lng: 120.53193, precision: "exact" },
+  "jiahong-leyi": { lat: 24.26141, lng: 120.53354, precision: "exact" },
+  "jiahong-lewan": { lat: 24.26144, lng: 120.53477, precision: "exact" },
+  "jiahong-xinyi": { lat: 24.26192, lng: 120.53543, precision: "exact" },
+  "anmei-xue": { lat: 24.26222, lng: 120.53502, precision: "exact" },
 
-  // 只知道路段，取該路中點
-  "farglory-xingfucheng": { lat: 24.26524, lng: 120.53384, precision: "street" }, // 八德一路
-  "lianyue-xin": { lat: 24.2658, lng: 120.53388, precision: "street" }, // 八德路一段
-  "lianhong-boyue": { lat: 24.26097, lng: 120.53904, precision: "street" }, // 四維東路
-  "farglory-star2": { lat: 24.268, lng: 120.54182, precision: "street" }, // 港新五路
-  "farglory-star3": { lat: 24.26658, lng: 120.54233, precision: "street" }, // 港新三路
-  "sakura-shizhenzhiying": { lat: 24.26658, lng: 120.54233, precision: "street" }, // 港新三路
-  "farglory-star6": { lat: 24.26872, lng: 120.53772, precision: "street" }, // 港都路
-  "farglory-star8": { lat: 24.2668, lng: 120.5368, precision: "street" }, // 大勇路
-  "changhong-tianqing": { lat: 24.26644, lng: 120.53214, precision: "street" }, // 大勇南路口
-  "jiazan-dahe": { lat: 24.26099, lng: 120.53535, precision: "street" }, // 四維中路
+  // 第二批（同樣是本人親手標的）
+  "lianyue-xin": { lat: 24.26474, lng: 120.53231, precision: "exact" },
+  "lianyue-zhen": { lat: 24.26573, lng: 120.53065, precision: "exact" },
+  "farglory-xingfucheng": { lat: 24.26539, lng: 120.53495, precision: "exact" },
+  "farglory-star1": { lat: 24.26896, lng: 120.53832, precision: "exact" },
+  "farglory-star5": { lat: 24.26947, lng: 120.53694, precision: "exact" },
+  "farglory-star6": { lat: 24.2685, lng: 120.53685, precision: "exact" },
+  "farglory-star8": { lat: 24.2676, lng: 120.53645, precision: "exact" },
+  "farglory-xingcheng": { lat: 24.26665, lng: 120.53866, precision: "exact" },
+  "chunhong-mingri": { lat: 24.27019, lng: 120.53734, precision: "exact" },
+  "jiazan-dahe": { lat: 24.26073, lng: 120.53529, precision: "exact" },
+  "yixiang-youleshi": { lat: 24.2702, lng: 120.53329, precision: "exact" },
+  "yixiang-youyishi": { lat: 24.2699, lng: 120.53225, precision: "exact" },
+  "zhonggang-yunding3": { lat: 24.26878, lng: 120.53261, precision: "exact" },
+  "changhong-tianlai": { lat: 24.26843, lng: 120.53348, precision: "exact" },
+  "changhong-tianyun": { lat: 24.26907, lng: 120.53449, precision: "exact" },
+  "changhong-tianqing": { lat: 24.26539, lng: 120.53136, precision: "exact" },
+  "xiesheng-gangxin": { lat: 24.26319, lng: 120.53227, precision: "exact" },
+  "jiahong-qingwan": { lat: 24.26902, lng: 120.53392, precision: "exact" },
+  "zhonggang-yunding1": { lat: 24.26408, lng: 120.53372, precision: "exact" },
+  "farglory-star3": { lat: 24.26696, lng: 120.54219, precision: "exact" },
+
+  /* ✅ 2026-08-23：39 案全部標完，而且全部是本人親手點的。
+     我用 OSM 路網推的那批已經全數被覆蓋掉 —— 實測落差 180～270 公尺，
+     留著只會誤導客戶。以後新增建案，座標一律走 /map?fix=1 由本人標。 */
 };
 
 /** 重劃區大致中心，地圖初始視角用 */

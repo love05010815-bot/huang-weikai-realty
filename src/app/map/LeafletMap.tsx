@@ -46,16 +46,18 @@ const TONE: Record<ProjectStatus, { bg: string; ink: string }> = {
 
 /** 大樓 icon。窗戶格子讓它一眼看得出是大樓，不是普通圖釘 */
 function buildingSvg(bg: string, ink: string, mine: boolean) {
+  // 圖釘刻意做小（28×34）。這一區 38 棟擠在 115 公頃裡，圖釘一大就整片疊在一起，
+  // 客戶點不到想點的那個 —— 實測 34×42 時有 22 組彼此距離不到 25px。
   return `
-<svg width="34" height="42" viewBox="0 0 34 42" xmlns="http://www.w3.org/2000/svg">
-  <path d="M17 42c0 0-13-14.2-13-24A13 13 0 0 1 30 18c0 9.8-13 24-13 24z" fill="${bg}" stroke="#fff" stroke-width="2"/>
-  <rect x="10" y="9" width="14" height="16" rx="1.5" fill="${ink}" opacity="0.95"/>
+<svg width="28" height="34" viewBox="0 0 28 34" xmlns="http://www.w3.org/2000/svg">
+  <path d="M14 34c0 0-10.5-11.5-10.5-19.5A10.5 10.5 0 0 1 24.5 14.5C24.5 22.5 14 34 14 34z" fill="${bg}" stroke="#fff" stroke-width="1.8"/>
+  <rect x="8" y="7" width="12" height="13" rx="1.2" fill="${ink}" opacity="0.95"/>
   <g fill="${bg}">
-    <rect x="12" y="11.5" width="3" height="3"/><rect x="16.5" y="11.5" width="3" height="3"/>
-    <rect x="12" y="16" width="3" height="3"/><rect x="16.5" y="16" width="3" height="3"/>
-    <rect x="12" y="20.5" width="3" height="3"/><rect x="16.5" y="20.5" width="3" height="3"/>
+    <rect x="9.6" y="9" width="2.6" height="2.6"/><rect x="13.6" y="9" width="2.6" height="2.6"/>
+    <rect x="9.6" y="12.8" width="2.6" height="2.6"/><rect x="13.6" y="12.8" width="2.6" height="2.6"/>
+    <rect x="9.6" y="16.6" width="2.6" height="2.6"/><rect x="13.6" y="16.6" width="2.6" height="2.6"/>
   </g>
-  ${mine ? '<circle cx="27" cy="8" r="6.5" fill="#01354D" stroke="#fff" stroke-width="2"/>' : ""}
+  ${mine ? '<circle cx="22" cy="6.5" r="5.5" fill="#01354D" stroke="#fff" stroke-width="1.8"/>' : ""}
 </svg>`.trim();
 }
 
@@ -121,18 +123,26 @@ export default function LeafletMap({ listings = {} }: { listings?: Record<string
           return c ? { p, lat: c.lat, lng: c.lng } : null;
         }).filter(Boolean) as Array<{ p: Project; lat: number; lng: number }>;
 
+        const points: Array<[number, number]> = [];
         for (const { p, lat, lng } of spread(placed)) {
           const tone = TONE[p.status];
           const mine = (listings[p.id] ?? 0) > 0;
           const icon = L.divIcon({
             className: styles.lmPin,
             html: buildingSvg(tone.bg, tone.ink, mine),
-            iconSize: [34, 42],
-            iconAnchor: [17, 42],
+            iconSize: [28, 34],
+            iconAnchor: [14, 34],
           });
           L.marker([lat, lng], { icon, title: p.name })
             .addTo(map)
             .on("click", () => setSelected(p));
+          points.push([lat, lng]);
+        }
+
+        // 自動框住所有圖釘，而不是寫死縮放等級 —— 之後補座標、範圍變了也會自己調整。
+        // padding 留邊，免得最外圈的圖釘貼在畫面邊緣被切掉。
+        if (points.length) {
+          map.fitBounds(L.latLngBounds(points), { padding: [50, 50], maxZoom: 17 });
         }
 
         if (fixMode) {
