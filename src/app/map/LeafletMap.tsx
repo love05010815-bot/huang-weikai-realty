@@ -165,6 +165,7 @@ export default function LeafletMap({ listings = {} }: { listings?: Record<string
 
   const total = PROJECTS.length;
   const located = PROJECTS.filter((p) => COORDS[p.id]).length;
+  const approxCount = PROJECTS.filter((p) => COORDS[p.id]?.precision === "street").length;
   const c = selected ? COORDS[selected.id] : null;
 
   return (
@@ -233,11 +234,23 @@ export default function LeafletMap({ listings = {} }: { listings?: Record<string
           </div>
         )}
 
+        {/* 這段會跟著資料變。全部標定後還寫「可能差一兩個街廓」是低估自己的準確度，
+            但只要還有一筆是路網推的，就必須把那個風險講出來。 */}
         <p className={styles.pmDisclaimer}>
-          <b>位置精度說明：</b>
-          圖釘位置來自 OpenStreetMap 的路網資料。OSM 在台灣沒有門牌級資料，
-          <b>只查到路名的建案，圖釘取該路中點，可能差一兩個街廓</b>，點開會標「約略位置」。
-          要確認確切位置請直接問我。
+          {approxCount === 0 ? (
+            <>
+              <b>圖釘位置由瑋凱本人逐一標定。</b>
+              {`本區 ${PROJECTS.length} 個建案全部親自確認過位置，不是用地址自動轉換的。`}
+              仍有疑問或想確認基地範圍，直接問我最快。
+            </>
+          ) : (
+            <>
+              <b>位置精度說明：</b>
+              {`${PROJECTS.length - approxCount} 個建案由瑋凱本人逐一標定；另有 ${approxCount} 個`}
+              是依 OpenStreetMap 路網推算的（OSM 在台灣沒有門牌級資料），
+              <b>圖釘取該路中點，可能差一兩個街廓</b>，點開會標「約略位置」。
+            </>
+          )}
         </p>
       </aside>
     </div>
