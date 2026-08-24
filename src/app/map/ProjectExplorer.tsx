@@ -65,6 +65,53 @@ export type ProjectListing = {
 
 const fmt = (n: number) => n.toLocaleString("zh-TW");
 
+/** 中文數字對照。只用來認建案名稱結尾的序號，不是通用轉換器。 */
+const CJK_NUM: Record<string, number> = {
+  〇: 0, 零: 0, 一: 1, 二: 2, 兩: 2, 三: 3, 四: 4,
+  五: 5, 六: 6, 七: 7, 八: 8, 九: 9,
+};
+
+/** 中文數字轉阿拉伯數字，支援 1–99（十／十二／二十／二十三）。看不懂回 null。 */
+function cjkNumber(text: string): number | null {
+  const at = text.indexOf("十");
+  if (at >= 0) {
+    const tens = at === 0 ? 1 : CJK_NUM[text.slice(0, at)];
+    const ones = at === text.length - 1 ? 0 : CJK_NUM[text.slice(at + 1)];
+    if (tens === undefined || ones === undefined) return null;
+    return tens * 10 + ones;
+  }
+  let n = 0;
+  for (const ch of text) {
+    const d = CJK_NUM[ch];
+    if (d === undefined) return null;
+    n = n * 10 + d;
+  }
+  return n;
+}
+
+/** 名稱結尾的序號：半形 1、全形１、中文一 都認。 */
+const SEQ_TAIL = /^(.*?)([0-9０-９]+|[〇零一二三四五六七八九十]+)$/;
+
+/**
+ * 把建案名稱拆成「系列名 + 序號」。沒有序號的話 seq = -1。
+ *
+ * 為什麼要拆：同系列的案子要照 1、2、3 排（中港雲頂1→中港雲頂3、遠雄之星1…8），
+ * 直接比字串會排成 1、10、2。
+ *
+ * ⚠️ **只認名稱結尾的數字**，中間的不算 —— 否則「三井」「五權」這種名字
+ *    會被誤判成序號，整個系列的分組就跑掉了。
+ */
+function nameKey(name: string): { base: string; seq: number } {
+  const m = SEQ_TAIL.exec(name);
+  if (!m) return { base: name, seq: -1 };
+  const ascii = m[2].replace(/[０-９]/g, (c) =>
+    String.fromCharCode(c.charCodeAt(0) - 0xfee0)
+  );
+  const seq = /^[0-9]+$/.test(ascii) ? Number(ascii) : cjkNumber(m[2]);
+  if (seq === null) return { base: name, seq: -1 };
+  return { base: m[1], seq };
+}
+
 const TONE_SWATCH: Record<ProjectStatus, string> = {
   presale: "#D9466F",
   newly: "#1E6FA8",
@@ -102,7 +149,7 @@ export default function ProjectExplorer({
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return PROJECTS.filter((p) => {
+    const list = PROJECTS.filter((p) => {
       if (status !== "all" && p.status !== status) return false;
       if (area !== "all" && p.area !== area) return false;
       if (!q) return true;
@@ -111,14 +158,41 @@ export default function ProjectExplorer({
         p.alias?.toLowerCase().includes(q) ||
         p.builder.toLowerCase().includes(q)
       );
-    }).sort((a, b) => {
-      // 依建商名稱排序（系統擁有者拍板，原本是戶數多到少）。
+    });
+
+    // 同系列（同建商＋同前綴，例：遠雄之星1…8）先算出整個系列的最大戶數。
+    //
+    // ⚠️ 這個前置步驟不能省。比較函式如果「同系列比序號、不同系列比戶數」，
+    //    會排出 A<B<C<A 這種繞回來的結果（之星1<之星8<星呈<之星1），
+    //    Array.sort 拿到不一致的比較函式，出來的順序是未定義的。
+    //    所以整個系列要當成一個單位去跟別人比戶數，系列內部才比序號。
+    const seriesUnits = new Map<string, number>();
+    for (const p of list) {
+      const k = p.builder + "//" + nameKey(p.name).base;
+      seriesUnits.set(k, Math.max(seriesUnits.get(k) ?? 0, p.units ?? 0));
+    }
+
+    return list.sort((a, b) => {
+      // ① 依建商名稱排序（系統擁有者拍板，原本是戶數多到少）。
       // 中文要用 localeCompare 指定 zh-Hant，不能用原生字串比較 ——
       // 原生是照 Unicode 編碼排，跟人類直覺的順序對不上，同一家建商也不會排在一起。
       const byBuilder = a.builder.localeCompare(b.builder, "zh-Hant");
       if (byBuilder !== 0) return byBuilder;
-      // 同一家建商蓋了不只一案時（例：遠雄建設 9 案），案子之間維持戶數多到少
-      return (b.units ?? 0) - (a.units ?? 0);
+
+      const ka = nameKey(a.name);
+      const kb = nameKey(b.name);
+
+      // ② 同一系列 → 照序號小到大（2026-08-24 系統擁有者拍板）。
+      //    中港雲頂1 排在 中港雲頂3 前面，遠雄之星 1→8 依序排。
+      if (ka.base === kb.base) return ka.seq - kb.seq;
+
+      // ③ 同建商但不同系列 → 維持戶數多到少
+      const ua = seriesUnits.get(a.builder + "//" + ka.base) ?? 0;
+      const ub = seriesUnits.get(b.builder + "//" + kb.base) ?? 0;
+      if (ua !== ub) return ub - ua;
+
+      // ④ 戶數也一樣才比名字，純粹是為了讓順序固定、不會每次重整就跳動
+      return ka.base.localeCompare(kb.base, "zh-Hant");
     });
   }, [status, area, query]);
 
