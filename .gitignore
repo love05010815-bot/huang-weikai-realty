@@ -26,3 +26,6 @@ _q*.js
 _q*.ts
 _q*.mjs
 _linebot_*.mjs
+
+# 內含 Deploy Hook 網址，repo 是公開的，不要進版控
+部署說明_給助理.md

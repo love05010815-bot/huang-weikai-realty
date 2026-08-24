@@ -11,6 +11,7 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { buildSystemPrompt, MAX_REPLY_TOKENS } from "@/config/line-bot";
+import { buildListingsContext } from "@/lib/line-bot/listings-context";
 import type { StoredMessage } from "@/lib/line-bot/store";
 
 /** 客服助理用的模型。要換成更便宜的可以改 claude-haiku-4-5。 */
@@ -55,18 +56,27 @@ export async function generateReply(
     { role: "user", content: userMessage },
   ];
 
+  // 目前在售物件。讀不到就是 null，這時不加這一段，AI 會照原規則說
+  // 「我請瑋凱跟您確認」而不是亂編物件。
+  const listingsBlock = await buildListingsContext();
+
   try {
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: MAX_REPLY_TOKENS,
       // 低 effort：客服問答不需要深思，回得快、花得少
       output_config: { effort: "low" },
+      // ⚠️ 兩段是刻意分開的，不要合併成一個字串：
+      //    第一段是固定不變的知識庫與紅線，掛 cache_control 才快取得到（省約 90% 輸入費用）。
+      //    第二段是會變動的在售物件 —— 快取是「前綴比對」，只要物件一改，
+      //    合在一起的話整包快取就作廢。分開放，你在後台改物件不會害快取失效。
       system: [
         {
           type: "text",
           text: buildSystemPrompt(),
           cache_control: { type: "ephemeral" },
         },
+        ...(listingsBlock ? [{ type: "text" as const, text: listingsBlock }] : []),
       ],
       messages,
     });

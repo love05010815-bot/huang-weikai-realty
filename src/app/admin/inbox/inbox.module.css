@@ -91,3 +91,269 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+/* ---------------- YouTube 綁定與設定說明 ---------------- */
+
+.setupBox {
+  margin-top: 6px;
+  padding: 16px 18px 18px;
+  border: 1px solid;
+  border-radius: 10px;
+  font-size: 14.5px;
+  line-height: 1.85;
+}
+
+.steps {
+  margin: 10px 0 14px;
+  padding-left: 20px;
+}
+
+.steps li + li {
+  margin-top: 10px;
+}
+
+/* 這條網址是要整條複製去貼的，所以要能選取、能換行、不能被截斷 */
+.uriBox {
+  display: block;
+  margin: 7px 0;
+  padding: 9px 11px;
+  border: 1px solid;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.32);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.boundBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 6px 0 14px;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 7px 13px;
+  border: 1px solid;
+  border-radius: 7px;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---------------- 留言 ---------------- */
+
+.commentList {
+  display: grid;
+  gap: 12px;
+}
+
+.comment {
+  padding: 14px 16px 12px;
+  border: 1px solid;
+  border-radius: 10px;
+}
+
+/* 已回的淡掉，讓待回覆的自己跳出來 */
+.commentDone {
+  opacity: 0.66;
+}
+
+.commentHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.avatar {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.commentWho {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.commentAuthor {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.commentMeta {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.commentText {
+  margin: 10px 0 0;
+  font-size: 15px;
+  line-height: 1.85;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.replies {
+  margin-top: 10px;
+  padding-left: 12px;
+  border-left: 2px solid;
+}
+
+.replyItem {
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.replyItem + .replyItem {
+  margin-top: 5px;
+}
+
+.replyAuthor {
+  font-weight: 800;
+  margin-right: 7px;
+}
+
+/* ---------------- 回覆框 ---------------- */
+
+.replyRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 11px;
+}
+
+.replyOpen {
+  margin-top: 11px;
+}
+
+.replyInput {
+  width: 100%;
+  min-height: 74px;
+  border: 1px solid;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.75;
+  resize: vertical;
+}
+
+.replyHint {
+  flex: 1 1 200px;
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.replyMsg {
+  margin-top: 8px;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+/* ---------------- 平台狀態卡 ---------------- */
+
+.sourceRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.sourceCard {
+  padding: 14px 16px;
+  border: 1px solid;
+  border-radius: 10px;
+}
+
+.sourceHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sourceName {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 15.5px;
+  font-weight: 900;
+}
+
+.sourceAccount {
+  margin-top: 5px;
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}
+
+.sourceDetail {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+  line-height: 1.8;
+}
+
+/* ---------------- 平台篩選 ---------------- */
+
+.filterRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 4px 0 14px;
+}
+
+.filterTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.filterCount {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+}
+
+/* ---------------- 混排清單上的平台標記 ---------------- */
+
+.platformTag {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.avatarFallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

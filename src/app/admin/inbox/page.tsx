@@ -1,85 +1,64 @@
 /**
- * /admin/inbox —— 影音平台留言收件匣。
+ * /admin/inbox —— 影音平台留言收件匣
  *
- * 現在還沒接線。這一頁先把「每個平台到底接不接得起來」寫清楚，
- * 因為那是要先做的決定（有兩個平台不是寫程式能解決的，卡在對方的審核與政策）。
+ * YouTube ＋ Facebook 粉專 ＋ Instagram 的留言**混在同一份清單**，依時間新到舊排。
+ * 刻意不做成三個區塊 —— 那只是把三個 App 搬到同一頁，客戶昨天在 IG 問的還是要自己去翻。
  *
- * 真的開始接的時候：這頁改成收件匣本體，下面這張表移到 README。
+ * LINE 的一對一私訊在 /admin/line（那是私訊，性質不同所以分開）。
+ * 收件匣的範圍就是這三家。TikTok 與 Threads 2026-08-21 由系統擁有者決定不做 ——
+ * 它們從來沒有真的接過（沒有 API 程式碼、沒有路由、沒有金鑰），只是頁面上曾有一段說明文字。
+ *
+ * ⚠️ 留言是**每次進來即時抓的**，不存資料庫。所以「已回覆」是比對實際回覆算出來的，
+ *    你在各平台 App 裡回的也算數，不會出現「後台說沒回、其實回過了」。
  */
 import { redirect } from "next/navigation";
 import { getAdminCheckArgs, isCurrentUserAdmin } from "@/lib/admin-check";
 import { adminEmails } from "@/auth";
-import { CIS, CHIP, type ChipTone } from "@/app/admin/_components/cis";
+import { CIS, CHIP } from "@/app/admin/_components/cis";
 import { Icon, type IconName } from "@/app/admin/_ui/icons";
 import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
+import { loadInbox } from "@/lib/inbox";
+import {
+  PLATFORM_COLOR,
+  PLATFORM_LABEL,
+  type InboxComment,
+  type InboxPlatform,
+} from "@/lib/inbox-types";
+import { YOUTUBE_REDIRECT_URI, isYoutubeConfigured } from "@/lib/youtube";
+import { META_REDIRECT_URI, isMetaConfigured } from "@/lib/meta";
+import CommentReply from "./CommentReply";
+import UnbindButton from "./UnbindYoutube";
 import styles from "./inbox.module.css";
 
 export const dynamic = "force-dynamic";
 
-type Platform = {
-  name: string;
-  handle: string;
-  icon: IconName;
-  tone: ChipTone;
-  status: string;
-  detail: string;
+const TZ = "Asia/Taipei";
+
+const PLATFORM_ICON: Record<InboxPlatform, IconName> = {
+  youtube: "play",
+  facebook: "users",
+  instagram: "camera",
 };
 
-/**
- * 三種燈號的意思：
- *   success = 有官方 API 可以讀留言也可以回，我這邊寫完就會動。
- *   warn    = API 有，但要先過對方的審核／驗證，時間不在我們手上。
- *   danger  = 對方沒開放，寫程式解不掉。
- */
-const PLATFORMS: Platform[] = [
-  {
-    name: "YouTube",
-    handle: "@swujnuty0325・1,987 訂閱",
-    icon: "play",
-    tone: "success",
-    status: "可以接",
-    detail:
-      "YouTube Data API v3 讀留言、回留言都有。網站本來就在用 Google 登入，加一個授權範圍就好，不用另外申請開發者身分。免費配額一天 10,000 單位，以你的留言量用不完。",
-  },
-  {
-    name: "Facebook 粉專",
-    handle: "wei.kai.dream.home・837 追蹤",
-    icon: "users",
-    tone: "warn",
-    status: "要先過審核",
-    detail:
-      "Graph API 讀留言、回留言都有，但要先開 Meta 開發者帳號、做商家驗證，再送權限審核。審核時間不在我們手上（通常一到兩週），要準備用途說明和操作錄影。",
-  },
-  {
-    name: "Instagram",
-    handle: "swujnuty0325・255 追蹤",
-    icon: "camera",
-    tone: "warn",
-    status: "要先過審核",
-    detail:
-      "跟 Facebook 同一套 Meta 審核，一次過就兩個都通。前提是這個帳號要切成專業帳號並連到上面那個粉專 —— 目前是不是專業帳號還沒確認。",
-  },
-  {
-    name: "Threads",
-    handle: "帳號本尊未確認",
-    icon: "threads",
-    tone: "warn",
-    status: "要先過審核",
-    detail:
-      "Threads 官方 API 可以讀回覆、也可以回覆，一樣走 Meta 審核。另外這個帳號有出入：FB 和 YouTube 上寫 @wei_kai0605，IG 簡介卻寫 @swujnuty0605，接之前要先確認哪個是本尊。",
-  },
-  {
-    name: "TikTok",
-    handle: "@show_787865・978 追蹤",
-    icon: "video",
-    tone: "danger",
-    status: "接不了",
-    detail:
-      "TikTok 沒有開放給一般開發者讀留言或回留言的 API（只有廣告主用的 Business API 有，要綁商業帳號並通過申請）。這一個現階段只能繼續用手機 App 回，不是程式做不到，是對方沒開。",
-  },
-];
+function fmtTime(iso: string): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return new Intl.DateTimeFormat("zh-TW", {
+    timeZone: TZ,
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(d);
+}
 
-export default async function InboxPage() {
+export default async function InboxPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ yt?: string; meta?: string; why?: string; p?: string }>;
+}) {
   if (!process.env.AUTH_GOOGLE_ID || !process.env.AUTH_GOOGLE_SECRET) {
     return <AdminGateNotice kind="no_provider" />;
   }
@@ -87,6 +66,23 @@ export default async function InboxPage() {
   const { email } = await getAdminCheckArgs();
   if (!email) redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent("/admin/inbox")}`);
   if (!(await isCurrentUserAdmin())) return <AdminGateNotice kind="not_allowed" email={email} />;
+
+  const sp = await searchParams;
+  const snapshot = await loadInbox();
+  const ytConfigured = isYoutubeConfigured();
+  const metaConfigured = isMetaConfigured();
+
+  const filter = (["youtube", "facebook", "instagram"] as const).includes(sp.p as InboxPlatform)
+    ? (sp.p as InboxPlatform)
+    : null;
+  const shown: InboxComment[] = filter
+    ? snapshot.all.filter((c) => c.platform === filter)
+    : snapshot.all;
+
+  const ytSource = snapshot.sources.find((s) => s.platform === "youtube")!;
+  const fbSource = snapshot.sources.find((s) => s.platform === "facebook")!;
+  const igSource = snapshot.sources.find((s) => s.platform === "instagram")!;
+  const metaBound = fbSource.bound || igSource.bound;
 
   return (
     <main className={styles.page} style={{ background: CIS.bg, color: CIS.text, fontFamily: CIS.font }}>
@@ -96,51 +92,354 @@ export default async function InboxPage() {
           留言收件匣
         </h1>
         <p className={styles.subtitle} style={{ color: CIS.textMute }}>
-          把各平台的客人留言收到這一頁，直接在這裡回。
+          YouTube、Facebook 粉專、Instagram 的留言全部收在這裡，依時間排好，直接回。
+          LINE 的一對一私訊在
+          <a href="/admin/line" style={{ color: CIS.blueSoft }}>「LINE 機器人」</a>那一頁。
         </p>
 
-        <div
-          className={styles.notice}
-          style={{ background: "rgba(148,163,184,.08)", borderColor: CIS.cardBorder, color: CIS.textSub }}
-        >
-          <b>還沒接線。</b>下面是每個平台目前的可行性。
-          有兩個平台卡的不是程式，是對方的審核與政策 —— 所以要先決定<b>先接哪一個</b>，不是一次全上。
+        {/* ── 綁定結果回饋：成功要講，失敗更要講原因 ── */}
+        {(sp.yt === "bound" || sp.meta === "bound") && (
+          <div
+            className={styles.notice}
+            style={{ background: "rgba(34,197,94,.1)", borderColor: "rgba(34,197,94,.35)", color: "#4ade80" }}
+          >
+            {sp.yt === "bound" ? "YouTube" : "Facebook／Instagram"} 綁定成功。
+          </div>
+        )}
+        {(sp.yt === "fail" || sp.meta === "fail") && (
+          <div
+            className={styles.notice}
+            style={{ background: "rgba(244,63,94,.1)", borderColor: "rgba(244,63,94,.35)", color: "#fb7185" }}
+          >
+            <b>{sp.yt === "fail" ? "YouTube" : "Facebook／Instagram"} 綁定失敗。</b>
+            {sp.why ? <> 原因：{sp.why}</> : null}
+          </div>
+        )}
+        {(sp.yt === "state_invalid" || sp.meta === "state_invalid") && (
+          <div
+            className={styles.notice}
+            style={{ background: "rgba(245,158,11,.1)", borderColor: "rgba(245,158,11,.35)", color: "#fbbf24" }}
+          >
+            授權驗證碼對不上（多半是停太久或換了分頁）。重新點一次綁定就好。
+          </div>
+        )}
+
+        {/* ── 平台狀態列 ── */}
+        <div className={styles.sourceRow}>
+          <SourceCard
+            platform="youtube"
+            configured={ytConfigured}
+            bound={ytSource.bound}
+            accountName={ytSource.accountName}
+            count={ytSource.comments.length}
+            error={ytSource.error}
+            authHref="/api/admin/youtube/auth"
+            redirectUri={YOUTUBE_REDIRECT_URI}
+            missingEnv="GOOGLE_CALENDAR_CLIENT_ID / SECRET（或 AUTH_GOOGLE_*）"
+            setupWhere="Google Cloud Console → 憑證 → OAuth 2.0 用戶端 → 已授權的重新導向 URI"
+            unbindTarget="youtube"
+          />
+          <SourceCard
+            platform="facebook"
+            configured={metaConfigured}
+            bound={fbSource.bound}
+            accountName={fbSource.accountName}
+            count={fbSource.comments.length}
+            error={fbSource.error}
+            authHref="/api/admin/meta/auth"
+            redirectUri={META_REDIRECT_URI}
+            missingEnv="META_APP_ID / META_APP_SECRET"
+            setupWhere="developers.facebook.com → 你的 App → Facebook 登入 → 設定 → 有效的 OAuth 重新導向 URI"
+            unbindTarget={metaBound ? "meta" : null}
+          />
+          <SourceCard
+            platform="instagram"
+            configured={metaConfigured}
+            bound={igSource.bound}
+            accountName={igSource.accountName}
+            count={igSource.comments.length}
+            error={igSource.error}
+            authHref="/api/admin/meta/auth"
+            redirectUri={META_REDIRECT_URI}
+            missingEnv="META_APP_ID / META_APP_SECRET"
+            setupWhere="跟 Facebook 同一個 App，一次授權兩個都通"
+            unbindTarget={null}
+            sameAsFacebook
+          />
         </div>
 
-        <div className={styles.sectionTitle} style={{ color: CIS.textMute }}>
-          平台可行性
-        </div>
+        {/* ── 留言清單 ── */}
+        {!snapshot.anyBound ? (
+          <div
+            className={styles.notice}
+            style={{ background: "rgba(148,163,184,.08)", borderColor: CIS.cardBorder, color: CIS.textSub }}
+          >
+            <b>還沒有任何平台綁定，所以這裡是空的（不是沒有人留言）。</b>
+            <br />
+            上面每張卡片裡都有那個平台的設定步驟。<b>建議先接 YouTube</b> ——
+            它沿用網站現有的 Google 設定，只要加一條網址就好。
+          </div>
+        ) : (
+          <>
+            <div className={styles.filterRow}>
+              <FilterTab href="/admin/inbox" active={!filter} label="全部" count={snapshot.all.length} />
+              {(["youtube", "facebook", "instagram"] as const).map((p) => {
+                const src = snapshot.sources.find((s) => s.platform === p)!;
+                if (!src.bound) return null;
+                return (
+                  <FilterTab
+                    key={p}
+                    href={`/admin/inbox?p=${p}`}
+                    active={filter === p}
+                    label={PLATFORM_LABEL[p]}
+                    count={src.comments.length}
+                    color={PLATFORM_COLOR[p]}
+                  />
+                );
+              })}
+              <span className={styles.spacer} />
+              <span style={{ color: CIS.textMute, fontSize: 14 }}>
+                待回覆{" "}
+                <b style={{ color: snapshot.waiting.length > 0 ? "#fbbf24" : CIS.textMute }}>
+                  {snapshot.waiting.length}
+                </b>
+              </span>
+            </div>
 
-        <div className={styles.grid}>
-          {PLATFORMS.map((p) => {
-            const chip = CHIP[p.tone];
-            return (
+            {shown.length === 0 ? (
               <div
-                key={p.name}
-                className={styles.card}
-                style={{ background: CIS.card, borderColor: CIS.cardBorder }}
+                className={styles.notice}
+                style={{ background: "rgba(148,163,184,.08)", borderColor: CIS.cardBorder, color: CIS.textSub }}
               >
-                <div className={styles.cardHead}>
-                  <Icon name={p.icon} size={19} color={CIS.textSub} />
-                  <div className={styles.cardName}>{p.name}</div>
-                  <span
-                    className={styles.chip}
-                    style={{ background: chip.bg, borderColor: chip.border, color: chip.color }}
-                  >
-                    {p.status}
-                  </span>
-                </div>
-                <div className={styles.handle} style={{ color: CIS.textMute }}>
-                  {p.handle}
-                </div>
-                <p className={styles.detail} style={{ color: CIS.textSub }}>
-                  {p.detail}
-                </p>
+                目前沒有別人的留言。（你自己留的不算，已經濾掉了。）
               </div>
-            );
-          })}
-        </div>
+            ) : (
+              <div className={styles.commentList}>
+                {shown.map((c) => (
+                  <div
+                    key={`${c.platform}-${c.id}`}
+                    className={`${styles.comment}${c.answeredByOwner ? ` ${styles.commentDone}` : ""}`}
+                    style={{
+                      background: CIS.card,
+                      borderColor: CIS.cardBorder,
+                      // 左邊一條平台色，混排時一眼分辨是哪家
+                      borderLeft: `3px solid ${PLATFORM_COLOR[c.platform]}`,
+                    }}
+                  >
+                    <div className={styles.commentHead}>
+                      {c.authorImage ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img className={styles.avatar} src={c.authorImage} alt="" width={34} height={34} />
+                      ) : (
+                        <div
+                          className={`${styles.avatar} ${styles.avatarFallback}`}
+                          style={{ background: "rgba(255,255,255,.06)", color: PLATFORM_COLOR[c.platform] }}
+                        >
+                          <Icon name={PLATFORM_ICON[c.platform]} size={16} />
+                        </div>
+                      )}
+                      <div className={styles.commentWho}>
+                        <div className={styles.commentAuthor}>
+                          {c.author}
+                          <span
+                            className={styles.platformTag}
+                            style={{ color: PLATFORM_COLOR[c.platform] }}
+                          >
+                            {PLATFORM_LABEL[c.platform]}
+                          </span>
+                        </div>
+                        <div className={styles.commentMeta} style={{ color: CIS.textMute }}>
+                          {fmtTime(c.publishedAt)}
+                          {c.context ? ` ・ 在「${c.context}」` : ""}
+                          {c.permalink ? (
+                            <>
+                              {" ・ "}
+                              <a
+                                href={c.permalink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: CIS.blueSoft }}
+                              >
+                                看原文 ↗
+                              </a>
+                            </>
+                          ) : null}
+                        </div>
+                      </div>
+                      <span
+                        className={styles.chip}
+                        style={
+                          c.answeredByOwner
+                            ? { background: CHIP.success.bg, borderColor: CHIP.success.border, color: CHIP.success.color }
+                            : { background: CHIP.warn.bg, borderColor: CHIP.warn.border, color: CHIP.warn.color }
+                        }
+                      >
+                        {c.answeredByOwner ? "已回" : "待回覆"}
+                      </span>
+                    </div>
+
+                    <p className={styles.commentText}>{c.text}</p>
+
+                    {c.replies.length > 0 ? (
+                      <div className={styles.replies} style={{ borderColor: CIS.divider }}>
+                        {c.replies.map((r, i) => (
+                          <div key={i} className={styles.replyItem}>
+                            <span
+                              className={styles.replyAuthor}
+                              style={{ color: r.byOwner ? "#4ade80" : CIS.textMute }}
+                            >
+                              {r.byOwner ? "你回的" : r.author}
+                            </span>
+                            <span style={{ color: CIS.textSub }}>{r.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    <CommentReply
+                      platform={c.platform}
+                      commentId={c.id}
+                      author={c.author}
+                      alreadyAnswered={c.answeredByOwner}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* 2026-08-21 系統擁有者：「先移除 TikTok 跟 Threads 的串接」→ 這一段拿掉。
+            那兩個平台從來沒有真的接過（沒有 API 程式碼、沒有路由、沒有金鑰），
+            這裡原本只是一段說明文字。收件匣現在的範圍就是 YouTube／FB／IG 三家。
+            要再接 Threads 的話：它跟 FB／IG 是分開的一套授權，要另外設定。 */}
       </div>
     </main>
+  );
+}
+
+function FilterTab({
+  href,
+  active,
+  label,
+  count,
+  color,
+}: {
+  href: string;
+  active: boolean;
+  label: string;
+  count: number;
+  color?: string;
+}) {
+  return (
+    <a
+      className={styles.filterTab}
+      href={href}
+      style={
+        active
+          ? { background: "rgba(255,255,255,.09)", borderColor: color || CIS.blue, color: CIS.text }
+          : { borderColor: CIS.cardBorder, color: CIS.textMute }
+      }
+    >
+      {label}
+      <span className={styles.filterCount}>{count}</span>
+    </a>
+  );
+}
+
+function SourceCard({
+  platform,
+  configured,
+  bound,
+  accountName,
+  count,
+  error,
+  authHref,
+  redirectUri,
+  missingEnv,
+  setupWhere,
+  unbindTarget,
+  sameAsFacebook,
+}: {
+  platform: InboxPlatform;
+  configured: boolean;
+  bound: boolean;
+  accountName: string | null;
+  count: number;
+  error: string | null;
+  authHref: string;
+  redirectUri: string;
+  missingEnv: string;
+  setupWhere: string;
+  unbindTarget: "youtube" | "meta" | null;
+  sameAsFacebook?: boolean;
+}) {
+  const color = PLATFORM_COLOR[platform];
+
+  return (
+    <div className={styles.sourceCard} style={{ background: CIS.card, borderColor: CIS.cardBorder }}>
+      <div className={styles.sourceHead}>
+        <Icon name={PLATFORM_ICON[platform]} size={18} color={color} />
+        <span className={styles.sourceName}>{PLATFORM_LABEL[platform]}</span>
+        <span
+          className={styles.chip}
+          style={
+            bound && !error
+              ? { background: CHIP.success.bg, borderColor: CHIP.success.border, color: CHIP.success.color }
+              : bound && error
+                ? { background: CHIP.warn.bg, borderColor: CHIP.warn.border, color: CHIP.warn.color }
+                : { background: CHIP.neutral.bg, borderColor: CHIP.neutral.border, color: CHIP.neutral.color }
+          }
+        >
+          {bound && !error ? `${count} 則` : bound && error ? "有問題" : "未綁定"}
+        </span>
+      </div>
+
+      {bound ? (
+        <>
+          {accountName ? (
+            <div className={styles.sourceAccount} style={{ color: CIS.textMute }}>
+              {accountName}
+            </div>
+          ) : null}
+          {error ? (
+            <p className={styles.sourceDetail} style={{ color: "#fdba74" }}>
+              {error}
+            </p>
+          ) : null}
+          {unbindTarget ? (
+            <div style={{ marginTop: 10 }}>
+              <UnbindButton target={unbindTarget} />
+            </div>
+          ) : null}
+        </>
+      ) : !configured ? (
+        <p className={styles.sourceDetail} style={{ color: "#fb7185" }}>
+          缺環境變數 <code>{missingEnv}</code>，設好並重新部署才接得起來。
+        </p>
+      ) : sameAsFacebook ? (
+        <p className={styles.sourceDetail} style={{ color: CIS.textSub }}>
+          跟 Facebook 同一次授權。IG 必須是<b>專業帳號</b>且<b>連到那個粉專</b>，
+          否則 FB 會通、IG 這半不會。
+        </p>
+      ) : (
+        <>
+          <p className={styles.sourceDetail} style={{ color: CIS.textSub }}>
+            先到 <b>{setupWhere}</b>，把下面這條加進去（<b>照抄，不要自己打</b>）：
+          </p>
+          <code className={styles.uriBox} style={{ borderColor: CIS.cardBorder }}>
+            {redirectUri}
+          </code>
+          <a
+            className={styles.btn}
+            style={{ background: CIS.blueDeep, color: "#fff", borderColor: CIS.blueDeep, marginTop: 8 }}
+            href={authHref}
+          >
+            <Icon name="link" size={14} />
+            綁定 {PLATFORM_LABEL[platform]}
+          </a>
+        </>
+      )}
+    </div>
   );
 }
