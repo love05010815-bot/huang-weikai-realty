@@ -152,7 +152,7 @@ export const PROJECTS: Project[] = [
   },
 
   // ───── 佳福建設 ─────
-  { id: "jiafu-bosishi", name: "佳福伯斯市", builder: "佳福建設", area: "梧棲", status: "completed", completion: "2024", units: 301, sources: ["owner"] },
+  { id: "jiafu-bosishi", name: "佳福柏斯市", builder: "佳福建設", area: "梧棲", status: "completed", completion: "2024", units: 301, sources: ["owner"] },
 
   // ───── 佳鋐建設（寶佳機構） ─────
   { id: "jiahong-lewan", name: "佳鋐樂灣", builder: "佳鋐建設", area: "梧棲", status: "completed", completion: "2018", units: 144, sources: ["owner"] },
