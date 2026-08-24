@@ -1,11 +1,13 @@
 /**
  * /map — 台中港市鎮中心（梧棲＋清水重劃區）區域頁
  *
- * 兩層，資料都在 src/data/port-projects.ts：
- *   ① 建案分佈圖  ProjectMap.tsx    —— 組成示意圖，不是位置圖（元件檔頭有說明）
- *   ② 建案總覽    ProjectPanel.tsx  —— 39 案，可篩可搜，掛上在售物件
+ * 主體是 `ProjectExplorer.tsx`（地圖＋篩選＋詳情＋在售物件，2026-08-23 由
+ * 「地圖」與「建案總覽」兩層合併而成）。建案資料在 src/data/port-projects.ts。
  *
  * 這頁的商業目的：讓在地客戶「看懂這一區 → 點到有興趣的建案 → 看到我的物件或留下線索」。
+ *
+ * ⚠️ 舊的 `ProjectPanel.tsx`（獨立的建案總覽清單）與 `ProjectMap.tsx`（組成示意圖）
+ *    已無人引用，檔案留著但不再是這頁的一部分。
  *
  * ⚠️ 2026-08-21 系統擁有者拍板：**「土地使用分區」那一層已從本頁移除**。
  *    理由：地塊界線是從截圖重建的，上面 24 個建商名沒核對過，公開等於發表未查證資料。
@@ -17,9 +19,7 @@ import Link from "next/link";
 import { OWNER, SITE_URL } from "@/config/owner";
 import { DISTRICT, PROJECTS, SOURCES, projectStats } from "@/data/port-projects";
 import { getListingsByProject } from "@/lib/project-listings";
-import { resolvePhotoSrc } from "@/lib/photo-src";
-import LeafletMap from "./LeafletMap";
-import ProjectPanel, { type ProjectListing } from "./ProjectPanel";
+import ProjectExplorer, { type ProjectListing } from "./ProjectExplorer";
 import styles from "./Map.module.css";
 
 const stats = projectStats();
@@ -129,15 +129,16 @@ export default async function MapPage() {
 
   // 只挑畫面用得到的欄位傳給 client component，整包 Listing 丟過去是浪費
   const listings: Record<string, ProjectListing[]> = {};
-  const listingCounts: Record<string, number> = {};
   for (const [projectId, list] of byProject) {
     listings[projectId] = list.map((l) => ({
       slug: l.slug,
       title: l.title,
       area: l.area,
-      photo: l.photos?.[0] ? resolvePhotoSrc(l.photos[0]) : null,
+      points: l.points ?? [],
+      // 傳原始值就好，PhotoCarousel 自己會解析成網址
+      photos: l.photos ?? [],
+      link: l.link ?? null,
     }));
-    listingCounts[projectId] = list.length;
   }
 
   return (
@@ -182,39 +183,20 @@ export default async function MapPage() {
         </div>
       </section>
 
-      {/* ── 第一層：建案組成圖 ── */}
-      <section className={styles.layer} id="projects-map">
+      {/* ── 建案地圖（地圖與建案總覽已於 2026-08-23 合併成一個）── */}
+      <section className={styles.layer} id="projects">
         <div className={styles.container}>
           <h2 className={styles.layerTitle}>
             <span className={styles.layerNo}>01</span>
             建案地圖
           </h2>
           <p className={styles.layerDesc}>
-            {`大樓圖示標的是建案位置，顏色代表銷售階段，點圖示看詳情。目前已標出 ${stats.located} / ${stats.total} 個建案，其餘陸續補上。`}
+            {`區內 ${stats.total} 個建案，位置由${OWNER.alias}本人逐一標定。點大樓圖示看建案資訊，我有物件在售的建案會一併列出物件。`}
           </p>
 
-          <LeafletMap listings={listingCounts} />
+          <ProjectExplorer listings={listings} />
         </div>
       </section>
-
-      {/* ── 第二層：建案總覽 ── */}
-      <section className={styles.layer} id="projects">
-        <div className={styles.container}>
-          <h2 className={styles.layerTitle}>
-            <span className={styles.layerNo}>02</span>
-            建案總覽
-          </h2>
-          <p className={styles.layerDesc}>
-            {`區內 ${stats.total} 個建案，可依行政區、預售／成屋與建商篩選。點建案看坐落、房型與資料出處；`}
-            {OWNER.alias}
-            {`目前有物件在售的建案會標示出來。`}
-          </p>
-
-          <ProjectPanel listings={listings} />
-        </div>
-      </section>
-
-
 
       {/* ── 說明 ── */}
       <section className={styles.notes}>

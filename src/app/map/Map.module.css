@@ -1129,23 +1129,225 @@
   }
 }
 
-/* ═══════════ 實景地圖（Leaflet） ═══════════ */
+/* ═══════════ 實景地圖（Leaflet） ═══════════
+   2026-08-23 合併版：地圖全寬，詳情改放地圖下方（在售物件卡片側欄塞不下）。 */
 .lmWrap {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   overflow: hidden;
   background: #fff;
   box-shadow: var(--shadow);
-  margin-bottom: 26px;
+  margin-bottom: 18px;
 }
 
 .lmMapCol {
   min-width: 0;
-  border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
+}
+
+.lmBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  background: #fff;
+}
+
+/* ═══════════ 選中的建案（地圖下方） ═══════════ */
+.detailPane {
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  background: #fcfaf6;
+  padding: 20px 22px;
+  margin-bottom: 22px;
+}
+
+.detailEmpty {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14.5px;
+  padding: 10px 0;
+}
+
+.detailHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.detailTitle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  font-size: clamp(19px, 3vw, 24px);
+  font-weight: 900;
+  color: var(--primary);
+}
+
+.detailAlias {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.detailClose {
+  flex: none;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 5px 13px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.detailClose:hover {
+  border-color: var(--line-warm);
+  color: var(--primary);
+}
+
+.mineNote {
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--muted);
+}
+
+.noMine {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--line);
+}
+
+.noMine p {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--muted);
+}
+
+.noMine .cta {
+  display: inline-block;
+  width: auto;
+  padding-left: 26px;
+  padding-right: 26px;
+}
+
+/* ═══════════ 建案索引 ═══════════ */
+.indexBlock {
+  margin-bottom: 10px;
+}
+
+.indexTitle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.indexMine {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b4a12;
+  background: var(--accent-soft);
+  border: 1px solid var(--line-warm);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.indexList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+
+.indexItem,
+.indexItemOn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.indexItem:hover {
+  border-color: var(--line-warm);
+  background: var(--soft);
+}
+
+.indexItemOn {
+  border-color: var(--primary);
+  background: var(--accent-soft);
+}
+
+.indexItem i,
+.indexItemOn i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.indexItem b,
+.indexItemOn b {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.indexItem em,
+.indexItemOn em {
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.indexItem u,
+.indexItemOn u {
+  text-decoration: none;
+  font-weight: 700;
+  color: #6b4a12;
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
+.indexItem s,
+.indexItemOn s {
+  text-decoration: none;
+  color: #8a6d1f;
+  font-size: 12px;
+}
+
+.indexItem span,
+.indexItemOn span {
+  white-space: nowrap;
 }
 
 .lmMap {
