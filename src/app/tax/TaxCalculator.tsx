@@ -16,10 +16,11 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { calcLandTax, type Residency, type TaxResult } from "@/lib/land-tax";
 import { calcLoan, type LoanResult } from "@/lib/loan";
+import RentSubsidyForm from "./RentSubsidyForm";
 import styles from "./tax.module.css";
 import home from "../home.module.css";
 
-type Tab = "landTax" | "loan";
+type Tab = "landTax" | "loan" | "rent";
 
 const YUAN_PER_WAN = 10_000;
 
@@ -70,9 +71,20 @@ export default function TaxCalculator() {
         >
           🏦 房貸月付金
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "rent"}
+          className={tab === "rent" ? `${styles.tab} ${styles.tabOn}` : styles.tab}
+          onClick={() => setTab("rent")}
+        >
+          🔑 租金補貼
+        </button>
       </div>
 
-      {tab === "landTax" ? <LandTaxForm /> : <LoanForm />}
+      {tab === "landTax" && <LandTaxForm />}
+      {tab === "loan" && <LoanForm />}
+      {tab === "rent" && <RentSubsidyForm />}
     </>
   );
 }

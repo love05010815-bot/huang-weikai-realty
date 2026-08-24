@@ -17,9 +17,9 @@ import TaxCalculator from "./TaxCalculator";
 import styles from "../home.module.css";
 import tax from "./tax.module.css";
 
-const TITLE = `房地合一稅試算｜台中海線房仲${OWNER.name}｜賣房前先算清楚要繳多少稅`;
+const TITLE = `稅費與租金補貼試算｜台中海線房仲${OWNER.name}｜買賣租屋前先算清楚`;
 const DESCRIPTION =
-  "房地合一稅 2.0 線上試算：填入取得與出售日期、成交價與成本，馬上算出持有期間、適用稅率與應納稅額，並列出完整計算過程。含自住優惠 400 萬免稅、非自願因素 20% 稅率判斷，另附房貸月付金試算。稅率依所得稅法第 14 條之 4。";
+  "房地合一稅、房貸月付金、租金補貼一站算清楚：房地合一稅 2.0 依所得稅法第 14 條之 4，含自住優惠與非自願因素判斷；300 億元中央擴大租金補貼依內政部官方分級表，逐縣市、逐行政區試算每月可領金額。";
 
 /** 法規最後核對日。改稅率時記得一起更新，不然客戶不知道這頁多舊 */
 const RULES_CHECKED_AT = "2026 年 8 月";
@@ -34,6 +34,8 @@ export const metadata: Metadata = {
     "賣房要繳多少稅",
     "自住優惠 400萬",
     "房貸試算",
+    "租金補貼試算",
+    "300億元中央擴大租金補貼",
     "台中海線房仲",
     OWNER.name,
   ],
@@ -89,6 +91,8 @@ export default function TaxPage() {
               試算只涵蓋<strong>個人買賣</strong>的一般情況，
               <strong>公司名下的房地、預售屋轉售、股份交易、重購退稅、繼承併計持有期間</strong>
               等情形沒有納入，這些請找會計師或直接問我。
+              租金補貼的試算<strong>不代表一定核准</strong>：超過各縣市當年度辦理戶數會用評點制排序，
+              動產與不動產的精確財產限額也沒有列入試算，那要比對稅務與財產登記資料，內政部官方的前台試算工具本身也沒有做。
               稅率與法規會調整，本頁規則最後核對於 {RULES_CHECKED_AT}。試算結果不構成稅務或財務意見。
 
               <div className={tax.sources}>
@@ -119,6 +123,15 @@ export default function TaxPage() {
                   rel="noopener noreferrer"
                 >
                   財政部稅務入口網 問答 1813 ↗
+                </a>
+                <br />
+                ・租金補貼分級表、資格與加碼規則 ——{" "}
+                <a
+                  href="https://pip.moi.gov.tw/V3/B/SCRB0104.aspx"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  內政部不動產資訊平台 300億元中央擴大租金補貼 ↗
                 </a>
               </div>
             </div>

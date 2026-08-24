@@ -228,6 +228,41 @@
   cursor: pointer;
 }
 
+/* 社會弱勢複選清單。項目多（10 項），用兩欄網格比單欄列表省版面 */
+.checkGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .checkGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.checkSmall {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.checkSmall input {
+  width: 17px;
+  height: 17px;
+  margin: 1px 0 0;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
 /* ---------- 結果 ---------- */
 
 .result {
@@ -518,6 +553,12 @@
 @media (max-width: 640px) {
   .grid {
     grid-template-columns: 1fr;
+  }
+
+  /* 三個分頁在 375px 硬擠一行會塞不下（實測溢出 7px），改成允許換行 —— 
+     兩個在第一行、一個在第二行，膠囊形狀分兩行置中還算整齊 */
+  .tabs {
+    flex-wrap: wrap;
   }
 
   .tab {
