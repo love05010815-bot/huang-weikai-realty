@@ -428,6 +428,20 @@
   font-size: 17px;
   font-weight: 700;
   margin: 0 0 18px;
+  /* 中文預設可以在任何一個字後面斷行，320px 上會斷成「…梧棲新市鎮旗艦 / 店 副店長」，
+     把店名拆開很難看。keep-all 讓它只在空格處斷，變成「太平洋房屋 梧棲新市鎮旗艦店 / 副店長」。 */
+  word-break: keep-all;
+}
+
+/* 太平洋房屋 logo，跟在頭銜文字前面。
+   刻意用 inline 而不是 flex —— 頭銜在手機上會折行，flex 會讓 logo 自己跑一行；
+   inline 的話文字就從 logo 後面自然接下去。
+   高度用 em 綁著字級，字級改了 logo 會跟著等比例走。 */
+.heroRoleLogo {
+  height: 1.35em;
+  width: auto;
+  margin-right: 7px;
+  vertical-align: -0.28em;
 }
 
 .heroTagline {

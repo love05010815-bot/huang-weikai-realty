@@ -17,7 +17,7 @@ import PhotoCarousel from "./listings/PhotoCarousel";
 // 標題只放三項最有搜尋量的 —— <title> 太長會被 Google 截掉，五項塞不下。
 // 完整五項寫在下面的 description 裡。
 const TITLE = `台中海線房仲${OWNER.name}｜買賣租賃・稅費諮詢・市場分析｜沙鹿梧棲清水龍井`;
-const DESCRIPTION = `${OWNER.name}，${OWNER.company}資深不動產經紀人，112、113、114年連續三年榮獲年度千萬經紀人。深耕台中海線沙鹿、梧棲、清水、龍井，提供買賣租賃、資金配置規劃、稅費諮詢、市場分析、裝潢資源媒合一站式服務，歡迎線上預約或加LINE諮詢。`;
+const DESCRIPTION = `${OWNER.name}，${OWNER.company}梧棲新市鎮旗艦店副店長，112、113、114年連續三年榮獲年度千萬經紀人。深耕台中海線沙鹿、梧棲、清水、龍井，提供買賣租賃、資金配置規劃、稅費諮詢、市場分析、裝潢資源媒合一站式服務，歡迎線上預約或加LINE諮詢。`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -212,7 +212,14 @@ export default async function HomePage() {
               <h1 className={styles.heroTitle}>
                 <span>房產找瑋凱</span> <span className={styles.accent}>安心不踩雷</span>
               </h1>
-              <p className={styles.heroRole}>{OWNER.title}</p>
+              <p className={styles.heroRole}>
+                {/* 太平洋房屋 logo。owner.ts 的 companyLogo 沒填就整個不出現，不會破圖 */}
+                {OWNER.companyLogo && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className={styles.heroRoleLogo} src={OWNER.companyLogo} alt={OWNER.company} />
+                )}
+                {OWNER.title}
+              </p>
               <p className={styles.heroTagline}>
                 連續三年千萬經紀人的實戰經驗，陪您把買房、賣房、資產配置的每一個決定都做對——不只成交，更要成交得安心。
               </p>
@@ -237,7 +244,7 @@ export default async function HomePage() {
               <img
                 className={styles.heroPhoto}
                 src="/profile.jpg"
-                alt={`${OWNER.name}－${OWNER.company}台中海線資深不動產經紀人形象照`}
+                alt={`${OWNER.name}－${OWNER.company}梧棲新市鎮旗艦店副店長形象照`}
                 width={320}
                 height={400}
               />
