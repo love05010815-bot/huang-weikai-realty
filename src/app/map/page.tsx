@@ -18,7 +18,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { OWNER, SITE_URL } from "@/config/owner";
 import { DISTRICT, PROJECTS, SOURCES, projectStats } from "@/data/port-projects";
-import { getListingsByProject } from "@/lib/project-listings";
+import { getMapListingsByProject } from "@/lib/map-listings";
 import ProjectExplorer, { type ProjectListing } from "./ProjectExplorer";
 import styles from "./Map.module.css";
 
@@ -125,19 +125,19 @@ const NOTES = [
 export const revalidate = 300;
 
 export default async function MapPage() {
-  const byProject = await getListingsByProject();
+  // 地圖上的在售物件是獨立的一套（map_listing 表，後台 /admin/map-listings），
+  // 跟「精選好案」不共用 —— 2026-08-23 系統擁有者拍板。
+  const byProject = await getMapListingsByProject();
 
-  // 只挑畫面用得到的欄位傳給 client component，整包 Listing 丟過去是浪費
   const listings: Record<string, ProjectListing[]> = {};
   for (const [projectId, list] of byProject) {
     listings[projectId] = list.map((l) => ({
-      slug: l.slug,
+      id: l.id,
       title: l.title,
-      area: l.area,
-      points: l.points ?? [],
+      points: l.points,
       // 傳原始值就好，PhotoCarousel 自己會解析成網址
-      photos: l.photos ?? [],
-      link: l.link ?? null,
+      photos: l.photos,
+      linkHref: l.linkHref,
     }));
   }
 
@@ -186,10 +186,9 @@ export default async function MapPage() {
       {/* ── 建案地圖（地圖與建案總覽已於 2026-08-23 合併成一個）── */}
       <section className={styles.layer} id="projects">
         <div className={styles.container}>
-          <h2 className={styles.layerTitle}>
-            <span className={styles.layerNo}>01</span>
-            建案地圖
-          </h2>
+          {/* 兩層合併成一層之後就只剩這一個區塊，編號「01」沒有對照組，
+              留著只會讓人以為下面還有 02。2026-08-23 拿掉。 */}
+          <h2 className={styles.layerTitle}>建案地圖</h2>
           <p className={styles.layerDesc}>
             {`區內 ${stats.total} 個建案，位置由${OWNER.alias}本人逐一標定。點大樓圖示看建案資訊，我有物件在售的建案會一併列出物件。`}
           </p>

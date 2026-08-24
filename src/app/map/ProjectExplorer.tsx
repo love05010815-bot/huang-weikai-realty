@@ -15,10 +15,11 @@
  *
  * ## 在售物件哪裡來
  *
- * 後台 `/admin/listings` 新增物件時，`area` 欄填「行政區・建案名」
- * （例：`清水區・聯悅聚`），就會自動掛到對應建案底下。
- * 比對邏輯在 `src/lib/project-listings.ts`，會正規化異體字與簡稱。
- * ⚠️ **`area` 打錯字，物件就不會出現在這裡**（`/listings` 還是照常顯示，不會報錯）。
+ * **後台 `/admin/map-listings`（建案地圖物件）**，資料在 `map_listing` 表。
+ * 這是跟「精選好案」**完全分開**的一套 —— 2026-08-23 系統擁有者拍板。
+ *
+ * 先前那版是拿精選好案的 `area` 欄做文字比對來掛（「清水區・聯悅聚」），已廢除：
+ * 打錯字物件就默默消失，而且沒辦法「只上架到地圖、不上架到首頁」。
  *
  * ⚠️ 這裡的物件卡片**刻意不放「影片賞析」按鈕**（系統擁有者指定），
  *    只有「物件介紹」與「預約諮詢」兩顆。`/listings` 那邊仍然兩顆外連都放。
@@ -46,15 +47,20 @@ import lst from "../listings/listings.module.css";
 type StatusFilter = "all" | ProjectStatus;
 type AreaFilter = "all" | ProjectArea;
 
-/** 掛在建案底下的在售物件。欄位對齊 /listings 的卡片需求，但不帶 video */
+/**
+ * 掛在建案底下的在售物件。
+ *
+ * ⚠️ 這批資料來自 **`map_listing` 表**（後台 `/admin/map-listings`），
+ *    跟「精選好案」是兩套，不共用。2026-08-23 系統擁有者拍板。
+ */
 export type ProjectListing = {
-  slug: string;
+  id: string;
   title: string;
-  area: string;
   points: string[];
   /** 原始值，PhotoCarousel 自己會解析成網址 */
   photos: string[];
-  link: { label: string; href: string } | null;
+  /** 「物件資訊」按鈕的網址。null＝不顯示那顆按鈕 */
+  linkHref: string | null;
 };
 
 const fmt = (n: number) => n.toLocaleString("zh-TW");
@@ -308,10 +314,10 @@ export default function ProjectExplorer({
                 <h4 className={styles.mineTitle}>{`我在 ${selected.name} 的在售物件`}</h4>
                 <div className={lst.grid}>
                   {selectedListings.map((item) => (
-                    <article key={item.slug} className={lst.card}>
-                      <PhotoCarousel photos={item.photos} alt={`${item.area}－${item.title}`} />
+                    <article key={item.id} className={lst.card}>
+                      <PhotoCarousel photos={item.photos} alt={`${selected.name}－${item.title}`} />
                       <div className={lst.body}>
-                        <span className={lst.area}>{item.area}</span>
+                        <span className={lst.area}>{selected.name}</span>
                         <h5 className={lst.title}>{item.title}</h5>
                         <ul className={lst.points}>
                           {item.points.map((p) => (
@@ -320,14 +326,14 @@ export default function ProjectExplorer({
                         </ul>
                         {/* 這裡刻意只有兩顆：物件介紹＋預約諮詢。
                             「影片賞析」是 /listings 才有的，系統擁有者指定這頁不要。 */}
-                        {item.link && (
+                        {item.linkHref && (
                           <a
                             className={lst.actionLink}
-                            href={item.link.href}
+                            href={item.linkHref}
                             target="_blank"
                             rel="noopener noreferrer"
                           >
-                            {`${item.link.label} ↗`}
+                            物件介紹 ↗
                           </a>
                         )}
                         <Link className={lst.actionBtn} href="/card/booking">

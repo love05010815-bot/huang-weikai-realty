@@ -1,0 +1,440 @@
+/* 建案地圖物件後台 —— 沿用後台深色 CIS（#1a1614 底、太平洋紅提亮版 #F26666） */
+
+.page {
+  min-height: 100vh;
+  padding: 28px 24px 64px;
+}
+
+.head {
+  max-width: 1240px;
+  margin: 0 auto 18px;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 6px;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.sub {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.sub a {
+  color: #f26666;
+  font-weight: 700;
+}
+
+.notice,
+.ok,
+.error {
+  max-width: 1240px;
+  margin: 0 auto 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  line-height: 1.75;
+}
+
+.notice {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+}
+
+.ok {
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #4ade80;
+}
+
+.error {
+  background: rgba(244, 63, 94, 0.15);
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  color: #fb7185;
+}
+
+.notice code,
+.error code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+/* ── 概況 ── */
+.stats {
+  list-style: none;
+  max-width: 1240px;
+  margin: 0 auto 20px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.stats li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+}
+
+.stats b {
+  font-size: 26px;
+  font-weight: 900;
+  color: #f26666;
+  line-height: 1.2;
+}
+
+.stats span {
+  font-size: 12.5px;
+  color: #a69a97;
+}
+
+/* ── 版面 ── */
+.wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.listCol,
+.formCol {
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.listHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.listHead h2,
+.form h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.empty {
+  margin: 0;
+  padding: 24px 4px;
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: #a69a97;
+}
+
+/* ── 依建案分組 ── */
+.group {
+  margin-bottom: 18px;
+}
+
+.groupTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #f5c0c4;
+}
+
+.groupTitle span {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #a69a97;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+.items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.item,
+.itemSold {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.itemSold {
+  opacity: 0.5;
+}
+
+.itemMain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.itemMain img {
+  width: 56px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex: none;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.noPhoto {
+  width: 56px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 10.5px;
+  color: #a69a97;
+  flex: none;
+}
+
+.itemMain b {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.itemMain small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: #a69a97;
+}
+
+.itemBtns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.itemBtns button,
+.formBtns button,
+.photoList button {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #d0c6c4;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.itemBtns button:hover:not(:disabled),
+.formBtns button:hover:not(:disabled),
+.photoList button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8f4f3;
+}
+
+.itemBtns button:disabled,
+.formBtns button:disabled,
+.photoList button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.primaryBtn {
+  border: 1px solid #e00000 !important;
+  background: #e00000 !important;
+  color: #fff !important;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13.5px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.primaryBtn:hover:not(:disabled) {
+  background: #c40000 !important;
+}
+
+.danger {
+  color: #fb7185 !important;
+  border-color: rgba(244, 63, 94, 0.35) !important;
+}
+
+.dangerOn {
+  background: #fb7185 !important;
+  border-color: #fb7185 !important;
+  color: #1a1614 !important;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ── 表單 ── */
+.form {
+  display: grid;
+  gap: 14px;
+}
+
+.form label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.form label > span,
+.fieldLabel {
+  font-weight: 700;
+  color: #d0c6c4;
+  font-size: 13px;
+}
+
+.form label em {
+  font-style: normal;
+  font-size: 11px;
+  color: #fb7185;
+  margin-left: 6px;
+}
+
+.form input[type="text"],
+.form input[type="url"],
+.form select,
+.form textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #f8f4f3;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.6;
+}
+
+.form textarea {
+  resize: vertical;
+}
+
+.form input:focus,
+.form select:focus,
+.form textarea:focus {
+  outline: 2px solid #f26666;
+  outline-offset: 1px;
+  border-color: #f26666;
+}
+
+.form small {
+  font-size: 11.5px;
+  color: #a69a97;
+  line-height: 1.6;
+}
+
+.inline {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+}
+
+.inline input {
+  width: auto !important;
+}
+
+.inline span {
+  font-weight: 500 !important;
+  color: #a69a97 !important;
+}
+
+/* ── 照片 ── */
+.photoBlock {
+  display: grid;
+  gap: 8px;
+}
+
+.photoList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.photoList li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+
+.photoList img {
+  width: 64px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex: none;
+}
+
+.photoList span {
+  flex: 1;
+  font-size: 12px;
+  color: #a69a97;
+}
+
+.photoBlock input[type="file"] {
+  font-size: 12.5px;
+  color: #a69a97;
+}
+
+.formBtns {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.dirty {
+  font-size: 12px;
+  color: #fbbf24;
+}
+
+@media (max-width: 960px) {
+  .cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .page {
+    padding: 20px 14px 48px;
+  }
+}

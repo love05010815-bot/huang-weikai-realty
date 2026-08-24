@@ -32,8 +32,10 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     items: [
       { href: "/admin/appointments", label: "預約營運", icon: "calendar" },
       { href: "/admin/listings", label: "精選好案", icon: "building" },
+      // 跟「精選好案」是兩套資料：這裡管的是 /map 上掛在各建案底下的物件
+      { href: "/admin/map-listings", label: "建案地圖物件", icon: "map" },
       { href: "/admin/line", label: "LINE 機器人", icon: "mobile" },
-      { href: "/admin/inbox", label: "留言收件匣", icon: "chat", badge: "準備中" },
+      { href: "/admin/inbox", label: "留言收件匣", icon: "chat" },
     ],
   },
   {
