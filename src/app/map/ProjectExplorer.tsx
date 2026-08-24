@@ -160,17 +160,20 @@ export default function ProjectExplorer({
       );
     });
 
-    // 同系列（同建商＋同前綴，例：遠雄之星1…8）先算出整個系列的最大戶數。
+    // 先數出每個「建商＋系列名」有幾個案子。**兩案以上才算系列**。
     //
-    // ⚠️ 這個前置步驟不能省。比較函式如果「同系列比序號、不同系列比戶數」，
-    //    會排出 A<B<C<A 這種繞回來的結果（之星1<之星8<星呈<之星1），
-    //    Array.sort 拿到不一致的比較函式，出來的順序是未定義的。
-    //    所以整個系列要當成一個單位去跟別人比戶數，系列內部才比序號。
-    const seriesUnits = new Map<string, number>();
+    // 為什麼要這道門檻：名稱結尾帶數字不代表就是系列。只有一個案子的話，
+    // 讓它憑一個數字就插隊到建商最前面太粗暴（例如未來有人取名「長虹天一」）。
+    // 有同伴才成系列，這樣單獨一案永遠不會影響別人的位置。
+    const seriesSize = new Map<string, number>();
     for (const p of list) {
-      const k = p.builder + "//" + nameKey(p.name).base;
-      seriesUnits.set(k, Math.max(seriesUnits.get(k) ?? 0, p.units ?? 0));
+      const k = nameKey(p.name);
+      if (k.seq < 0) continue;
+      const key = p.builder + "//" + k.base;
+      seriesSize.set(key, (seriesSize.get(key) ?? 0) + 1);
     }
+    const inSeries = (p: Project, k: { base: string; seq: number }) =>
+      k.seq >= 0 && (seriesSize.get(p.builder + "//" + k.base) ?? 0) >= 2;
 
     return list.sort((a, b) => {
       // ① 依建商名稱排序（系統擁有者拍板，原本是戶數多到少）。
@@ -181,18 +184,22 @@ export default function ProjectExplorer({
 
       const ka = nameKey(a.name);
       const kb = nameKey(b.name);
+      const sa = inSeries(a, ka);
+      const sb = inSeries(b, kb);
 
-      // ② 同一系列 → 照序號小到大（2026-08-24 系統擁有者拍板）。
-      //    中港雲頂1 排在 中港雲頂3 前面，遠雄之星 1→8 依序排。
-      if (ka.base === kb.base) return ka.seq - kb.seq;
+      // ② 系列案整串排在同一家建商的最前面（2026-08-24 系統擁有者拍板）：
+      //    遠雄 → 之星1…8、幸福成、星呈；聖璽 → 中港雲頂1、中港雲頂3。
+      if (sa !== sb) return sa ? -1 : 1;
 
-      // ③ 同建商但不同系列 → 維持戶數多到少
-      const ua = seriesUnits.get(a.builder + "//" + ka.base) ?? 0;
-      const ub = seriesUnits.get(b.builder + "//" + kb.base) ?? 0;
-      if (ua !== ub) return ub - ua;
+      // ③ 系列之間先比系列名，同一系列內部照序號小到大
+      if (sa && sb) {
+        const byBase = ka.base.localeCompare(kb.base, "zh-Hant");
+        return byBase !== 0 ? byBase : ka.seq - kb.seq;
+      }
 
-      // ④ 戶數也一樣才比名字，純粹是為了讓順序固定、不會每次重整就跳動
-      return ka.base.localeCompare(kb.base, "zh-Hant");
+      // ④ 非系列案維持戶數多到少；戶數一樣才比名字，讓順序固定不跳動
+      const byUnits = (b.units ?? 0) - (a.units ?? 0);
+      return byUnits !== 0 ? byUnits : a.name.localeCompare(b.name, "zh-Hant");
     });
   }, [status, area, query]);
 
