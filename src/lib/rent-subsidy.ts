@@ -184,7 +184,7 @@ const CITY_TOWN_TABLE: ReadonlyArray<
   ["連江縣", "1", "", 43023, 3600, 3200, 2000],
 ];
 
-export type CityOption = { city: string; districts: string[] | null; incomeLimit: number };
+export type CityOption = { city: string; hasDistricts: boolean; incomeLimit: number };
 
 /** 給畫面的下拉選單用：每個縣市有哪些選項、有沒有要選行政區 */
 export function listCities(): CityOption[] {
@@ -196,14 +196,29 @@ export function listCities(): CityOption[] {
   }
   const out: CityOption[] = [];
   for (const [city, rows] of byCity) {
-    if (rows.length === 1) {
-      out.push({ city, districts: null, incomeLimit: rows[0][3] });
-    } else {
-      out.push({
-        city,
-        districts: rows.map((r) => r[2]),
-        incomeLimit: rows[0][3],
-      });
+    out.push({ city, hasDistricts: rows.length > 1, incomeLimit: rows[0][3] });
+  }
+  return out;
+}
+
+export type DistrictOption = { label: string; groupValue: string };
+
+/**
+ * 給畫面用：把某縣市底下的行政區「逐一」列出，不是整組塞成一串長文字。
+ *
+ * 官方資料裡一組行政區是逗號式的長字串（例：「東勢區、神岡區…梧棲區、清水區…」），
+ * 之前直接把這串長文字當成下拉選項，超過 24 字就自己截斷 —— 結果清水區、梧棲區
+ * 這種排在後段的區名直接被砍掉看不到。改成拆開逐一列出，選「清水區」就是「清水區」。
+ *
+ * `groupValue` 是選中後真正要傳給 calcRentSubsidy 的值 —— 那個函式內部是拿
+ * 「完整那組字串」去比對分級表（因為同一組裡的行政區補貼金額一樣），不是拿單一區名比對。
+ */
+export function listDistricts(city: string): DistrictOption[] {
+  const rows = CITY_TOWN_TABLE.filter((r) => r[0] === city && r[2]);
+  const out: DistrictOption[] = [];
+  for (const row of rows) {
+    for (const label of row[2].split("、")) {
+      out.push({ label, groupValue: row[2] });
     }
   }
   return out;

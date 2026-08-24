@@ -16,6 +16,7 @@ import Link from "next/link";
 import {
   calcRentSubsidy,
   listCities,
+  listDistricts,
   SOCIAL_DISADVANTAGE_ITEMS,
   type EconomicStatus,
   type MarriageStatus,
@@ -38,7 +39,11 @@ export default function RentSubsidyForm() {
   const [unbornCount, setUnbornCount] = useState("0");
   const [wardsCount, setWardsCount] = useState("0");
   const [city, setCity] = useState("");
-  const [district, setDistrict] = useState<string | null>(null);
+  // 存使用者實際選的區名（例：「清水區」），不是那組給計算用的完整分組字串 ——
+  // 同一組裡好幾個區（例：梧棲、清水…）share 同一個分組值，如果 <select> 的
+  // value 直接綁那個分組值，多個 option 會共用同一個 value，React 受控元件
+  // 反查顯示時只會挑到 DOM 順序中第一個符合的，選了「清水區」畫面會跳成「東勢區」。
+  const [districtLabel, setDistrictLabel] = useState<string | null>(null);
   const [ownsHome, setOwnsHome] = useState(false);
   const [incomeBelowLimit, setIncomeBelowLimit] = useState<boolean | null>(null);
   const [hasOtherSubsidy, setHasOtherSubsidy] = useState(false);
@@ -47,7 +52,10 @@ export default function RentSubsidyForm() {
   const [socialItems, setSocialItems] = useState<Set<string>>(new Set());
 
   const cityOption = CITIES.find((c) => c.city === city);
-  const needsDistrict = !!cityOption?.districts;
+  const needsDistrict = !!cityOption?.hasDistricts;
+  const districtOptions = useMemo(() => (city ? listDistricts(city) : []), [city]);
+  // 使用者選的區名 → 反查出那組給計算用的完整分組字串
+  const district = districtOptions.find((o) => o.label === districtLabel)?.groupValue ?? null;
 
   const toggleSocial = (item: string) => {
     setSocialItems((prev) => {
@@ -90,7 +98,8 @@ export default function RentSubsidyForm() {
     unbornCount,
     wardsCount,
     city,
-    district,
+    districtLabel,
+    districtOptions,
     needsDistrict,
     ownsHome,
     incomeBelowLimit,
@@ -163,7 +172,7 @@ export default function RentSubsidyForm() {
               value={city}
               onChange={(e) => {
                 setCity(e.target.value);
-                setDistrict(null);
+                setDistrictLabel(null);
                 setIncomeBelowLimit(null);
               }}
             >
@@ -180,13 +189,13 @@ export default function RentSubsidyForm() {
             <Field label="租賃房屋所在行政區">
               <select
                 className={styles.input}
-                value={district ?? ""}
-                onChange={(e) => setDistrict(e.target.value || null)}
+                value={districtLabel ?? ""}
+                onChange={(e) => setDistrictLabel(e.target.value || null)}
               >
                 <option value="">請選擇</option>
-                {cityOption?.districts?.map((d) => (
-                  <option key={d} value={d}>
-                    {d.length > 24 ? d.slice(0, 24) + "…" : d}
+                {districtOptions.map((opt) => (
+                  <option key={opt.label} value={opt.label}>
+                    {opt.label}
                   </option>
                 ))}
               </select>
@@ -337,7 +346,7 @@ export default function RentSubsidyForm() {
             </div>
             <div className={styles.resultSub}>
               {outcome.city}
-              {outcome.district !== outcome.city ? `・${outcome.district}` : ""}・第 {outcome.level} 級
+              {districtLabel ? `・${districtLabel}` : ""}・第 {outcome.level} 級
             </div>
             <div className={styles.resultFacts}>
               <span className={styles.fact}>基礎金額 {money(outcome.baseAmount)} 元</span>
