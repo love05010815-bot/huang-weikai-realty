@@ -149,26 +149,30 @@ async function attemptLogin(page, storeCode, username, password) {
   } catch (e) {
     if (!/Execution context was destroyed/.test(e.message)) throw e;
   }
-  // 換頁可能還在進行中，多等幾層讓它穩定，不然接下來的檢查一樣會撞上競速
-  await page.waitForLoadState("load").catch(() => {});
-  await page.waitForLoadState("networkidle").catch(() => {});
   page.off("response", onResponse);
 
-  let stillOnLogin;
-  try {
-    stillOnLogin = page.url().includes("login.aspx");
-  } catch {
-    stillOnLogin = true; // 拿不到目前網址，保守當還沒成功，交給外層重試
+  // 送出登入後這個網站好幾輪都還在換頁／重新導向，單等一次 networkidle
+  // 不夠——輪詢到畫面真的停下來再讀，撞到競速就當作「還沒穩定」再等一次，
+  // 不要立刻判失敗。全部輪詢完還是不穩定，才交給外層的整輪重試機制。
+  let stillOnLogin = true;
+  let bodyText = null;
+  const SETTLE_ATTEMPTS = 5;
+  for (let i = 0; i < SETTLE_ATTEMPTS; i++) {
+    await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(1000);
+    try {
+      stillOnLogin = page.url().includes("login.aspx");
+      if (!stillOnLogin) break; // 網址變了，登入成功，不用再讀畫面內容
+      bodyText = await page.evaluate(() => document.body.innerText);
+      break; // 順利讀到內容，畫面已經穩定，不用再等
+    } catch {
+      // 還在換頁中，繼續下一輪輪詢
+    }
   }
 
   if (stillOnLogin) {
-    let bodyText;
-    try {
-      bodyText = await page.evaluate(() => document.body.innerText);
-    } catch (e) {
-      // 這裡也可能撞到一樣的換頁競速——不是真的失敗，是還沒穩定，
-      // 拋一個外層看得懂的訊息，讓 login() 的重試機制重跑一次
-      throw new Error(`登入結果還不確定（讀取畫面內容時遇到換頁競速：${e.message.slice(0, 100)}），交給重試機制`);
+    if (bodyText === null) {
+      throw new Error(`登入結果還不確定，輪詢 ${SETTLE_ATTEMPTS} 次後畫面一直沒穩定下來，交給重試機制`);
     }
     // 抓所有含「錯誤/失敗/驗證/鎖定/robot」這類字的行，這種訊息通常藏在某個
     // span/div 裡，第一次失敗時還不知道確切的 id，先用關鍵字撈出來看
