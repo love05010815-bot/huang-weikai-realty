@@ -128,11 +128,29 @@ async function login(page) {
   await page.fill("#HouseID", storeCode);
   await page.fill("#MemberID", username);
   await page.fill("#MemberPW", password);
+
+  let postbackStatus = null;
+  const onResponse = (res) => {
+    if (res.url().includes("login.aspx")) postbackStatus = res.status();
+  };
+  page.on("response", onResponse);
+
   await Promise.all([page.waitForLoadState("networkidle"), page.click("#LinkButton1")]);
+  page.off("response", onResponse);
 
   if (page.url().includes("login.aspx")) {
     const bodyText = await page.evaluate(() => document.body.innerText);
-    throw new Error(`登入失敗，還停在登入頁。頁面文字片段：${bodyText.slice(0, 300)}`);
+    // 抓所有含「錯誤/失敗/驗證/鎖定/robot」這類字的行，這種訊息通常藏在某個
+    // span/div 裡，第一次失敗時還不知道確切的 id，先用關鍵字撈出來看
+    const suspectLines = bodyText
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l && /錯誤|失敗|鎖定|驗證碼|robot|captcha|封鎖|異常/i.test(l));
+    throw new Error(
+      `登入失敗，還停在登入頁。postback HTTP 狀態：${postbackStatus}。` +
+        `可疑訊息：${suspectLines.length ? suspectLines.join(" / ") : "（沒找到，可能是帳密錯誤或愛屋擋了自動化）"}。` +
+        `頁面文字前 1500 字：${bodyText.slice(0, 1500)}`
+    );
   }
 }
 
@@ -199,7 +217,16 @@ function buildOutput(rawRows) {
 async function main() {
   const browser = await chromium.launch();
   try {
-    const page = await browser.newPage();
+    // 用比較接近真人瀏覽器的設定，降低被當成自動化流量擋下來的機會
+    // （GitHub Actions 的 IP 是國外機房，這點本來就比本機操作容易被懷疑）
+    const context = await browser.newContext({
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      locale: "zh-TW",
+      timezoneId: "Asia/Taipei",
+      viewport: { width: 1280, height: 800 },
+    });
+    const page = await context.newPage();
     await login(page);
     console.log("登入成功");
 
