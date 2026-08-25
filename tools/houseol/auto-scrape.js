@@ -149,11 +149,27 @@ async function attemptLogin(page, storeCode, username, password) {
   } catch (e) {
     if (!/Execution context was destroyed/.test(e.message)) throw e;
   }
+  // 換頁可能還在進行中，多等幾層讓它穩定，不然接下來的檢查一樣會撞上競速
+  await page.waitForLoadState("load").catch(() => {});
   await page.waitForLoadState("networkidle").catch(() => {});
   page.off("response", onResponse);
 
-  if (page.url().includes("login.aspx")) {
-    const bodyText = await page.evaluate(() => document.body.innerText);
+  let stillOnLogin;
+  try {
+    stillOnLogin = page.url().includes("login.aspx");
+  } catch {
+    stillOnLogin = true; // 拿不到目前網址，保守當還沒成功，交給外層重試
+  }
+
+  if (stillOnLogin) {
+    let bodyText;
+    try {
+      bodyText = await page.evaluate(() => document.body.innerText);
+    } catch (e) {
+      // 這裡也可能撞到一樣的換頁競速——不是真的失敗，是還沒穩定，
+      // 拋一個外層看得懂的訊息，讓 login() 的重試機制重跑一次
+      throw new Error(`登入結果還不確定（讀取畫面內容時遇到換頁競速：${e.message.slice(0, 100)}），交給重試機制`);
+    }
     // 抓所有含「錯誤/失敗/驗證/鎖定/robot」這類字的行，這種訊息通常藏在某個
     // span/div 裡，第一次失敗時還不知道確切的 id，先用關鍵字撈出來看
     const suspectLines = bodyText
