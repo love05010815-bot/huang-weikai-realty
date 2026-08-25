@@ -55,6 +55,24 @@ async function ensureTables(): Promise<void> {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
+  // 2026-08-25 收件匣要顯示「LINE 有幾則還沒回」，需要一個能「清掉」的標記。
+  //
+  // ⚠️ 為什麼不能只看「最後一則是不是客戶傳的」就算未回：
+  //    LINE 的 webhook **只收得到客戶傳進來的訊息**。系統擁有者在手機 LINE App
+  //    或官方帳號管理後台回的，這裡完全看不到。所以純靠訊息推斷，數字會永遠偏高，
+  //    紅點清不掉 → 兩天後就變成沒人看的裝飾。那比不做還糟。
+  //
+  //    handled_at 就是給人手動清的：按「標記已回」寫入當下時間，
+  //    之後客戶又傳新訊息（created_at > handled_at）就自動重新亮起來。
+  const hasHandledAt = await db.$queryRawUnsafe<unknown[]>(
+    `SHOW COLUMNS FROM line_bot_user LIKE 'handled_at'`,
+  );
+  if (hasHandledAt.length === 0) {
+    await db.$executeRawUnsafe(
+      `ALTER TABLE line_bot_user ADD COLUMN handled_at TIMESTAMP(3) NULL AFTER last_seen_at`,
+    );
+  }
+
   tablesEnsured = true;
 }
 
@@ -194,6 +212,8 @@ export type BotUserSummary = {
   /** 最後一則訊息（不分你我），用來在清單上一眼看出聊到哪 */
   lastMessage: string | null;
   lastMessageAt: Date | null;
+  /** 最後一則是客戶傳的、而且還沒被標記已回 —— 清單上要標出來 */
+  awaitingReply: boolean;
 };
 
 /** 後台清單：跟機器人講過話的人，最近講話的排前面。 */
@@ -210,15 +230,22 @@ export async function listBotUsers(limit = 100): Promise<BotUserSummary[]> {
       last_seen_at: Date;
       last_message: string | null;
       last_message_at: Date | null;
+      last_role: string | null;
+      handled_at: Date | null;
     }[]
   >(
-    `SELECT u.line_user_id, u.display_name, u.muted, u.message_count, u.last_seen_at,
+    // last_role／handled_at 是順手在同一句撈出來的 —— 連線池只有 3 條，
+    // 為了一個布林值再開一次查詢不划算。
+    `SELECT u.line_user_id, u.display_name, u.muted, u.message_count, u.last_seen_at, u.handled_at,
        (SELECT m.content    FROM line_bot_message m
          WHERE m.line_user_id = u.line_user_id
          ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message,
        (SELECT m.created_at FROM line_bot_message m
          WHERE m.line_user_id = u.line_user_id
-         ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message_at
+         ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message_at,
+       (SELECT m.role       FROM line_bot_message m
+         WHERE m.line_user_id = u.line_user_id
+         ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_role
      FROM line_bot_user u
      ORDER BY u.last_seen_at DESC
      LIMIT ${safeLimit}`,
@@ -232,6 +259,10 @@ export async function listBotUsers(limit = 100): Promise<BotUserSummary[]> {
     lastSeenAt: r.last_seen_at,
     lastMessage: r.last_message,
     lastMessageAt: r.last_message_at,
+    awaitingReply:
+      r.last_role === "user" &&
+      (r.handled_at == null ||
+        (r.last_message_at != null && r.handled_at < r.last_message_at)),
   }));
 }
 
@@ -281,4 +312,45 @@ export async function getBotStats(): Promise<{ users: number; messagesToday: num
   const toNum = (v: bigint | number | undefined) =>
     typeof v === "bigint" ? Number(v) : Number(v ?? 0);
   return { users: toNum(u?.c), messagesToday: toNum(m?.c) };
+}
+
+/**
+ * 「LINE 還有幾個人在等你回」—— 給留言收件匣頂端那張提醒卡用的。
+ *
+ * 定義：這個人的**最後一則訊息是他自己傳的**，而且你還沒按過「標記已回」
+ * （或按完之後他又傳了新的）。
+ *
+ * ⚠️ 這是「等你看一眼」不是「你沒回」。手機 LINE App 回的訊息不會進這個資料庫
+ *    （webhook 收不到），所以回過的請按「標記已回」把它清掉，數字才有意義。
+ *
+ * 刻意壓成**一句 SQL**：這個專案的連線池只有 3 條，分成多句去撈是自己跟自己搶。
+ */
+export async function countAwaitingReply(): Promise<{ count: number; oldestAt: Date | null }> {
+  await ensureTables();
+  const [row] = await db.$queryRawUnsafe<{ c: unknown; oldest: Date | null }[]>(
+    `SELECT COUNT(*) AS c, MIN(t.last_at) AS oldest FROM (
+       SELECT u.handled_at,
+         (SELECT m.role       FROM line_bot_message m
+           WHERE m.line_user_id = u.line_user_id
+           ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_role,
+         (SELECT m.created_at FROM line_bot_message m
+           WHERE m.line_user_id = u.line_user_id
+           ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_at
+       FROM line_bot_user u
+     ) t
+     WHERE t.last_role = 'user'
+       AND (t.handled_at IS NULL OR t.handled_at < t.last_at)`,
+  );
+  // COUNT() 經 $queryRawUnsafe 回來是**字串**，直接拿去算會變字串黏接。
+  return { count: Number(String(row?.c ?? 0)), oldestAt: row?.oldest ?? null };
+}
+
+/** 按「標記已回」：把這個人從待回名單清掉。他再傳新訊息就會自己亮回來。 */
+export async function markHandled(lineUserId: string, handled: boolean): Promise<void> {
+  await ensureTables();
+  await db.$executeRawUnsafe(
+    `UPDATE line_bot_user SET handled_at = ${handled ? "CURRENT_TIMESTAMP(3)" : "NULL"}
+      WHERE line_user_id = ?`,
+    lineUserId,
+  );
 }

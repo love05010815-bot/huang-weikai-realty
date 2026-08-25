@@ -26,6 +26,7 @@ import {
 } from "@/lib/inbox-types";
 import { YOUTUBE_REDIRECT_URI, isYoutubeConfigured } from "@/lib/youtube";
 import { META_REDIRECT_URI, isMetaConfigured } from "@/lib/meta";
+import { countAwaitingReply } from "@/lib/line-bot/store";
 import CommentReply from "./CommentReply";
 import UnbindButton from "./UnbindYoutube";
 import styles from "./inbox.module.css";
@@ -54,6 +55,15 @@ function fmtTime(iso: string): string {
   }).format(d);
 }
 
+/** 「等了多久」。給 LINE 待回提醒用 —— 「3 小時」比「8/25 13:04」更有急迫感。 */
+function waitedFor(from: Date): string {
+  const mins = Math.max(0, Math.floor((Date.now() - from.getTime()) / 60000));
+  if (mins < 60) return `${mins} 分鐘`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} 小時`;
+  return `${Math.floor(hours / 24)} 天`;
+}
+
 export default async function InboxPage({
   searchParams,
 }: {
@@ -69,6 +79,15 @@ export default async function InboxPage({
 
   const sp = await searchParams;
   const snapshot = await loadInbox();
+
+  // LINE 只在這裡取一個數字，對話本身留在 /admin/line（私訊性質不同，不混排）。
+  // 刻意排在 loadInbox 後面**依序**跑，不跟它併行 —— 連線池只有 3 條，搶起來
+  // 會讓三個平台一起 P2024 超時，畫面看起來就像「全部都沒留言」。
+  // 查失敗就當沒有，不能讓 LINE 拖垮整個收件匣。
+  const lineWaiting = await countAwaitingReply().catch((e) => {
+    console.error("[inbox] 算 LINE 待回數失敗:", e);
+    return null;
+  });
   const ytConfigured = isYoutubeConfigured();
   const metaConfigured = isMetaConfigured();
 
@@ -96,6 +115,40 @@ export default async function InboxPage({
           LINE 的一對一私訊在
           <a href="/admin/line" style={{ color: CIS.blueSoft }}>「LINE 機器人」</a>那一頁。
         </p>
+
+        {/* ── LINE 待回提醒 ──
+            LINE 的對話不混進下面的清單（私訊 ≠ 公開留言），但「有人在等你」
+            這件事一定要在這一頁看得到，否則你每天只開收件匣就會漏掉 LINE。 */}
+        {lineWaiting !== null && (
+          <a
+            href="/admin/line"
+            className={styles.notice}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              textDecoration: "none",
+              ...(lineWaiting.count > 0
+                ? {
+                    background: "rgba(245,158,11,.1)",
+                    borderColor: "rgba(245,158,11,.35)",
+                    color: "#fbbf24",
+                  }
+                : { background: "transparent", borderColor: CIS.cardBorder, color: CIS.textMute }),
+            }}
+          >
+            <Icon name="chat" size={18} />
+            {lineWaiting.count > 0 ? (
+              <span>
+                <b>LINE 有 {lineWaiting.count} 位客戶在等回覆</b>
+                {lineWaiting.oldestAt ? <>，最久的已經等了 {waitedFor(lineWaiting.oldestAt)}</> : null}
+                。點這裡去回 →
+              </span>
+            ) : (
+              <span>LINE 目前沒有待回的訊息。</span>
+            )}
+          </a>
+        )}
 
         {/* ── 綁定結果回饋：成功要講，失敗更要講原因 ── */}
         {(sp.yt === "bound" || sp.meta === "bound") && (

@@ -22,7 +22,7 @@ import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
 import { BOT_ENABLED } from "@/config/line-bot";
 import { getBotStats, getConversation, listBotUsers } from "@/lib/line-bot/store";
 import { getMessageQuota } from "@/lib/line-bot/client";
-import { toggleBotMuted } from "@/lib/actions/line-bot";
+import { markLineHandledAction, toggleBotMuted } from "@/lib/actions/line-bot";
 import ReplyBox from "./ReplyBox";
 import styles from "./line.module.css";
 
@@ -278,6 +278,23 @@ export default async function AdminLinePage({
                     >
                       <div className={styles.listTop}>
                         <span className={styles.listName}>
+                          {/* 最後一則是客戶傳的、且還沒標記已回 —— 用一個點標出來，
+                              跟收件匣頂端那個數字算的是同一件事。 */}
+                          {x.awaitingReply && (
+                            <span
+                              aria-label="等你回覆"
+                              title="最後一則是客戶傳的，還沒標記已回"
+                              style={{
+                                display: "inline-block",
+                                width: 7,
+                                height: 7,
+                                borderRadius: "50%",
+                                background: CHIP.warn.color,
+                                marginRight: 6,
+                                verticalAlign: "middle",
+                              }}
+                            />
+                          )}
                           {x.displayName || "（未取得名稱）"}
                         </span>
                         <span className={styles.listTime} style={{ color: CIS.textMute }}>
@@ -329,21 +346,46 @@ export default async function AdminLinePage({
                         共 {selected.messageCount} 則・最後出現 {fmtTime(selected.lastSeenAt)}
                       </div>
                     </div>
-                    <form action={toggleBotMuted}>
-                      <input type="hidden" name="lineUserId" value={selected.lineUserId} />
-                      <input type="hidden" name="next" value={selected.muted ? "0" : "1"} />
-                      <button
-                        type="submit"
-                        className={styles.btn}
-                        style={
-                          selected.muted
-                            ? { background: "transparent", color: CIS.textSub, borderColor: CIS.cardBorder }
-                            : { background: CIS.blueDeep, color: "#fff", borderColor: CIS.blueDeep }
-                        }
-                      >
-                        {selected.muted ? "放回給機器人" : "我接手"}
-                      </button>
-                    </form>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {/* 「標記已回」：給你在手機 LINE App 回過的情況用。
+                          webhook 收不到你從手機送出的訊息，所以系統無從得知你回了沒 ——
+                          這顆是唯一能把收件匣那個待回數字清掉的方法。 */}
+                      <form action={markLineHandledAction}>
+                        <input type="hidden" name="lineUserId" value={selected.lineUserId} />
+                        <input type="hidden" name="next" value={selected.awaitingReply ? "1" : "0"} />
+                        <button
+                          type="submit"
+                          className={styles.btn}
+                          style={
+                            selected.awaitingReply
+                              ? { background: "transparent", color: CHIP.warn.color, borderColor: CHIP.warn.border }
+                              : { background: "transparent", color: CIS.textMute, borderColor: CIS.cardBorder }
+                          }
+                          title={
+                            selected.awaitingReply
+                              ? "已經在手機回過了？按這個把收件匣的待回提醒清掉"
+                              : "標回「待回」，收件匣會重新亮起來"
+                          }
+                        >
+                          {selected.awaitingReply ? "標記已回" : "標回待回"}
+                        </button>
+                      </form>
+                      <form action={toggleBotMuted}>
+                        <input type="hidden" name="lineUserId" value={selected.lineUserId} />
+                        <input type="hidden" name="next" value={selected.muted ? "0" : "1"} />
+                        <button
+                          type="submit"
+                          className={styles.btn}
+                          style={
+                            selected.muted
+                              ? { background: "transparent", color: CIS.textSub, borderColor: CIS.cardBorder }
+                              : { background: CIS.blueDeep, color: "#fff", borderColor: CIS.blueDeep }
+                          }
+                        >
+                          {selected.muted ? "放回給機器人" : "我接手"}
+                        </button>
+                      </form>
+                    </div>
                   </div>
 
                   {selected.muted && (

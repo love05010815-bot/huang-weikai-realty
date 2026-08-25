@@ -8,7 +8,7 @@
 import { revalidatePath } from "next/cache";
 import { isCurrentUserAdmin } from "@/lib/admin-check";
 import { getLineBotToken, pushMessage } from "@/lib/line-bot/client";
-import { saveMessage, setMuted } from "@/lib/line-bot/store";
+import { markHandled, saveMessage, setMuted } from "@/lib/line-bot/store";
 
 type Result = { ok: boolean; error?: string };
 
@@ -68,6 +68,9 @@ export async function sendLineReplyAction(lineUserId: string, text: string): Pro
   try {
     await saveMessage(lineUserId, "assistant", message, "human");
     await setMuted(lineUserId, true);
+    // 從後台回了就等於處理完，順手把收件匣的待回標記清掉。
+    // 不清的話你會回完還看到紅點，然後就學會無視它。
+    await markHandled(lineUserId, true);
   } catch (e) {
     // 訊息「已經送到客戶手上了」，這裡失敗只是記錄沒寫成功。
     // 絕對不能回 ok:false —— 那會讓你以為沒送出去而再送一次，客戶收到兩則一樣的。
@@ -77,7 +80,29 @@ export async function sendLineReplyAction(lineUserId: string, text: string): Pro
   }
 
   revalidatePath("/admin/line");
+  revalidatePath("/admin/inbox");
   return { ok: true };
+}
+
+/**
+ * 「標記已回」／「標回未回」—— 給在手機 LINE App 回過的情況用。
+ *
+ * 存在的理由：LINE 的 webhook 只收得到**客戶傳進來**的訊息，系統擁有者在手機上
+ * 回的完全看不到。所以「待回」的數字一定會偏高，必須給人一個手動清掉的方法，
+ * 否則那個數字很快就沒人信、變成純裝飾。
+ *
+ * 清掉之後客戶再傳新訊息會自動重新亮起來（比對 handled_at 與最後一則的時間）。
+ */
+export async function markLineHandledAction(formData: FormData): Promise<void> {
+  if (!(await isCurrentUserAdmin())) return;
+
+  const lineUserId = String(formData.get("lineUserId") || "");
+  const next = String(formData.get("next") || "") === "1";
+  if (!lineUserId) return;
+
+  await markHandled(lineUserId, next);
+  revalidatePath("/admin/line");
+  revalidatePath("/admin/inbox");
 }
 
 /** 給未來可能的程式化呼叫留的版本（回傳結果而不是靜默 return）。 */
