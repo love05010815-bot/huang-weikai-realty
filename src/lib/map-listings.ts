@@ -33,6 +33,13 @@ export type MapListingRecord = {
   /** 對應 port-projects.ts 的建案 id */
   projectId: string;
   title: string;
+  /**
+   * 物件地址。**只給後台自己看，不會出現在 /map 上。**
+   *
+   * 用途是「我到底上架過哪一間」—— 標題（例：中高樓無限視野兩房平車）
+   * 同一棟樓可能有好幾間長得一模一樣，光看標題認不出來。
+   */
+  address: string | null;
   points: string[];
   /** 第一張是封面。空陣列＝還沒有照片，畫面顯示佔位塊 */
   photos: string[];
@@ -47,6 +54,8 @@ export type MapListingRecord = {
 export type MapListingInput = {
   projectId: string;
   title: string;
+  /** 物件地址，可留空。後台辨識用，不對外顯示 */
+  address: string;
   points: string[];
   photos: string[];
   linkHref: string;
@@ -82,6 +91,7 @@ export async function ensureMapListingTable(): Promise<void> {
       id          VARCHAR(36)  NOT NULL,
       project_id  VARCHAR(64)  NOT NULL,
       title       VARCHAR(255) NOT NULL,
+      address     VARCHAR(255) NULL,
       points      TEXT         NULL,
       photos      TEXT         NULL,
       link_href   VARCHAR(500) NULL,
@@ -93,6 +103,17 @@ export async function ensureMapListingTable(): Promise<void> {
       KEY idx_map_listing_project (project_id, sort_order)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+
+  // 這張表 2026-08-23 就在正式庫建好了，當時沒有 address 欄。
+  // CREATE TABLE IF NOT EXISTS 不會替既有的表補欄位，所以要另外 ALTER 一次。
+  //
+  // 先查再加，不用 try/catch 吞「重複欄位」—— 那樣每次啟動都會在 log 印一行
+  // prisma:error，久了就會習慣性忽略 log，真的出事時反而看不見。
+  const hasAddress = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM map_listing LIKE 'address'`);
+  if (hasAddress.length === 0) {
+    await db.$executeRawUnsafe(`ALTER TABLE map_listing ADD COLUMN address VARCHAR(255) NULL AFTER title`);
+  }
+
   ensured = true;
 }
 
@@ -102,6 +123,7 @@ type Row = {
   id: string;
   project_id: string;
   title: string;
+  address: string | null;
   points: string | null;
   photos: string | null;
   link_href: string | null;
@@ -126,6 +148,7 @@ function toRecord(r: Row): MapListingRecord {
     id: r.id,
     projectId: r.project_id,
     title: r.title,
+    address: r.address?.trim() ? r.address.trim() : null,
     points: parseArray(r.points),
     photos: parseArray(r.photos),
     linkHref: r.link_href?.trim() ? r.link_href.trim() : null,
@@ -139,7 +162,7 @@ function toRecord(r: Row): MapListingRecord {
 export async function listAllMapListings(): Promise<MapListingRecord[]> {
   await ensureMapListingTable();
   const rows = await db.$queryRawUnsafe<Row[]>(
-    `SELECT id, project_id, title, points, photos, link_href, status, sort_order, updated_at
+    `SELECT id, project_id, title, address, points, photos, link_href, status, sort_order, updated_at
        FROM map_listing ORDER BY project_id ASC, sort_order ASC, created_at ASC`,
   );
   return rows.map(toRecord);
@@ -156,7 +179,7 @@ export async function getMapListingsByProject(): Promise<Map<string, PublicMapLi
   try {
     await ensureMapListingTable();
     const rows = await db.$queryRawUnsafe<Row[]>(
-      `SELECT id, project_id, title, points, photos, link_href, status, sort_order, updated_at
+      `SELECT id, project_id, title, address, points, photos, link_href, status, sort_order, updated_at
          FROM map_listing WHERE status = 'active' ORDER BY sort_order ASC, created_at ASC`,
     );
     for (const row of rows) {
@@ -189,6 +212,10 @@ export function validateMapListing(
   if (!title) return { ok: false, error: "標題不能空白" };
   if (title.length > 255) return { ok: false, error: "標題太長（最多 255 字）" };
 
+  // 地址可留空 —— 舊資料本來就沒有，強制必填會讓既有的三筆全部存不回去
+  const address = (input.address ?? "").trim();
+  if (address.length > 255) return { ok: false, error: "地址太長（最多 255 字）" };
+
   const points = (input.points ?? []).map((p) => p.trim()).filter(Boolean);
   const photos = (input.photos ?? []).map((p) => p.trim()).filter(Boolean);
   if (photos.length > MAX_PHOTOS) return { ok: false, error: `照片最多 ${MAX_PHOTOS} 張` };
@@ -201,7 +228,7 @@ export function validateMapListing(
 
   return {
     ok: true,
-    value: { projectId, title, points, photos, linkHref, status: input.status === "sold" ? "sold" : "active" },
+    value: { projectId, title, address, points, photos, linkHref, status: input.status === "sold" ? "sold" : "active" },
   };
 }
 
@@ -217,11 +244,12 @@ export async function createMapListing(input: MapListingInput): Promise<string> 
   );
   const next = rows[0]?.next ?? 0;
   await db.$executeRawUnsafe(
-    `INSERT INTO map_listing (id, project_id, title, points, photos, link_href, status, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO map_listing (id, project_id, title, address, points, photos, link_href, status, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     input.projectId,
     input.title,
+    input.address || null,
     JSON.stringify(input.points),
     JSON.stringify(input.photos),
     input.linkHref || null,
@@ -235,10 +263,11 @@ export async function updateMapListing(id: string, input: MapListingInput): Prom
   await ensureMapListingTable();
   await db.$executeRawUnsafe(
     `UPDATE map_listing
-        SET project_id = ?, title = ?, points = ?, photos = ?, link_href = ?, status = ?
+        SET project_id = ?, title = ?, address = ?, points = ?, photos = ?, link_href = ?, status = ?
       WHERE id = ?`,
     input.projectId,
     input.title,
+    input.address || null,
     JSON.stringify(input.points),
     JSON.stringify(input.photos),
     input.linkHref || null,

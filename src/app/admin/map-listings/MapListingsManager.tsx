@@ -35,6 +35,7 @@ type Draft = {
   id: string | null;
   projectId: string;
   title: string;
+  address: string;
   pointsText: string;
   photos: string[];
   linkHref: string;
@@ -45,6 +46,7 @@ const EMPTY: Draft = {
   id: null,
   projectId: "",
   title: "",
+  address: "",
   pointsText: "",
   photos: [],
   linkHref: "",
@@ -56,6 +58,7 @@ function toDraft(r: MapListingRecord): Draft {
     id: r.id,
     projectId: r.projectId,
     title: r.title,
+    address: r.address ?? "",
     pointsText: r.points.join("\n"),
     photos: [...r.photos],
     linkHref: r.linkHref ?? "",
@@ -174,6 +177,7 @@ export default function MapListingsManager({
     const res = await saveMapListingAction(draft.id, {
       projectId: draft.projectId,
       title: draft.title,
+      address: draft.address,
       points: draft.pointsText.split("\n").map((s) => s.trim()).filter(Boolean),
       photos: draft.photos,
       linkHref: draft.linkHref,
@@ -258,6 +262,12 @@ export default function MapListingsManager({
                         )}
                         <div>
                           <b>{r.title}</b>
+                          {/* 地址擺標題正下方：同一棟樓好幾間的標題常常一模一樣，
+                              沒有地址根本認不出「這筆是哪一間」。沒填也要顯示，
+                              留白的話你不會發現自己漏填。 */}
+                          <span className={r.address ? styles.addrLine : styles.addrEmpty}>
+                            {r.address ? `📍 ${r.address}` : "📍 未填地址"}
+                          </span>
                           <small>
                             {r.status === "active" ? "上架中" : "已下架"}
                             {r.photos.length > 0 && ` ・ ${r.photos.length} 張照片`}
@@ -383,6 +393,21 @@ export default function MapListingsManager({
                   placeholder="例：中高樓無限視野兩房平車"
                   maxLength={255}
                 />
+              </label>
+
+              <label>
+                <span>物件地址（可留空）</span>
+                <input
+                  type="text"
+                  value={draft.address}
+                  onChange={(e) => patch({ address: e.target.value })}
+                  placeholder="例：梧棲區文化路二段 123 號 12 樓之 3"
+                  maxLength={255}
+                />
+                <small>
+                  <b>不會出現在 /map 上</b>，只有這個後台看得到。用途是讓你認出這筆是哪一間
+                  —— 同一棟樓好幾間的標題常常長得一樣。
+                </small>
               </label>
 
               <label>

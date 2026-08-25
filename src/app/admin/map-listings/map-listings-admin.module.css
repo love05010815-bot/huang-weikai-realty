@@ -510,3 +510,23 @@
     padding: 20px 14px 48px;
   }
 }
+
+/* ── 清單裡的物件地址（2026-08-25 新增）──
+   ⚠️ 用 span 不用 small，是為了避開上面 `.itemMain small` 那條規則 ——
+      同樣的 selector 權重打架時，勝負只看誰寫在後面，很容易踩到。 */
+.addrLine,
+.addrEmpty {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.addrLine {
+  color: #f5c0c4;
+}
+
+/* 沒填地址也要看得見，只是暗一點 —— 留白的話你不會發現自己漏填 */
+.addrEmpty {
+  color: #7a6f6c;
+}
