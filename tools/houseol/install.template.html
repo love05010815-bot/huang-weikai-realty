@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<title>愛屋抓取小工具</title>
+<style>
+  body { font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif; max-width: 640px; margin: 40px auto; padding: 0 20px; line-height: 1.8; color: #222; }
+  h1 { font-size: 22px; }
+  .btn { display: inline-block; padding: 14px 28px; background: #01354D; color: #fff; border-radius: 8px; font-weight: bold; text-decoration: none; font-size: 16px; }
+  .btn:hover { background: #012838; }
+  .box { background: #f5f0e8; border: 1px solid #DAB38A; border-radius: 8px; padding: 16px 20px; margin: 20px 0; }
+  ol { padding-left: 22px; }
+  li { margin-bottom: 10px; }
+  code { background: #eee; padding: 2px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+  <h1>🏠 愛屋抓取小工具</h1>
+  <p>把下面這個藍色按鈕，<strong>拖到瀏覽器的書籤列</strong>（網址列下面那排）。拖曳的時候滑鼠按著按鈕不放，移到書籤列上再放開。</p>
+
+  <p style="text-align:center; margin: 30px 0;">
+    <a class="btn" href="__BOOKMARKLET_URL__" onclick="alert('這顆按鈕是用拖曳的，不是用點的。用滑鼠按著它拖到上面的書籤列再放開。'); return false;">📥 抓愛屋這一頁</a>
+  </p>
+
+  <div class="box">
+    <strong>如果拖曳失敗、書籤列沒顯示：</strong>
+    <ol>
+      <li>先按右鍵這顆按鈕 → 「複製連結網址」</li>
+      <li>在瀏覽器新增一個書籤（通常是網址列旁邊的星星，或選單裡的「加入書籤」）</li>
+      <li>書籤名稱隨便打（例如「抓愛屋」），網址欄位<strong>貼上剛剛複製的東西</strong></li>
+      <li>存檔</li>
+    </ol>
+  </div>
+
+  <h2>怎麼用</h2>
+  <ol>
+    <li>登入愛屋，切到「委託中」物件列表頁</li>
+    <li>按一下書籤列上的「抓愛屋這一頁」</li>
+    <li>會跳出提示說抓到幾筆，同時瀏覽器會自動下載一個 <code>houseol-page-xxxx.json</code> 檔案</li>
+    <li>翻到下一頁，再按一次書籤，重複到最後一頁（總共約 12 頁）</li>
+    <li>抓完之後，去瀏覽器的「下載項目」資料夾，把所有 <code>houseol-page-*.json</code> 檔案交給小凱（傳給他、或告訴他檔案在哪）</li>
+  </ol>
+
+  <div class="box">
+    <strong>放心的部分：</strong>這支工具只讀「你登入後看到的畫面文字」，完全不碰帳號密碼，也不會自動幫你翻頁或做任何點擊 —— 每一頁都要你自己按書籤。
+    地址欄位在抓的當下就只留「梧棲區」這種行政區等級，完整門牌不會出現在下載的檔案裡。
+  </div>
+</body>
+</html>
