@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import VisitCounter from "./_visits/VisitCounter";
+import ListingClickTracker from "./_visits/ListingClickTracker";
 
 export const metadata: Metadata = {
   title: "黃瑋凱｜台中海線房仲・線上預約",
@@ -24,6 +25,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         {/* 只負責記一次人氣，畫面上不顯示；顯示的那個在首頁頁尾 */}
         <VisitCounter silent />
+        {/* 精選好案卡片的點擊統計。用事件委派，卡片那邊只要加 data 屬性 */}
+        <ListingClickTracker />
       </body>
     </html>
   );

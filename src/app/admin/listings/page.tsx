@@ -15,6 +15,7 @@ import { Icon } from "@/app/admin/_ui/icons";
 import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
 import { listAllListings, type ListingRecord } from "@/lib/listings";
 import { findCopyRisks } from "@/lib/listing-copy-risk";
+import { getListingClickStats, type ListingClickStats } from "@/lib/listing-clicks";
 import ListingsManager from "./ListingsManager";
 import styles from "./listings-admin.module.css";
 
@@ -37,6 +38,15 @@ export default async function ListingsAdminPage() {
   } catch (e) {
     loadError = e instanceof Error ? e.message : String(e);
   }
+  // 點擊統計是附加情報。讀不到就顯示 0，不要讓整頁打不開 ——
+  // 而且**不要跟上面的 listAllListings() 並行打**，這個專案的連線池只有 3 條。
+  let clickStats: ListingClickStats = {};
+  try {
+    clickStats = await getListingClickStats();
+  } catch (e) {
+    console.error("[admin/listings] 點擊統計讀不到:", e);
+  }
+
   const activeCount = rows.filter((row) => row.status === "active").length;
   const soldCount = rows.length - activeCount;
   const noPhotoCount = rows.filter((row) => row.status === "active" && row.photos.length === 0).length;
@@ -108,7 +118,7 @@ export default async function ListingsAdminPage() {
           賣掉的物件還掛在網站上是廣告不實，但整筆刪掉之後就查不到你曾經賣過什麼了。
         </div>
 
-        <ListingsManager initial={rows} />
+        <ListingsManager initial={rows} clickStats={clickStats} />
       </div>
     </main>
   );
