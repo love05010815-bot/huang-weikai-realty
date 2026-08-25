@@ -1,11 +1,14 @@
-# 定期自動登入愛屋，重抓「委託中」列表，更新 src/config/houseol-inventory.json。
+# 登入愛屋、重抓「委託中」列表，更新 src/config/houseol-inventory.json。
 #
-# ⚠️ 2026-08-25 瑋凱在知道風險之後決定要做的自動化，細節看 tools/houseol/README.md
-#    「自動化」那節：帳密存在下面這幾個 Secrets 裡，外洩風險比 Deploy Hook 高很多
-#    （能登進愛屋看到全店委託資料），而且愛屋服務條款可能不允許自動化登入，
-#    帳號有被停權風險。要停用這個自動化，把下面的 schedule 那三行整個刪掉，
-#    或是到 repo 的 Settings → Secrets 刪掉 HOUSEOL_* 那三把就行，
-#    手動的書籤流程完全不受影響。
+# ⚠️ 2026-08-25 排程已關閉。試了七輪修法（換頁競速、輪詢等穩定、拿掉
+#    webdriver 偵測訊號…），登入請求本身還是收不到任何伺服器回應
+#    （postback 狀態一直是 null，沒有錯誤文字、沒有 WAF 標頭痕跡），
+#    已經超出從程式碼層面能繼續排查的範圍，停損退回手動書籤流程
+#    （tools/houseol/install.html，不受影響、隨時可用）。
+#
+#    這支 workflow 留著、Secrets 也留著沒刪，只是不會自動跑了——
+#    可以用 Actions 分頁的 workflow_dispatch 手動觸發繼續測試，
+#    或哪天想重新查這個問題再回來用。
 #
 # 需要在 repo Settings → Secrets and variables → Actions 設定：
 #   HOUSEOL_STORE_CODE   愛屋店代號
@@ -17,9 +20,6 @@
 name: houseol-sync
 
 on:
-  schedule:
-    # 每天台灣時間凌晨 3 點（UTC 19:00 前一天），流量低、不影響瑋凱操作愛屋
-    - cron: "0 19 * * *"
   workflow_dispatch:
 
 concurrency:
