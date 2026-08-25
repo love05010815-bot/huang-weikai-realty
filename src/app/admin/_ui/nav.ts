@@ -34,6 +34,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { href: "/admin/listings", label: "精選好案", icon: "building" },
       // 跟「精選好案」是兩套資料：這裡管的是 /map 上掛在各建案底下的物件
       { href: "/admin/map-listings", label: "建案地圖物件", icon: "map" },
+      { href: "/admin/videos", label: "影音", icon: "video" },
       { href: "/admin/line", label: "LINE 機器人", icon: "mobile" },
       { href: "/admin/inbox", label: "留言收件匣", icon: "chat" },
     ],
@@ -45,6 +46,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { href: "/card", label: "線上名片", icon: "card", external: true },
       { href: "/card/booking", label: "線上預約", icon: "edit", external: true },
       { href: "/listings", label: "精選好案", icon: "building", external: true },
+      { href: "/videos", label: "影音專區", icon: "video", external: true },
     ],
   },
 ];

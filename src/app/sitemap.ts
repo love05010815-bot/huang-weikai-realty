@@ -25,5 +25,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // 2026-08-21 恢復。未核對的「土地使用分區」層已從該頁移除，
     // 現在是系統擁有者確認過的 39 個建案，可以收錄。
     { url: `${SITE_URL}/map`, lastModified, changeFrequency: "weekly", priority: 0.8 },
+    // 影音。內容是系統擁有者自己拍的，Google 對「有原創影音的在地商家」評價較好
+    { url: `${SITE_URL}/videos`, lastModified, changeFrequency: "weekly", priority: 0.8 },
   ];
 }

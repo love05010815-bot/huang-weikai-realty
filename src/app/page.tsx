@@ -8,6 +8,12 @@ import { OWNER, SOCIAL, SITE_URL } from "@/config/owner";
 import { INTRO_LINES, AREAS } from "@/config/profile";
 import { HOME_FEATURED_COUNT } from "@/config/listings";
 import { getPublicListings } from "@/lib/listings";
+import {
+  CATEGORY_META,
+  HOME_VIDEO_PER_CATEGORY,
+  VIDEO_CATEGORIES,
+  getPublicVideos,
+} from "@/lib/videos";
 import styles from "./home.module.css";
 // 卡片樣式跟 /listings 共用同一份，改一處兩邊都會變
 import lst from "./listings/listings.module.css";
@@ -165,6 +171,9 @@ export const revalidate = 300;
 
 export default async function HomePage() {
   const listings = await getPublicListings();
+  // ⚠️ 刻意「一個做完再做下一個」，不要用 Promise.all —— 那會同時抓兩條資料庫連線，
+  //    這個專案 Vercel 上的 Prisma pool 只有 3 條，並行等於自己跟自己搶（P2024）。
+  const videos = await getPublicVideos();
   return (
     <div className={styles.page}>
       <script
@@ -346,6 +355,62 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* ---------------- 影音 ----------------
+             放在精選好案之後、服務項目之前：看完物件的人最有可能想再多了解，
+             而還在觀望的人會被知識型影片留住。
+
+             ⚠️ 一支影片都沒有的時候整個區塊不渲染 —— 首頁掛一塊
+             「影音專區（空的）」比沒有那一塊還糟。每類各取最前面 2 支，
+             順序由後台的上下移決定。 */}
+        {videos.length > 0 && (
+          <section id="videos" className={styles.section}>
+            <div className={`${styles.container} ${styles.center}`}>
+              <span className={styles.eyebrow}>VIDEOS</span>
+              <h2 className={styles.sectionTitle}>影音專區</h2>
+              <p className={styles.sectionDesc}>
+                我自己拍、自己講的。買房這件事講一次聽不懂很正常，影片可以重看。
+              </p>
+            </div>
+            <div className={styles.container}>
+              <div className={styles.videoGrid}>
+                {VIDEO_CATEGORIES.flatMap((category) =>
+                  videos.filter((v) => v.category === category).slice(0, HOME_VIDEO_PER_CATEGORY),
+                ).map((video) => (
+                  // 連到站內的 /videos，不是直接連去 YouTube ——
+                  // 首頁把客戶送去 YouTube 就等於送走了，站內播完還看得到預約按鈕。
+                  <Link key={video.id} className={styles.videoCard} href="/videos">
+                    <span className={styles.videoThumbWrap}>
+                      {video.thumbnail ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          className={styles.videoThumb}
+                          src={video.thumbnail}
+                          alt=""
+                          width={480}
+                          height={360}
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span className={styles.videoThumbEmpty} aria-hidden="true">
+                          🎬
+                        </span>
+                      )}
+                      <span className={styles.videoPlay} aria-hidden="true" />
+                    </span>
+                    <span className={styles.videoTag}>{CATEGORY_META[video.category].label}</span>
+                    <span className={styles.videoTitle}>{video.title}</span>
+                  </Link>
+                ))}
+              </div>
+              <div className={`${styles.center} ${styles.listingsMore}`}>
+                <Link className={`${styles.btn} ${styles.btnPrimary}`} href="/videos">
+                  看全部影片
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ---------------- 服務項目 ---------------- */}
         <section id="services" className={styles.section}>
