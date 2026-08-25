@@ -135,13 +135,21 @@ async function attemptLogin(page, storeCode, username, password) {
   // 不用 click() 點那顆 <a href="javascript:__doPostBack(...)">——第一次實跑時
   // postback 完全沒發生（狀態是 null），懷疑無頭瀏覽器點 javascript: 連結不可靠。
   // 直接呼叫頁面自己的 __doPostBack，跟按鈕邏輯完全一樣，繞過點擊這一層。
-  await Promise.all([
-    page.waitForLoadState("networkidle"),
-    page.evaluate(() => {
+  //
+  // ⚠️ __doPostBack 內部呼叫 theForm.submit()，換頁換得比 evaluate() 自己
+  // 的 promise 還快的話，執行環境會被提前摧毀，evaluate() 因此丟出
+  // "Execution context was destroyed" —— 這不是登入失敗，反而代表換頁真的
+  // 發生了，是 Playwright 對這種模式的已知行為，要當成正常訊號接住，不能
+  // 讓它冒出去被當一般錯誤處理。
+  try {
+    await page.evaluate(() => {
       // eslint-disable-next-line no-undef
       __doPostBack("LinkButton1", "");
-    }),
-  ]);
+    });
+  } catch (e) {
+    if (!/Execution context was destroyed/.test(e.message)) throw e;
+  }
+  await page.waitForLoadState("networkidle").catch(() => {});
   page.off("response", onResponse);
 
   if (page.url().includes("login.aspx")) {
