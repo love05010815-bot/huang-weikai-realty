@@ -170,14 +170,40 @@
   overflow-y: auto;
 }
 
+/* 一列 = 可點的連結 ＋ 一顆「已回」。
+   按鈕不能放進 <a> 裡（<a> 包 <form> 是無效 HTML，點擊行為會亂掉），
+   所以外面包一層 .listCell，邊框與底色都搬到那一層。 */
+.listCell {
+  border: 1px solid;
+  border-radius: 11px;
+  overflow: hidden;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
 .listItem {
   display: block;
   padding: 11px 13px;
-  border: 1px solid;
-  border-radius: 11px;
   text-decoration: none;
   color: inherit;
-  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+/* 只有「還在等你回」的那幾列才出現，沒事不要佔位子 */
+.listDone {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 11px 9px;
+}
+
+.listDoneBtn {
+  min-height: 30px;
+  padding: 4px 12px;
+  border: 1px solid;
+  border-radius: 7px;
+  background: transparent;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 .listTop {

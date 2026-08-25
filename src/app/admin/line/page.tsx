@@ -267,14 +267,19 @@ export default async function AdminLinePage({
                 {users.map((x) => {
                   const active = x.lineUserId === selectedId;
                   return (
-                    <Link
+                    // 邊框與底色在這一層，不在 <Link> 上 —— 因為「已回」按鈕必須留在
+                    // <a> 外面（<a> 包 <form> 是無效 HTML，點擊行為會亂掉）。
+                    <div
                       key={x.lineUserId}
-                      href={`/admin/line?u=${encodeURIComponent(x.lineUserId)}`}
-                      className={styles.listItem}
+                      className={styles.listCell}
                       style={{
                         background: active ? CIS.cardHover : CIS.card,
                         borderColor: active ? CIS.blue : CIS.cardBorder,
                       }}
+                    >
+                    <Link
+                      href={`/admin/line?u=${encodeURIComponent(x.lineUserId)}`}
+                      className={styles.listItem}
                     >
                       <div className={styles.listTop}>
                         <span className={styles.listName}>
@@ -318,6 +323,24 @@ export default async function AdminLinePage({
                         </span>
                       )}
                     </Link>
+
+                    {/* 跟 /admin/inbox 那張清單同一顆按鈕、同一個 action ——
+                        兩頁行為一致，不然在這頁找不到會以為功能沒做。 */}
+                    {x.awaitingReply && (
+                      <form action={markLineHandledAction} className={styles.listDone}>
+                        <input type="hidden" name="lineUserId" value={x.lineUserId} />
+                        <input type="hidden" name="next" value="1" />
+                        <button
+                          type="submit"
+                          className={styles.listDoneBtn}
+                          style={{ borderColor: CHIP.warn.border, color: CHIP.warn.color }}
+                          title="已經在手機回過了，把待回提醒清掉"
+                        >
+                          已回
+                        </button>
+                      </form>
+                    )}
+                    </div>
                   );
                 })}
               </div>
