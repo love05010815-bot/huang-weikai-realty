@@ -19,6 +19,7 @@ import { CIS } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
 import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
 import { listAllMapListings, type MapListingRecord } from "@/lib/map-listings";
+import { loadHouseolInventory } from "@/lib/houseol-inventory";
 import { PROJECTS } from "@/data/port-projects";
 import MapListingsManager from "./MapListingsManager";
 import styles from "./map-listings-admin.module.css";
@@ -54,6 +55,8 @@ export default async function MapListingsAdminPage() {
     builder: p.builder,
     count: rows.filter((r) => r.projectId === p.id).length,
   })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "zh-Hant"));
+
+  const inventory = loadHouseolInventory();
 
   return (
     <main
@@ -108,7 +111,7 @@ export default async function MapListingsAdminPage() {
             </li>
           </ul>
 
-          <MapListingsManager initial={rows} projects={options} />
+          <MapListingsManager initial={rows} projects={options} inventory={inventory} />
         </>
       )}
     </main>

@@ -20,6 +20,7 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import { resolvePhotoSrc } from "@/lib/photo-src";
 import { MAX_PHOTOS, type MapListingRecord, type MapListingStatus } from "@/lib/map-listings";
+import { houseolItemSummary, type HouseolItem } from "@/lib/houseol-item";
 import {
   deleteMapListingAction,
   moveMapListingAction,
@@ -65,9 +66,11 @@ function toDraft(r: MapListingRecord): Draft {
 export default function MapListingsManager({
   initial,
   projects,
+  inventory,
 }: {
   initial: MapListingRecord[];
   projects: ProjectOption[];
+  inventory: HouseolItem[];
 }) {
   const [rows, setRows] = useState(initial);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -75,8 +78,16 @@ export default function MapListingsManager({
   const [dirty, setDirty] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [invQuery, setInvQuery] = useState("");
   const [pending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  /** 打字才篩，一開始最多先列 20 筆，不要一次把上百筆都塞進畫面 */
+  const invPool = useMemo(() => {
+    const q = invQuery.trim();
+    return q ? inventory.filter((it) => `${it.title}${it.community}${it.district}`.includes(q)) : inventory;
+  }, [inventory, invQuery]);
+  const invMatches = useMemo(() => invPool.slice(0, 20), [invPool]);
 
   const projectName = useMemo(() => {
     const m = new Map<string, string>();
@@ -100,6 +111,16 @@ export default function MapListingsManager({
   const patch = (p: Partial<Draft>) => {
     setDraft((d) => (d ? { ...d, ...p } : d));
     setDirty(true);
+  };
+
+  /** 帶入標題與坪數價格摘要；屬於哪個建案不動，要自己選 —— 愛屋資料沒有建案欄位，猜錯比留白更糟 */
+  const applyInventoryItem = (item: HouseolItem) => {
+    const summaryLine = houseolItemSummary(item);
+    patch({
+      title: item.title,
+      pointsText: summaryLine ? `${summaryLine}\n` : "",
+    });
+    setMsg({ kind: "ok", text: `已帶入「${item.title}」，記得選建案、補賣點。` });
   };
 
   /** 存完重新抓一次，不要自己在前端拼資料 —— 拼錯了畫面跟資料庫就對不起來 */
@@ -292,6 +313,50 @@ export default function MapListingsManager({
           ) : (
             <div className={styles.form}>
               <h2>{draft.id ? "編輯物件" : "新增物件"}</h2>
+
+              <div className={styles.invBlock}>
+                <span className={styles.fieldLabel}>🏠 從愛屋庫存帶入標題與坪數價格（可選）</span>
+                {inventory.length === 0 ? (
+                  <small>
+                    還沒有庫存資料。打開 <code>tools/houseol/install.html</code> 抓一次愛屋，
+                    或跳過這段直接手動填。
+                  </small>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      placeholder={`搜尋案名／社區／行政區（共 ${inventory.length} 筆）`}
+                      value={invQuery}
+                      onChange={(e) => setInvQuery(e.target.value)}
+                    />
+                    {invMatches.length === 0 ? (
+                      <small>沒有符合的物件。</small>
+                    ) : (
+                      <ul className={styles.invList}>
+                        {invMatches.map((item) => (
+                          <li key={item.caseId || item.title}>
+                            <div>
+                              <b>{item.title}</b>
+                              <small>
+                                {[item.community, item.district, houseolItemSummary(item)].filter(Boolean).join(" ・ ")}
+                              </small>
+                            </div>
+                            <button type="button" onClick={() => applyInventoryItem(item)}>
+                              帶入
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {invPool.length > invMatches.length && (
+                      <small>
+                        符合的有 {invPool.length} 筆，只列前 {invMatches.length} 筆，打字縮小範圍找剩下的。
+                      </small>
+                    )}
+                    <small>屬於哪個建案不會自動選，帶入之後記得手動選建案。</small>
+                  </>
+                )}
+              </div>
 
               <label>
                 <span>

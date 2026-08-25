@@ -375,6 +375,78 @@
   color: #a69a97 !important;
 }
 
+/* ── 愛屋庫存挑案 ── */
+.invBlock {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px dashed rgba(242, 102, 102, 0.35);
+  border-radius: 10px;
+  background: rgba(242, 102, 102, 0.05);
+}
+
+.invBlock input[type="text"] {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #f8f4f3;
+  font-size: 13.5px;
+  font-family: inherit;
+}
+
+.invList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  display: grid;
+  gap: 6px;
+}
+
+.invList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.invList b {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.invList small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: #a69a97;
+}
+
+.invList button {
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #d0c6c4;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.invList button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8f4f3;
+}
+
 /* ── 照片 ── */
 .photoBlock {
   display: grid;
