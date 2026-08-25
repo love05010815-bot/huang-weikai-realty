@@ -357,3 +357,83 @@
   align-items: center;
   justify-content: center;
 }
+
+/* ---------------- LINE 待回名單 ----------------
+   LINE 的對話不混進上面的留言清單（私訊性質不同），但「誰在等你」要在這一頁
+   一次清完 —— 逐一點進 /admin/line 再點回來，按第三次就會放棄。 */
+
+.lineBox {
+  margin: 18px 0;
+  border: 1px solid;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.lineHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.lineHint {
+  padding: 0 16px 11px;
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.lineRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 16px;
+  border-top: 1px solid;
+}
+
+.lineWho {
+  flex: 0 0 auto;
+  max-width: 46%;
+  font-size: 14.5px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 客戶最後說的那句。要能被擠掉，名字和按鈕優先。 */
+.lineText {
+  flex: 1 1 180px;
+  min-width: 0;
+  font-size: 13.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lineWait {
+  flex: 0 0 auto;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.lineActions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 7px;
+  margin-left: auto;
+}
+
+/* 手機：一行塞不下四欄，讓最後一句自己換行占滿 */
+@media (max-width: 560px) {
+  .lineText {
+    flex-basis: 100%;
+    order: 3;
+  }
+  .lineActions {
+    order: 2;
+  }
+}

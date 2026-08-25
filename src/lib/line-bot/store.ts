@@ -325,24 +325,48 @@ export async function getBotStats(): Promise<{ users: number; messagesToday: num
  *
  * 刻意壓成**一句 SQL**：這個專案的連線池只有 3 條，分成多句去撈是自己跟自己搶。
  */
-export async function countAwaitingReply(): Promise<{ count: number; oldestAt: Date | null }> {
+export type AwaitingReply = {
+  lineUserId: string;
+  displayName: string | null;
+  /** 客戶最後說的那句話，收件匣要顯示出來才知道值不值得現在回 */
+  lastText: string | null;
+  lastAt: Date;
+};
+
+export async function listAwaitingReply(): Promise<AwaitingReply[]> {
   await ensureTables();
-  const [row] = await db.$queryRawUnsafe<{ c: unknown; oldest: Date | null }[]>(
-    `SELECT COUNT(*) AS c, MIN(t.last_at) AS oldest FROM (
-       SELECT u.handled_at,
+
+  // 等最久的排前面 —— 那是最可能已經跑掉的客戶。
+  // LIMIT 50 純粹是安全帶：這是「今天要回的人」不是報表，真要破 50
+  // 代表積了兩個月沒處理，那時候的問題也不是這張清單能解決的。
+  const rows = await db.$queryRawUnsafe<
+    { line_user_id: string; display_name: string | null; last_text: string | null; last_at: Date }[]
+  >(
+    `SELECT t.line_user_id, t.display_name, t.last_text, t.last_at FROM (
+       SELECT u.line_user_id, u.display_name, u.handled_at,
          (SELECT m.role       FROM line_bot_message m
            WHERE m.line_user_id = u.line_user_id
            ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_role,
+         (SELECT m.content    FROM line_bot_message m
+           WHERE m.line_user_id = u.line_user_id
+           ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_text,
          (SELECT m.created_at FROM line_bot_message m
            WHERE m.line_user_id = u.line_user_id
            ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_at
        FROM line_bot_user u
      ) t
      WHERE t.last_role = 'user'
-       AND (t.handled_at IS NULL OR t.handled_at < t.last_at)`,
+       AND (t.handled_at IS NULL OR t.handled_at < t.last_at)
+     ORDER BY t.last_at ASC
+     LIMIT 50`,
   );
-  // COUNT() 經 $queryRawUnsafe 回來是**字串**，直接拿去算會變字串黏接。
-  return { count: Number(String(row?.c ?? 0)), oldestAt: row?.oldest ?? null };
+
+  return rows.map((r) => ({
+    lineUserId: r.line_user_id,
+    displayName: r.display_name,
+    lastText: r.last_text,
+    lastAt: r.last_at,
+  }));
 }
 
 /** 按「標記已回」：把這個人從待回名單清掉。他再傳新訊息就會自己亮回來。 */

@@ -26,7 +26,8 @@ import {
 } from "@/lib/inbox-types";
 import { YOUTUBE_REDIRECT_URI, isYoutubeConfigured } from "@/lib/youtube";
 import { META_REDIRECT_URI, isMetaConfigured } from "@/lib/meta";
-import { countAwaitingReply } from "@/lib/line-bot/store";
+import { listAwaitingReply } from "@/lib/line-bot/store";
+import { markLineHandledAction } from "@/lib/actions/line-bot";
 import CommentReply from "./CommentReply";
 import UnbindButton from "./UnbindYoutube";
 import styles from "./inbox.module.css";
@@ -84,8 +85,8 @@ export default async function InboxPage({
   // 刻意排在 loadInbox 後面**依序**跑，不跟它併行 —— 連線池只有 3 條，搶起來
   // 會讓三個平台一起 P2024 超時，畫面看起來就像「全部都沒留言」。
   // 查失敗就當沒有，不能讓 LINE 拖垮整個收件匣。
-  const lineWaiting = await countAwaitingReply().catch((e) => {
-    console.error("[inbox] 算 LINE 待回數失敗:", e);
+  const lineWaiting = await listAwaitingReply().catch((e) => {
+    console.error("[inbox] 抓 LINE 待回名單失敗:", e);
     return null;
   });
   const ytConfigured = isYoutubeConfigured();
@@ -119,35 +120,76 @@ export default async function InboxPage({
         {/* ── LINE 待回提醒 ──
             LINE 的對話不混進下面的清單（私訊 ≠ 公開留言），但「有人在等你」
             這件事一定要在這一頁看得到，否則你每天只開收件匣就會漏掉 LINE。 */}
-        {lineWaiting !== null && (
-          <a
-            href="/admin/line"
+        {lineWaiting !== null && lineWaiting.length === 0 && (
+          <div
             className={styles.notice}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              textDecoration: "none",
-              ...(lineWaiting.count > 0
-                ? {
-                    background: "rgba(245,158,11,.1)",
-                    borderColor: "rgba(245,158,11,.35)",
-                    color: "#fbbf24",
-                  }
-                : { background: "transparent", borderColor: CIS.cardBorder, color: CIS.textMute }),
-            }}
+            style={{ background: "transparent", borderColor: CIS.cardBorder, color: CIS.textMute }}
           >
-            <Icon name="chat" size={18} />
-            {lineWaiting.count > 0 ? (
-              <span>
-                <b>LINE 有 {lineWaiting.count} 位客戶在等回覆</b>
-                {lineWaiting.oldestAt ? <>，最久的已經等了 {waitedFor(lineWaiting.oldestAt)}</> : null}
-                。點這裡去回 →
+            LINE 目前沒有待回的訊息。
+          </div>
+        )}
+
+        {lineWaiting !== null && lineWaiting.length > 0 && (
+          <div
+            className={styles.lineBox}
+            style={{ borderColor: CHIP.warn.border, background: "rgba(245,158,11,.06)" }}
+          >
+            <div className={styles.lineHead} style={{ color: CHIP.warn.color }}>
+              <Icon name="chat" size={18} />
+              <b>LINE 有 {lineWaiting.length} 位客戶在等回覆</b>
+              <span style={{ color: CIS.textMute }}>
+                ・最久的等了 {waitedFor(lineWaiting[0].lastAt)}
               </span>
-            ) : (
-              <span>LINE 目前沒有待回的訊息。</span>
-            )}
-          </a>
+              <a
+                href="/admin/line"
+                style={{ marginLeft: "auto", color: CIS.blueSoft, fontSize: 14, textDecoration: "none" }}
+              >
+                開 LINE 後台 →
+              </a>
+            </div>
+
+            {/* 這句話很重要，不能省：不解釋的話，你會以為系統在說你沒回，
+                而你明明在手機上回過了 —— 然後就再也不信這個數字。 */}
+            <div className={styles.lineHint} style={{ color: CIS.textMute }}>
+              LINE 不會把你從手機回出去的訊息通知系統，所以這裡分不出你回了沒。
+              已經回過的按「<b>已回</b>」清掉就好；客戶再傳新訊息會自己亮回來。
+            </div>
+
+            {lineWaiting.map((p) => (
+              <div key={p.lineUserId} className={styles.lineRow} style={{ borderColor: CIS.divider }}>
+                <span className={styles.lineWho}>{p.displayName || "（未取得名稱）"}</span>
+                <span className={styles.lineText} style={{ color: CIS.textMute }}>
+                  {p.lastText?.replace(/\s+/g, " ").trim() || "（非文字訊息）"}
+                </span>
+                <span className={styles.lineWait} style={{ color: CHIP.warn.color }}>
+                  等了 {waitedFor(p.lastAt)}
+                </span>
+                <span className={styles.lineActions}>
+                  <a
+                    href={`/admin/line?u=${encodeURIComponent(p.lineUserId)}`}
+                    className={styles.btn}
+                    style={{ borderColor: CIS.blueDeep, background: CIS.blueDeep, color: "#fff" }}
+                  >
+                    去回
+                  </a>
+                  {/* 只送 lineUserId 與 next=1。action 本身會再擋一次權限 ——
+                      server action 可以被直接 POST，畫面上看不到不等於外面叫不到。 */}
+                  <form action={markLineHandledAction}>
+                    <input type="hidden" name="lineUserId" value={p.lineUserId} />
+                    <input type="hidden" name="next" value="1" />
+                    <button
+                      type="submit"
+                      className={styles.btn}
+                      style={{ borderColor: CIS.cardBorder, color: CIS.textSub }}
+                      title="已經在手機回過了，把這位從待回名單清掉"
+                    >
+                      已回
+                    </button>
+                  </form>
+                </span>
+              </div>
+            ))}
+          </div>
         )}
 
         {/* ── 綁定結果回饋：成功要講，失敗更要講原因 ── */}
