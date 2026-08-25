@@ -793,14 +793,23 @@
 
 
 /* ---------- 稅費試算 ---------- */
+/* 用 flex 不用 grid —— 三張卡若固定兩欄，第三張會獨自佔滿整行第二排，
+   看起來像特別放大的卡片；flex 配 justify-content:center 讓最後一排置中。
+   跟 .serviceGrid 同一個道理，這裡卡片數也不是 2 的倍數。 */
 .toolGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 22px;
 }
 
 /* 整張卡就是連結，點哪裡都會過去，手機上比只有一行小字好按。 */
 .toolCard {
+  /* 這個專案沒有全域 box-sizing reset，有邊框又設寬度就得自己寫 */
+  box-sizing: border-box;
+  /* 扣掉兩道 22px 間距後的三分之一，剛好一排三張 */
+  flex: 1 1 calc((100% - 44px) / 3);
+  max-width: calc((100% - 44px) / 3);
   display: block;
   background: #fff;
   border: 1px solid var(--line-warm);
@@ -876,8 +885,10 @@
 }
 
 @media (max-width: 760px) {
-  .toolGrid {
-    grid-template-columns: 1fr;
+  /* 改成 flex 之後，一欄要由卡片自己撐滿，不再是 grid 的欄數控制 */
+  .toolCard {
+    flex-basis: 100%;
+    max-width: 100%;
   }
 }
 
