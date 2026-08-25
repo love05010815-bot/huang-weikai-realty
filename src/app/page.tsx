@@ -324,12 +324,7 @@ export default async function HomePage() {
                       alt={`${item.area}－${item.title}`}
                       eager={i === 0}
                     />
-                    <Link
-                      className={lst.body}
-                      href="/listings"
-                      data-listing-slug={item.slug}
-                      data-listing-action="home"
-                    >
+                    <Link className={lst.body} href="/listings">
 
                       <span className={lst.area}>{item.area}</span>
                       <h3 className={lst.title}>{item.title}</h3>

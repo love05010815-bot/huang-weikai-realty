@@ -5,10 +5,15 @@
  *
  * 卡片上可以點的東西意向強度差很多，混在一起看不出東西：
  *
- *   home    首頁那張卡整塊被點（→ 連到 /listings）  最弱：只是有點好奇
  *   link    「物件資訊」外連（591 之類）              想看細節
  *   video   「影片賞析」外連                          想看實景
  *   booking 「預約看屋」                              最強，這是要約了
+ *
+ * ⚠️ 2026-08-25 系統擁有者拍板**移除「首頁點卡片」那一項**。
+ *    首頁的卡片是連到 /listings 總覽、不是連到那一筆物件，
+ *    所以那個數字只代表「有人在首頁點了某張卡」，不是對這筆物件的興趣 ——
+ *    跟其他三項擺在一起看會誤導。要復原的話：把 "home" 加回
+ *    `LISTING_CLICK_ACTIONS`、首頁卡片補上 data 屬性、後台補一格。
  *
  * 「三筆物件都各 10 次」跟「其中一筆的 10 次全是預約看屋」是完全不同的情報，
  * 所以四種分開存。
@@ -39,7 +44,7 @@ import { db } from "@/lib/db";
 import { taipeiDay } from "@/lib/site-visits";
 
 /** 卡片上可以點的四種動作。⚠️ 新增動作要同步改 `isClickAction()` 與後台顯示 */
-export const LISTING_CLICK_ACTIONS = ["home", "link", "video", "booking"] as const;
+export const LISTING_CLICK_ACTIONS = ["link", "video", "booking"] as const;
 export type ListingClickAction = (typeof LISTING_CLICK_ACTIONS)[number];
 
 export function isClickAction(value: unknown): value is ListingClickAction {
@@ -179,6 +184,10 @@ export async function getListingClickStats(): Promise<ListingClickStats> {
   for (const row of rows) {
     const slug = String(row.slug ?? "");
     const action = row.action;
+    // 認不得的動作直接跳過 —— **這是刻意的**。
+    // 「首頁點卡片」(home) 已經拿掉，但資料庫裡那些舊列還留著（是真實資料，沒有刪）。
+    // 所以會出現「表裡有 home 的列、後台卻看不到」，那不是壞掉。
+    // 哪天把 "home" 加回 LISTING_CLICK_ACTIONS，那些歷史數字會自己回來。
     if (!slug || !isClickAction(action)) continue;
 
     const stat = (stats[slug] ??= emptyStat());

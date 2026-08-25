@@ -283,7 +283,6 @@ export default function ListingsManager({
                   {(() => {
                     const stat = clickStats[row.slug];
                     const cells: Array<[string, number, number, string]> = [
-                      ["首頁點卡片", stat?.actions.home.total ?? 0, stat?.actions.home.recent ?? 0, CIS.textMute],
                       ["物件資訊", stat?.actions.link.total ?? 0, stat?.actions.link.recent ?? 0, CIS.textSub],
                       ["影片賞析", stat?.actions.video.total ?? 0, stat?.actions.video.recent ?? 0, CIS.textSub],
                       ["預約看屋", stat?.actions.booking.total ?? 0, stat?.actions.booking.recent ?? 0, "#4ade80"],

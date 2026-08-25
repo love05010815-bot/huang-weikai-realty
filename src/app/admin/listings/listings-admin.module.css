@@ -433,7 +433,7 @@
 /* ---------- 👆 點擊統計（每一筆物件被點過幾次） ---------- */
 .clickStats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin: 12px 0 4px;
   padding: 10px 12px;
@@ -474,10 +474,16 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* 手機上四欄擠不下，折成兩排 */
+/* 三欄在 375px 也放得下（實測），所以手機不折排 ——
+   折成兩欄會變成 2+1 的孤兒排，比擠一點更難看。
+   只把間距與字級縮一點。 */
 @media (max-width: 560px) {
   .clickStats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px 8px;
+    gap: 6px;
+    padding: 10px 8px;
+  }
+
+  .clickValue {
+    font-size: 18px;
   }
 }
