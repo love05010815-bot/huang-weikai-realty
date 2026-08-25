@@ -186,13 +186,53 @@ async function handleEvent(event: LineEvent): Promise<void> {
   }
 }
 
-/** 給你自己開瀏覽器確認這支路由活著用的。LINE 不會打 GET。 */
-export async function GET() {
-  return Response.json({
+/**
+ * 給你自己開瀏覽器確認這支路由活著用的。LINE 不會打 GET。
+ *
+ * 加 `?whoami=1` 會多問 LINE「這個權杖屬於哪個官方帳號、聊天功能開著沒」。
+ *
+ * 這一項存在的理由（2026-08-25）：系統擁有者在手機上看不到某位客戶的訊息，
+ * 但資料庫確實收到了。分不出是「看錯帳號」還是「LINE 的聊天功能根本關著」——
+ * 後者代表**客戶傳的訊息他手機永遠看不到**，那是會漏掉生意的等級。
+ * `chatMode` 就是答案："chat" = 手機看得到；"bot" = 只進 webhook，手機看不到。
+ *
+ * ⚠️ 只回帳號的公開資訊（basicId 就是對外的 @a8865）與兩個模式字串，
+ *    **不回權杖、不回密鑰、不回任何客戶資料**。
+ */
+export async function GET(req: Request) {
+  const base = {
     ok: true,
     service: "line-bot-webhook",
     configured: Boolean(getLineBotSecret() && process.env.LINE_BOT_ACCESS_TOKEN),
     aiConfigured: Boolean(process.env.ANTHROPIC_API_KEY),
     botEnabled: BOT_ENABLED,
-  });
+  };
+
+  if (new URL(req.url).searchParams.get("whoami") !== "1") return Response.json(base);
+
+  const token = process.env.LINE_BOT_ACCESS_TOKEN;
+  if (!token) return Response.json({ ...base, whoami: { error: "沒有 LINE_BOT_ACCESS_TOKEN" } });
+
+  try {
+    const res = await fetch("https://api.line.me/v2/bot/info", {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    const d = (await res.json()) as Record<string, unknown>;
+    return Response.json({
+      ...base,
+      whoami: res.ok
+        ? {
+            basicId: d.basicId,
+            displayName: d.displayName,
+            // "chat" = 官方帳號 App／管理後台看得到客戶訊息
+            // "bot"  = 訊息只送到 webhook，手機聊天列表**不會出現**
+            chatMode: d.chatMode,
+            markAsReadMode: d.markAsReadMode,
+          }
+        : { status: res.status, error: String(d.message ?? "查詢失敗") },
+    });
+  } catch (e) {
+    return Response.json({ ...base, whoami: { error: e instanceof Error ? e.message : String(e) } });
+  }
 }
