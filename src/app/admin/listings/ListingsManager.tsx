@@ -16,6 +16,7 @@ import { MAX_PHOTOS } from "@/config/listings";
 import { findCopyRisks } from "@/lib/listing-copy-risk";
 import { photoDisplayName, resolvePhotoSrc } from "@/lib/photo-src";
 import type { ListingInput, ListingRecord, ListingStatus } from "@/lib/listings";
+import type { ListingClickStats } from "@/lib/listing-clicks";
 import styles from "./listings-admin.module.css";
 
 type FormState = ListingInput & { pointsText: string };
@@ -68,7 +69,14 @@ function toForm(row: ListingRecord): FormState {
   };
 }
 
-export default function ListingsManager({ initial }: { initial: ListingRecord[] }) {
+export default function ListingsManager({
+  initial,
+  clickStats = {},
+}: {
+  initial: ListingRecord[];
+  /** 每一筆物件被點過幾次。讀不到時是空物件，畫面顯示 0。 */
+  clickStats?: ListingClickStats;
+}) {
   const router = useRouter();
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -267,6 +275,38 @@ export default function ListingsManager({ initial }: { initial: ListingRecord[] 
                       </a>
                     </>
                   ) : null}
+                </div>
+
+                {/* 👆 點擊統計。四種動作分開看 ——「有人想看影片」跟「有人想約看」
+                    是完全不同的情報，加總成一個數字就沒有用了。 */}
+                <div className={styles.clickStats} style={{ borderColor: CIS.cardBorder }}>
+                  {(() => {
+                    const stat = clickStats[row.slug];
+                    const cells: Array<[string, number, number, string]> = [
+                      ["首頁點卡片", stat?.actions.home.total ?? 0, stat?.actions.home.recent ?? 0, CIS.textMute],
+                      ["物件資訊", stat?.actions.link.total ?? 0, stat?.actions.link.recent ?? 0, CIS.textSub],
+                      ["影片賞析", stat?.actions.video.total ?? 0, stat?.actions.video.recent ?? 0, CIS.textSub],
+                      ["預約看屋", stat?.actions.booking.total ?? 0, stat?.actions.booking.recent ?? 0, "#4ade80"],
+                    ];
+                    return (
+                      <>
+                        {cells.map(([label, total, recent, color]) => (
+                          <div key={label} className={styles.clickCell}>
+                            <div className={styles.clickLabel} style={{ color: CIS.textMute }}>
+                              {label}
+                            </div>
+                            <div className={styles.clickValue} style={{ color: total > 0 ? color : CIS.textMute }}>
+                              {total}
+                              <span className={styles.clickUnit}>人次</span>
+                            </div>
+                            <div className={styles.clickRecent} style={{ color: CIS.textMute }}>
+                              近 7 天 {recent}
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {row.points.length > 0 ? (

@@ -117,18 +117,33 @@ export default async function ListingsPage() {
                           先讓客戶看得更清楚，再引導到預約，順序不要顛倒。 */}
                       {/* 兩顆連結各自獨立：後台哪一欄留空，那顆就不出現。
                           兩個都留空的話這區塊整個不渲染，卡片不會留一塊空白。 */}
-                      {[item.link, item.video].filter(Boolean).map((l) => (
-                        <a
-                          key={l!.href}
-                          className={lst.actionLink}
-                          href={l!.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {l!.label} ↗
-                        </a>
-                      ))}
-                      <Link className={lst.actionBtn} href="/card/booking">
+{/* data-listing-* 是給後台點擊統計用的（見 ListingClickTracker.tsx）。
+                          兩顆外連要分開記 —— 「想看影片」跟「想看 591 細節」是不同的意向強度，
+                          攪成一個數字就看不出來了。 */}
+                      {[
+                        { action: "link", target: item.link },
+                        { action: "video", target: item.video },
+                      ]
+                        .filter((x) => x.target)
+                        .map((x) => (
+                          <a
+                            key={x.target!.href}
+                            className={lst.actionLink}
+                            href={x.target!.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            data-listing-slug={item.slug}
+                            data-listing-action={x.action}
+                          >
+                            {x.target!.label} ↗
+                          </a>
+                        ))}
+                      <Link
+                        className={lst.actionBtn}
+                        href="/card/booking"
+                        data-listing-slug={item.slug}
+                        data-listing-action="booking"
+                      >
                         預約看屋
                       </Link>
                     </div>
