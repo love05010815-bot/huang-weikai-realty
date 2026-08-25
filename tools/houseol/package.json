@@ -1,0 +1,12 @@
+{
+  "name": "houseol-auto-scrape",
+  "version": "1.0.0",
+  "private": true,
+  "description": "自動登入愛屋、抓委託中列表用的工具。跟主網站的 package.json 完全分開，不會影響 Vercel 那邊的 build。",
+  "scripts": {
+    "scrape": "node auto-scrape.js"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0"
+  }
+}

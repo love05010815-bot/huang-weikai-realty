@@ -1,0 +1,87 @@
+# 定期自動登入愛屋，重抓「委託中」列表，更新 src/config/houseol-inventory.json。
+#
+# ⚠️ 2026-08-25 瑋凱在知道風險之後決定要做的自動化，細節看 tools/houseol/README.md
+#    「自動化」那節：帳密存在下面這幾個 Secrets 裡，外洩風險比 Deploy Hook 高很多
+#    （能登進愛屋看到全店委託資料），而且愛屋服務條款可能不允許自動化登入，
+#    帳號有被停權風險。要停用這個自動化，把下面的 schedule 那三行整個刪掉，
+#    或是到 repo 的 Settings → Secrets 刪掉 HOUSEOL_* 那三把就行，
+#    手動的書籤流程完全不受影響。
+#
+# 需要在 repo Settings → Secrets and variables → Actions 設定：
+#   HOUSEOL_STORE_CODE   愛屋店代號
+#   HOUSEOL_USERNAME     愛屋帳號
+#   HOUSEOL_PASSWORD     愛屋密碼
+#   VERCEL_DEPLOY_HOOK   跟 .env.local 裡那組一樣（觸發部署用）
+#
+# 抓到新資料才會 commit＋觸發部署；沒變化就什麼都不做，不會產生空 commit。
+name: houseol-sync
+
+on:
+  schedule:
+    # 每天台灣時間凌晨 3 點（UTC 19:00 前一天），流量低、不影響瑋凱操作愛屋
+    - cron: "0 19 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: houseol-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 裝抓取工具的依賴（跟主專案分開，不影響網站 build）
+        working-directory: tools/houseol
+        run: npm install
+
+      - name: 裝瀏覽器核心
+        working-directory: tools/houseol
+        run: npx playwright install --with-deps chromium
+
+      - name: 登入愛屋、抓全部頁數
+        working-directory: tools/houseol
+        env:
+          HOUSEOL_STORE_CODE: ${{ secrets.HOUSEOL_STORE_CODE }}
+          HOUSEOL_USERNAME: ${{ secrets.HOUSEOL_USERNAME }}
+          HOUSEOL_PASSWORD: ${{ secrets.HOUSEOL_PASSWORD }}
+        run: node auto-scrape.js
+
+      - name: 有新資料才 commit
+        id: diff
+        run: |
+          if git diff --quiet -- src/config/houseol-inventory.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "跟現有的比沒有變化，不 commit"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 推回 main
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "houseol-sync bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/config/houseol-inventory.json
+          git commit -m "愛屋庫存池自動同步 $(date -u +%Y-%m-%d)"
+          git push
+
+      - name: 觸發正式站部署
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "沒設定 VERCEL_DEPLOY_HOOK，跳過部署——資料已經進 main 了，之後手動部署一次就好"
+            exit 0
+          fi
+          curl -sS -X POST "$HOOK"
