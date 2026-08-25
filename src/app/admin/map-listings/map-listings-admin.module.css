@@ -530,3 +530,14 @@
 .addrEmpty {
   color: #7a6f6c;
 }
+
+/* 挑案清單裡的門牌地址（2026-08-25 新增）。
+   ⚠️ 用 span 不用 small —— `.invList small` 是同權重的規則，
+      同權重打架時只看誰寫在後面，很容易踩到。 */
+.invAddr {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #f5c0c4;
+}

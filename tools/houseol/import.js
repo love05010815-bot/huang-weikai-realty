@@ -18,6 +18,7 @@
 const fs = require("fs");
 const path = require("path");
 const { sanitizeRow } = require("./sanitize");
+const { mergeAddresses } = require("./addresses");
 
 const ROOT = path.join(__dirname, "..", "..");
 const OUT_PATH = path.join(ROOT, "src", "config", "houseol-inventory.json");
@@ -46,6 +47,7 @@ function main() {
   }
 
   const byId = new Map();
+  const allRaw = []; // 原始列（還沒 sanitize，含門牌）—— 只餵給地址暫存檔，不會進庫存檔
   let totalRawRows = 0;
 
   for (const file of files) {
@@ -59,6 +61,7 @@ function main() {
     const rows = Array.isArray(parsed.rows) ? parsed.rows : [];
     totalRawRows += rows.length;
     for (const raw of rows) {
+      allRaw.push(raw);
       let clean;
       try {
         clean = sanitizeRow(raw);
@@ -96,6 +99,16 @@ function main() {
     console.log(`  ${d}：${c} 筆`);
   }
   console.log(`已寫入 ${path.relative(ROOT, OUT_PATH)}`);
+
+  // 🔒 地址走完全獨立的一條路：上面那個庫存檔已經被 sanitizeRow() 剔掉地址，
+  //    這裡用的是原始資料，寫進一個 gitignore 掉的本機檔。
+  const addr = mergeAddresses(allRaw, output.generatedAt);
+  console.log("");
+  console.log(`門牌地址：新增 ${addr.added} 筆、更新 ${addr.updated} 筆，暫存檔共 ${addr.total} 筆`);
+  console.log(`  ${path.relative(ROOT, addr.path)}（不進版控，不要外傳）`);
+  console.log("");
+  console.log("⚠️ 還沒完 —— 地址還在本機檔，後台看不到。接著跑：");
+  console.log("     node tools/houseol/push-addresses.js");
 }
 
 main();

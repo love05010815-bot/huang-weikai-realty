@@ -88,7 +88,10 @@ export default function MapListingsManager({
   /** 打字才篩，一開始最多先列 20 筆，不要一次把上百筆都塞進畫面 */
   const invPool = useMemo(() => {
     const q = invQuery.trim();
-    return q ? inventory.filter((it) => `${it.title}${it.community}${it.district}`.includes(q)) : inventory;
+    // 地址也能搜 —— 「這間我上架過了嗎」用門牌找比用案名快
+    return q
+      ? inventory.filter((it) => `${it.title}${it.community}${it.district}${it.address ?? ""}`.includes(q))
+      : inventory;
   }, [inventory, invQuery]);
   const invMatches = useMemo(() => invPool.slice(0, 20), [invPool]);
 
@@ -121,9 +124,16 @@ export default function MapListingsManager({
     const summaryLine = houseolItemSummary(item);
     patch({
       title: item.title,
+      // 地址有才帶入。沒有的話**不要碰** —— 覆寫成空字串會把你手打的洗掉
+      ...(item.address ? { address: item.address } : {}),
       pointsText: summaryLine ? `${summaryLine}\n` : "",
     });
-    setMsg({ kind: "ok", text: `已帶入「${item.title}」，記得選建案、補賣點。` });
+    setMsg({
+      kind: "ok",
+      text: item.address
+        ? `已帶入「${item.title}」與地址，記得選建案、補賣點。`
+        : `已帶入「${item.title}」，記得選建案、補賣點。這筆愛屋沒有地址（還沒跑 push-addresses.js？）。`,
+    });
   };
 
   /** 存完重新抓一次，不要自己在前端拼資料 —— 拼錯了畫面跟資料庫就對不起來 */
@@ -350,6 +360,11 @@ export default function MapListingsManager({
                               <small>
                                 {[item.community, item.district, houseolItemSummary(item)].filter(Boolean).join(" ・ ")}
                               </small>
+                              {/* 地址直接列在挑案清單上，不用點進去就認得出是哪一間。
+                                  用 span 不用 small，避開上面 `.invList small` 那條規則。 */}
+                              {item.address && (
+                                <span className={styles.invAddr}>{`📍 ${item.address}`}</span>
+                              )}
                             </div>
                             <button type="button" onClick={() => applyInventoryItem(item)}>
                               帶入

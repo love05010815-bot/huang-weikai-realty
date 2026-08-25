@@ -25,6 +25,7 @@ const fs = require("fs");
 const path = require("path");
 const { chromium } = require("playwright");
 const { sanitizeRow } = require("./sanitize");
+const { mergeAddresses } = require("./addresses");
 
 const LOGIN_URL = "https://es.houseol.com.tw/login.aspx";
 const LIST_URL = "https://es.houseol.com.tw/index.aspx?module=manage&file=main&unit=2&ObjState=2";
@@ -320,6 +321,11 @@ async function main() {
     const output = buildOutput(rawRows);
     fs.writeFileSync(OUT_PATH, JSON.stringify(output, null, 2) + "\n", "utf8");
     console.log(`已寫入 ${path.relative(path.join(__dirname, "..", ".."), OUT_PATH)}：${output.count} 筆`);
+
+    // 🔒 地址不進庫存檔（sanitizeRow 已剔除），另外收在 gitignore 掉的本機檔
+    const addr = mergeAddresses(rawRows, output.generatedAt);
+    console.log(`門牌地址：新增 ${addr.added} 筆、更新 ${addr.updated} 筆，暫存檔共 ${addr.total} 筆`);
+    console.log("⚠️ 記得跑 node tools/houseol/push-addresses.js 才會進資料庫、後台才看得到");
     for (const [d, c] of Object.entries(output.byDistrict)) console.log(`  ${d}：${c} 筆`);
   } finally {
     await browser.close();

@@ -34,3 +34,8 @@ _linebot_*.mjs
 # 合併進 src/config/houseol-inventory.json 之後就沒用了，不進版控
 tools/houseol/housepage/
 tools/houseol/**/houseol-page-*.json
+
+# 🔒 門牌地址暫存檔。這個 repo 是公開的，屋主門牌一個字都不准進來。
+# 抓完愛屋用 `node tools/houseol/push-addresses.js` 把它送進資料庫，
+# 後台才讀得到（程式在 src/lib/houseol-address.ts）。
+tools/houseol/addresses.local.json

@@ -6,7 +6,7 @@
 ⚠️ **2026-08-25 重建版**。原本 2026-08-21 那套做完測過但沒 commit，本機檔案後來
 不見了，這套是照同樣的想法重寫的，架構不完全一樣。
 
-## 三步驟
+## 四步驟
 
 1. **抓資料**：打開 `tools/houseol/install.html`，照上面說明把書籤拖進瀏覽器書籤列。
    登入愛屋、切到「委託中」列表，每頁按一次書籤，翻頁再按，直到抓完全部頁數
@@ -20,19 +20,51 @@
    node tools/houseol/import.js <那個資料夾的路徑>
    ```
 
-   會產生／覆蓋 `src/config/houseol-inventory.json`。重跑會整個重新產生 ——
-   物件下架或委託到期了，重抓一次自動從清單消失，不用手動刪。
+   會產生／覆蓋兩個檔案：
 
-3. **在後台挑案**：`/admin/map-listings` 新增物件時可以從庫存池挑一筆，
-   帶入標題、坪數、型式、價格這些文字欄位。**屬於哪個建案還是要自己選**，
-   系統不會自動比對——地址只留到行政區等級，沒辦法自動判斷是哪一棟。
+   | 檔案 | 內容 | 進版控？ |
+   |---|---|---|
+   | `src/config/houseol-inventory.json` | 案名、坪數、價格、行政區 | ✅ 會（**沒有門牌**） |
+   | `tools/houseol/addresses.local.json` | 只有「編號 → 門牌地址」 | ❌ 不會（gitignore） |
 
-## 為什麼地址只留行政區
+   庫存檔重跑會整個重新產生 —— 物件下架或委託到期了，重抓一次自動從清單
+   消失，不用手動刪。地址檔則是**合併**不是覆蓋（書籤一次只抓一頁，
+   覆蓋的話最後一次匯入會把前幾頁的地址洗掉）。
 
-這個 repo 是公開的。書籤小工具抓資料的當下，門牌地址就立刻砍到只剩
-「梧棲區」這種等級，完整地址不會出現在下載的 json、也不會進
-`src/config/houseol-inventory.json`。`sanitize.js` 是唯一做這件事的地方，
-`test-roundtrip.js` 是防線測試，改動前先跑：
+3. **把地址送進資料庫**：
+
+   ```bash
+   node tools/houseol/push-addresses.js
+   ```
+
+   ⚠️ **忘了跑這步不會報錯**，只是後台挑案清單看不到地址、按「帶入」時
+   地址欄是空的。第 2 步跑完會提醒你。
+
+4. **在後台挑案**：`/admin/map-listings` 新增物件時可以從庫存池挑一筆，
+   帶入標題、坪數、型式、價格，以及**門牌地址**（跑過第 3 步的話）。
+   **屬於哪個建案還是要自己選**，系統不會拿地址去猜是哪一棟 ——
+   猜錯會把物件掛到別的建案底下，比留白更糟。
+
+## 門牌地址走哪條路（重要）
+
+**這個 repo 是公開的**，一百多位屋主的門牌一個字都不准進版控。
+所以地址跟其他欄位是分開走的：
+
+```
+愛屋列表 ──┬─ sanitizeRow() 剔掉地址 ─→ houseol-inventory.json  ✅ 進版控
+           └─ 只取地址 ─→ addresses.local.json ─→ 資料庫 houseol_address  ❌ 不進版控
+```
+
+⚠️ **2026-08-25 改動**：書籤下載的 `houseol-page-*.json` 現在**含完整門牌**
+（以前是抓的當下就砍掉）。那些檔案在你的「下載項目」資料夾，不要外傳、
+不要丟進任何 repo。`tools/houseol/**/houseol-page-*.json` 已經 gitignore。
+
+⚠️ 為什麼地址不乾脆留在庫存檔然後把庫存檔移出版控：助理那顆 Deploy Hook
+是從 GitHub main 建置的，那樣做會讓用 Hook 部署的版本**整份庫存池消失**，
+而且不報錯。放資料庫兩條部署路徑拿到的東西才一樣。
+
+`sanitize.js` 是唯一負責剔除的地方，`test-roundtrip.js` 是防線測試，
+改動前先跑：
 
 ```bash
 node tools/houseol/test-roundtrip.js
@@ -46,8 +78,11 @@ node tools/houseol/test-roundtrip.js
 | `build.js` | 把 `bookmarklet.js` 包成書籤網址，重新產生 `install.html` |
 | `install.template.html` | `install.html` 的樣板 |
 | `install.html` | **實際打開來用的頁面**，`build.js` 自動產生，不要手改 |
-| `sanitize.js` | 地址砍到行政區等級的邏輯，`import.js` 跟測試共用 |
-| `import.js` | 合併抓下來的檔案，寫出 `src/config/houseol-inventory.json` |
+| `sanitize.js` | **把門牌從庫存資料剔掉**的邏輯，`import.js`、`auto-scrape.js` 跟測試共用 |
+| `import.js` | 合併抓下來的檔案，寫出庫存檔＋地址暫存檔 |
+| `addresses.js` | 地址暫存檔的讀寫（合併不覆蓋），`import.js` 跟 `auto-scrape.js` 共用 |
+| `push-addresses.js` | 把地址暫存檔送進資料庫 `houseol_address` 表 |
+| `addresses.local.json` | 🔒 地址暫存檔本體。**不進版控、不要外傳** |
 | `test-roundtrip.js` | 防線測試 |
 
 改了 `bookmarklet.js` 之後要重跑 `node tools/houseol/build.js` 才會反映到

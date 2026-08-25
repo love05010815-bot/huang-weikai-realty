@@ -20,6 +20,14 @@ export type HouseolItem = {
   parkingPing: string;
   buildingPing: string;
   district: string;
+  /**
+   * 完整門牌地址。**只會出現在後台**，來源是資料庫的 `houseol_address` 表，
+   * 不在 `houseol-inventory.json` 裡（那個檔有版控、repo 是公開的）。
+   *
+   * 還沒跑過 `push-addresses.js` 就是 undefined —— 少一個便利功能而已，
+   * 不影響其他欄位。
+   */
+  address?: string;
 };
 
 /** 給挑案表單用的一行摘要文字，例如「B.大樓｜登記坪 48.62 坪｜總價 888 萬（單價 21.798 萬/坪）」 */
