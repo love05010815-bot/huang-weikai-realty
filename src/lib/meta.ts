@@ -93,14 +93,39 @@ export async function getBoundMeta(): Promise<{
 
 // ---------------------------------------------------------------- OAuth
 
+/**
+ * 商家專用 Facebook 登入的「設定編號」。
+ *
+ * 🔴 2026-08-24 為什麼需要這個：這個 App 的使用案例是「管理粉絲專頁的所有內容」，
+ *    Meta 不讓它同時加「使用 Facebook 登入」（建立時那一項是灰的），
+ *    所以它只有**商家專用 Facebook 登入（Facebook Login for Business）**。
+ *
+ *    那套流程**不吃 `scope` 參數，改吃 `config_id`** —— 權限是在後台的「設定」裡
+ *    先勾好，授權網址只帶那個設定的編號。用傳統的 `scope` 去打，Meta 會回一個
+ *    **誤導性的錯誤**：「這個網址的網域未包含在應用程式的網域中」，
+ *    害人一直去查網域（實測 app_domains、website_url、redirect_uri 三者完全吻合仍然報這個）。
+ *
+ * 沒設這個環境變數時會退回傳統 `scope` 流程 —— 一般（非商家版）的 App 仍然可用。
+ */
+const LOGIN_CONFIG_ID = process.env.META_LOGIN_CONFIG_ID || "";
+
+export function isMetaBusinessLogin(): boolean {
+  return Boolean(LOGIN_CONFIG_ID);
+}
+
 export function getMetaAuthUrl(state: string): string {
   const p = new URLSearchParams({
     client_id: APP_ID,
     redirect_uri: META_REDIRECT_URI,
     response_type: "code",
-    scope: SCOPES,
     state,
   });
+  if (LOGIN_CONFIG_ID) {
+    // 商家版：權限已經在後台那個設定裡勾好，這裡只帶編號，不能再帶 scope
+    p.set("config_id", LOGIN_CONFIG_ID);
+  } else {
+    p.set("scope", SCOPES);
+  }
   return `${DIALOG}?${p.toString()}`;
 }
 
@@ -197,6 +222,67 @@ export async function exchangeMetaCode(
 }
 
 /** 解除綁定。只刪 meta_* 五個 key。 */
+/**
+ * 直接問 Meta：「這個 App 登記了哪些網域？」
+ *
+ * 為什麼需要這支（2026-08-24）：綁定一直卡在「無法載入網址 —— 網域未包含在應用程式的網域中」，
+ * 但「應用程式網域」到底存進去沒有，**從外面完全看不出來** ——
+ * 只能請系統擁有者去 Meta 後台看一眼再截圖回報，而那個欄位偏偏會「看起來存了其實沒存」。
+ * 有了這支，一行 curl 就能斷定，不用再靠截圖來回。
+ *
+ * 🔴 用的是 app access token（`{app_id}|{app_secret}`）。
+ *    **絕對不要把那個 token 或 app secret 放進回傳值** —— 這支的輸出是公開可讀的。
+ *    只回網域清單與 App 名稱，那些本來就會出現在 OAuth 錯誤訊息裡，不是機密。
+ */
+export async function fetchAppDomains(): Promise<{
+  ok: boolean;
+  appDomains?: string[];
+  appName?: string;
+  websiteUrl?: string | null;
+  /** 程式實際送給 Meta 的 redirect_uri —— 對不上 appDomains 就是這裡出問題 */
+  redirectUri?: string;
+  /** APPOINTMENT_BASE_URL 的實際值（公開網址，不是機密） */
+  baseUrl?: string;
+  appId?: string;
+  businessLogin?: boolean;
+  error?: string;
+}> {
+  // 這幾項就算沒設 App 也該回報 —— 「送出去的網址長什麼樣」是診斷的核心，
+  // 不能因為前面某個條件不成立就整包不回。
+  const shape = {
+    redirectUri: META_REDIRECT_URI,
+    baseUrl: BASE_URL,
+    appId: APP_ID ? APP_ID : "(未設)",
+    /** true = 走商家版（帶 config_id）；false = 走傳統 scope 流程 */
+    businessLogin: isMetaBusinessLogin(),
+  };
+  if (!isMetaConfigured()) {
+    return { ok: false, error: "META_APP_ID / META_APP_SECRET 沒設定", ...shape };
+  }
+  try {
+    const params = new URLSearchParams({
+      fields: "app_domains,name,website_url",
+      access_token: `${APP_ID}|${APP_SECRET}`,
+    });
+    const res = await fetch(`${GRAPH}/${APP_ID}?${params}`, { cache: "no-store" });
+    if (!res.ok) return { ok: false, error: await readGraphError(res), ...shape };
+    const d = (await res.json()) as {
+      app_domains?: string[];
+      name?: string;
+      website_url?: string;
+    };
+    return {
+      ok: true,
+      appDomains: d.app_domains ?? [],
+      appName: d.name,
+      websiteUrl: d.website_url ?? null,
+      ...shape,
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e), ...shape };
+  }
+}
+
 export async function unbindMeta(): Promise<void> {
   await Promise.all([
     setConfig(PAGE_TOKEN_KEY, null),
@@ -336,7 +422,16 @@ export async function fetchInstagramComments(limit = 25): Promise<PlatformFetch>
   if (!bound.igUserId) {
     base.bound = true;
     base.error =
-      "這個粉專沒有連結的 Instagram 專業帳號。要接 IG 留言，IG 必須先切成專業帳號並連到這個粉專，然後重新綁定一次。";
+      // 🔴 2026-08-25：這句原本斷言「粉專沒有連結的 IG 專業帳號」，但那是**沒查證的推測**。
+      //    Meta 對 instagram_business_account 這個欄位，「沒權限」與「真的沒連」**都是回 200
+      //    並且直接省略欄位**，從回應分不出是哪一種（實測 connected_instagram_account 也一樣）。
+      //    講死一個原因會害人往錯的方向修 —— 這一輪已經被 Meta 的誤導訊息坑過兩次了，
+      //    自己不要再製造第三個。兩種可能都列出來，並把「先查哪一個」講清楚。
+      "抓不到這個粉專連結的 Instagram 帳號。兩種可能，Meta 的回應分不出是哪一種：" +
+      "①【比較常見】這個 Meta App 沒有加 Instagram 的使用案例，所以授權時根本沒要到 IG 權限 —— " +
+      "到 developers.facebook.com 該 App 加「管理 Instagram 的訊息和內容」，再回來重新綁定一次。" +
+      "② IG 帳號還不是專業帳號、或沒有連到這個粉專 —— 到 Meta Business Suite 確認。" +
+      "建議先查 ①。";
     return base;
   }
 
