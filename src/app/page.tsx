@@ -13,6 +13,7 @@ import styles from "./home.module.css";
 import lst from "./listings/listings.module.css";
 import FeaturedTitle from "./listings/FeaturedTitle";
 import PhotoCarousel from "./listings/PhotoCarousel";
+import VisitCounter from "./_visits/VisitCounter";
 
 // 標題只放三項最有搜尋量的 —— <title> 太長會被 Google 截掉，五項塞不下。
 // 完整五項寫在下面的 description 裡。
@@ -472,6 +473,9 @@ export default async function HomePage() {
         </p>
         <p>電話 {OWNER.phone}　｜　LINE @a8865</p>
         <p>&copy; {new Date().getFullYear()} Huang Wei-Kai Realty. All rights reserved.</p>
+        <div className={styles.footerVisits}>
+          <VisitCounter />
+        </div>
       </footer>
 
       <a

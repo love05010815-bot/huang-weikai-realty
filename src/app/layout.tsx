@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import VisitCounter from "./_visits/VisitCounter";
 
 export const metadata: Metadata = {
   title: "黃瑋凱｜台中海線房仲・線上預約",
@@ -19,7 +20,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-Hant">
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* 只負責記一次人氣，畫面上不顯示；顯示的那個在首頁頁尾 */}
+        <VisitCounter silent />
+      </body>
     </html>
   );
 }
