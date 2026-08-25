@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-25T03:19:56.309Z",
+  "generatedAt": "2026-08-25T09:06:40.004Z",
   "sourceFiles": 12,
   "count": 112,
   "byDistrict": {
@@ -42,18 +42,18 @@
       "district": "后里區"
     },
     {
-      "title": "頂規用心打造全新臨路角間電梯豪墅",
-      "community": "",
-      "totalPrice": "2980",
-      "unitPrice": "36.658",
-      "buildingType": "E.別墅",
-      "caseId": "AA5970548",
-      "listedFrom": "2026/8/21",
+      "title": "樾山丘唯一釋出三面採光三房平車[專]",
+      "community": "樾山丘",
+      "totalPrice": "1428",
+      "unitPrice": "45.655",
+      "buildingType": "B.大樓",
+      "caseId": "AA5970504",
+      "listedFrom": "2026/4/20",
       "listedTo": "2026/12/31",
-      "registeredPing": "81.29",
-      "landPing": "32.98",
-      "parkingPing": "",
-      "buildingPing": "81.29",
+      "registeredPing": "44.28",
+      "landPing": "13.94",
+      "parkingPing": "13.01",
+      "buildingPing": "31.27",
       "district": "沙鹿區"
     },
     {
@@ -69,6 +69,21 @@
       "landPing": "13.94",
       "parkingPing": "",
       "buildingPing": "20.95",
+      "district": "沙鹿區"
+    },
+    {
+      "title": "頂規用心打造全新臨路角間電梯豪墅",
+      "community": "",
+      "totalPrice": "2980",
+      "unitPrice": "36.658",
+      "buildingType": "E.別墅",
+      "caseId": "AA5970548",
+      "listedFrom": "2026/8/21",
+      "listedTo": "2026/12/31",
+      "registeredPing": "81.29",
+      "landPing": "32.98",
+      "parkingPing": "",
+      "buildingPing": "81.29",
       "district": "沙鹿區"
     },
     {
@@ -144,21 +159,6 @@
       "landPing": "17.38",
       "parkingPing": "11.94",
       "buildingPing": "48.08",
-      "district": "沙鹿區"
-    },
-    {
-      "title": "樾山丘唯一釋出三面採光三房平車[專]",
-      "community": "",
-      "totalPrice": "1428",
-      "unitPrice": "45.655",
-      "buildingType": "B.大樓",
-      "caseId": "AA5970504",
-      "listedFrom": "2026/4/20",
-      "listedTo": "2026/12/31",
-      "registeredPing": "44.28",
-      "landPing": "13.94",
-      "parkingPing": "13.01",
-      "buildingPing": "31.27",
       "district": "沙鹿區"
     },
     {
