@@ -18,6 +18,13 @@
  * 伺服器端不存任何識別碼，所以判斷只能在這裡做。
  * 清掉瀏覽器資料或換一台裝置會重新算一次 —— 這是這類計數器本來就有的誤差，
  * 不是壞掉。
+ *
+ * ## 為什麼要重試一次
+ *
+ * 2026-08-25 線上實測：資料庫連線池被搶光（`P2024`）時 API 會回
+ * `available:false`，計數器就整頁消失，而且**不報錯**。這站流量低、
+ * `/api/visits` 又是獨立的 serverless function，冷啟動搶不到連線是常態，
+ * 所以這裡等一下再試一次。伺服器那邊也有各自的重試（見 `site-visits.ts`）。
  */
 
 import { useEffect, useState } from "react";
@@ -33,6 +40,46 @@ function taipeiDay(): string {
   return new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
+function alreadyCountedToday(day: string): boolean {
+  // localStorage 在隱私模式／被封鎖時存取會直接丟例外，包起來
+  try {
+    return window.localStorage.getItem(STORAGE_KEY) === day;
+  } catch {
+    return false;
+  }
+}
+
+async function fetchOnce(day: string): Promise<Counts | null> {
+  const counted = alreadyCountedToday(day);
+  try {
+    const res = await fetch("/api/visits", {
+      method: counted ? "GET" : "POST",
+      cache: "no-store",
+    });
+    const data = (await res.json()) as ApiResponse;
+
+    // ⚠️ 旗標只在 `available:true` 時才寫 —— 那是「伺服器真的加進去了」的唯一訊號。
+    //    寫太早（只看 res.ok）：POST 其實失敗卻標記成算過了，這個人今天就漏掉。
+    //    寫太晚（等解析完數字）：回應格式一有問題就提早跳出、旗標沒寫到，
+    //    下次重新整理又 POST 一次，人氣會一路灌上去。
+    if (!counted && data.available) {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, day);
+      } catch {
+        // 存不進去就算了（隱私模式），最多下次重新整理再算一次
+      }
+    }
+
+    if (!data.available || typeof data.today !== "number" || typeof data.total !== "number") {
+      return null;
+    }
+    return { today: data.today, total: data.total };
+  } catch {
+    // 計數器是裝飾品，連不上就當作沒有這個東西，不要影響頁面
+    return null;
+  }
+}
+
 /** 同一次載入裡共用的請求，避免 silent 版與顯示版各打一次 */
 let inflight: Promise<Counts | null> | null = null;
 
@@ -40,42 +87,13 @@ function loadCounts(): Promise<Counts | null> {
   if (inflight) return inflight;
 
   inflight = (async () => {
-    const today = taipeiDay();
-
-    // localStorage 在隱私模式／被封鎖時存取會直接丟例外，包起來
-    let counted = false;
-    try {
-      counted = window.localStorage.getItem(STORAGE_KEY) === today;
-    } catch {
-      counted = false;
-    }
-
-    try {
-      const res = await fetch("/api/visits", {
-        method: counted ? "GET" : "POST",
-        cache: "no-store",
-      });
-
-      // ⚠️ 旗標要在「POST 成功」當下就存，不能等下面解析完數字才存 ——
-      // 伺服器那邊已經加過了，如果因為回應格式怪怪的就提早 return，
-      // 旗標沒存到，下次重新整理又會再 POST 一次，人氣會一路灌上去。
-      if (!counted && res.ok) {
-        try {
-          window.localStorage.setItem(STORAGE_KEY, today);
-        } catch {
-          // 存不進去就算了（隱私模式），最多下次重新整理再算一次
-        }
-      }
-
-      const data = (await res.json()) as ApiResponse;
-      if (!data.available || typeof data.today !== "number" || typeof data.total !== "number") {
-        return null;
-      }
-      return { today: data.today, total: data.total };
-    } catch {
-      // 計數器是裝飾品，連不上就當作沒有這個東西，不要影響頁面
-      return null;
-    }
+    const day = taipeiDay();
+    const first = await fetchOnce(day);
+    if (first) return first;
+    // 連線池搶不到是暫時的，等一下再試一次。
+    // 第一次如果 POST 成功，旗標已經寫了，這次會走 GET —— 不會重複計數。
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    return fetchOnce(day);
   })();
 
   return inflight;

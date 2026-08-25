@@ -30,7 +30,7 @@ import { db } from "@/lib/db";
  * 網站上線前就已經累積的瀏覽數，會加進「統計人氣」。
  *
  * 預設 0 = 從裝這個計數器的那天開始從頭算，顯示的是真實數字。
- * 如果要把 GA4 的歷史瀏覽數接上來，把真實的累計數設進 Vercel 環境變數
+ * 如果要把歷史瀏覽數接上來，把真實的累計數設進 Vercel 環境變數
  * `SITE_VISIT_SEED` 即可（設完要重新部署）。
  *
  * ⚠️ 這個數字會公開顯示給客戶看，填假的就是對外不實陳述，別亂填。
@@ -52,12 +52,62 @@ export type VisitCounts = {
   total: number;
 };
 
+// ---------------------------------------------------------------- 連線很稀缺
+
+/**
+ * ⚠️ 這個專案的資料庫連線很稀缺：Vercel 上每個 serverless function 的
+ * Prisma pool 是 `connection_limit=3`、`pool_timeout=5`（見 `src/lib/db.ts`），
+ * 上游 TiDB Cloud 還有叢集層級的上限。
+ *
+ * 2026-08-25 線上實測到 `P2024 Timed out fetching a new connection` ——
+ * 計數器整個消失，而且**不報錯、頁面照常打得開**（API 回 200 帶
+ * `available:false`）。同一時間 `/admin/inbox` 的 YouTube／FB／IG 抓取
+ * 也在吃同一個錯。
+ *
+ * 所以這支的原則是：**一次請求只佔用一條連線、只打一趟 round trip**，
+ * 撞到連線錯誤時退一步重試一次（冷啟動搶連線是暫時的）。
+ * 原本用 `Promise.all` 同時打兩個 query —— 那等於一次抓兩條連線，
+ * 在只有 3 條的池子裡是自己人跟自己人搶。
+ */
+
+/** 撞到「連線拿不到／連線被關掉」時值得重試；其他錯誤重試沒有意義 */
+function isConnectionError(error: unknown): boolean {
+  const text = String((error as { message?: string })?.message ?? error);
+  return (
+    text.includes("Timed out fetching a new connection") ||
+    text.includes("Server has closed the connection") ||
+    text.includes("P2024") ||
+    text.includes("P1017")
+  );
+}
+
+/** 表還沒建的錯（MySQL 1146）。第一次跑、或換了資料庫時會遇到 */
+function isMissingTable(error: unknown): boolean {
+  const text = String((error as { message?: string })?.message ?? error);
+  return text.includes("1146") || /doesn.t exist/i.test(text);
+}
+
+async function withRetry<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (!isConnectionError(error)) throw error;
+    // 冷啟動搶連線是暫時的，等一下再試一次通常就過了
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    return run();
+  }
+}
+
 // ---------------------------------------------------------------- 建表
 
-let ensured = false;
-
+/**
+ * 建表。
+ *
+ * ⚠️ 這支**不是每次請求都跑** —— 只在讀寫時撞到「表不存在」才會被呼叫。
+ * 原本的寫法是每個 lambda 冷啟動先無條件跑一次 `CREATE TABLE IF NOT EXISTS`，
+ * 等於每次冷啟動都多花一趟 round trip 跟一條連線，去做一件幾乎永遠不必做的事。
+ */
 export async function ensureSiteVisitTable(): Promise<void> {
-  if (ensured) return;
   await db.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS site_visit_daily (
       day    CHAR(10)     NOT NULL,
@@ -65,13 +115,11 @@ export async function ensureSiteVisitTable(): Promise<void> {
       PRIMARY KEY (day)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
-  ensured = true;
 }
 
 // ---------------------------------------------------------------- 讀 / 寫
 
-type SumRow = { total: unknown };
-type DayRow = { visits: unknown };
+type CountsRow = { today: unknown; total: unknown };
 
 /**
  * 資料庫回來的數字統一轉成 JS number。
@@ -90,32 +138,54 @@ function toNumber(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+const INSERT_SQL = `INSERT INTO site_visit_daily (day, visits) VALUES (?, 1)
+   ON DUPLICATE KEY UPDATE visits = visits + 1`;
+
+/**
+ * 今日與累計一次撈完 —— **一趟 round trip、一條連線**。
+ *
+ * 分成兩個 query 用 `Promise.all` 打會同時佔用兩條連線，
+ * 在 `connection_limit=3` 的池子裡是自己跟自己搶。
+ */
+async function selectCounts(day: string): Promise<VisitCounts> {
+  const rows = await db.$queryRawUnsafe<CountsRow[]>(
+    `SELECT
+       COALESCE(SUM(CASE WHEN day = ? THEN visits END), 0) AS today,
+       COALESCE(SUM(visits), 0)                            AS total
+     FROM site_visit_daily`,
+    day,
+  );
+  return {
+    today: toNumber(rows[0]?.today),
+    total: seedCount() + toNumber(rows[0]?.total),
+  };
+}
+
 /** 只讀不寫 —— 已經算過的訪客重新整理頁面時走這條 */
 export async function readVisitCounts(): Promise<VisitCounts> {
-  await ensureSiteVisitTable();
   const day = taipeiDay();
-
-  const [todayRows, sumRows] = await Promise.all([
-    db.$queryRawUnsafe<DayRow[]>(`SELECT visits FROM site_visit_daily WHERE day = ?`, day),
-    db.$queryRawUnsafe<SumRow[]>(`SELECT SUM(visits) AS total FROM site_visit_daily`),
-  ]);
-
-  return {
-    today: toNumber(todayRows[0]?.visits),
-    total: seedCount() + toNumber(sumRows[0]?.total),
-  };
+  return withRetry(async () => {
+    try {
+      return await selectCounts(day);
+    } catch (error) {
+      if (!isMissingTable(error)) throw error;
+      await ensureSiteVisitTable();
+      return selectCounts(day);
+    }
+  });
 }
 
 /** 記一次人氣，然後回傳更新後的數字 */
 export async function recordVisit(): Promise<VisitCounts> {
-  await ensureSiteVisitTable();
   const day = taipeiDay();
-
-  await db.$executeRawUnsafe(
-    `INSERT INTO site_visit_daily (day, visits) VALUES (?, 1)
-     ON DUPLICATE KEY UPDATE visits = visits + 1`,
-    day,
-  );
-
-  return readVisitCounts();
+  return withRetry(async () => {
+    try {
+      await db.$executeRawUnsafe(INSERT_SQL, day);
+    } catch (error) {
+      if (!isMissingTable(error)) throw error;
+      await ensureSiteVisitTable();
+      await db.$executeRawUnsafe(INSERT_SQL, day);
+    }
+    return selectCounts(day);
+  });
 }
