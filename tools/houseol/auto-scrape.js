@@ -116,14 +116,7 @@ async function readTotalPages(page) {
   return m ? Number(m[2]) : 1;
 }
 
-async function login(page) {
-  const storeCode = process.env.HOUSEOL_STORE_CODE;
-  const username = process.env.HOUSEOL_USERNAME;
-  const password = process.env.HOUSEOL_PASSWORD;
-  if (!storeCode || !username || !password) {
-    throw new Error("缺少 HOUSEOL_STORE_CODE / HOUSEOL_USERNAME / HOUSEOL_PASSWORD 環境變數");
-  }
-
+async function attemptLogin(page, storeCode, username, password) {
   await page.goto(LOGIN_URL, { waitUntil: "networkidle" });
   await page.fill("#HouseID", storeCode);
   await page.fill("#MemberID", username);
@@ -175,6 +168,35 @@ async function login(page) {
         `頁面文字前 1500 字：${bodyText.slice(0, 1500)}`
     );
   }
+}
+
+/**
+ * 重跑幾次再放棄——連三次結果在 null／204 之間跳，看起來像網路或伺服器端
+ * 偶發狀況，不像穩定的「一定擋你」。每次重試前重新整理登入頁，不沿用舊的
+ * __VIEWSTATE。全部失敗才把最後一次的詳細錯誤丟出去。
+ */
+async function login(page) {
+  const storeCode = process.env.HOUSEOL_STORE_CODE;
+  const username = process.env.HOUSEOL_USERNAME;
+  const password = process.env.HOUSEOL_PASSWORD;
+  if (!storeCode || !username || !password) {
+    throw new Error("缺少 HOUSEOL_STORE_CODE / HOUSEOL_USERNAME / HOUSEOL_PASSWORD 環境變數");
+  }
+
+  const MAX_ATTEMPTS = 3;
+  let lastError;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      await attemptLogin(page, storeCode, username, password);
+      if (attempt > 1) console.log(`第 ${attempt} 次嘗試登入成功`);
+      return;
+    } catch (e) {
+      lastError = e;
+      console.log(`第 ${attempt}/${MAX_ATTEMPTS} 次登入失敗：${e.message.slice(0, 200)}`);
+      if (attempt < MAX_ATTEMPTS) await page.waitForTimeout(3000);
+    }
+  }
+  throw lastError;
 }
 
 async function scrapeAllPages(page) {
@@ -249,6 +271,13 @@ async function main() {
       timezoneId: "Asia/Taipei",
       viewport: { width: 1280, height: 800 },
     });
+    // 拿掉最常見的自動化偵測訊號：Playwright/Puppeteer 這類工具預設會讓
+    // navigator.webdriver 回傳 true，一堆網站（包括不少沒有明說的防護系統）
+    // 直接用這個判斷是不是機器人在操作
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+    });
+
     const page = await context.newPage();
     await login(page);
     console.log("登入成功");
