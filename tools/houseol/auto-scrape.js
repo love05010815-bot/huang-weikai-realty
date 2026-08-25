@@ -130,8 +130,12 @@ async function login(page) {
   await page.fill("#MemberPW", password);
 
   let postbackStatus = null;
+  let postbackHeaders = null;
   const onResponse = (res) => {
-    if (res.url().includes("login.aspx")) postbackStatus = res.status();
+    if (res.url().includes("login.aspx")) {
+      postbackStatus = res.status();
+      postbackHeaders = res.headers();
+    }
   };
   page.on("response", onResponse);
 
@@ -155,8 +159,18 @@ async function login(page) {
       .split("\n")
       .map((l) => l.trim())
       .filter((l) => l && /錯誤|失敗|鎖定|驗證碼|robot|captcha|封鎖|異常/i.test(l));
+    // 標頭裡常常留有防護系統的痕跡（cf-ray 是 Cloudflare、x-akamai 開頭是
+    // Akamai 之類），204 這種「處理了但不回內容」的回應很少是網站自己的邏輯，
+    // 比較像前面擋了一層
+    const headerHints = postbackHeaders
+      ? Object.entries(postbackHeaders)
+          .filter(([k]) => /cf-|akamai|imperva|waf|challenge|bot|shield|firewall|x-sucuri|x-cache/i.test(k))
+          .map(([k, v]) => `${k}: ${v}`)
+      : [];
     throw new Error(
       `登入失敗，還停在登入頁。postback HTTP 狀態：${postbackStatus}。` +
+        `回應標頭：${postbackHeaders ? JSON.stringify(postbackHeaders) : "（無）"}。` +
+        `防護系統痕跡：${headerHints.length ? headerHints.join(" / ") : "沒看到常見的 WAF 標頭"}。` +
         `可疑訊息：${suspectLines.length ? suspectLines.join(" / ") : "（沒找到，可能是帳密錯誤或愛屋擋了自動化）"}。` +
         `頁面文字前 1500 字：${bodyText.slice(0, 1500)}`
     );
