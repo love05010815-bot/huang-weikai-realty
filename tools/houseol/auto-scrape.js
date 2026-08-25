@@ -135,7 +135,16 @@ async function login(page) {
   };
   page.on("response", onResponse);
 
-  await Promise.all([page.waitForLoadState("networkidle"), page.click("#LinkButton1")]);
+  // 不用 click() 點那顆 <a href="javascript:__doPostBack(...)">——第一次實跑時
+  // postback 完全沒發生（狀態是 null），懷疑無頭瀏覽器點 javascript: 連結不可靠。
+  // 直接呼叫頁面自己的 __doPostBack，跟按鈕邏輯完全一樣，繞過點擊這一層。
+  await Promise.all([
+    page.waitForLoadState("networkidle"),
+    page.evaluate(() => {
+      // eslint-disable-next-line no-undef
+      __doPostBack("LinkButton1", "");
+    }),
+  ]);
   page.off("response", onResponse);
 
   if (page.url().includes("login.aspx")) {
