@@ -31,6 +31,7 @@ import {
 import {
   deleteVideoAction,
   saveVideoAction,
+  setVideoPinnedAction,
   setVideoStatusAction,
 } from "@/lib/actions/videos";
 import styles from "@/app/admin/listings/listings-admin.module.css";
@@ -572,6 +573,14 @@ export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
                     <div className={styles.rowBody}>
                       <div className={styles.rowHead}>
                         <h2 className={styles.rowTitle}>{row.title}</h2>
+                        {row.pinned ? (
+                          <span
+                            className={styles.chip}
+                            style={{ background: "rgba(245,158,11,.15)", borderColor: "rgba(245,158,11,.4)", color: "#fbbf24" }}
+                          >
+                            📌 置頂
+                          </span>
+                        ) : null}
                         {hidden ? (
                           <span
                             className={styles.chip}
@@ -637,6 +646,29 @@ export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
                         >
                           <Icon name={hidden ? "success" : "pause"} size={15} />
                           {hidden ? "重新上架" : "隱藏"}
+                        </button>
+
+                        {/* 置頂一鍵切換。刻意不放進編輯表單裡 ——
+                            同一件事有兩個入口，改了一邊沒改另一邊就會對不上。 */}
+                        <button
+                          type="button"
+                          className={styles.btn}
+                          style={
+                            row.pinned
+                              ? { borderColor: "rgba(245,158,11,.4)", color: "#fbbf24" }
+                              : { borderColor: CIS.cardBorder, color: CIS.textSub }
+                          }
+                          disabled={busy === `pin-${row.id}`}
+                          onClick={() =>
+                            run(
+                              `pin-${row.id}`,
+                              () => setVideoPinnedAction(row.id, !row.pinned),
+                              row.pinned ? "已取消置頂" : "已置頂，這支會排在最前面",
+                            )
+                          }
+                        >
+                          <Icon name={row.pinned ? "star" : "bookmark"} size={15} />
+                          {row.pinned ? "取消置頂" : "置頂"}
                         </button>
 
                         {/* ⚠️ 這裡本來有上移／下移兩顆箭頭，2026-08-26 拿掉了。

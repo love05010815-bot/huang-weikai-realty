@@ -43,6 +43,7 @@ export default async function VideosAdminPage() {
   const tourCount = rows.filter((r) => r.status === "active" && r.category === "tour").length;
   // 認不出 YouTube ID 的：卡片不能內嵌播放，只能連出去。不是錯誤，但值得知道有幾支。
   const externalCount = rows.filter((r) => r.status === "active" && !r.videoId).length;
+  const pinnedCount = rows.filter((r) => r.status === "active" && r.pinned).length;
 
   return (
     <main className={styles.page} style={{ background: CIS.bg, color: CIS.text, fontFamily: CIS.font }}>
@@ -55,7 +56,7 @@ export default async function VideosAdminPage() {
             </h1>
             <p className={styles.subtitle} style={{ color: CIS.textMute }}>
               改完立刻生效，不用部署。影音是獨立的一頁（/videos），首頁導覽列直接連過去。
-              <b>清單照「影片日期」由新到舊排，最新的在最上面</b> —— 要把某支拉前面就把它的日期改新一點。
+              <b>清單照「影片日期」由新到舊排，最新的在最上面</b>；按「置頂」可以把某一支釘在最前面，不受日期影響。
             </p>
           </div>
           <Link
@@ -86,7 +87,7 @@ export default async function VideosAdminPage() {
             ["上架中", activeCount, "#4ade80"],
             [CATEGORY_META.knowledge.label, knowledgeCount, CIS.textSub],
             [CATEGORY_META.tour.label, tourCount, CIS.textSub],
-            ["只能連出去", externalCount, externalCount > 0 ? "#fbbf24" : CIS.textMute],
+            ["置頂中", pinnedCount, pinnedCount > 0 ? "#fbbf24" : CIS.textMute],
           ].map(([label, value, color]) => (
             <div
               key={String(label)}

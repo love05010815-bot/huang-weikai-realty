@@ -151,6 +151,7 @@ export default function VideoLibrary({
             </div>
             <h2 className={styles.playerTitle}>{playing.title}</h2>
             <div className={styles.playerMeta}>
+              {playing.pinned ? <span className={styles.pinTag}>📌 置頂</span> : null}
               <span className={styles.tag}>{CATEGORY_META[playing.category].label}</span>
               <span>🕘 {playing.publishedAt}</span>
               <span>👁 {formatViews(viewOf(playing) + (counted.has(playing.id) ? 1 : 0))}</span>
@@ -202,6 +203,9 @@ export default function VideoLibrary({
 
                 <div className={styles.rowBody}>
                   <div className={styles.rowTop}>
+                    {/* ⚠️ 置頂一定要標出來 —— 不標的話，一支舊影片出現在新的上面，
+                        看起來就像日期排序壞掉了。 */}
+                    {v.pinned ? <span className={styles.pinTag}>📌 置頂</span> : null}
                     <span className={styles.tag}>{CATEGORY_META[v.category].label}</span>
                   </div>
                   <h3 className={styles.rowTitle}>

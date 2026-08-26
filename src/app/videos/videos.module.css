@@ -208,6 +208,19 @@
   white-space: nowrap;
 }
 
+/* 置頂標記。用琥珀色跟分類標籤（粉紅）明顯分開 ——
+   兩個都粉紅的話客戶會以為是同一種東西。 */
+.pinTag {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.16);
+  color: #b45309;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .rowTitle {
   margin: 0;
   font-size: 17px;

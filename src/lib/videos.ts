@@ -111,6 +111,13 @@ export type VideoRecord = {
    * 補上一支 2024 年拍的舊片時，用 created_at 會讓它變成「最新」。
    */
   publishedAt: string;
+  /**
+   * 置頂。true 的影片不管日期多舊都排在最前面。
+   *
+   * ⚠️ 前台**一定要顯示「置頂」標記** —— 不標的話，一支 2024 年的影片
+   * 出現在 2026 年那幾支上面，看起來就像日期排序壞掉了。
+   */
+  pinned: boolean;
   status: VideoStatus;
   sortOrder: number;
   updatedAt: Date | null;
@@ -139,6 +146,7 @@ export type PublicVideo = {
   videoId: string | null;
   summary: string;
   publishedAt: string;
+  pinned: boolean;
   /**
    * 縮圖網址。YouTube 的自動組出來、自己上傳的用截下來的封面圖。
    * 兩種都沒有就是 null，卡片顯示佔位塊（不要留白或破圖）。
@@ -256,6 +264,7 @@ export async function ensureVideoTable(): Promise<void> {
       bytes      BIGINT       NULL,
       summary    VARCHAR(500) NULL,
       published_at CHAR(10)   NULL,
+      pinned     TINYINT(1)   NOT NULL DEFAULT 0,
       status     VARCHAR(16)  NOT NULL DEFAULT 'active',
       sort_order INT          NOT NULL DEFAULT 0,
       created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -275,6 +284,7 @@ export async function ensureVideoTable(): Promise<void> {
     // CHAR(10) 存 "YYYY-MM-DD"，跟 site_visit_daily 的 day 同一個理由：
     // 用 DATE 讀回來會變 JS Date，中間再過一次時區換算，又是一個會默默差一天的機會
     ["published_at", "ADD COLUMN published_at CHAR(10) NULL AFTER summary"],
+    ["pinned", "ADD COLUMN pinned TINYINT(1) NOT NULL DEFAULT 0 AFTER published_at"],
   ] as const) {
     const existing = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM site_video LIKE ?`, column);
     if (existing.length === 0) {
@@ -296,6 +306,7 @@ type Row = {
   bytes: unknown;
   summary: string | null;
   published_at: string | null;
+  pinned: unknown;
   created_at: Date | null;
   status: string;
   sort_order: number;
@@ -343,6 +354,9 @@ function toRecord(row: Row): VideoRecord {
     bytes: toNumberOrNull(row.bytes),
     summary: row.summary || "",
     publishedAt: resolvePublishedAt(row),
+    // ⚠️ TINYINT 經 Prisma 回來可能是 number 1／0，也可能是字串 "1"。
+    //    直接 Boolean(row.pinned) 的話字串 "0" 會變成 true。
+    pinned: String(row.pinned ?? "0") === "1",
     status: row.status === "hidden" ? "hidden" : "active",
     sortOrder: Number(row.sort_order ?? 0),
     updatedAt: row.updated_at ?? null,
@@ -362,8 +376,8 @@ function toRecord(row: Row): VideoRecord {
  * 一次加好幾支時才不會每次重新整理都換位置（沒有第二順位的話順序是未定義的）。
  */
 const SELECT_SQL = `SELECT id, category, title, url, source, video_id, poster_url, bytes, summary,
-            published_at, created_at, status, sort_order, updated_at
-     FROM site_video ORDER BY published_at DESC, created_at DESC`;
+            published_at, pinned, created_at, status, sort_order, updated_at
+     FROM site_video ORDER BY pinned DESC, published_at DESC, created_at DESC`;
 
 /** 後台用：全部，含隱藏的 */
 export async function listAllVideos(): Promise<VideoRecord[]> {
@@ -403,6 +417,7 @@ export async function getPublicVideos(): Promise<PublicVideo[]> {
         videoId: row.videoId,
         summary: row.summary,
         publishedAt: row.publishedAt,
+        pinned: row.pinned,
         // YouTube 的縮圖現組，自己上傳的用上傳時截下來的封面
         thumbnail: row.videoId ? youtubeThumbnail(row.videoId) : row.posterUrl,
       }));
@@ -537,6 +552,19 @@ export async function updateVideo(id: string, input: VideoInput): Promise<void> 
 export async function setVideoStatus(id: string, status: VideoStatus): Promise<void> {
   await ensureThenRun(() =>
     db.$executeRawUnsafe(`UPDATE site_video SET status = ? WHERE id = ?`, status, id),
+  );
+}
+
+/**
+ * 置頂／取消置頂。
+ *
+ * ⚠️ 刻意**允許同時置頂多支** —— 限制「只能一支」的話，要嘛按第二支時
+ * 靜靜把第一支取消（他會以為壞了），要嘛跳錯誤擋他（多一道沒必要的摩擦）。
+ * 全部置頂等於沒有置頂，那是他自己看得出來的事，後台會顯示置頂數量。
+ */
+export async function setVideoPinned(id: string, pinned: boolean): Promise<void> {
+  await ensureThenRun(() =>
+    db.$executeRawUnsafe(`UPDATE site_video SET pinned = ? WHERE id = ?`, pinned ? 1 : 0, id),
   );
 }
 
