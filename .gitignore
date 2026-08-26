@@ -25,6 +25,13 @@ next-env.d.ts
 _q*.js
 _q*.ts
 _q*.mjs
+# 驗證用的暫存媒體檔（例如測影片播放時抓下來的樣本 mp4）。
+# ⚠️ 影片檔動輒幾十上百 MB，不小心 commit 進去這個公開 repo 會很難拔掉。
+_q*.mp4
+_q*.mov
+_q*.webm
+_q*.jpg
+_q*.png
 _linebot_*.mjs
 
 # 內含 Deploy Hook 網址，repo 是公開的，不要進版控

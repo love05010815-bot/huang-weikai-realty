@@ -31,6 +31,33 @@ export default function VideoCard({ video, eager = false }: { video: PublicVideo
     </>
   );
 
+  // 自己上傳的檔案：用原生 <video>。
+  //
+  // ⚠️ `preload="none"` 是刻意的，而且**不要改成 metadata 或 auto** ——
+  // 這頁上有幾支影片，preload 就會在每個訪客載入頁面時各拉一段下來。
+  // Vercel Hobby 方案的流量額度有限，超過會讓整個檔案儲存停用 30 天
+  // （連精選好案的照片一起消失）。所以：沒人按播放，就一個 byte 都不下載。
+  // 畫面上看得到東西是靠 `poster`（上傳時在瀏覽器端截的那張）。
+  if (video.source === "upload") {
+    return (
+      <article className={styles.card}>
+        <div className={styles.thumbWrap}>
+          <video
+            className={styles.player}
+            src={video.url}
+            poster={video.thumbnail ?? undefined}
+            controls
+            preload="none"
+            playsInline
+            // 沒有 poster 時給個底色，不要變成一塊白的
+            style={video.thumbnail ? undefined : { background: "#1a1310" }}
+          />
+        </div>
+        <div className={styles.cardBody}>{body}</div>
+      </article>
+    );
+  }
+
   // 嵌不進來的（FB／IG 之類）：整張卡就是一個連出去的連結
   if (!video.videoId) {
     return (

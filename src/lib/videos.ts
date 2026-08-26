@@ -12,12 +12,28 @@
  * （要做自動帶入的話 YouTube 授權已經接好了，見 `src/lib/youtube.ts`，
  *   但那是另一件事，不要為了它把這個表設計得更複雜。）
  *
- * ## YouTube 以外的網址也收
+ * ## 影片可以有兩種來源
  *
- * 認得出 YouTube 影片 ID 的（watch / youtu.be / shorts / embed 四種寫法）
- * 就存 `video_id`，前台可以直接嵌入播放器、縮圖也自動有。
- * FB reels、IG 那種認不出來的就只存網址，卡片變成「點了開新分頁」。
- * **兩種都能上架**，不要因為不是 YouTube 就擋掉。
+ *   youtube  貼網址。認得出影片 ID 的（watch / youtu.be / shorts / embed）
+ *            就存 `video_id`，前台嵌播放器、縮圖自動有。
+ *            FB reels、IG 那種認不出來的只存網址，卡片變成「點了開新分頁」。
+ *   upload   自己從電腦上傳的檔案，存在 Vercel Blob，`url` 是 blob 網址。
+ *
+ * ## ⚠️ 自己上傳的影片有兩條硬限制，改這裡之前先看懂
+ *
+ * 1. **單檔不能超過 512MB。** 超過的話 Vercel 的 CDN 就不快取它了，
+ *    **每一次播放都算 cache MISS**，會一直吃 Fast Origin Transfer
+ *    （Hobby 方案一個月只有約 10GB）。所以 `MAX_UPLOAD_BYTES` 壓在 200MB，
+ *    離 512MB 有安全距離。
+ *
+ * 2. **Hobby 方案超量不會多收錢，但會「整個 Blob 停用 30 天」。**
+ *    精選好案那 78 張照片跟影片放在同一個 Blob store ——
+ *    影片吃爆額度，**照片會跟著一起消失**。這是最需要小心的一件事。
+ *
+ * 所以自己上傳的影片一律：
+ *   ・上傳時在瀏覽器端截一張封面圖（`poster_url`）
+ *   ・前台 `<video preload="none">` —— **沒人按播放就一個 byte 都不下載**
+ * 這兩件事合起來，才讓「放在首頁」這件事不會默默把流量燒光。
  *
  * ## 連線紀律
  *
@@ -60,15 +76,40 @@ export function isVideoCategory(value: unknown): value is VideoCategory {
 
 export type VideoStatus = "active" | "hidden";
 
+export const VIDEO_SOURCES = ["youtube", "upload"] as const;
+export type VideoSource = (typeof VIDEO_SOURCES)[number];
+
+export function isVideoSource(value: unknown): value is VideoSource {
+  return typeof value === "string" && (VIDEO_SOURCES as readonly string[]).includes(value);
+}
+
+/**
+ * 自己上傳的單檔上限：200MB。
+ *
+ * ⚠️ 這個數字不是隨便訂的，**改之前先看檔頭那兩條硬限制**：
+ * 超過 512MB 的檔案 Vercel CDN 不快取，每次播放都吃 Fast Origin Transfer。
+ * 200MB 留了足夠的安全距離，也大概是「三到五分鐘的 1080p 壓過的影片」。
+ * 手機直出的原始檔通常會超過，那要先壓過再傳。
+ */
+export const MAX_VIDEO_UPLOAD_BYTES = 200 * 1024 * 1024;
+
+/** 允許上傳的影片格式。MP4（H.264）最保險，每個瀏覽器都能播。 */
+export const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"] as const;
+
 /** 後台看到的一筆 */
 export type VideoRecord = {
   id: string;
   category: VideoCategory;
   title: string;
-  /** 原始網址（後台貼進來的那個） */
+  /** youtube＝貼的網址；upload＝Vercel Blob 的檔案網址 */
   url: string;
-  /** YouTube 影片 ID。認不出來就是 null，那種卡片不嵌入、只連出去 */
+  source: VideoSource;
+  /** YouTube 影片 ID。認不出來或不是 YouTube 就是 null */
   videoId: string | null;
+  /** 自己上傳的影片才有的封面圖（上傳時在瀏覽器端截的）。YouTube 的用不到 */
+  posterUrl: string | null;
+  /** 自己上傳的檔案大小，用來讓後台看得到吃了多少空間 */
+  bytes: number | null;
   /** 一句話說明，可留空 */
   summary: string;
   status: VideoStatus;
@@ -81,6 +122,9 @@ export type VideoInput = {
   category: VideoCategory;
   title: string;
   url: string;
+  source: VideoSource;
+  posterUrl: string;
+  bytes: number | null;
   summary: string;
   status: VideoStatus;
 };
@@ -91,9 +135,13 @@ export type PublicVideo = {
   category: VideoCategory;
   title: string;
   url: string;
+  source: VideoSource;
   videoId: string | null;
   summary: string;
-  /** 縮圖網址。YouTube 的自動組出來，其他來源是 null（卡片顯示佔位塊） */
+  /**
+   * 縮圖網址。YouTube 的自動組出來、自己上傳的用截下來的封面圖。
+   * 兩種都沒有就是 null，卡片顯示佔位塊（不要留白或破圖）。
+   */
   thumbnail: string | null;
 };
 
@@ -161,6 +209,23 @@ function isMissingTable(error: unknown): boolean {
   return text.includes("1146") || /doesn.t exist/i.test(text);
 }
 
+/**
+ * 「Unknown column」（MySQL 1054）。
+ *
+ * ⚠️ 這個一定要跟「表不存在」分開處理：表已經在正式庫建好了，
+ * `CREATE TABLE IF NOT EXISTS` 對既有的表**什麼都不會做**，所以新加的
+ * `source`／`poster_url`／`bytes` 三欄不會自己出現 —— 只會在 SELECT 的時候
+ * 炸一個 1054。撞到就跑一次 `ensureVideoTable()`（裡面有補欄位的 ALTER）再重試。
+ */
+function isMissingColumn(error: unknown): boolean {
+  const text = String((error as { message?: string })?.message ?? error);
+  return text.includes("1054") || /unknown column/i.test(text);
+}
+
+function needsSchemaFix(error: unknown): boolean {
+  return isMissingTable(error) || isMissingColumn(error);
+}
+
 async function withRetry<T>(run: () => Promise<T>): Promise<T> {
   try {
     return await run();
@@ -184,7 +249,10 @@ export async function ensureVideoTable(): Promise<void> {
       category   VARCHAR(16)  NOT NULL,
       title      VARCHAR(255) NOT NULL,
       url        VARCHAR(500) NOT NULL,
+      source     VARCHAR(16)  NOT NULL DEFAULT 'youtube',
       video_id   VARCHAR(32)  NULL,
+      poster_url VARCHAR(500) NULL,
+      bytes      BIGINT       NULL,
       summary    VARCHAR(500) NULL,
       status     VARCHAR(16)  NOT NULL DEFAULT 'active',
       sort_order INT          NOT NULL DEFAULT 0,
@@ -194,6 +262,20 @@ export async function ensureVideoTable(): Promise<void> {
       KEY idx_site_video_order (category, sort_order)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+
+  // ⚠️ `CREATE TABLE IF NOT EXISTS` 對「已經存在的表」什麼都不會做 ——
+  //    表已經在正式庫建好了（上一版沒有這三欄），所以要另外補。
+  //    先 SHOW COLUMNS 再 ALTER，重複跑不會炸。
+  for (const [column, ddl] of [
+    ["source", "ADD COLUMN source VARCHAR(16) NOT NULL DEFAULT 'youtube' AFTER url"],
+    ["poster_url", "ADD COLUMN poster_url VARCHAR(500) NULL AFTER video_id"],
+    ["bytes", "ADD COLUMN bytes BIGINT NULL AFTER poster_url"],
+  ] as const) {
+    const existing = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM site_video LIKE ?`, column);
+    if (existing.length === 0) {
+      await db.$executeRawUnsafe(`ALTER TABLE site_video ${ddl}`);
+    }
+  }
 }
 
 // ---------------------------------------------------------------- 讀
@@ -203,12 +285,24 @@ type Row = {
   category: string;
   title: string;
   url: string;
+  source: string | null;
   video_id: string | null;
+  poster_url: string | null;
+  bytes: unknown;
   summary: string | null;
   status: string;
   sort_order: number;
   updated_at: Date | null;
 };
+
+/** ⚠️ BIGINT 在 TiDB 經 Prisma 回來可能是 bigint 或字串，不要相信欄位型別 */
+function toNumberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "bigint") return Number(value);
+  const parsed = Number(String(value));
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 function toRecord(row: Row): VideoRecord {
   return {
@@ -218,7 +312,10 @@ function toRecord(row: Row): VideoRecord {
     category: isVideoCategory(row.category) ? row.category : "knowledge",
     title: row.title,
     url: row.url,
+    source: isVideoSource(row.source) ? row.source : "youtube",
     videoId: row.video_id || null,
+    posterUrl: row.poster_url || null,
+    bytes: toNumberOrNull(row.bytes),
     summary: row.summary || "",
     status: row.status === "hidden" ? "hidden" : "active",
     sortOrder: Number(row.sort_order ?? 0),
@@ -226,7 +323,7 @@ function toRecord(row: Row): VideoRecord {
   };
 }
 
-const SELECT_SQL = `SELECT id, category, title, url, video_id, summary, status, sort_order, updated_at
+const SELECT_SQL = `SELECT id, category, title, url, source, video_id, poster_url, bytes, summary, status, sort_order, updated_at
      FROM site_video ORDER BY sort_order ASC, created_at ASC`;
 
 /** 後台用：全部，含隱藏的 */
@@ -236,9 +333,12 @@ export async function listAllVideos(): Promise<VideoRecord[]> {
       const rows = await db.$queryRawUnsafe<Row[]>(SELECT_SQL);
       return rows.map(toRecord);
     } catch (error) {
-      // 表還沒建 ＝ 還沒有任何影片，不是錯誤
-      if (isMissingTable(error)) return [];
-      throw error;
+      // 表還沒建、或少了新加的欄位 —— 兩種都是先修好 schema 再重試一次。
+      // ⚠️ 不能只判斷「表不存在」：表早就在正式庫了，缺的是欄位（1054）。
+      if (!needsSchemaFix(error)) throw error;
+      await ensureVideoTable();
+      const rows = await db.$queryRawUnsafe<Row[]>(SELECT_SQL);
+      return rows.map(toRecord);
     }
   });
 }
@@ -260,9 +360,11 @@ export async function getPublicVideos(): Promise<PublicVideo[]> {
         category: row.category,
         title: row.title,
         url: row.url,
+        source: row.source,
         videoId: row.videoId,
         summary: row.summary,
-        thumbnail: row.videoId ? youtubeThumbnail(row.videoId) : null,
+        // YouTube 的縮圖現組，自己上傳的用上傳時截下來的封面
+        thumbnail: row.videoId ? youtubeThumbnail(row.videoId) : row.posterUrl,
       }));
   } catch (error) {
     console.error("[videos] 讀不到影音:", error);
@@ -278,10 +380,17 @@ export function validateVideo(input: VideoInput): Validated {
   const title = (input.title ?? "").trim().slice(0, 255);
   const url = (input.url ?? "").trim().slice(0, 500);
   const summary = (input.summary ?? "").trim().slice(0, 500);
+  const posterUrl = (input.posterUrl ?? "").trim().slice(0, 500);
+  const source: VideoSource = isVideoSource(input.source) ? input.source : "youtube";
 
   if (!title) return { ok: false, error: "標題不能空白" };
-  if (!url) return { ok: false, error: "影片網址不能空白" };
   if (!isVideoCategory(input.category)) return { ok: false, error: "分類不對" };
+  if (!url) {
+    return {
+      ok: false,
+      error: source === "upload" ? "還沒有上傳影片檔，或上傳還沒完成" : "影片網址不能空白",
+    };
+  }
 
   // 不是 YouTube 也收（FB reels、IG 之類），但至少要是個看起來像網址的東西 ——
   // 貼錯的話卡片會變成一顆連到不存在頁面的按鈕，客戶點下去是死的
@@ -292,12 +401,21 @@ export function validateVideo(input: VideoInput): Validated {
     return { ok: false, error: "這不是一個有效的網址" };
   }
 
+  const bytes = typeof input.bytes === "number" && Number.isFinite(input.bytes) ? input.bytes : null;
+  if (source === "upload" && bytes !== null && bytes > MAX_VIDEO_UPLOAD_BYTES) {
+    return { ok: false, error: `影片太大了（上限 ${Math.round(MAX_VIDEO_UPLOAD_BYTES / 1024 / 1024)}MB）` };
+  }
+
   return {
     ok: true,
     value: {
       category: input.category,
       title,
       url,
+      source,
+      // 封面圖只有自己上傳的用得到；YouTube 的縮圖是現組的，存了也是死資料
+      posterUrl: source === "upload" ? posterUrl : "",
+      bytes: source === "upload" ? bytes : null,
       summary,
       status: input.status === "hidden" ? "hidden" : "active",
     },
@@ -311,26 +429,35 @@ async function ensureThenRun<T>(run: () => Promise<T>): Promise<T> {
     try {
       return await run();
     } catch (error) {
-      if (!isMissingTable(error)) throw error;
+      // 表不存在（1146）或少欄位（1054）都靠 ensureVideoTable() 修
+      if (!needsSchemaFix(error)) throw error;
       await ensureVideoTable();
       return run();
     }
   });
 }
 
+/** 自己上傳的檔案不是 YouTube，不要去解析它的網址（解不出來，而且沒意義） */
+function youtubeIdFor(input: VideoInput): string | null {
+  return input.source === "upload" ? null : parseYoutubeId(input.url);
+}
+
 export async function createVideo(input: VideoInput): Promise<string> {
   const id = randomUUID();
-  const videoId = parseYoutubeId(input.url);
+  const videoId = youtubeIdFor(input);
   return ensureThenRun(async () => {
     // 新的排在最後面。用 MAX+1 而不是筆數，中間刪過東西才不會撞號。
     await db.$executeRawUnsafe(
-      `INSERT INTO site_video (id, category, title, url, video_id, summary, status, sort_order)
-       SELECT ?, ?, ?, ?, ?, ?, ?, COALESCE(MAX(sort_order), -1) + 1 FROM site_video`,
+      `INSERT INTO site_video (id, category, title, url, source, video_id, poster_url, bytes, summary, status, sort_order)
+       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(MAX(sort_order), -1) + 1 FROM site_video`,
       id,
       input.category,
       input.title,
       input.url,
+      input.source,
       videoId,
+      input.posterUrl || null,
+      input.bytes,
       input.summary,
       input.status,
     );
@@ -339,15 +466,19 @@ export async function createVideo(input: VideoInput): Promise<string> {
 }
 
 export async function updateVideo(id: string, input: VideoInput): Promise<void> {
-  const videoId = parseYoutubeId(input.url);
+  const videoId = youtubeIdFor(input);
   await ensureThenRun(() =>
     db.$executeRawUnsafe(
-      `UPDATE site_video SET category = ?, title = ?, url = ?, video_id = ?, summary = ?, status = ?
+      `UPDATE site_video SET category = ?, title = ?, url = ?, source = ?, video_id = ?,
+              poster_url = ?, bytes = ?, summary = ?, status = ?
        WHERE id = ?`,
       input.category,
       input.title,
       input.url,
+      input.source,
       videoId,
+      input.posterUrl || null,
+      input.bytes,
       input.summary,
       input.status,
       id,
@@ -361,8 +492,39 @@ export async function setVideoStatus(id: string, status: VideoStatus): Promise<v
   );
 }
 
+/**
+ * 刪除一筆影片。自己上傳的檔案會**連 Blob 上的檔案一起刪掉**。
+ *
+ * ⚠️ 這件事非做不可：Hobby 方案最稀缺的就是儲存空間，只刪資料庫那一列的話，
+ * 影片檔會留在 Blob 上永遠吃著空間，而且後台再也看不到它、沒人會發現。
+ *
+ * Blob 刪失敗不擋資料庫那一列 —— 使用者按了刪除就是要它從網站上消失，
+ * 檔案沒清掉頂多是浪費空間，但那一列沒刪掉他會以為功能壞了。
+ */
 export async function deleteVideo(id: string): Promise<void> {
+  const rows = await ensureThenRun(() =>
+    db.$queryRawUnsafe<{ url: string; source: string | null; poster_url: string | null }[]>(
+      `SELECT url, source, poster_url FROM site_video WHERE id = ?`,
+      id,
+    ),
+  );
+
   await ensureThenRun(() => db.$executeRawUnsafe(`DELETE FROM site_video WHERE id = ?`, id));
+
+  const row = rows[0];
+  if (!row || row.source !== "upload") return;
+
+  const targets = [row.url, row.poster_url].filter(
+    (u): u is string => typeof u === "string" && u.includes(".blob.vercel-storage.com"),
+  );
+  if (targets.length === 0) return;
+
+  try {
+    const { del } = await import("@vercel/blob");
+    await del(targets);
+  } catch (error) {
+    console.error("[videos] 影片檔從 Blob 刪不掉（資料庫那一列已經刪了）:", error);
+  }
 }
 
 /**

@@ -12,16 +12,20 @@
  */
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { upload } from "@vercel/blob/client";
 import { CIS } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
 import {
+  ALLOWED_VIDEO_TYPES,
   CATEGORY_META,
+  MAX_VIDEO_UPLOAD_BYTES,
   VIDEO_CATEGORIES,
   parseYoutubeId,
   youtubeThumbnail,
   type VideoCategory,
   type VideoRecord,
+  type VideoSource,
   type VideoStatus,
 } from "@/lib/videos";
 import {
@@ -36,6 +40,9 @@ type FormState = {
   category: VideoCategory;
   title: string;
   url: string;
+  source: VideoSource;
+  posterUrl: string;
+  bytes: number | null;
   summary: string;
   status: VideoStatus;
 };
@@ -44,9 +51,73 @@ const emptyForm: FormState = {
   category: "knowledge",
   title: "",
   url: "",
+  source: "youtube",
+  posterUrl: "",
+  bytes: null,
   summary: "",
   status: "active",
 };
+
+const MAX_MB = Math.round(MAX_VIDEO_UPLOAD_BYTES / 1024 / 1024);
+
+function formatBytes(bytes: number | null): string {
+  if (!bytes) return "";
+  const mb = bytes / 1024 / 1024;
+  return mb >= 1024 ? `${(mb / 1024).toFixed(2)} GB` : `${mb.toFixed(1)} MB`;
+}
+
+/**
+ * 在瀏覽器端從影片檔截一張封面圖。
+ *
+ * 為什麼要截：前台的 `<video>` 用 `preload="none"`，**沒人按播放就一個 byte
+ * 都不下載**（Hobby 方案的流量額度很有限，這是最有效的一道保護）。
+ * 但那樣就沒有畫面可看了，所以要有一張封面圖頂著。
+ *
+ * ⚠️ 順帶還有一個好處：**這裡截不出來，代表瀏覽器根本解不了這個檔**
+ * （最常見是 iPhone 直出的 HEVC .mov）。客戶的瀏覽器多半也播不了 ——
+ * 在上傳當下就發現，比等客戶回報「影片不會動」好太多。
+ */
+async function capturePoster(file: File): Promise<Blob | null> {
+  const objectUrl = URL.createObjectURL(file);
+  const video = document.createElement("video");
+  video.preload = "metadata";
+  video.muted = true;
+  video.playsInline = true;
+  video.src = objectUrl;
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      video.onloadeddata = () => resolve();
+      video.onerror = () => reject(new Error("decode-failed"));
+      window.setTimeout(() => reject(new Error("timeout")), 15000);
+    });
+
+    // 第 0 秒常常是黑畫面或轉場，往後跳一點比較有東西看
+    const target = Number.isFinite(video.duration) && video.duration > 2 ? 1 : 0;
+    if (target > 0) {
+      video.currentTime = target;
+      await new Promise<void>((resolve) => {
+        video.onseeked = () => resolve();
+        window.setTimeout(resolve, 3000);
+      });
+    }
+
+    if (!video.videoWidth || !video.videoHeight) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.82));
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+    video.removeAttribute("src");
+    video.load();
+  }
+}
 
 const inputStyle = {
   background: CIS.bg,
@@ -60,14 +131,87 @@ export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [uploadNote, setUploadNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  /**
+   * 選了檔案之後：先截封面圖 → 傳影片 → 傳封面圖 → 把兩個網址填回表單。
+   *
+   * ⚠️ 檔案是**從瀏覽器直接傳到 Vercel Blob**，不經過我們的 API ——
+   * serverless function 的 request body 上限是 4.5MB，影片一定過不去。
+   */
+  async function onPickFile(file: File | undefined) {
+    if (!file) return;
+    setUploadNote(null);
+    setMsg(null);
+
+    if (file.size > MAX_VIDEO_UPLOAD_BYTES) {
+      setUploadNote({
+        ok: false,
+        text: `這個檔 ${formatBytes(file.size)}，超過 ${MAX_MB}MB 上限。先用手機或剪輯軟體壓過再傳（1080p 就夠了，不用 4K）。`,
+      });
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+
+    setUploading(true);
+    setProgress(0);
+    try {
+      // 先截封面。截不出來代表瀏覽器解不了這個檔 —— 那客戶多半也播不了，
+      // 這時候擋下來比傳上去之後才發現好。
+      const poster = await capturePoster(file);
+      if (!poster) {
+        setUploading(false);
+        if (fileRef.current) fileRef.current.value = "";
+        setUploadNote({
+          ok: false,
+          text: "瀏覽器讀不出這個影片檔的畫面（最常見是 iPhone 直出的 HEVC .mov）。客戶的瀏覽器多半也播不了，先轉成 MP4（H.264）再上傳。",
+        });
+        return;
+      }
+
+      const videoBlob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/admin/videos/upload",
+        clientPayload: "video",
+        onUploadProgress: ({ percentage }) => setProgress(Math.round(percentage)),
+      });
+
+      const posterBlob = await upload(`${file.name}.poster.jpg`, poster, {
+        access: "public",
+        handleUploadUrl: "/api/admin/videos/upload",
+        clientPayload: "poster",
+      });
+
+      setForm((prev) => ({
+        ...prev,
+        source: "upload",
+        url: videoBlob.url,
+        posterUrl: posterBlob.url,
+        bytes: file.size,
+        // 標題還空著的話，拿檔名當預設 —— 他多半會再改，但總比空白好
+        title: prev.title || file.name.replace(/\.[^.]+$/, ""),
+      }));
+      setUploadNote({ ok: true, text: `上傳完成（${formatBytes(file.size)}），封面圖也抓好了。下面填標題、選分類再按存檔。` });
+    } catch (e) {
+      setUploadNote({ ok: false, text: `上傳失敗：${e instanceof Error ? e.message : String(e)}` });
+    } finally {
+      setUploading(false);
+      setProgress(0);
+    }
+  }
 
   function openNew() {
     setForm(emptyForm);
     setEditing("new");
     setMsg(null);
+    setUploadNote(null);
+    if (fileRef.current) fileRef.current.value = "";
   }
 
   function openEdit(row: VideoRecord) {
@@ -75,11 +219,16 @@ export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
       category: row.category,
       title: row.title,
       url: row.url,
+      source: row.source,
+      posterUrl: row.posterUrl ?? "",
+      bytes: row.bytes,
       summary: row.summary,
       status: row.status,
     });
     setEditing(row.id);
     setMsg(null);
+    setUploadNote(null);
+    if (fileRef.current) fileRef.current.value = "";
   }
 
   async function run(key: string, fn: () => Promise<{ ok: boolean; error?: string }>, okText: string) {
@@ -102,8 +251,9 @@ export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
     if (ok) setEditing(null);
   }
 
-  // 貼上網址當下就告訴你認不認得出來 —— 存完才發現嵌不進去太晚了
-  const previewId = parseYoutubeId(form.url);
+  // 貼上網址當下就告訴你認不認得出來 —— 存完才發現嵌不進去太晚了。
+  // 自己上傳的檔案不是 YouTube，不要拿去解析（解不出來，而且會誤報警告）。
+  const previewId = form.source === "youtube" ? parseYoutubeId(form.url) : null;
 
   return (
     <>
@@ -189,32 +339,110 @@ export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
             </div>
 
             <div className={`${styles.field} ${styles.fieldWide}`}>
-              <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-url">
-                影片網址
-              </label>
-              <input
-                id="vid-url"
-                className={styles.input}
-                style={inputStyle}
-                value={form.url}
-                onChange={(e) => set("url", e.target.value)}
-                placeholder="https://www.youtube.com/watch?v=..."
-              />
-              <div className={styles.hint} style={{ color: CIS.textMute }}>
-                {form.url.trim() === "" ? (
-                  "YouTube 的 watch、youtu.be、Shorts 三種網址都認得。FB／IG 的也可以貼。"
-                ) : previewId ? (
-                  <span style={{ color: "#4ade80" }}>
-                    ✓ 認出 YouTube 影片（{previewId}），前台可以直接播，縮圖自動有
-                  </span>
-                ) : (
-                  <span style={{ color: "#fbbf24" }}>
-                    ⚠️ 不是 YouTube 網址（或格式不對）。還是可以存，但前台嵌不進來 ——
-                    卡片會變成「點了開新分頁」，也沒有縮圖。
-                  </span>
-                )}
+              <span className={styles.label} style={{ color: CIS.textSub }}>
+                影片從哪裡來
+              </span>
+              <div className={styles.actions} style={{ marginTop: 4 }}>
+                {(
+                  [
+                    ["youtube", "貼網址（YouTube／FB／IG）"],
+                    ["upload", "從電腦上傳檔案"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={styles.btn}
+                    style={
+                      form.source === value
+                        ? { borderColor: CIS.blueSoft, color: CIS.text, background: "rgba(238,130,138,.12)" }
+                        : { borderColor: CIS.cardBorder, color: CIS.textMute }
+                    }
+                    disabled={uploading}
+                    onClick={() => {
+                      // 換來源就把上一個來源填的東西清掉 ——
+                      // 留著的話會出現「選了上傳、但存進去的是 YouTube 網址」這種對不上的資料
+                      setForm((prev) => ({ ...prev, source: value, url: "", posterUrl: "", bytes: null }));
+                      setUploadNote(null);
+                      if (fileRef.current) fileRef.current.value = "";
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
+
+            {form.source === "youtube" ? (
+              <div className={`${styles.field} ${styles.fieldWide}`}>
+                <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-url">
+                  影片網址
+                </label>
+                <input
+                  id="vid-url"
+                  className={styles.input}
+                  style={inputStyle}
+                  value={form.url}
+                  onChange={(e) => set("url", e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                />
+                <div className={styles.hint} style={{ color: CIS.textMute }}>
+                  {form.url.trim() === "" ? (
+                    "YouTube 的 watch、youtu.be、Shorts 三種網址都認得。FB／IG 的也可以貼。"
+                  ) : previewId ? (
+                    <span style={{ color: "#4ade80" }}>
+                      ✓ 認出 YouTube 影片（{previewId}），前台可以直接播，縮圖自動有
+                    </span>
+                  ) : (
+                    <span style={{ color: "#fbbf24" }}>
+                      ⚠️ 不是 YouTube 網址（或格式不對）。還是可以存，但前台嵌不進來 ——
+                      卡片會變成「點了開新分頁」，也沒有縮圖。
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className={`${styles.field} ${styles.fieldWide}`}>
+                <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-file">
+                  影片檔（最大 {MAX_MB}MB）
+                </label>
+                <input
+                  id="vid-file"
+                  ref={fileRef}
+                  type="file"
+                  className={styles.input}
+                  style={inputStyle}
+                  accept={ALLOWED_VIDEO_TYPES.join(",")}
+                  disabled={uploading}
+                  onChange={(e) => void onPickFile(e.target.files?.[0])}
+                />
+                {uploading ? (
+                  <div className={styles.hint} style={{ color: CIS.textSub }}>
+                    上傳中… {progress}%（檔案是直接傳到儲存空間的，這個分頁先別關）
+                  </div>
+                ) : null}
+                {uploadNote ? (
+                  <div className={styles.hint} style={{ color: uploadNote.ok ? "#4ade80" : "#fbbf24" }}>
+                    {uploadNote.ok ? "✓ " : "⚠️ "}
+                    {uploadNote.text}
+                  </div>
+                ) : null}
+                {!uploading && !uploadNote && form.url ? (
+                  <div className={styles.hint} style={{ color: "#4ade80" }}>
+                    ✓ 已經有影片檔了{form.bytes ? `（${formatBytes(form.bytes)}）` : ""}。
+                    要換一支就重新選檔案。
+                  </div>
+                ) : null}
+                <div className={styles.hint} style={{ color: CIS.textMute }}>
+                  <b>建議 MP4（H.264）、1080p 就夠。</b>
+                  iPhone 直出的 .mov 常常是 HEVC，很多瀏覽器播不了 —— 傳之前先轉一下。
+                  <br />
+                  ⚠️ 自己上傳的影片會吃 Vercel 的儲存與流量額度。
+                  <b>超過額度不會多收錢，但整個檔案儲存會停用 30 天，精選好案的照片會一起消失。</b>
+                  影片多的話建議傳到 YouTube（可以設「不公開」，不會被搜尋到）再貼網址。
+                </div>
+              </div>
+            )}
 
             <div className={`${styles.field} ${styles.fieldWide}`}>
               <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-summary">
@@ -231,15 +459,15 @@ export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
               />
             </div>
 
-            {previewId ? (
+            {previewId || form.posterUrl ? (
               <div className={`${styles.field} ${styles.fieldWide}`}>
                 <span className={styles.label} style={{ color: CIS.textSub }}>
-                  縮圖預覽
+                  {previewId ? "縮圖預覽" : "封面預覽（從影片第 1 秒截的）"}
                 </span>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   className={styles.previewThumb}
-                  src={youtubeThumbnail(previewId)}
+                  src={previewId ? youtubeThumbnail(previewId) : form.posterUrl}
                   alt=""
                   width={320}
                   height={180}
@@ -254,10 +482,10 @@ export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
               className={styles.btn}
               style={{ borderColor: CIS.cardBorder, color: CIS.text }}
               onClick={save}
-              disabled={busy === "save"}
+              disabled={busy === "save" || uploading}
             >
               <Icon name="save" size={15} />
-              {busy === "save" ? "存檔中…" : "存檔"}
+              {uploading ? "等上傳完成…" : busy === "save" ? "存檔中…" : "存檔"}
             </button>
             <button
               type="button"
@@ -300,9 +528,15 @@ export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
                     style={{ background: CIS.card, borderColor: CIS.cardBorder }}
                   >
                     <div className={styles.thumbWrap}>
-                      {row.videoId ? (
+                      {row.videoId || row.posterUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img className={styles.thumb} src={youtubeThumbnail(row.videoId)} alt="" width={160} height={90} />
+                        <img
+                          className={styles.thumb}
+                          src={row.videoId ? youtubeThumbnail(row.videoId) : row.posterUrl!}
+                          alt=""
+                          width={160}
+                          height={90}
+                        />
                       ) : (
                         <div className={styles.thumbEmpty} style={{ color: CIS.textMute }}>
                           無縮圖
@@ -321,7 +555,14 @@ export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
                             隱藏中
                           </span>
                         ) : null}
-                        {!row.videoId ? (
+                        {row.source === "upload" ? (
+                          <span
+                            className={styles.chip}
+                            style={{ background: "rgba(238,130,138,.16)", borderColor: "rgba(238,130,138,.4)", color: CIS.blueSoft }}
+                          >
+                            自行上傳{row.bytes ? ` ${formatBytes(row.bytes)}` : ""}
+                          </span>
+                        ) : !row.videoId ? (
                           <span
                             className={styles.chip}
                             style={{ background: "rgba(245,158,11,.15)", borderColor: "rgba(245,158,11,.35)", color: "#fbbf24" }}
