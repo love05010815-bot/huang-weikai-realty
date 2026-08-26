@@ -62,14 +62,6 @@ export const CATEGORY_META: Record<VideoCategory, { label: string; eyebrow: stri
   },
 };
 
-/**
- * 首頁每一類各放幾支。
- *
- * 兩類各 2 支 ＝ 首頁一排 4 張，跟精選好案那排 3 張錯開，不會看起來像同一區。
- * 要調整首頁放哪幾支不用改這個數字 —— 到後台把想放的那幾支用箭頭移到最前面就好。
- */
-export const HOME_VIDEO_PER_CATEGORY = 2;
-
 export function isVideoCategory(value: unknown): value is VideoCategory {
   return typeof value === "string" && (VIDEO_CATEGORIES as readonly string[]).includes(value);
 }
@@ -112,6 +104,13 @@ export type VideoRecord = {
   bytes: number | null;
   /** 一句話說明，可留空 */
   summary: string;
+  /**
+   * 影片日期（`YYYY-MM-DD`）。側欄的「最新影片」照這個排、卡片上也顯示這個。
+   *
+   * ⚠️ 不能用 `created_at` 代替 —— 那是「什麼時候加進網站的」。
+   * 補上一支 2024 年拍的舊片時，用 created_at 會讓它變成「最新」。
+   */
+  publishedAt: string;
   status: VideoStatus;
   sortOrder: number;
   updatedAt: Date | null;
@@ -126,6 +125,7 @@ export type VideoInput = {
   posterUrl: string;
   bytes: number | null;
   summary: string;
+  publishedAt: string;
   status: VideoStatus;
 };
 
@@ -138,6 +138,7 @@ export type PublicVideo = {
   source: VideoSource;
   videoId: string | null;
   summary: string;
+  publishedAt: string;
   /**
    * 縮圖網址。YouTube 的自動組出來、自己上傳的用截下來的封面圖。
    * 兩種都沒有就是 null，卡片顯示佔位塊（不要留白或破圖）。
@@ -254,6 +255,7 @@ export async function ensureVideoTable(): Promise<void> {
       poster_url VARCHAR(500) NULL,
       bytes      BIGINT       NULL,
       summary    VARCHAR(500) NULL,
+      published_at CHAR(10)   NULL,
       status     VARCHAR(16)  NOT NULL DEFAULT 'active',
       sort_order INT          NOT NULL DEFAULT 0,
       created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -270,6 +272,9 @@ export async function ensureVideoTable(): Promise<void> {
     ["source", "ADD COLUMN source VARCHAR(16) NOT NULL DEFAULT 'youtube' AFTER url"],
     ["poster_url", "ADD COLUMN poster_url VARCHAR(500) NULL AFTER video_id"],
     ["bytes", "ADD COLUMN bytes BIGINT NULL AFTER poster_url"],
+    // CHAR(10) 存 "YYYY-MM-DD"，跟 site_visit_daily 的 day 同一個理由：
+    // 用 DATE 讀回來會變 JS Date，中間再過一次時區換算，又是一個會默默差一天的機會
+    ["published_at", "ADD COLUMN published_at CHAR(10) NULL AFTER summary"],
   ] as const) {
     const existing = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM site_video LIKE ?`, column);
     if (existing.length === 0) {
@@ -290,10 +295,30 @@ type Row = {
   poster_url: string | null;
   bytes: unknown;
   summary: string | null;
+  published_at: string | null;
+  created_at: Date | null;
   status: string;
   sort_order: number;
   updated_at: Date | null;
 };
+
+/** 台北時間的今天，`YYYY-MM-DD` */
+function todayTaipei(): string {
+  return new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+/**
+ * 影片日期。舊資料沒有 `published_at`（那一欄是後來才加的），
+ * 就退回用 `created_at` —— **不要回空字串**，畫面上會出現一個沒有日期的洞。
+ */
+function resolvePublishedAt(row: Row): string {
+  if (row.published_at && /^\d{4}-\d{2}-\d{2}$/.test(row.published_at)) return row.published_at;
+  if (row.created_at) {
+    const d = new Date(row.created_at);
+    if (Number.isFinite(d.getTime())) return new Date(d.getTime() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+  }
+  return todayTaipei();
+}
 
 /** ⚠️ BIGINT 在 TiDB 經 Prisma 回來可能是 bigint 或字串，不要相信欄位型別 */
 function toNumberOrNull(value: unknown): number | null {
@@ -317,13 +342,15 @@ function toRecord(row: Row): VideoRecord {
     posterUrl: row.poster_url || null,
     bytes: toNumberOrNull(row.bytes),
     summary: row.summary || "",
+    publishedAt: resolvePublishedAt(row),
     status: row.status === "hidden" ? "hidden" : "active",
     sortOrder: Number(row.sort_order ?? 0),
     updatedAt: row.updated_at ?? null,
   };
 }
 
-const SELECT_SQL = `SELECT id, category, title, url, source, video_id, poster_url, bytes, summary, status, sort_order, updated_at
+const SELECT_SQL = `SELECT id, category, title, url, source, video_id, poster_url, bytes, summary,
+            published_at, created_at, status, sort_order, updated_at
      FROM site_video ORDER BY sort_order ASC, created_at ASC`;
 
 /** 後台用：全部，含隱藏的 */
@@ -363,6 +390,7 @@ export async function getPublicVideos(): Promise<PublicVideo[]> {
         source: row.source,
         videoId: row.videoId,
         summary: row.summary,
+        publishedAt: row.publishedAt,
         // YouTube 的縮圖現組，自己上傳的用上傳時截下來的封面
         thumbnail: row.videoId ? youtubeThumbnail(row.videoId) : row.posterUrl,
       }));
@@ -401,6 +429,11 @@ export function validateVideo(input: VideoInput): Validated {
     return { ok: false, error: "這不是一個有效的網址" };
   }
 
+  // 日期格式不對就當今天 —— 擋在這裡，不要讓髒字串進資料庫害排序亂掉
+  const publishedAt = /^\d{4}-\d{2}-\d{2}$/.test((input.publishedAt ?? "").trim())
+    ? input.publishedAt.trim()
+    : todayTaipei();
+
   const bytes = typeof input.bytes === "number" && Number.isFinite(input.bytes) ? input.bytes : null;
   if (source === "upload" && bytes !== null && bytes > MAX_VIDEO_UPLOAD_BYTES) {
     return { ok: false, error: `影片太大了（上限 ${Math.round(MAX_VIDEO_UPLOAD_BYTES / 1024 / 1024)}MB）` };
@@ -417,6 +450,7 @@ export function validateVideo(input: VideoInput): Validated {
       posterUrl: source === "upload" ? posterUrl : "",
       bytes: source === "upload" ? bytes : null,
       summary,
+      publishedAt,
       status: input.status === "hidden" ? "hidden" : "active",
     },
   };
@@ -448,8 +482,8 @@ export async function createVideo(input: VideoInput): Promise<string> {
   return ensureThenRun(async () => {
     // 新的排在最後面。用 MAX+1 而不是筆數，中間刪過東西才不會撞號。
     await db.$executeRawUnsafe(
-      `INSERT INTO site_video (id, category, title, url, source, video_id, poster_url, bytes, summary, status, sort_order)
-       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(MAX(sort_order), -1) + 1 FROM site_video`,
+      `INSERT INTO site_video (id, category, title, url, source, video_id, poster_url, bytes, summary, published_at, status, sort_order)
+       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(MAX(sort_order), -1) + 1 FROM site_video`,
       id,
       input.category,
       input.title,
@@ -459,6 +493,7 @@ export async function createVideo(input: VideoInput): Promise<string> {
       input.posterUrl || null,
       input.bytes,
       input.summary,
+      input.publishedAt,
       input.status,
     );
     return id;
@@ -470,7 +505,7 @@ export async function updateVideo(id: string, input: VideoInput): Promise<void> 
   await ensureThenRun(() =>
     db.$executeRawUnsafe(
       `UPDATE site_video SET category = ?, title = ?, url = ?, source = ?, video_id = ?,
-              poster_url = ?, bytes = ?, summary = ?, status = ?
+              poster_url = ?, bytes = ?, summary = ?, published_at = ?, status = ?
        WHERE id = ?`,
       input.category,
       input.title,
@@ -480,6 +515,7 @@ export async function updateVideo(id: string, input: VideoInput): Promise<void> 
       input.posterUrl || null,
       input.bytes,
       input.summary,
+      input.publishedAt,
       input.status,
       id,
     ),
@@ -510,6 +546,10 @@ export async function deleteVideo(id: string): Promise<void> {
   );
 
   await ensureThenRun(() => db.$executeRawUnsafe(`DELETE FROM site_video WHERE id = ?`, id));
+
+  // 觀看紀錄一起清掉，不要留孤兒資料
+  const { deleteVideoViews } = await import("@/lib/video-views");
+  await deleteVideoViews(id);
 
   const row = rows[0];
   if (!row || row.source !== "upload") return;

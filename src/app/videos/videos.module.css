@@ -1,90 +1,170 @@
 /* /videos —— 影音專區
    版面骨架（header／section／container）沿用 home.module.css，
-   這裡只放影音卡片自己的東西。 */
+   這裡只放影音自己的東西：左清單右側欄、大播放器、卡片列。 */
 
-.categoryBlock {
-  margin-top: 56px;
-}
-
-.categoryBlock:first-of-type {
-  margin-top: 24px;
-}
-
-.categoryTitle {
-  margin: 6px 0 10px;
-  font-size: clamp(22px, 3.4vw, 30px);
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  color: var(--pacific-secondary-brown, #231815);
-}
-
-.grid {
+/* ---------- 版面 ---------- */
+.layout {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 22px;
+  /* 左邊清單吃滿，右邊側欄固定 300 —— 側欄用 fr 的話標題長短會讓寬度跳來跳去 */
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 32px;
+  align-items: start;
+  margin-top: 8px;
 }
 
-.card {
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border: 1px solid var(--line-warm, rgba(35, 24, 21, 0.1));
-  border-radius: var(--radius, 14px);
-  box-shadow: var(--shadow, 0 6px 20px rgba(35, 24, 21, 0.07));
-  overflow: hidden;
+.main {
+  min-width: 0; /* grid 子項預設 min-width:auto，長標題會把整欄撐爆 */
 }
 
-/* 縮圖區。<button> 與 <a> 共用同一個 class，所以要把按鈕的預設樣式清掉。 */
-.thumbWrap {
+/* ---------- 正在播放 ---------- */
+.playerBlock {
+  margin-bottom: 32px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--line-warm, rgba(35, 24, 21, 0.12));
+  /* 捲到播放器時上面留一點空間，標題不要貼著視窗頂 */
+  scroll-margin-top: 16px;
+}
+
+.playerFrame {
   position: relative;
-  display: block;
   width: 100%;
-  /* 16:9。先把高度佔好，圖載進來時整張卡不會跳 */
   aspect-ratio: 16 / 9;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: #1a1310;
-  cursor: pointer;
+  background: #000;
+  border-radius: 12px;
   overflow: hidden;
 }
 
-.thumb {
+.playerMedia {
   width: 100%;
   height: 100%;
-  /* YouTube 的 hqdefault 是 4:3，上下會有黑邊 —— cover 裁掉，
-     不然每張卡上下都掛兩條黑槓 */
-  object-fit: cover;
+  border: 0;
   display: block;
-  transition: transform 0.25s ease;
 }
 
-.thumbWrap:hover .thumb {
-  transform: scale(1.04);
-}
-
-/* 嵌不進來的來源（FB／IG）沒有縮圖可拿，放一個佔位塊，不要留白或破圖 */
-.thumbFallback {
+.playerExternal {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 40px;
+  padding: 24px;
+  text-align: center;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.playerTitle {
+  margin: 18px 0 8px;
+  font-size: clamp(19px, 2.4vw, 24px);
+  line-height: 1.5;
+  font-weight: 800;
+  color: var(--pacific-secondary-brown, #231815);
+}
+
+.playerMeta,
+.rowMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+  color: rgba(35, 24, 21, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.playerSummary {
+  margin: 12px 0 0;
+  font-size: 15px;
+  line-height: 1.85;
+  color: rgba(35, 24, 21, 0.72);
+}
+
+.closePlayer {
+  margin-top: 16px;
+  padding: 7px 16px;
+  border: 1px solid var(--line-warm, rgba(35, 24, 21, 0.16));
+  border-radius: 999px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(35, 24, 21, 0.6);
+  cursor: pointer;
+}
+
+.closePlayer:hover {
+  border-color: var(--pacific-primary-red, #e00000);
+  color: var(--pacific-primary-red, #e00000);
+}
+
+/* ---------- 影片清單 ---------- */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 20px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--line-warm, rgba(35, 24, 21, 0.1));
+}
+
+.row:first-child {
+  padding-top: 4px;
+}
+
+/* 縮圖是個 <button>，要把按鈕的預設樣式清掉 */
+.rowThumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #1a1310;
+  cursor: pointer;
+}
+
+.rowThumbImg {
+  width: 100%;
+  height: 100%;
+  /* YouTube 的 hqdefault 是 4:3，直接放上下會有黑槓，用 cover 裁掉 */
+  object-fit: cover;
+  display: block;
+  transition: transform 0.25s ease;
+}
+
+.rowThumb:hover .rowThumbImg {
+  transform: scale(1.05);
+}
+
+.rowThumbEmpty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
   opacity: 0.35;
 }
 
-/* 播放鍵。用 CSS 畫的三角形，不額外拉圖檔 */
 .playBadge {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 58px;
-  height: 58px;
+  width: 50px;
+  height: 50px;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: rgba(224, 0, 0, 0.92);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  background: rgba(224, 0, 0, 0.9);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.32);
   transition: transform 0.2s ease, background 0.2s ease;
 }
 
@@ -95,58 +175,218 @@
   left: 54%;
   transform: translate(-50%, -50%);
   border-style: solid;
-  border-width: 11px 0 11px 18px;
+  border-width: 10px 0 10px 16px;
   border-color: transparent transparent transparent #fff;
 }
 
-.thumbWrap:hover .playBadge {
+.rowThumb:hover .playBadge {
   transform: translate(-50%, -50%) scale(1.08);
   background: rgba(224, 0, 0, 1);
 }
 
-.player {
-  width: 100%;
-  height: 100%;
-  border: 0;
-  display: block;
-}
-
-.cardBody {
+.rowBody {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 16px 18px 18px;
-  flex: 1;
 }
 
-.cardTitle {
+.rowTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tag {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(238, 130, 138, 0.16);
+  color: var(--pacific-primary-red, #e00000);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.rowTitle {
   margin: 0;
   font-size: 17px;
-  line-height: 1.5;
+  line-height: 1.55;
   font-weight: 700;
+}
+
+.rowTitleBtn {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--pacific-secondary-brown, #231815);
+  cursor: pointer;
+}
+
+.rowTitleBtn:hover {
+  color: var(--pacific-primary-red, #e00000);
+}
+
+.rowSummary {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.8;
+  color: rgba(35, 24, 21, 0.62);
+  /* 說明太長會把每一列撐得高矮不一，最多三行 */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rowMeta {
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+/* ---------- 側欄 ---------- */
+.side {
+  position: sticky;
+  /* 捲動時側欄跟著，但不要黏死在最上緣 */
+  top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.sideBlock {
+  padding: 18px 20px;
+  background: #fff;
+  border: 1px solid var(--line-warm, rgba(35, 24, 21, 0.1));
+  border-radius: 14px;
+  box-shadow: var(--shadow, 0 6px 20px rgba(35, 24, 21, 0.06));
+}
+
+.sideTitle {
+  margin: 0 0 12px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--pacific-highlight-pink, #ee828a);
+  font-size: 16px;
+  font-weight: 800;
   color: var(--pacific-secondary-brown, #231815);
 }
 
-.cardSummary {
+.sideNav,
+.sideList {
+  list-style: none;
   margin: 0;
-  font-size: 14px;
-  line-height: 1.75;
-  color: rgba(35, 24, 21, 0.68);
+  padding: 0;
 }
 
-.cardLink {
-  margin-top: auto;
-  padding-top: 6px;
-  font-size: 13px;
-  font-weight: 600;
+.sideNavBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 2px;
+  border: 0;
+  border-bottom: 1px solid rgba(35, 24, 21, 0.07);
+  background: none;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--pacific-secondary-brown, #231815);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sideNav li:last-child .sideNavBtn {
+  border-bottom: 0;
+}
+
+.sideNavBtn:hover {
   color: var(--pacific-primary-red, #e00000);
+}
+
+.sideNavOn {
+  color: var(--pacific-primary-red, #e00000);
+}
+
+.sideCount {
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: rgba(35, 24, 21, 0.06);
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(35, 24, 21, 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+.sideNavOn .sideCount {
+  background: rgba(238, 130, 138, 0.18);
+  color: var(--pacific-primary-red, #e00000);
+}
+
+.sideItem {
+  display: block;
+  width: 100%;
+  padding: 11px 2px;
+  border: 0;
+  border-bottom: 1px solid rgba(35, 24, 21, 0.07);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sideList li:last-child .sideItem {
+  border-bottom: 0;
+}
+
+.sideItemTitle {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.6;
+  font-weight: 600;
+  color: var(--pacific-secondary-brown, #231815);
+}
+
+.sideItem:hover .sideItemTitle {
+  color: var(--pacific-primary-red, #e00000);
+}
+
+.sideItemMeta {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(35, 24, 21, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+.sideCta {
+  margin: 0 0 12px;
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: rgba(35, 24, 21, 0.65);
+}
+
+.sideCtaBtn {
+  display: block;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: var(--pacific-primary-red, #e00000);
+  color: #fff;
+  font-size: 14.5px;
+  font-weight: 700;
+  text-align: center;
   text-decoration: none;
 }
 
-.cardLink:hover {
-  text-decoration: underline;
+.sideCtaBtn:hover {
+  filter: brightness(1.08);
 }
 
+/* ---------- 其他 ---------- */
 .empty {
   text-align: center;
   font-size: 15px;
@@ -155,9 +395,19 @@
   padding: 32px 0;
 }
 
-.empty a {
+.empty a,
+.linkBtn {
   color: var(--pacific-primary-red, #e00000);
   font-weight: 600;
+}
+
+.linkBtn {
+  border: 0;
+  background: none;
+  font: inherit;
+  padding: 0 2px;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .note {
@@ -183,28 +433,40 @@
   text-decoration: underline;
 }
 
-@media (max-width: 1024px) {
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
+/* ---------- 斷點 ----------
+   1080 以下側欄改成在清單下面（不再並排）—— 兩欄硬擠的話縮圖會被壓到看不清楚。
+   640 以下每一列的縮圖改成整排在上、文字在下。 */
+@media (max-width: 1080px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 36px;
+  }
+
+  .side {
+    position: static;
+    /* 變成單欄之後側欄三塊可以並排，不要拉成很長的一條 */
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 18px;
   }
 }
 
 @media (max-width: 640px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-
-  .categoryBlock {
-    margin-top: 40px;
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
   }
 
   .playBadge {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
   }
 
   .playBadge::after {
-    border-width: 9px 0 9px 15px;
+    border-width: 9px 0 9px 14px;
+  }
+
+  .side {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

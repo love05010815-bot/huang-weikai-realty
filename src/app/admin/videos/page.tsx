@@ -54,7 +54,8 @@ export default async function VideosAdminPage() {
               影音
             </h1>
             <p className={styles.subtitle} style={{ color: CIS.textMute }}>
-              改完立刻生效，不用部署。首頁只取每一類最前面 2 支，用箭頭調順序就是在調首頁放哪幾支。
+              改完立刻生效，不用部署。影音是獨立的一頁（`/videos`），首頁導覽列直接連過去、
+              不會出現在首頁的下滑區塊裡。箭頭調的是 `/videos` 清單上的排序。
             </p>
           </div>
           <Link

@@ -44,8 +44,14 @@ type FormState = {
   posterUrl: string;
   bytes: number | null;
   summary: string;
+  publishedAt: string;
   status: VideoStatus;
 };
+
+/** 台北時間的今天，`YYYY-MM-DD`（新增影片時的預設日期） */
+function todayTaipei(): string {
+  return new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
 
 const emptyForm: FormState = {
   category: "knowledge",
@@ -55,6 +61,7 @@ const emptyForm: FormState = {
   posterUrl: "",
   bytes: null,
   summary: "",
+  publishedAt: "",
   status: "active",
 };
 
@@ -207,7 +214,7 @@ export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
   }
 
   function openNew() {
-    setForm(emptyForm);
+    setForm({ ...emptyForm, publishedAt: todayTaipei() });
     setEditing("new");
     setMsg(null);
     setUploadNote(null);
@@ -223,6 +230,7 @@ export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
       posterUrl: row.posterUrl ?? "",
       bytes: row.bytes,
       summary: row.summary,
+      publishedAt: row.publishedAt,
       status: row.status,
     });
     setEditing(row.id);
@@ -321,6 +329,24 @@ export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
               </select>
               <div className={styles.hint} style={{ color: CIS.textMute }}>
                 隱藏＝留著資料但客戶看不到，之後想放回來不用重打。
+              </div>
+            </div>
+
+            <div className={styles.field}>
+              <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-date">
+                影片日期
+              </label>
+              <input
+                id="vid-date"
+                type="date"
+                className={styles.input}
+                style={inputStyle}
+                value={form.publishedAt}
+                onChange={(e) => set("publishedAt", e.target.value)}
+              />
+              <div className={styles.hint} style={{ color: CIS.textMute }}>
+                前台會顯示這個日期，側欄「最新影片」也照這個排。
+                補上舊片時記得改成當初拍的日期，不然它會變成「最新」。
               </div>
             </div>
 
@@ -573,8 +599,10 @@ export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
                       </div>
 
                       <div className={styles.rowMeta} style={{ color: CIS.textMute }}>
+                        {row.publishedAt}
+                        {" ・ "}
                         <a href={row.url} target="_blank" rel="noopener noreferrer" style={{ color: CIS.blueSoft }}>
-                          {row.url.length > 60 ? `${row.url.slice(0, 60)}…` : row.url} ↗
+                          {row.url.length > 52 ? `${row.url.slice(0, 52)}…` : row.url} ↗
                         </a>
                       </div>
 

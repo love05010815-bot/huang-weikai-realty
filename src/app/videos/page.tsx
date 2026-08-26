@@ -1,25 +1,25 @@
 /**
- * /videos —— 影音
+ * /videos —— 影音專區（獨立分頁）
  *
- * 兩個分區：知識型、房屋開箱（系統擁有者指定的分法）。
- * 內容在資料庫 `site_video` 表，後台 `/admin/videos` 管。
+ * 2026-08-25 系統擁有者拍板：**影音不放在首頁下滑區塊，做成獨立分頁**，
+ * 跟「重劃區建案」(`/map`) 一樣從導覽列直接進來。
+ *
+ * 版面是「左邊清單、右邊側欄（影片類別／熱門影片／最新影片）」，
+ * 點清單裡的影片會在上方開一個大播放器。主體在 `VideoLibrary.tsx`。
  *
  * 這頁的商業目的：讓客戶在還沒敢打電話之前，先看到「這個人講的東西有料」。
- * 所以知識型放在上面 —— 開箱是給已經在找房的人看的，知識型是給還在觀望的人看的，
- * 而觀望的人比較多。
  *
- * ⚠️ 沒有影片時整頁還是要能打得開（會顯示引導文案），
+ * ⚠️ 沒有影片時整頁還是要能打得開（顯示引導文案），
  *    不要因為資料庫是空的就 404 或白畫面。
  */
 import type { Metadata } from "next";
 import Link from "next/link";
 import { OWNER, SITE_URL } from "@/config/owner";
-import { CATEGORY_META, VIDEO_CATEGORIES, getPublicVideos } from "@/lib/videos";
-// 版面骨架（header／section／container／eyebrow／btn）跟 /listings 共用同一份，
-// 這樣影音頁跟其他內頁長得一致。⚠️ 改 home.module.css 會同時影響首頁與這幾頁。
+import { getPublicVideos } from "@/lib/videos";
+import { getVideoViewCounts } from "@/lib/video-views";
 import styles from "@/app/home.module.css";
 import vid from "./videos.module.css";
-import VideoCard from "./VideoCard";
+import VideoLibrary from "./VideoLibrary";
 
 export const metadata: Metadata = {
   title: "影音專區｜台中海線房仲黃瑋凱｜買屋知識與房屋開箱",
@@ -36,13 +36,17 @@ export const metadata: Metadata = {
 
 /**
  * 影片在資料庫裡，但這頁仍然是「靜態產生 ＋ 定時重生」。
- * 後台存檔時 server action 會 revalidatePath("/videos")，所以改完立刻生效，
- * 下面這個秒數只是萬一 revalidate 沒跑到的保險。
+ * 後台存檔時 server action 會 revalidatePath("/videos")，所以改完立刻生效。
+ * ⚠️ 觀看次數不會即時反映（它不觸發 revalidate），最多差 5 分鐘 —— 這是刻意的，
+ *    每有人按一次播放就重建整頁太浪費。
  */
 export const revalidate = 300;
 
 export default async function VideosPage() {
   const videos = await getPublicVideos();
+  // ⚠️ 刻意「一個做完再做下一個」，不要用 Promise.all ——
+  //    那會同時抓兩條資料庫連線，這個專案的 pool 只有 3 條（P2024）。
+  const views = await getVideoViewCounts();
 
   return (
     <div className={styles.page}>
@@ -75,39 +79,16 @@ export default async function VideosPage() {
             </p>
           </div>
 
-          {videos.length === 0 ? (
-            <div className={styles.container}>
+          <div className={styles.container}>
+            {videos.length === 0 ? (
               <p className={vid.empty}>
                 影片正在陸續整理上架。想先聊聊的話，歡迎
                 <Link href="/card/booking">線上預約</Link>，或直接加我 LINE。
               </p>
-            </div>
-          ) : (
-            VIDEO_CATEGORIES.map((category) => {
-              const list = videos.filter((v) => v.category === category);
-              // 那一類還沒有影片就整區不出現 —— 留一個空標題比沒有標題還糟
-              if (list.length === 0) return null;
-              const meta = CATEGORY_META[category];
-              return (
-                <div key={category} className={vid.categoryBlock}>
-                  <div className={`${styles.container} ${styles.center}`}>
-                    <span className={styles.eyebrow}>{meta.eyebrow}</span>
-                    <h2 className={vid.categoryTitle}>{meta.label}</h2>
-                    <p className={styles.sectionDesc}>{meta.desc}</p>
-                  </div>
-                  <div className={styles.container}>
-                    <div className={vid.grid}>
-                      {list.map((video, i) => (
-                        <VideoCard key={video.id} video={video} eager={i < 3} />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
+            ) : (
+              <VideoLibrary videos={videos} views={views} />
+            )}
 
-          <div className={styles.container}>
             <p className={vid.note}>
               ⚠️ 影片內容為<strong>一般性說明，不構成個案的稅務、法律或投資建議</strong>。
               稅率與法規會調整，實際情況請以主管機關函釋與個案認定為準；
