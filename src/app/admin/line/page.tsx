@@ -145,7 +145,7 @@ export default async function AdminLinePage({
           LINE 客服機器人
         </h1>
         <p className={styles.subtitle} style={{ color: CIS.textMute }}>
-          客戶私訊 @leu5704h（海線房仲｜房產找瑋凱｜安心不踩雷）的對話都在這裡，點開就能直接回他 —— 不用切到 LINE App。
+          客戶私訊 @a8865 的對話都在這裡，點開就能直接回他 —— 不用切到 LINE App。
         </p>
 
         {/* 體檢燈號 */}
@@ -254,7 +254,7 @@ export default async function AdminLinePage({
               2. LINE 官方帳號後台的<b>「自動回應訊息」還開著</b> —— 它會搶在機器人前面把訊息吃掉
               <br />
               <br />
-              兩件都做完後，自己用手機傳一則訊息給 @leu5704h，這裡就會出現。
+              兩件都做完後，自己用手機傳一則訊息給 @a8865，這裡就會出現。
             </p>
           </div>
         ) : (

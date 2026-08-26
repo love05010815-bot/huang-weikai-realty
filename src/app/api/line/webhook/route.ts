@@ -251,7 +251,13 @@ async function handleEvent(event: LineEvent): Promise<void> {
  * 後者代表**客戶傳的訊息他手機永遠看不到**，那是會漏掉生意的等級。
  * `chatMode` 就是答案："chat" = 手機看得到；"bot" = 只進 webhook，手機看不到。
  *
- * ⚠️ 只回帳號的公開資訊（basicId 就是對外的 @leu5704h）與兩個模式字串，
+ * 🔴 **basicId 與 premiumId 一定要一起看。**
+ *    LINE 的付費客製 ID（premiumId，這裡是 @a8865）是**加在原帳號上的別名**，
+ *    系統當初配的 basicId（@leu5704h）不會消失，兩個指向**同一個帳號**。
+ *    2026-08-26 我只印 basicId 就斷言「官網寫的跟系統連的不是同一個帳號」——
+ *    那是沒查證的推斷，害系統擁有者以為客戶訊息進不來。**少印一個欄位就足以得出相反的結論。**
+ *
+ * ⚠️ 只回帳號的公開資訊（兩個 ID 都會出現在官方帳號的公開頁面上）與兩個模式字串，
  *    **不回權杖、不回密鑰、不回任何客戶資料**。
  */
 export async function GET(req: Request) {
@@ -278,7 +284,10 @@ export async function GET(req: Request) {
       ...base,
       whoami: res.ok
         ? {
+            // 系統配的原始 ID
             basicId: d.basicId,
+            // 花錢買的客製 ID（同一個帳號的別名，官網對外寫的就是這個）
+            premiumId: d.premiumId ?? null,
             displayName: d.displayName,
             // "chat" = 官方帳號 App／管理後台看得到客戶訊息
             // "bot"  = 訊息只送到 webhook，手機聊天列表**不會出現**
