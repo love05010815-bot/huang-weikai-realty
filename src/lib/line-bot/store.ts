@@ -34,12 +34,31 @@ async function ensureTables(): Promise<void> {
   //
   // 先查再加，不用 try/catch 吞錯 —— 那樣每次啟動都印一行 prisma:error，
   // 久了就會習慣性忽略 log。
-  const hasSentBy = await db.$queryRawUnsafe<unknown[]>(
-    `SHOW COLUMNS FROM line_bot_message LIKE 'sent_by'`,
+  //
+  // 三個欄位共用**一次** SHOW COLUMNS：連線池只有 3 條，冷啟動能少打就少打。
+  const cols = await db.$queryRawUnsafe<{ Field: string }[]>(
+    `SHOW COLUMNS FROM line_bot_message`,
   );
-  if (hasSentBy.length === 0) {
+  const has = (name: string) => cols.some((c) => c.Field === name);
+
+  if (!has("sent_by")) {
     await db.$executeRawUnsafe(
       `ALTER TABLE line_bot_message ADD COLUMN sent_by VARCHAR(16) NULL AFTER role`,
+    );
+  }
+
+  // 2026-08-26 客戶傳照片給你，系統以前**完全沒有記錄**（webhook 在存檔之前就 return），
+  // 所以收件匣連「有人傳了東西」都看不出來 —— 等於漏接。現在非文字訊息也記，
+  // msg_type 記它是什麼（image／sticker／video…），media_id 記 LINE 的訊息編號，
+  // 圖片要顯示時拿它去跟 LINE 換內容（見 /api/admin/line/media/[messageId]）。
+  if (!has("msg_type")) {
+    await db.$executeRawUnsafe(
+      `ALTER TABLE line_bot_message ADD COLUMN msg_type VARCHAR(16) NULL AFTER sent_by`,
+    );
+  }
+  if (!has("media_id")) {
+    await db.$executeRawUnsafe(
+      `ALTER TABLE line_bot_message ADD COLUMN media_id VARCHAR(64) NULL AFTER msg_type`,
     );
   }
 
@@ -84,21 +103,30 @@ export type StoredMessage = {
 /** 誰送的。null／"bot" = 機器人；"human" = 本人在後台打的。客戶端看起來都一樣。 */
 export type SentBy = "bot" | "human";
 
-/** 寫一則訊息進對話記錄。 */
+/**
+ * 寫一則訊息進對話記錄。
+ *
+ * content 一律是**人看得懂的字**（照片就寫「［照片］」），這樣清單、AI 歷史、
+ * 搜尋都不用個別處理媒體。真正的媒體靠 msgType／mediaId 另外帶。
+ */
 export async function saveMessage(
   lineUserId: string,
   role: "user" | "assistant",
   content: string,
   sentBy: SentBy | null = null,
+  media?: { msgType?: string | null; mediaId?: string | null },
 ): Promise<void> {
   await ensureTables();
   await db.$executeRawUnsafe(
-    `INSERT INTO line_bot_message (id, line_user_id, role, sent_by, content) VALUES (?, ?, ?, ?, ?)`,
+    `INSERT INTO line_bot_message (id, line_user_id, role, sent_by, content, msg_type, media_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     randomUUID().replace(/-/g, ""),
     lineUserId,
     role,
     sentBy,
     content.slice(0, 8000),
+    media?.msgType ?? null,
+    media?.mediaId ?? null,
   );
 }
 
@@ -272,6 +300,11 @@ export type ConversationTurn = {
   createdAt: Date;
   /** assistant 的訊息才有意義：是機器人講的還是你本人在後台回的 */
   sentBy: SentBy | null;
+  /**
+   * 客戶傳的照片／影片／語音／檔案。null = 純文字。
+   * url 是後台自己的代理端點，要登入才讀得到（見 /api/admin/line/media）。
+   */
+  media: { kind: "image" | "video" | "audio" | "file"; url: string } | null;
 };
 
 /** 後台看單一客戶的完整對話，由舊到新（跟聊天視窗一樣的順序）。 */
@@ -283,20 +316,37 @@ export async function getConversation(
   const safeLimit = Math.min(500, Math.max(1, Math.floor(limit)));
 
   const rows = await db.$queryRawUnsafe<
-    { role: string; sent_by: string | null; content: string; created_at: Date }[]
+    {
+      role: string;
+      sent_by: string | null;
+      content: string;
+      created_at: Date;
+      msg_type: string | null;
+      media_id: string | null;
+    }[]
   >(
-    `SELECT role, sent_by, content, created_at FROM line_bot_message
+    `SELECT role, sent_by, content, created_at, msg_type, media_id FROM line_bot_message
      WHERE line_user_id = ?
      ORDER BY created_at ASC, id ASC
      LIMIT ${safeLimit}`,
     lineUserId,
   );
 
+  const MEDIA_KINDS = ["image", "video", "audio", "file"] as const;
+  type MediaKind = (typeof MEDIA_KINDS)[number];
+  const isMediaKind = (v: string | null): v is MediaKind =>
+    v !== null && (MEDIA_KINDS as readonly string[]).includes(v);
+
   return rows.map((r) => ({
     role: r.role === "assistant" ? ("assistant" as const) : ("user" as const),
     content: r.content,
     createdAt: r.created_at,
     sentBy: r.sent_by === "human" ? ("human" as const) : r.sent_by === "bot" ? ("bot" as const) : null,
+    // 貼圖與位置沒有內容可抓，content 那句「［貼圖］」就是全部資訊。
+    media:
+      r.media_id && isMediaKind(r.msg_type)
+        ? { kind: r.msg_type, url: `/api/admin/line/media/${encodeURIComponent(r.media_id)}` }
+        : null,
   }));
 }
 

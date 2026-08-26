@@ -74,6 +74,13 @@ export type InboxComment = {
    * 畫面上要多一顆「已回」給人手動清，其他三家不需要（那三家算得出真相）。
    */
   needsManualClear?: boolean;
+  /**
+   * 這則留言本身是一張照片／一個檔案，不是純文字（目前只有 LINE 會有）。
+   *
+   * url 是**後台自己的代理網址**，不是平台的原始網址 —— 客戶傳來的東西可能是
+   * 身分證或權狀，一定要經過登入才讀得到（見 /api/admin/line/media/[messageId]）。
+   */
+  media?: { kind: "image" | "video" | "audio" | "file"; url: string } | null;
 };
 
 /** 某個平台的抓取結果。失敗要講原因，不能靜靜回空陣列裝作沒留言。 */

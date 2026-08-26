@@ -46,8 +46,44 @@ type LineEvent = {
   type: string;
   replyToken?: string;
   source?: { type?: string; userId?: string };
-  message?: { type?: string; text?: string };
+  message?: {
+    /** text / image / video / audio / file / sticker / location */
+    type?: string;
+    /** 抓媒體內容要用它跟 LINE 換（見 /api/admin/line/media/[messageId]） */
+    id?: string;
+    text?: string;
+    fileName?: string;
+    title?: string;
+    address?: string;
+  };
 };
+
+/**
+ * 非文字訊息記進對話記錄時，content 要寫什麼。
+ *
+ * ⚠️ 一定要是**人看得懂的字**，不能存空字串或 JSON ——
+ *    收件匣、清單預覽、AI 歷史全都直接讀 content，存怪東西每一處都要特判。
+ */
+function describeNonText(m: NonNullable<LineEvent["message"]>): string {
+  switch (m.type) {
+    case "image":
+      return "［照片］";
+    case "video":
+      return "［影片］";
+    case "audio":
+      return "［語音訊息］";
+    case "file":
+      return m.fileName ? `［檔案］${m.fileName}` : "［檔案］";
+    case "sticker":
+      // ⚠️ LINE 只給 packageId／stickerId，**貼圖的圖片本身抓不到**（官方文件明講），
+      //    所以這裡永遠只能是文字，不要花時間找那個 API。
+      return "［貼圖］";
+    case "location":
+      return `［位置］${[m.title, m.address].filter(Boolean).join(" ") || ""}`.trim();
+    default:
+      return `［${m.type || "未知訊息"}］`;
+  }
+}
 
 export async function POST(req: Request) {
   const secret = getLineBotSecret();
@@ -114,9 +150,28 @@ async function handleEvent(event: LineEvent): Promise<void> {
 
   if (event.type !== "message") return;
 
-  // 貼圖、照片、語音等非文字訊息：給個回應就好，不要丟給 AI
-  // （同上，總開關關著就不出聲）
+  // 貼圖、照片、語音等非文字訊息：**先記下來**，再決定要不要回。
+  //
+  // 🔴 2026-08-26 修正：這裡原本在 saveMessage 之前就 return，所以客戶傳照片給你，
+  //    資料庫**完全沒有那筆記錄** —— 收件匣看不到、待回數不會加、你根本不知道
+  //    有人傳了東西。等於直接漏接客戶。不丟給 AI 是對的（它讀不懂圖），
+  //    但「不丟給 AI」跟「不記錄」是兩件事。
   if (event.message?.type !== "text") {
+    if (event.message) {
+      const displayName = await getProfileName(userId);
+      await touchUser(userId, displayName);
+      await saveMessage(userId, "user", describeNonText(event.message), null, {
+        msgType: event.message.type ?? null,
+        // 貼圖與位置沒有內容可以抓，不用留 id
+        mediaId:
+          event.message.type === "image" ||
+          event.message.type === "video" ||
+          event.message.type === "audio" ||
+          event.message.type === "file"
+            ? (event.message.id ?? null)
+            : null,
+      });
+    }
     if (BOT_ENABLED && event.replyToken) {
       await replyMessage(
         event.replyToken,
@@ -196,7 +251,7 @@ async function handleEvent(event: LineEvent): Promise<void> {
  * 後者代表**客戶傳的訊息他手機永遠看不到**，那是會漏掉生意的等級。
  * `chatMode` 就是答案："chat" = 手機看得到；"bot" = 只進 webhook，手機看不到。
  *
- * ⚠️ 只回帳號的公開資訊（basicId 就是對外的 @a8865）與兩個模式字串，
+ * ⚠️ 只回帳號的公開資訊（basicId 就是對外的 @leu5704h）與兩個模式字串，
  *    **不回權杖、不回密鑰、不回任何客戶資料**。
  */
 export async function GET(req: Request) {

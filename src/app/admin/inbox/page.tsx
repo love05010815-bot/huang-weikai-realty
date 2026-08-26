@@ -38,6 +38,7 @@ import {
 import { YOUTUBE_REDIRECT_URI, isYoutubeConfigured } from "@/lib/youtube";
 import { META_REDIRECT_URI, isMetaConfigured } from "@/lib/meta";
 import { markLineHandledAction } from "@/lib/actions/line-bot";
+import LineMedia from "@/app/admin/_components/LineMedia";
 import CommentReply from "./CommentReply";
 import UnbindButton from "./UnbindYoutube";
 import styles from "./inbox.module.css";
@@ -333,6 +334,10 @@ export default async function InboxPage({
                     </div>
 
                     <p className={styles.commentText}>{c.text}</p>
+
+                    {/* 客戶傳的照片／影片／檔案。網址是後台自己的代理端點，
+                        要登入才讀得到（客戶傳來的可能是身分證或權狀）。 */}
+                    {c.media ? <LineMedia kind={c.media.kind} url={c.media.url} /> : null}
 
                     {c.replies.length > 0 ? (
                       <div className={styles.replies} style={{ borderColor: CIS.divider }}>

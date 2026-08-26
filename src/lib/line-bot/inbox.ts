@@ -23,6 +23,8 @@ type Row = {
   handled_at: Date | null;
   q_text: string | null;
   q_at: Date | null;
+  q_type: string | null;
+  q_media: string | null;
   a_text: string | null;
   a_at: Date | null;
   a_by: string | null;
@@ -57,6 +59,12 @@ export async function fetchLineComments(limit = 50): Promise<PlatformFetch> {
          (SELECT m.created_at FROM line_bot_message m
            WHERE m.line_user_id = u.line_user_id AND m.role = 'user'
            ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS q_at,
+         (SELECT m.msg_type   FROM line_bot_message m
+           WHERE m.line_user_id = u.line_user_id AND m.role = 'user'
+           ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS q_type,
+         (SELECT m.media_id   FROM line_bot_message m
+           WHERE m.line_user_id = u.line_user_id AND m.role = 'user'
+           ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS q_media,
          (SELECT m.content    FROM line_bot_message m
            WHERE m.line_user_id = u.line_user_id AND m.role = 'assistant'
            ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS a_text,
@@ -109,6 +117,13 @@ export async function fetchLineComments(limit = 50): Promise<PlatformFetch> {
             ]
           : [],
         needsManualClear: true,
+        // 只有真的抓得到內容的四種才給網址。貼圖與位置沒有內容可抓，
+        // content 那句「［貼圖］」就是全部的資訊了。
+        media:
+          r.q_media &&
+          (r.q_type === "image" || r.q_type === "video" || r.q_type === "audio" || r.q_type === "file")
+            ? { kind: r.q_type, url: `/api/admin/line/media/${encodeURIComponent(r.q_media)}` }
+            : null,
       });
     }
 
