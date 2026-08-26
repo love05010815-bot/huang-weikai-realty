@@ -202,6 +202,13 @@ export default async function HomePage() {
           <ul className={styles.nav}>
             <li><a href="#about">關於我</a></li>
             <li><a href="#listings">精選好案</a></li>
+            {/* ⚠️ 一支影片都沒有的時候，`#videos` 那個區塊根本不會渲染 ——
+                導覽列這條也要一起收起來，不然點下去什麼事都不會發生
+                （比沒有那條連結更像壞掉）。 */}
+            {/* 標籤刻意用兩個字的「影音」不是「影音專區」——
+                導覽列多一項就多約 78px，用長標籤的話 header 要 1014px 才放得下，
+                短標籤 985px 就夠。實測數字，不要改回去之前先量一次。 */}
+            {videos.length > 0 && <li><a href="#videos">影音</a></li>}
             <li><a href="#services">服務項目</a></li>
             {/* 2026-08-21 恢復入口。原本雪藏是因為「土地使用分區」那層的建商名沒核對完；
                 該層已從 /map 移除，現在頁面上是系統擁有者自己確認過的 39 個建案。 */}
