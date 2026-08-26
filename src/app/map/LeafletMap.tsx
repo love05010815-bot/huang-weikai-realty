@@ -34,21 +34,47 @@ const TONE: Record<ProjectStatus, { bg: string; ink: string }> = {
   completed: { bg: "#2F7A34", ink: "#fff" },
 };
 
+/**
+ * 圖釘的畫布尺寸。**大樓本身還是 28x34**，但右上角要放星星，
+ * 所以畫布往右往上各留一點：34x38，大樓整個往下移 4。
+ *
+ * ⚠️ `tipX` 是「針尖」在畫布上的 x（不再是正中央）。Leaflet 的 iconAnchor
+ *    要用它換算，寫死 size[0]/2 的話針尖會偏掉，圖釘就不是指在那個地址上。
+ */
+const PIN_VB = { w: 34, h: 38, tipX: 14 } as const;
+
+/**
+ * 「我有物件在售」的黃色星星（2026-08-26 系統擁有者指定，原本是深藍圓點）。
+ *
+ * 畫兩次：先白色粗描邊當光暈，再畫黃色本體加細的深金色邊。
+ * 只畫一次的話，遇到淺色底圖或綠色圖釘都會糊掉 —— 這顆星星的用途就是要一眼看見。
+ */
+// ⚠️ 白色光暈是 3.4 寬、往外突出 1.7，所以星星最高點要留在 y=2 而不是 y=1 ——
+//    貼齊 y=1 的話光暈上緣會被畫布切掉一條（實測 -0.7）。
+const STAR_POINTS =
+  "24.5,2 26.5,6.75 31.63,7.18 27.73,10.55 28.91,15.57 24.5,12.9 20.09,15.57 21.27,10.55 17.37,7.18 22.5,6.75";
+
 function buildingSvg(bg: string, ink: string, mine: boolean, on: boolean) {
   const scale = on ? 1.28 : 1;
-  const w = Math.round(28 * scale);
-  const h = Math.round(34 * scale);
+  const w = Math.round(PIN_VB.w * scale);
+  const h = Math.round(PIN_VB.h * scale);
+  const star = mine
+    ? `
+  <polygon points="${STAR_POINTS}" fill="none" stroke="#fff" stroke-width="3.4" stroke-linejoin="round"/>
+  <polygon points="${STAR_POINTS}" fill="#FFC107" stroke="#8A5B00" stroke-width="0.9" stroke-linejoin="round"/>`
+    : "";
   return `
-<svg width="${w}" height="${h}" viewBox="0 0 28 34" xmlns="http://www.w3.org/2000/svg">
-  <path d="M14 34c0 0-10.5-11.5-10.5-19.5A10.5 10.5 0 0 1 24.5 14.5C24.5 22.5 14 34 14 34z"
-        fill="${bg}" stroke="${on ? "#01354D" : "#fff"}" stroke-width="${on ? 2.6 : 1.8}"/>
-  <rect x="8" y="7" width="12" height="13" rx="1.2" fill="${ink}" opacity="0.95"/>
-  <g fill="${bg}">
-    <rect x="9.6" y="9" width="2.6" height="2.6"/><rect x="13.6" y="9" width="2.6" height="2.6"/>
-    <rect x="9.6" y="12.8" width="2.6" height="2.6"/><rect x="13.6" y="12.8" width="2.6" height="2.6"/>
-    <rect x="9.6" y="16.6" width="2.6" height="2.6"/><rect x="13.6" y="16.6" width="2.6" height="2.6"/>
-  </g>
-  ${mine ? '<circle cx="22" cy="6.5" r="5.5" fill="#01354D" stroke="#fff" stroke-width="1.8"/>' : ""}
+<svg width="${w}" height="${h}" viewBox="0 0 ${PIN_VB.w} ${PIN_VB.h}" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(0,4)">
+    <path d="M14 34c0 0-10.5-11.5-10.5-19.5A10.5 10.5 0 0 1 24.5 14.5C24.5 22.5 14 34 14 34z"
+          fill="${bg}" stroke="${on ? "#01354D" : "#fff"}" stroke-width="${on ? 2.6 : 1.8}"/>
+    <rect x="8" y="7" width="12" height="13" rx="1.2" fill="${ink}" opacity="0.95"/>
+    <g fill="${bg}">
+      <rect x="9.6" y="9" width="2.6" height="2.6"/><rect x="13.6" y="9" width="2.6" height="2.6"/>
+      <rect x="9.6" y="12.8" width="2.6" height="2.6"/><rect x="13.6" y="12.8" width="2.6" height="2.6"/>
+      <rect x="9.6" y="16.6" width="2.6" height="2.6"/><rect x="13.6" y="16.6" width="2.6" height="2.6"/>
+    </g>
+  </g>${star}
 </svg>`.trim();
 }
 
@@ -163,15 +189,23 @@ export default function LeafletMap({
     for (const { p, lat, lng } of spread(placed)) {
       const tone = TONE[p.status];
       const on = p.id === selectedId;
-      const size = on ? [36, 44] : [28, 34];
+      // 有星星的畫布是 34x38（見 PIN_VB），選中放大 1.28 倍
+      const size: [number, number] = on
+        ? [Math.round(PIN_VB.w * 1.28), Math.round(PIN_VB.h * 1.28)]
+        : [PIN_VB.w, PIN_VB.h];
+      const hasMine = (mine[p.id] ?? 0) > 0;
       const marker = L.marker([lat, lng], {
         title: p.name,
-        zIndexOffset: on ? 1000 : 0,
+        // 有星星的往上疊 —— 星星在右上角，很容易被右上方那顆圖釘蓋掉，
+        // 而那顆星星正是這張地圖上最該被看見的東西。
+        zIndexOffset: on ? 1000 : hasMine ? 500 : 0,
         icon: L.divIcon({
           className: styles.lmPin,
-          html: buildingSvg(tone.bg, tone.ink, (mine[p.id] ?? 0) > 0, on),
-          iconSize: size as [number, number],
-          iconAnchor: [size[0] / 2, size[1]],
+          html: buildingSvg(tone.bg, tone.ink, hasMine, on),
+          iconSize: size,
+          // ⚠️ 不是 size[0]/2 —— 畫布右上角多留了空間給星星，針尖不在正中央。
+          //    寫死一半的話圖釘會往右偏，等於指錯地址。
+          iconAnchor: [(size[0] * PIN_VB.tipX) / PIN_VB.w, size[1]],
         }),
       })
         .addTo(map)

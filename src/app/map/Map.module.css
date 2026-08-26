@@ -1589,9 +1589,16 @@
   flex: none;
 }
 
-.lmDotMine {
-  background: #01354d;
-  border-radius: 50% !important;
+/* 「我有物件在售」的圖例。2026-08-26 系統擁有者指定改成黃色星星
+   （原本是深藍圓點，在滿是彩色圖釘的地圖上根本看不出來）。
+   ⚠️ 顏色與描邊要跟 LeafletMap.tsx 的 STAR_POINTS 那顆一致，改一邊要改兩邊。 */
+.lmStarMine {
+  flex: none;
+  font-size: 17px;
+  line-height: 1;
+  color: #ffc107;
+  /* 純黃在白底上會糊掉，補一圈深金色描邊 */
+  -webkit-text-stroke: 0.7px #8a5b00;
 }
 
 /* divIcon 預設有白底與外框，會擋住我們自己畫的大樓 */

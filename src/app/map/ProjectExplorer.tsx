@@ -310,7 +310,11 @@ export default function ProjectExplorer({
                 </span>
               ))}
               <span>
-                <i className={styles.lmDotMine} />
+                {/* 用 b 不用 i —— `.lmLegend i` 是那三個色塊的規則（14x14 圓角方塊），
+                    星星套上去會被框成一個方塊 */}
+                <b className={styles.lmStarMine} aria-hidden="true">
+                  ★
+                </b>
                 我有物件在售
               </span>
             </div>
