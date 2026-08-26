@@ -1648,6 +1648,51 @@
   user-select: all;
 }
 
+.lmFix button {
+  margin-top: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+/* ═══════════ 商圈色塊上的名稱 ═══════════
+   Leaflet 的 .leaflet-tooltip 預設是白底黑框的小氣泡，這裡要的是
+   「印在地圖上的區域名」，所以整組蓋掉。
+
+   ⚠️ 一定要 !important —— leaflet.css 是全域載入的，權重跟這邊的雜湊類名打平，
+      而它載得比較晚，不加就完全蓋不掉。 */
+.lmZoneLabel {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  color: #1f2937 !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  white-space: nowrap;
+  /* 底圖很花，靠白色外光暈把字撐出來，不然壓在路網上讀不到 */
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 6px #fff, 0 0 9px #fff;
+  pointer-events: none;
+}
+
+/* 氣泡的小箭頭 */
+.lmZoneLabel::before {
+  display: none !important;
+}
+
+/* 圖例裡的商圈色塊：用實際的色票當底，跟地圖上那塊對得起來 */
+.lmZoneChip {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  opacity: 0.55;
+}
+
 @media (max-width: 900px) {
   /* 兩欄在手機上塞不下，回到上下堆疊：地圖在上、建案資訊在下 */
   .split {
@@ -1777,4 +1822,56 @@
   .sources {
     padding: 18px 16px;
   }
+}
+
+/* 商圈示意的免責說明（2026-08-26）。
+   ⚠️ 這條規則跟上面的 base 同權重，寫在檔案最後面是刻意的。 */
+.lmZoneNote {
+  margin: 6px 0 0;
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.lmZoneNote b {
+  color: #8a5b00;
+}
+
+/* 縮到看整個生活圈時，39 個建案收成的那一顆聚合圖示。
+   ⚠️ divIcon 預設有白底外框，要自己壓掉（跟 .lmPin 同樣的理由）。 */
+.lmCluster {
+  /* 尺寸寫死並用 border-box，才跟 divIcon 的 iconSize/iconAnchor 對得起來 ——
+     不然 padding 與外框會把實際尺寸撐大，膠囊就不是正對著市鎮中心的中心點。 */
+  box-sizing: border-box;
+  width: 170px;
+  height: 42px;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #01354d !important;
+  border: 2px solid #fff !important;
+  box-shadow: 0 2px 8px rgba(1, 53, 77, 0.35);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lmCluster span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ffc107;
+  color: #01354d;
+  font-size: 12px;
+  font-weight: 900;
 }

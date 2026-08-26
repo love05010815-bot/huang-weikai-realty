@@ -27,6 +27,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
+import { ZONES } from "@/data/port-zones";
 import {
   AREA_LABEL,
   COORDS,
@@ -317,11 +318,26 @@ export default function ProjectExplorer({
                 </b>
                 我有物件在售
               </span>
+              {/* 商圈色塊。**只標名稱、不標戶數**（2026-08-26 系統擁有者指定） */}
+              {ZONES.map((z) => (
+                <span key={z.id}>
+                  <i className={styles.lmZoneChip} style={{ background: z.color }} />
+                  {z.name}
+                </span>
+              ))}
             </div>
             <p className={styles.lmNote}>
               {/* 不要寫「資訊會出現在下方／右邊」—— 桌機在右、手機在下，
                   寫死方位一定有一半的人被誤導 */}
-              {`地圖上有 ${rows.length} 個建案。點大樓圖示看建案資訊與我的在售物件。`}
+              {`地圖上有 ${rows.length} 個建案。點大樓圖示看建案資訊與我的在售物件；` +
+                "縮小到看整個生活圈時，建案會收成一顆藍色膠囊，點它就展開。"}
+            </p>
+            {/* ⚠️ 這行不可以拿掉。商圈沒有官方界線，色塊是照地標圈出來的示意範圍，
+                不講清楚就等於對外發表沒查證過的界線 —— 這個專案 8/21 已經因為
+                同樣的事把土地分區那層整個下架過一次。 */}
+            <p className={styles.lmZoneNote}>
+              色塊為<b>商圈範圍示意</b>，非官方界線 —— 商圈本來就沒有法定分區，
+              這裡是依沙鹿車站、靜宜大學、向上路與屏西路等實際地標圈出的概略範圍。
             </p>
           </div>
         </div>

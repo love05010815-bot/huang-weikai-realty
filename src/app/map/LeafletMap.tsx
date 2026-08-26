@@ -17,15 +17,31 @@
  *
  * 3. **`?fix=1` 是座標校正模式**，網址加參數才出現。刻意在瀏覽器端讀網址 ——
  *    頁面一讀 server 的 searchParams 就會從靜態掉成每次請求渲染。
+ *
+ * 4. **`?zones=1` 是商圈界線繪製模式**。商圈沒有官方界線，`port-zones.ts` 裡那三塊
+ *    是照真實地標圈出來的示意範圍；系統擁有者要調的話用這個模式在地圖上依序點，
+ *    畫面會吐出可以直接貼回 `port-zones.ts` 的 `ring` 陣列。
  */
 
 import { useEffect, useRef, useState } from "react";
 import type { Map as LeafletMapType, Marker } from "leaflet";
 import { COORDS, MAP_CENTER, type Project, type ProjectStatus } from "@/data/port-projects";
+import { ZONES, zoneBounds } from "@/data/port-zones";
 import styles from "./Map.module.css";
 // Leaflet 的樣式一定要在頂層 import。放進 useEffect 動態 import 不會生效，
 // 圖磚會亂疊、控制項會跑版。
 import "leaflet/dist/leaflet.css";
+
+/**
+ * 低於這個縮放層級就把 39 個建案收成一顆聚合圖示。
+ * 14 是實測出來的分界：14 以上圖釘之間還有點得到的間距，13 就疊成一團。
+ */
+const CLUSTER_ZOOM = 14;
+
+/** 聚合圖示：一個講清楚「這裡有幾案、點了會展開」的膠囊 */
+function clusterHtml(count: number) {
+  return `<span>${count}</span>台中港市鎮中心`;
+}
 
 /** 銷售階段配色，跟清單的 badge 同一組 */
 const TONE: Record<ProjectStatus, { bg: string; ink: string }> = {
@@ -112,15 +128,27 @@ export default function LeafletMap({
   const mapRef = useRef<LeafletMapType | null>(null);
   const LRef = useRef<typeof import("leaflet") | null>(null);
   const markersRef = useRef<Map<string, Marker>>(new Map());
-  const firstFitRef = useRef(true);
 
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
   const [fixMode, setFixMode] = useState(false);
+  const [zoneMode, setZoneMode] = useState(false);
+  /**
+   * 目前縮放層級。**只用來決定「39 個圖釘」還是「一顆聚合圖示」**。
+   *
+   * 為什麼需要：地圖現在要框住整個生活圈（含沙鹿三個商圈），縮到那個層級時
+   * 那 39 個建案全擠在 72x62 像素裡 —— 實測 141 對圖釘距離不到 20px、
+   * 最近的只差 3px，等於一坨黑點，一案都點不到。
+   * 系統擁有者的參考圖（樂居生活圈圖）也是把市鎮中心畫成一塊，不是 39 個點。
+   */
+  const [zoom, setZoom] = useState(CLUSTER_ZOOM);
+  const [ring, setRing] = useState<Array<[number, number]>>([]);
 
   useEffect(() => {
-    setFixMode(new URLSearchParams(window.location.search).get("fix") === "1");
+    const q = new URLSearchParams(window.location.search);
+    setFixMode(q.get("fix") === "1");
+    setZoneMode(q.get("zones") === "1");
   }, []);
 
   /* ── 建立地圖（只做一次）── */
@@ -143,6 +171,31 @@ export default function LeafletMap({
           attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> 貢獻者',
         }).addTo(map);
 
+        // 初始視野：一次框住 39 個建案**與**三塊商圈色塊。
+        //
+        // ⚠️ 這件事一定要在「建立地圖」這裡做，不能放到畫圖釘那個 effect。
+        //    踩過的坑：放在那邊時，React 嚴格模式會讓元件掛載兩次，
+        //    fitBounds 有機會被呼叫在**已經 remove() 掉的那個地圖實例**上 ——
+        //    完全沒有作用，也不會報錯，畫面就停在初始的 zoom 15。
+        //    （debug 到最後才發現：傳進去的 bounds 是對的，getZoom() 卻沒變。）
+        //
+        // 用 COORDS 全部 39 筆而不是篩選後的 projects —— 初始視野不該被篩選影響。
+        map.fitBounds(
+          L.latLngBounds([
+            ...Object.values(COORDS).map((c) => [c.lat, c.lng] as [number, number]),
+            ...zoneBounds(),
+          ]),
+          // ⚠️ `animate: false` 不是可有可無的。Leaflet 的縮放是 CSS transition，
+          //    靠 transitionend 收尾；只要地圖當下沒有在合成畫面（背景分頁、
+          //    預覽面板沒顯示、某些嵌入情境），那個事件永遠不會來，動畫就卡在半路，
+          //    getZoom() 一直回舊值，**畫面停在初始視野而且完全不報錯**。
+          //    初始視野本來就不需要動畫，直接跳過去最穩。
+          { padding: [30, 30], maxZoom: 16, animate: false }
+        );
+
+        map.on("zoomend", () => setZoom(map.getZoom()));
+        setZoom(map.getZoom());
+
         mapRef.current = map;
         setReady(true);
       } catch {
@@ -157,6 +210,33 @@ export default function LeafletMap({
     };
   }, []);
 
+  /* ── 商圈色塊（跟建案篩選無關，畫一次就好）── */
+  useEffect(() => {
+    const map = mapRef.current;
+    const L = LRef.current;
+    if (!map || !L) return;
+    const layers = ZONES.map((z) =>
+      L.polygon(z.ring, {
+        color: z.color,
+        weight: 2,
+        // 填色要夠淡，色塊是背景不是主角 —— 太濃會把上面的建案圖釘吃掉
+        fillColor: z.color,
+        fillOpacity: 0.16,
+        // 色塊不吃滑鼠事件：不然想點色塊裡的圖釘會先點到色塊
+        interactive: false,
+      })
+        .addTo(map)
+        .bindTooltip(z.name, {
+          permanent: true,
+          direction: "center",
+          className: styles.lmZoneLabel,
+        })
+    );
+    return () => {
+      for (const l of layers) l.remove();
+    };
+  }, [ready]);
+
   /* ── 校正模式：點地圖吐座標 ── */
   useEffect(() => {
     const map = mapRef.current;
@@ -168,6 +248,18 @@ export default function LeafletMap({
       map.off("click", handler);
     };
   }, [ready, fixMode]);
+
+  /* ── 商圈繪製模式：依序點，湊出一個 ring ── */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !zoneMode) return;
+    const handler = (e: import("leaflet").LeafletMouseEvent) =>
+      setRing((r) => [...r, [+e.latlng.lat.toFixed(4), +e.latlng.lng.toFixed(4)]]);
+    map.on("click", handler);
+    return () => {
+      map.off("click", handler);
+    };
+  }, [ready, zoneMode]);
 
   /* ── 依 projects 重畫圖釘 ── */
   useEffect(() => {
@@ -185,7 +277,26 @@ export default function LeafletMap({
       })
       .filter(Boolean) as Array<{ p: Project; lat: number; lng: number }>;
 
-    const points: Array<[number, number]> = [];
+    // 縮得太遠就收成一顆，點了才展開 —— 理由見 CLUSTER_ZOOM 的註解
+    if (zoom < CLUSTER_ZOOM && placed.length > 1) {
+      const cluster = L.marker([MAP_CENTER.lat, MAP_CENTER.lng], {
+        title: `台中港市鎮中心，${placed.length} 個建案`,
+        zIndexOffset: 800,
+        icon: L.divIcon({
+          className: styles.lmCluster,
+          html: clusterHtml(placed.length),
+          // 跟 .lmCluster 的 width/height 一致（那邊是 border-box）
+          iconSize: [170, 42],
+          iconAnchor: [85, 21],
+        }),
+      })
+        .addTo(map)
+        // animate:false 的理由跟初始視野同一個（見上面那段註解）
+        .on("click", () => map.setView([MAP_CENTER.lat, MAP_CENTER.lng], 15, { animate: false }));
+      markersRef.current.set("__cluster__", cluster);
+      return;
+    }
+
     for (const { p, lat, lng } of spread(placed)) {
       const tone = TONE[p.status];
       const on = p.id === selectedId;
@@ -211,16 +322,10 @@ export default function LeafletMap({
         .addTo(map)
         .on("click", () => onSelect(p));
       markersRef.current.set(p.id, marker);
-      points.push([lat, lng]);
     }
 
-    // 只在第一次、或篩選讓範圍改變時重新框選。
-    // 每次選取都 fitBounds 的話，點一個建案整張圖就跳一下，很煩。
-    if (points.length && firstFitRef.current) {
-      map.fitBounds(L.latLngBounds(points), { padding: [50, 50], maxZoom: 17 });
-      firstFitRef.current = false;
-    }
-  }, [projects, selectedId, mine, onSelect, ready]);
+    // 初始視野在「建立地圖」那一步就框好了（含商圈），這裡只管畫圖釘。
+  }, [projects, selectedId, mine, onSelect, ready, zoom]);
 
   /* ── 外部選了某個建案（例如點下方清單）就飛過去 ── */
   useEffect(() => {
@@ -246,6 +351,24 @@ export default function LeafletMap({
           <b>座標校正模式</b>
           <p>在地圖上點建案的正確位置，下面會給你可以貼回 port-projects.ts 的一行。</p>
           <code>{picked ?? "（還沒點）"}</code>
+        </div>
+      )}
+
+      {zoneMode && (
+        <div className={styles.lmFix}>
+          <b>商圈界線繪製模式</b>
+          <p>
+            沿著商圈邊界依序點（不用回到起點，會自動閉合）。點完把下面整段貼給我，
+            我換掉 port-zones.ts 裡那一塊的 ring。
+          </p>
+          <code>
+            {ring.length === 0
+              ? "（還沒點）"
+              : "ring: [" + ring.map(([a, b]) => `[${a}, ${b}]`).join(", ") + "],"}
+          </code>
+          <button type="button" onClick={() => setRing([])}>
+            {`清空重畫（目前 ${ring.length} 點）`}
+          </button>
         </div>
       )}
     </div>
