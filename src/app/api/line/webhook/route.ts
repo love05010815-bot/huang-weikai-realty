@@ -297,7 +297,23 @@ export async function GET(req: Request) {
       const mediaId = rows[0]?.media_id;
       if (!mediaId) return Response.json({ ...base, probe: { error: "資料庫裡還沒有任何媒體訊息" } });
 
-      const r = await fetch(`https://api-data.line.me/v2/bot/message/${mediaId}/content`, {
+      const url = `https://api-data.line.me/v2/bot/message/${mediaId}/content`;
+
+      // 先看 LINE 有沒有轉址。fetch 跨網域跟轉址時會**丟掉 Authorization 標頭**，
+      // 到了目的地就變成「沒帶權杖」—— 症狀正好是 401「confirm the access token」。
+      const manual = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+        redirect: "manual",
+      });
+      const redirectInfo = {
+        firstStatus: manual.status,
+        redirectsTo: manual.headers.get("location")
+          ? new URL(manual.headers.get("location") as string, url).host
+          : null,
+      };
+
+      const r = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
       });
@@ -305,7 +321,19 @@ export async function GET(req: Request) {
         const text = await r.text().catch(() => "");
         return Response.json({
           ...base,
-          probe: { status: r.status, lineSays: text.slice(0, 300) },
+          probe: {
+            status: r.status,
+            lineSays: text.slice(0, 300),
+            ...redirectInfo,
+            // 最終停在哪個網域。跟一開始不同就代表轉址過
+            finalHost: (() => {
+              try {
+                return new URL(r.url).host;
+              } catch {
+                return null;
+              }
+            })(),
+          },
         });
       }
       const buf = await r.arrayBuffer();
