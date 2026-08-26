@@ -80,10 +80,9 @@ export async function loadInbox(): Promise<InboxSnapshot> {
     fetchYoutube(),
     fetchFacebookComments(),
     fetchInstagramComments(),
-    fetchLineComments(),
   ]);
 
-  const order: InboxPlatform[] = ["youtube", "facebook", "instagram", "line"];
+  const order: InboxPlatform[] = ["youtube", "facebook", "instagram"];
   const sources: PlatformFetch[] = settled.map((r, i) => {
     if (r.status === "fulfilled") return r.value;
     // 連 fetch 函式本身都爆了（理論上不該發生，因為裡面都 try 過）。
@@ -97,6 +96,25 @@ export async function loadInbox(): Promise<InboxSnapshot> {
       accountName: null,
     };
   });
+
+  // 🔴 LINE 刻意**排在後面依序跑**，不併進上面那個 allSettled。
+  //
+  //    上面三家各自也要讀資料庫（拿權杖與綁定狀態），而這個專案的連線池
+  //    只有 3 條（src/lib/db.ts）。再塞第四個併行的查詢就是自己跟自己搶，
+  //    撞到 P2024 時**四個平台會一起變空**，畫面上跟「真的沒留言」長得一模一樣。
+  //
+  //    LINE 讀的是自家資料庫、很快，多等這一下換來的是不會整頁誤判。
+  const lineResult = await fetchLineComments().catch((e) => {
+    console.error("[inbox] LINE 抓取整個失敗:", e);
+    return {
+      platform: "line" as const,
+      bound: false,
+      comments: [],
+      error: e instanceof Error ? e.message : String(e),
+      accountName: null,
+    };
+  });
+  sources.push(lineResult);
 
   const all = sortByNewest(sources.flatMap((s) => s.comments));
 
