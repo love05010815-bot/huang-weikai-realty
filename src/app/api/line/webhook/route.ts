@@ -341,6 +341,19 @@ export async function GET(req: Request) {
           : null,
       };
 
+      // 原檔那支對這個帳號回 401，實際能用的是預覽圖那支 —— 確認它真的吐得出圖
+      const prev = await fetch(`${url}/preview`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const previewInfo = prev.ok
+        ? {
+            previewStatus: 200,
+            previewType: prev.headers.get("content-type"),
+            previewKb: Math.round((await prev.arrayBuffer()).byteLength / 1024),
+          }
+        : { previewStatus: prev.status };
+
       const r = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
@@ -353,6 +366,7 @@ export async function GET(req: Request) {
             status: r.status,
             lineSays: text.slice(0, 300),
             controls,
+            ...previewInfo,
             ...redirectInfo,
             // 最終停在哪個網域。跟一開始不同就代表轉址過
             finalHost: (() => {

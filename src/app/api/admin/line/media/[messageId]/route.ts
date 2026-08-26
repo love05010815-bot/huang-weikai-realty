@@ -45,12 +45,40 @@ export async function GET(
     return new Response("LINE 沒有設定存取權杖", { status: 503 });
   }
 
-  let res: Response;
-  try {
-    res = await fetch(`${CONTENT_API}/${messageId}/content`, {
+  const grab = (suffix: string) =>
+    fetch(`${CONTENT_API}/${messageId}/content${suffix}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
+
+  let res: Response;
+  try {
+    res = await grab("");
+
+    /**
+     * 🔴 原檔那支（/content）對這個帳號一律回 401，但**預覽圖那支（/content/preview）
+     *    回 200** —— 同一台主機、同一個權杖、同一則訊息。
+     *
+     * 2026-08-26 用對照組證實的：
+     *   api.line.me/v2/bot/info        → 200（權杖有效）
+     *   api-data.line.me/v2/bot/info   → 404（這台主機接受權杖，只是沒這條路徑）
+     *   api-data.../content            → 401 ❌
+     *   api-data.../content/preview    → 200 ✅
+     *
+     * 所以 401 不是權杖問題，是那支端點對這個帳號不開放。
+     * 預覽圖對後台看客戶傳什麼完全夠用，退回去用它。
+     *
+     * ⚠️ 不要「看到 401 就去換權杖」—— 權杖是好的，換了也不會過。
+     */
+    if (res.status === 401 || res.status === 404) {
+      const preview = await grab("/preview");
+      if (preview.ok) {
+        res = preview;
+      } else {
+        // 兩支都不行才是真的有問題，回報原本那支的狀態（比較好對日誌）
+        await preview.body?.cancel();
+      }
+    }
   } catch (e) {
     console.error("[line-media] 連不上 LINE:", e);
     return new Response("連不上 LINE", { status: 502 });
