@@ -1130,14 +1130,26 @@
 }
 
 /* ═══════════ 實景地圖（Leaflet） ═══════════
-   2026-08-23 合併版：地圖全寬，詳情改放地圖下方（在售物件卡片側欄塞不下）。 */
+   2026-08-26：改成左右兩欄 —— 地圖在左、建案資訊在右。
+   （2026-08-23 那版是地圖全寬、詳情放下方。）
+
+   ⚠️ 兩欄等高**不是靠寫死高度**（試過，差 51px —— 左欄除了地圖還有底下那條
+      圖例，圖例會依欄寬換行，高度是浮動的）。做法看 .detailPane 的註解。 */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 18px;
+  /* 不要寫 align-items: start —— 右欄要 stretch 才吃得到列高 */
+  margin-bottom: 18px;
+}
+
 .lmWrap {
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   overflow: hidden;
   background: #fff;
   box-shadow: var(--shadow);
-  margin-bottom: 18px;
 }
 
 .lmMapCol {
@@ -1157,21 +1169,37 @@
   background: #fff;
 }
 
-/* ═══════════ 選中的建案（地圖下方） ═══════════ */
+/* ═══════════ 選中的建案（桌機在右欄） ═══════════ */
 .detailPane {
+  min-width: 0;
   border: 1px solid var(--line-warm);
   border-radius: var(--radius);
   background: #fcfaf6;
   padding: 20px 22px;
-  margin-bottom: 22px;
+  box-sizing: border-box;
+  /* 「右欄永遠跟左欄一樣高」的做法（別改成寫死高度，左欄高度是浮動的）：
+       height: 0      → 這一欄對列高的貢獻是 0，列高完全由左邊地圖那欄決定
+       min-height:100% → 再撐滿那個列高
+     少了 height:0，選到有 8 張照片的建案時右欄會長到 1300px，把左邊地圖那欄
+     一起拉長，地圖下面就多出一大塊白的。實測：左欄 651px、右欄 651px、
+     內容 1321px 在框內捲。 */
+  height: 0;
+  min-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .detailEmpty {
   margin: 0;
+  /* 沒選建案時把提示置中，右欄才不會看起來是壞掉的空白框 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
   text-align: center;
   color: var(--muted);
   font-size: 14.5px;
-  padding: 10px 0;
+  line-height: 1.9;
 }
 
 .detailHead {
@@ -1243,20 +1271,57 @@
   padding-right: 26px;
 }
 
-/* ═══════════ 建案索引 ═══════════ */
+/* ═══════════ 建案索引（收合式） ═══════════
+   2026-08-26：預設收合。清單本身沒有刪 —— 39 個建案名是這頁的 SEO 主體，
+   收在 <details> 裡 Google 仍讀得到。 */
 .indexBlock {
   margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 12px 16px;
 }
 
-.indexTitle {
+.indexSummary {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
-  margin: 0 0 12px;
   font-size: 15px;
   font-weight: 800;
   color: var(--primary);
+  cursor: pointer;
+  /* 兩行一起寫才收得掉預設的三角形（Safari 走 ::-webkit-details-marker） */
+  list-style: none;
+}
+
+.indexSummary::-webkit-details-marker {
+  display: none;
+}
+
+.indexSummary::before {
+  content: "▸";
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.indexBlock[open] .indexSummary::before {
+  content: "▾";
+}
+
+.indexBlock[open] .indexSummary {
+  margin-bottom: 12px;
+}
+
+.indexSummary em {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.indexBlock[open] .indexSummary em {
+  display: none;
 }
 
 .indexMine {
@@ -1457,8 +1522,21 @@
 }
 
 @media (max-width: 900px) {
-  .lmWrap {
+  /* 兩欄在手機上塞不下，回到上下堆疊：地圖在上、建案資訊在下 */
+  .split {
     grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .detailPane {
+    /* 手機不鎖高度 —— 鎖了就變成小框裡再捲一次，很難用 */
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .lmWrap {
     margin-left: -20px;
     margin-right: -20px;
     border-radius: 0;

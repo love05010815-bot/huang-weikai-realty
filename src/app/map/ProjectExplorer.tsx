@@ -293,176 +293,193 @@ export default function ProjectExplorer({
         ))}
       </div>
 
-      {/* ── 地圖 ── */}
-      <div className={styles.lmWrap}>
-        <LeafletMap projects={rows} selectedId={selectedId} onSelect={onSelect} mine={mine} />
-        <div className={styles.lmBar}>
-          <div className={styles.lmLegend}>
-            {(Object.keys(TONE_SWATCH) as ProjectStatus[]).map((k) => (
-              <span key={k}>
-                <i style={{ background: TONE_SWATCH[k] }} />
-                {STATUS_LABEL[k]}
+      {/* ── 地圖（左）＋建案資訊（右）──
+          2026-08-26 系統擁有者拍板：原本是地圖全寬、詳情接在下方，
+          改成左右並排，而且右邊**點了才顯示**。
+          手機仍然上下堆疊 —— 兩欄在 900px 以下塞不下。 */}
+      <div className={styles.split}>
+        <div className={styles.lmWrap}>
+          <LeafletMap projects={rows} selectedId={selectedId} onSelect={onSelect} mine={mine} />
+          <div className={styles.lmBar}>
+            <div className={styles.lmLegend}>
+              {(Object.keys(TONE_SWATCH) as ProjectStatus[]).map((k) => (
+                <span key={k}>
+                  <i style={{ background: TONE_SWATCH[k] }} />
+                  {STATUS_LABEL[k]}
+                </span>
+              ))}
+              <span>
+                <i className={styles.lmDotMine} />
+                我有物件在售
               </span>
-            ))}
-            <span>
-              <i className={styles.lmDotMine} />
-              我有物件在售
-            </span>
+            </div>
+            <p className={styles.lmNote}>
+              {/* 不要寫「資訊會出現在下方／右邊」—— 桌機在右、手機在下，
+                  寫死方位一定有一半的人被誤導 */}
+              {`地圖上有 ${rows.length} 個建案。點大樓圖示看建案資訊與我的在售物件。`}
+            </p>
           </div>
-          <p className={styles.lmNote}>
-            {`地圖上有 ${rows.length} 個建案。點大樓圖示看詳情，資訊會出現在地圖下方。`}
-          </p>
         </div>
+
+        {/* ── 選中的建案（桌機在右欄、手機在地圖下方）── */}
+        <section className={styles.detailPane} aria-live="polite">
+          {selected ? (
+            <>
+              <header className={styles.detailHead}>
+                <div>
+                  <h3 className={styles.detailTitle}>
+                    {selected.name}
+                    <span className={BADGE_CLASS[selected.status]}>{STATUS_LABEL[selected.status]}</span>
+                  </h3>
+                  {selected.alias && <p className={styles.detailAlias}>{`又稱 ${selected.alias}`}</p>}
+                </div>
+                <button type="button" className={styles.detailClose} onClick={() => setSelectedId(null)}>
+                  關閉 ✕
+                </button>
+              </header>
+
+              <dl className={styles.detailList}>
+                <div>
+                  <dt>建設公司</dt>
+                  <dd>{selected.builder}</dd>
+                </div>
+                <div>
+                  <dt>位置</dt>
+                  <dd>{AREA_LABEL[selected.area]}</dd>
+                </div>
+                <div>
+                  <dt>完工</dt>
+                  <dd>
+                    {selected.completion.includes("興建中")
+                      ? selected.completion
+                      : `${selected.completion} 完工`}
+                  </dd>
+                </div>
+                {selected.units != null && (
+                  <div>
+                    <dt>總戶數</dt>
+                    <dd>{`${fmt(selected.units)} 戶`}</dd>
+                  </div>
+                )}
+                {selected.statusNote && (
+                  <div>
+                    <dt>銷售狀態</dt>
+                    <dd>{selected.statusNote}</dd>
+                  </div>
+                )}
+                {selected.streets && (
+                  <div>
+                    <dt>坐落</dt>
+                    <dd>{selected.streets}</dd>
+                  </div>
+                )}
+                {selected.layout && (
+                  <div>
+                    <dt>房型坪數</dt>
+                    <dd>{selected.layout}</dd>
+                  </div>
+                )}
+                {selected.floors && (
+                  <div>
+                    <dt>樓層</dt>
+                    <dd>{selected.floors}</dd>
+                  </div>
+                )}
+                {selected.siteAreaPing != null && (
+                  <div>
+                    <dt>基地面積</dt>
+                    <dd>{`約 ${fmt(selected.siteAreaPing)} 坪`}</dd>
+                  </div>
+                )}
+                {selected.note && (
+                  <div>
+                    <dt>備註</dt>
+                    <dd>{selected.note}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt>資料出處</dt>
+                  <dd>{selected.sources.map((k) => SOURCES[k]?.label ?? k).join("、")}</dd>
+                </div>
+              </dl>
+
+              {/* ── 我在這個建案的在售物件 ── */}
+              {selectedListings.length > 0 ? (
+                <div className={styles.mineBlock}>
+                  <h4 className={styles.mineTitle}>{`我在 ${selected.name} 的在售物件`}</h4>
+                  <div className={lst.grid}>
+                    {selectedListings.map((item) => (
+                      <article key={item.id} className={lst.card}>
+                        <PhotoCarousel photos={item.photos} alt={`${selected.name}－${item.title}`} />
+                        <div className={lst.body}>
+                          <span className={lst.area}>{selected.name}</span>
+                          <h5 className={lst.title}>{item.title}</h5>
+                          <ul className={lst.points}>
+                            {item.points.map((p) => (
+                              <li key={p}>{p}</li>
+                            ))}
+                          </ul>
+                          {/* 這裡刻意只有兩顆：物件介紹＋預約諮詢。
+                              「影片賞析」是 /listings 才有的，系統擁有者指定這頁不要。 */}
+                          {item.linkHref && (
+                            <a
+                              className={lst.actionLink}
+                              href={item.linkHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              物件介紹 ↗
+                            </a>
+                          )}
+                          <Link className={lst.actionBtn} href="/card/booking">
+                            預約諮詢
+                          </Link>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                  <p className={styles.mineNote}>
+                    ⚠️ 物件資訊僅供初步參考。
+                    <strong>實際坪數、格局、屋況與產權，以現場勘查及不動產說明書所載為準。</strong>
+                    物件狀態隨時可能異動，成交後即下架。
+                  </p>
+                </div>
+              ) : (
+                <div className={styles.noMine}>
+                  <p>
+                    {`目前我手上沒有 ${selected.name} 的物件在售。這一區釋出速度很快，`}
+                    想找這個建案可以先跟我說，有案子我第一時間通知你。
+                  </p>
+                  <Link className={styles.cta} href="/card/booking">
+                    {`想找 ${selected.name}？預約諮詢`}
+                  </Link>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className={styles.detailEmpty}>
+              👆 點地圖上的大樓圖示，這裡就會顯示建案資訊與我在那個建案的在售物件。
+            </p>
+          )}
+        </section>
       </div>
 
-      {/* ── 選中的建案 ── */}
-      <section className={styles.detailPane} aria-live="polite">
-        {selected ? (
-          <>
-            <header className={styles.detailHead}>
-              <div>
-                <h3 className={styles.detailTitle}>
-                  {selected.name}
-                  <span className={BADGE_CLASS[selected.status]}>{STATUS_LABEL[selected.status]}</span>
-                </h3>
-                {selected.alias && <p className={styles.detailAlias}>{`又稱 ${selected.alias}`}</p>}
-              </div>
-              <button type="button" className={styles.detailClose} onClick={() => setSelectedId(null)}>
-                關閉 ✕
-              </button>
-            </header>
+      {/* ── 建案索引 ──
+          2026-08-26 系統擁有者拍板：不要一進來就攤開 39 個建案，改成點地圖才顯示。
 
-            <dl className={styles.detailList}>
-              <div>
-                <dt>建設公司</dt>
-                <dd>{selected.builder}</dd>
-              </div>
-              <div>
-                <dt>位置</dt>
-                <dd>{AREA_LABEL[selected.area]}</dd>
-              </div>
-              <div>
-                <dt>完工</dt>
-                <dd>
-                  {selected.completion.includes("興建中")
-                    ? selected.completion
-                    : `${selected.completion} 完工`}
-                </dd>
-              </div>
-              {selected.units != null && (
-                <div>
-                  <dt>總戶數</dt>
-                  <dd>{`${fmt(selected.units)} 戶`}</dd>
-                </div>
-              )}
-              {selected.statusNote && (
-                <div>
-                  <dt>銷售狀態</dt>
-                  <dd>{selected.statusNote}</dd>
-                </div>
-              )}
-              {selected.streets && (
-                <div>
-                  <dt>坐落</dt>
-                  <dd>{selected.streets}</dd>
-                </div>
-              )}
-              {selected.layout && (
-                <div>
-                  <dt>房型坪數</dt>
-                  <dd>{selected.layout}</dd>
-                </div>
-              )}
-              {selected.floors && (
-                <div>
-                  <dt>樓層</dt>
-                  <dd>{selected.floors}</dd>
-                </div>
-              )}
-              {selected.siteAreaPing != null && (
-                <div>
-                  <dt>基地面積</dt>
-                  <dd>{`約 ${fmt(selected.siteAreaPing)} 坪`}</dd>
-                </div>
-              )}
-              {selected.note && (
-                <div>
-                  <dt>備註</dt>
-                  <dd>{selected.note}</dd>
-                </div>
-              )}
-              <div>
-                <dt>資料出處</dt>
-                <dd>{selected.sources.map((k) => SOURCES[k]?.label ?? k).join("、")}</dd>
-              </div>
-            </dl>
+          ⚠️ 但這份清單**不能直接刪掉**。這 39 個建案名是這頁在 Google 上
+             幾乎全部的關鍵字面（「梧棲重劃區建案」「遠雄之星」…都靠它），
+             刪掉等於自己把搜尋流量關掉。
 
-            {/* ── 我在這個建案的在售物件 ── */}
-            {selectedListings.length > 0 ? (
-              <div className={styles.mineBlock}>
-                <h4 className={styles.mineTitle}>{`我在 ${selected.name} 的在售物件`}</h4>
-                <div className={lst.grid}>
-                  {selectedListings.map((item) => (
-                    <article key={item.id} className={lst.card}>
-                      <PhotoCarousel photos={item.photos} alt={`${selected.name}－${item.title}`} />
-                      <div className={lst.body}>
-                        <span className={lst.area}>{selected.name}</span>
-                        <h5 className={lst.title}>{item.title}</h5>
-                        <ul className={lst.points}>
-                          {item.points.map((p) => (
-                            <li key={p}>{p}</li>
-                          ))}
-                        </ul>
-                        {/* 這裡刻意只有兩顆：物件介紹＋預約諮詢。
-                            「影片賞析」是 /listings 才有的，系統擁有者指定這頁不要。 */}
-                        {item.linkHref && (
-                          <a
-                            className={lst.actionLink}
-                            href={item.linkHref}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            物件介紹 ↗
-                          </a>
-                        )}
-                        <Link className={lst.actionBtn} href="/card/booking">
-                          預約諮詢
-                        </Link>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-                <p className={styles.mineNote}>
-                  ⚠️ 物件資訊僅供初步參考。
-                  <strong>實際坪數、格局、屋況與產權，以現場勘查及不動產說明書所載為準。</strong>
-                  物件狀態隨時可能異動，成交後即下架。
-                </p>
-              </div>
-            ) : (
-              <div className={styles.noMine}>
-                <p>
-                  {`目前我手上沒有 ${selected.name} 的物件在售。這一區釋出速度很快，`}
-                  想找這個建案可以先跟我說，有案子我第一時間通知你。
-                </p>
-                <Link className={styles.cta} href="/card/booking">
-                  {`想找 ${selected.name}？預約諮詢`}
-                </Link>
-              </div>
-            )}
-          </>
-        ) : (
-          <p className={styles.detailEmpty}>
-            👆 點地圖上的大樓圖示，或下方清單裡的建案名稱，這裡就會顯示建案資訊與我的在售物件。
-          </p>
-        )}
-      </section>
-
-      {/* ── 建案索引（也是給 Google 讀的內容）── */}
-      <div className={styles.indexBlock}>
-        <h3 className={styles.indexTitle}>
+          折衷：收進 <details>，預設收合、畫面上只剩一行，但**文字仍然在 HTML 裡**，
+          Google 讀得到（收合內容的權重可能略低於直接可見，但遠優於不存在）。
+          要改回預設展開就加 open。 */}
+      <details className={styles.indexBlock}>
+        <summary className={styles.indexSummary}>
           {`區內建案一覽（${rows.length}／${stats.total}）`}
           {mineTotal > 0 && <span className={styles.indexMine}>{`我有 ${mineTotal} 件在售`}</span>}
-        </h3>
+          <em>展開看全部</em>
+        </summary>
         {rows.length === 0 ? (
           <p className={styles.empty}>沒有符合的建案。換個關鍵字或篩選試試。</p>
         ) : (
@@ -487,7 +504,7 @@ export default function ProjectExplorer({
             ))}
           </ul>
         )}
-      </div>
+      </details>
     </div>
   );
 }
