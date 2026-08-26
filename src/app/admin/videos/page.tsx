@@ -54,8 +54,8 @@ export default async function VideosAdminPage() {
               影音
             </h1>
             <p className={styles.subtitle} style={{ color: CIS.textMute }}>
-              改完立刻生效，不用部署。影音是獨立的一頁（`/videos`），首頁導覽列直接連過去、
-              不會出現在首頁的下滑區塊裡。箭頭調的是 `/videos` 清單上的排序。
+              改完立刻生效，不用部署。影音是獨立的一頁（/videos），首頁導覽列直接連過去。
+              <b>清單照「影片日期」由新到舊排，最新的在最上面</b> —— 要把某支拉前面就把它的日期改新一點。
             </p>
           </div>
           <Link

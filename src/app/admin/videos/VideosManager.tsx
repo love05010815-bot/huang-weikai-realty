@@ -7,8 +7,8 @@
  * 各做一套只會讓後台看起來像兩個不同的系統。
  * ⚠️ 改那份 CSS 會同時影響精選好案與這一頁。
  *
- * 分類是「先分區、區內再排序」：上下移只跟同分類的鄰居換，
- * 不然按一下上移會跳到別的分類去，看起來像壞掉。
+ * ⚠️ 2026-08-26 拿掉了上移／下移箭頭：排序改成只看「影片日期」由新到舊，
+ * 交換 sort_order 已經不會改變任何順序，留著就是一顆按了沒反應的按鈕。
  */
 
 import { useRouter } from "next/navigation";
@@ -30,7 +30,6 @@ import {
 } from "@/lib/videos";
 import {
   deleteVideoAction,
-  moveVideoAction,
   saveVideoAction,
   setVideoStatusAction,
 } from "@/lib/actions/videos";
@@ -545,7 +544,7 @@ export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
                 {CATEGORY_META[category].label}（{rows.length}）
               </div>
 
-              {rows.map((row, index) => {
+              {rows.map((row) => {
                 const hidden = row.status === "hidden";
                 return (
                   <div
@@ -640,28 +639,11 @@ export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
                           {hidden ? "重新上架" : "隱藏"}
                         </button>
 
+                        {/* ⚠️ 這裡本來有上移／下移兩顆箭頭，2026-08-26 拿掉了。
+                            排序改成只看「影片日期」由新到舊之後，日期不同的兩支
+                            交換 sort_order 根本不會改變順序 —— 按鈕按了畫面不動，
+                            那比沒有按鈕更糟。要調順序就改那支影片的日期。 */}
                         <span className={styles.spacer} />
-
-                        <button
-                          type="button"
-                          className={styles.btnIcon}
-                          style={{ borderColor: CIS.cardBorder, color: CIS.textSub }}
-                          aria-label="上移"
-                          disabled={index === 0 || busy === `move-${row.id}`}
-                          onClick={() => run(`move-${row.id}`, () => moveVideoAction(row.id, "up"), "順序改好了")}
-                        >
-                          <Icon name="chevronUp" size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.btnIcon}
-                          style={{ borderColor: CIS.cardBorder, color: CIS.textSub }}
-                          aria-label="下移"
-                          disabled={index === rows.length - 1 || busy === `move-${row.id}`}
-                          onClick={() => run(`move-${row.id}`, () => moveVideoAction(row.id, "down"), "順序改好了")}
-                        >
-                          <Icon name="chevronDown" size={15} />
-                        </button>
 
                         <button
                           type="button"

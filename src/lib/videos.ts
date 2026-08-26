@@ -349,9 +349,21 @@ function toRecord(row: Row): VideoRecord {
   };
 }
 
+/**
+ * 排序：**影片日期由新到舊**（2026-08-26 系統擁有者指定「最新的在最上面」）。
+ *
+ * ⚠️ 這裡刻意**不用 `sort_order`**，後台也沒有上下箭頭了。
+ *    原本兩種都有的時候，日期不同的兩支影片交換 `sort_order` 根本不會改變順序 ——
+ *    按鈕按了畫面不動，那比沒有按鈕更糟。**一個排序來源就好。**
+ *    要把某支拉到最前面，就把它的「影片日期」改新一點。
+ *
+ * `published_at` 是 `YYYY-MM-DD` 字串，ISO 日期的字典順序等於時間順序，
+ * 直接比字串就對，不用轉型。同一天的用 `created_at` 當第二順位，
+ * 一次加好幾支時才不會每次重新整理都換位置（沒有第二順位的話順序是未定義的）。
+ */
 const SELECT_SQL = `SELECT id, category, title, url, source, video_id, poster_url, bytes, summary,
             published_at, created_at, status, sort_order, updated_at
-     FROM site_video ORDER BY sort_order ASC, created_at ASC`;
+     FROM site_video ORDER BY published_at DESC, created_at DESC`;
 
 /** 後台用：全部，含隱藏的 */
 export async function listAllVideos(): Promise<VideoRecord[]> {
@@ -567,32 +579,3 @@ export async function deleteVideo(id: string): Promise<void> {
   }
 }
 
-/**
- * 上移／下移。跟同分類裡的鄰居交換 sort_order。
- *
- * 只跟「同一個分類裡」的鄰居換 —— 不然按上移會跳到別的分類去，看起來像壞掉。
- * 前台是先照分類分區、區內再照 sort_order，所以號碼連不連續不重要。
- */
-export async function moveVideo(id: string, direction: "up" | "down"): Promise<void> {
-  const rows = await listAllVideos();
-  const current = rows.find((r) => r.id === id);
-  if (!current) return;
-
-  const sameCategory = rows.filter((r) => r.category === current.category);
-  const localIndex = sameCategory.findIndex((r) => r.id === id);
-  const neighbour = direction === "up" ? sameCategory[localIndex - 1] : sameCategory[localIndex + 1];
-  if (!neighbour) return;
-
-  await ensureThenRun(async () => {
-    await db.$executeRawUnsafe(
-      `UPDATE site_video SET sort_order = ? WHERE id = ?`,
-      neighbour.sortOrder,
-      current.id,
-    );
-    await db.$executeRawUnsafe(
-      `UPDATE site_video SET sort_order = ? WHERE id = ?`,
-      current.sortOrder,
-      neighbour.id,
-    );
-  });
-}

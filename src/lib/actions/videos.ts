@@ -12,7 +12,6 @@ import { isCurrentUserAdmin } from "@/lib/admin-check";
 import {
   createVideo,
   deleteVideo,
-  moveVideo,
   setVideoStatus,
   updateVideo,
   validateVideo,
@@ -57,17 +56,6 @@ export async function setVideoStatusAction(id: string, status: VideoStatus): Pro
   if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
   try {
     await setVideoStatus(id, status);
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
-  revalidateAll();
-  return { ok: true };
-}
-
-export async function moveVideoAction(id: string, direction: "up" | "down"): Promise<Result> {
-  if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
-  try {
-    await moveVideo(id, direction);
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
