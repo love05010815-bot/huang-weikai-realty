@@ -39,10 +39,11 @@ import {
   type ProjectStatus,
 } from "@/data/port-projects";
 import LeafletMap from "./LeafletMap";
+// ⚠️ PhotoCarousel 內部吃的是 listings.module.css（.gallery/.photo/.arrow…），
+//    那份是跟 /listings 共用的。要調相簿外觀請改元件本身，不要在這裡硬蓋 ——
+//    CSS Modules 的類名是雜湊的，從外面根本選不到。
 import PhotoCarousel from "../listings/PhotoCarousel";
 import styles from "./Map.module.css";
-// 物件卡片跟 /listings 共用同一份樣式，改一處兩邊都會變
-import lst from "../listings/listings.module.css";
 
 type StatusFilter = "all" | ProjectStatus;
 type AreaFilter = "all" | ProjectArea;
@@ -407,33 +408,45 @@ export default function ProjectExplorer({
               {selectedListings.length > 0 ? (
                 <div className={styles.mineBlock}>
                   <h4 className={styles.mineTitle}>{`我在 ${selected.name} 的在售物件`}</h4>
-                  <div className={lst.grid}>
+                  {/* 橫條式：照片在左、文字在右（2026-08-26 系統擁有者拍板）。
+                      右欄只有約 476px 可用，/listings 那種直式卡片塞進來，
+                      標題會變成一行 4 個字。
+
+                      ⚠️ 樣式全部是這頁自己的 `styles.sale*`，**不要再借用**
+                         `listings.module.css` 的 .card/.body/.title —— 那份是
+                         兩頁共用的，借了就得同時滿足兩種版面，遲早改壞其中一邊。
+                         PhotoCarousel 仍然共用（它是自成一體的元件）。 */}
+                  <div className={styles.saleList}>
                     {selectedListings.map((item) => (
-                      <article key={item.id} className={lst.card}>
-                        <PhotoCarousel photos={item.photos} alt={`${selected.name}－${item.title}`} />
-                        <div className={lst.body}>
-                          <span className={lst.area}>{selected.name}</span>
-                          <h5 className={lst.title}>{item.title}</h5>
-                          <ul className={lst.points}>
+                      <article key={item.id} className={styles.saleRow}>
+                        <div className={styles.saleThumb}>
+                          <PhotoCarousel photos={item.photos} alt={`${selected.name}－${item.title}`} />
+                        </div>
+                        <div className={styles.saleBody}>
+                          <span className={styles.saleArea}>{selected.name}</span>
+                          <h5 className={styles.saleTitle}>{item.title}</h5>
+                          <ul className={styles.salePoints}>
                             {item.points.map((p) => (
                               <li key={p}>{p}</li>
                             ))}
                           </ul>
                           {/* 這裡刻意只有兩顆：物件介紹＋預約諮詢。
                               「影片賞析」是 /listings 才有的，系統擁有者指定這頁不要。 */}
-                          {item.linkHref && (
-                            <a
-                              className={lst.actionLink}
-                              href={item.linkHref}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              物件介紹 ↗
-                            </a>
-                          )}
-                          <Link className={lst.actionBtn} href="/card/booking">
-                            預約諮詢
-                          </Link>
+                          <div className={styles.saleBtns}>
+                            {item.linkHref && (
+                              <a
+                                className={styles.saleLink}
+                                href={item.linkHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                物件介紹 ↗
+                              </a>
+                            )}
+                            <Link className={styles.saleBtn} href="/card/booking">
+                              預約諮詢
+                            </Link>
+                          </div>
                         </div>
                       </article>
                     ))}

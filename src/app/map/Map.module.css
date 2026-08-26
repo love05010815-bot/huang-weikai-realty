@@ -1244,6 +1244,126 @@
   color: var(--primary);
 }
 
+/* ═══════════ 在售物件：橫條式 ═══════════
+   2026-08-26 系統擁有者拍板。右欄大約只有 476px 可用，/listings 那種
+   「照片在上、文字在下」的直式卡片塞進來，標題會斷成一行 4 個字。
+
+   ⚠️ 這一整組是 /map 自己的樣式。**不要回頭去借 listings.module.css 的
+      .card/.body/.title** —— 那份是兩頁共用的，借了就得同時滿足兩種版面。
+      唯一還共用的是 PhotoCarousel 元件本身。 */
+.saleList {
+  display: grid;
+  gap: 12px;
+}
+
+.saleRow {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+/* 相簿本體是 100% 寬，靠這個框決定它多大；圓角要靠 overflow 切齊 */
+.saleThumb {
+  min-width: 0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.saleBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.saleArea {
+  align-self: flex-start;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--accent-soft);
+  padding: 3px 9px;
+  border-radius: 999px;
+  margin-bottom: 6px;
+}
+
+.saleTitle {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.salePoints {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.salePoints li {
+  padding-left: 14px;
+  position: relative;
+}
+
+.salePoints li::before {
+  content: "・";
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+.saleBtns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  /* 推到底，同一列的兩張卡按鈕才會對齊 */
+  margin-top: auto;
+}
+
+.saleLink,
+.saleBtn {
+  display: inline-block;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.saleLink {
+  border: 1px solid var(--line-warm);
+  background: #fff;
+  color: var(--primary);
+}
+
+.saleLink:hover {
+  border-color: var(--accent);
+  background: var(--soft);
+}
+
+.saleBtn {
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+.saleBtn:hover {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
 .mineNote {
   margin: 14px 0 0;
   font-size: 12.5px;
@@ -1534,6 +1654,15 @@
     min-height: 0;
     max-height: none;
     overflow: visible;
+  }
+
+  /* 手機上橫條要放棄，改回「照片在上、文字在下」。
+     實測 375px：右欄滿版也只有 275px 可用，照片就算縮到 108px，
+     文字欄只剩 130px —— 標題斷兩行、兩顆按鈕上下疊，比直式還難看。
+     ⚠️ 這不是把桌機那版改回去，桌機（460px 以上）仍然是橫條。 */
+  .saleRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
   }
 
   .lmWrap {
