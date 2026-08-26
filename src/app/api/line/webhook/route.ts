@@ -269,7 +269,62 @@ export async function GET(req: Request) {
     botEnabled: BOT_ENABLED,
   };
 
-  if (new URL(req.url).searchParams.get("whoami") !== "1") return Response.json(base);
+  const params = new URL(req.url).searchParams;
+
+  /**
+   * `?probe=media` 自我檢測「取媒體內容」那條路。
+   *
+   * 存在的理由（2026-08-26）：`/api/admin/line/media/…` 是**擋登入**的，
+   * 所以我沒辦法自己觸發它，每查一次都要請系統擁有者去重新整理一次頁面。
+   * 抓圖回 401 時這樣一來一往太慢。
+   *
+   * 🔒 三道限制，缺一不可：
+   *   1. **不收外面給的 messageId** —— 只用資料庫裡我們自己最新的那一筆。
+   *      收參數的話這裡就變成一個可以拿來探測訊息是否存在的公開工具。
+   *   2. **只回狀態碼與 LINE 的錯誤訊息，永遠不回內容一個 byte。**
+   *   3. 成功時只回「拿到幾 KB、什麼型別」，不回圖。
+   */
+  if (params.get("probe") === "media") {
+    const token = getLineBotToken();
+    if (!token) return Response.json({ ...base, probe: { error: "沒有 LINE_BOT_ACCESS_TOKEN" } });
+    try {
+      const { db } = await import("@/lib/db");
+      const rows = await db.$queryRawUnsafe<{ media_id: string; created_at: Date }[]>(
+        `SELECT media_id, created_at FROM line_bot_message
+          WHERE media_id IS NOT NULL ORDER BY created_at DESC LIMIT 1`,
+      );
+      const mediaId = rows[0]?.media_id;
+      if (!mediaId) return Response.json({ ...base, probe: { error: "資料庫裡還沒有任何媒體訊息" } });
+
+      const r = await fetch(`https://api-data.line.me/v2/bot/message/${mediaId}/content`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      if (!r.ok) {
+        const text = await r.text().catch(() => "");
+        return Response.json({
+          ...base,
+          probe: { status: r.status, lineSays: text.slice(0, 300) },
+        });
+      }
+      const buf = await r.arrayBuffer();
+      return Response.json({
+        ...base,
+        probe: {
+          status: 200,
+          contentType: r.headers.get("content-type"),
+          kb: Math.round(buf.byteLength / 1024),
+        },
+      });
+    } catch (e) {
+      return Response.json({
+        ...base,
+        probe: { error: e instanceof Error ? e.message : String(e) },
+      });
+    }
+  }
+
+  if (params.get("whoami") !== "1") return Response.json(base);
 
   const token = process.env.LINE_BOT_ACCESS_TOKEN;
   if (!token) return Response.json({ ...base, whoami: { error: "沒有 LINE_BOT_ACCESS_TOKEN" } });
