@@ -297,6 +297,34 @@ export async function GET(req: Request) {
       const mediaId = rows[0]?.media_id;
       if (!mediaId) return Response.json({ ...base, probe: { error: "資料庫裡還沒有任何媒體訊息" } });
 
+      // 🔬 對照組。單看「取內容 401」分不出兩件事：
+      //    (a) api-data 這台主機根本不吃這個權杖
+      //    (b) 主機沒問題，是這則訊息取不到
+      //    所以拿同一個權杖打 api-data 上的另一支（/info），再打 api.line.me 上的同一支。
+      //    ⚠️ 沒有對照組的測試沒有鑑別力 —— 這一輪已經因此白繞過好幾圈。
+      const control = async (label: string, u: string) => {
+        try {
+          const c = await fetch(u, {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: "no-store",
+          });
+          return [label, c.status] as const;
+        } catch {
+          return [label, -1] as const;
+        }
+      };
+      const controls = Object.fromEntries(
+        await Promise.all([
+          control("apiLine_info", "https://api.line.me/v2/bot/info"),
+          control("apiData_info", "https://api-data.line.me/v2/bot/info"),
+          control("apiLine_content", `https://api.line.me/v2/bot/message/${mediaId}/content`),
+          control(
+            "apiData_preview",
+            `https://api-data.line.me/v2/bot/message/${mediaId}/content/preview`,
+          ),
+        ]),
+      );
+
       const url = `https://api-data.line.me/v2/bot/message/${mediaId}/content`;
 
       // 先看 LINE 有沒有轉址。fetch 跨網域跟轉址時會**丟掉 Authorization 標頭**，
@@ -324,6 +352,7 @@ export async function GET(req: Request) {
           probe: {
             status: r.status,
             lineSays: text.slice(0, 300),
+            controls,
             ...redirectInfo,
             // 最終停在哪個網域。跟一開始不同就代表轉址過
             finalHost: (() => {
