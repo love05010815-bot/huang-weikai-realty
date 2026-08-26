@@ -190,18 +190,22 @@ export default async function HomePage() {
               </small>
             </span>
           </a>
+          {/* ⚠️ 這個順序是 2026-08-26 系統擁有者親自指定的，不要「順手」重排。
+              #about / #services / #listings / #tools / #booking 是首頁上的錨點，
+              /map 與 /videos 是獨立分頁 —— 兩種混在一起是刻意的，
+              客戶不需要知道哪個是同一頁哪個是另一頁。 */}
           <ul className={styles.nav}>
             <li><a href="#about">關於我</a></li>
-            <li><a href="#listings">精選好案</a></li>
-            {/* 2026-08-25 系統擁有者拍板：**影音不放首頁下滑區塊，做成獨立分頁**，
-                跟「重劃區建案」一樣。所以這裡是 <Link href="/videos">，
-                不是 #videos 錨點 —— 首頁上沒有那個區塊了。 */}
-            <li><Link href="/videos">影音專區</Link></li>
             <li><a href="#services">服務項目</a></li>
+            <li><a href="#listings">精選好案</a></li>
             {/* 2026-08-21 恢復入口。原本雪藏是因為「土地使用分區」那層的建商名沒核對完；
                 該層已從 /map 移除，現在頁面上是系統擁有者自己確認過的 39 個建案。 */}
             <li><Link href="/map">重劃區建案</Link></li>
             <li><a href="#tools">稅費試算</a></li>
+            {/* 2026-08-25 系統擁有者拍板：**影音不放首頁下滑區塊，做成獨立分頁**，
+                跟「重劃區建案」一樣。所以這裡是 <Link href="/videos">，
+                不是 #videos 錨點 —— 首頁上沒有那個區塊了。 */}
+            <li><Link href="/videos">影音專區</Link></li>
             <li><a href="#booking">預約諮詢</a></li>
           </ul>
           <div className={styles.navCta}>
