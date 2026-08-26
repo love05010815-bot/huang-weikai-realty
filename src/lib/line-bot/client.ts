@@ -12,8 +12,14 @@ const LINE_API = "https://api.line.me/v2/bot";
 /** LINE 單則文字訊息上限 5000 字，超過整包會被退。留點餘裕切在 4800。 */
 const MAX_TEXT_LENGTH = 4800;
 
+/**
+ * ⚠️ 一律 trim。從 Vercel 後台貼值時很容易多帶到換行或尾端空白，
+ *    而不同的 LINE 主機對這個的容忍度不一樣 —— api.line.me 可能照收，
+ *    api-data.line.me（取媒體內容那支）就回 401。
+ *    症狀會變成「其他 API 都好、只有抓圖失敗」，非常難查。
+ */
 export function getLineBotToken(): string | null {
-  return process.env.LINE_BOT_ACCESS_TOKEN || null;
+  return process.env.LINE_BOT_ACCESS_TOKEN?.trim() || null;
 }
 
 export function getLineBotSecret(): string | null {

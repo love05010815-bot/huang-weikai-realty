@@ -293,6 +293,11 @@ export async function GET(req: Request) {
             // "bot"  = 訊息只送到 webhook，手機聊天列表**不會出現**
             chatMode: d.chatMode,
             markAsReadMode: d.markAsReadMode,
+            // 權杖值本身**絕對不回**，只回兩個布林：長度是否被前後空白污染、
+            // 以及它是不是 v2.1 的 JWT 格式。抓媒體那支回 401 時，
+            // 這兩個能排除掉「貼值時多帶了換行」這個很難查的可能。
+            tokenHasStraySpace: token !== token.trim(),
+            tokenLooksJwt: token.split(".").length === 3,
           }
         : { status: res.status, error: String(d.message ?? "查詢失敗") },
     });
