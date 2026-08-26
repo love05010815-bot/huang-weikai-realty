@@ -62,8 +62,17 @@ export async function GET(
     if (res.status === 404 || res.status === 410) {
       return new Response("LINE 已不再保留這則訊息的內容", { status: 410 });
     }
-    console.error(`[line-media] LINE 回 ${res.status}`);
-    return new Response(`LINE 回 ${res.status}`, { status: 502 });
+
+    // ⚠️ 一定要把 LINE 的回應**原文**印出來。只記狀態碼的話，401 可能是
+    //    「權杖無效」「權杖過期」「這個 channel 沒開這項功能」—— 三種修法完全不同，
+    //    光看數字只能亂猜。LINE 的錯誤訊息本身寫得很清楚，不要把它丟掉。
+    const body = await res.text().catch(() => "");
+    console.error(`[line-media] LINE 回 ${res.status}：${body.slice(0, 300)}`);
+    return new Response(`LINE 回 ${res.status}`, {
+      status: 502,
+      // 這支路由已經擋過權限，把原因帶回畫面（只有登入的你看得到）
+      headers: { "X-Line-Error": encodeURIComponent(body.slice(0, 200)) },
+    });
   }
 
   return new Response(res.body, {
