@@ -1,15 +1,26 @@
 /**
- * /admin/inbox —— 影音平台留言收件匣
+ * /admin/inbox —— 留言收件匣
  *
- * YouTube ＋ Facebook 粉專 ＋ Instagram 的留言**混在同一份清單**，依時間新到舊排。
- * 刻意不做成三個區塊 —— 那只是把三個 App 搬到同一頁，客戶昨天在 IG 問的還是要自己去翻。
+ * YouTube ＋ Facebook 粉專 ＋ Instagram 的留言，**加上 LINE 的一對一私訊**，
+ * 混在同一份清單依時間新到舊排。刻意不做成四個區塊 —— 那只是把四個 App
+ * 搬到同一頁，客戶昨天在 IG 問的還是要自己去翻。
  *
- * LINE 的一對一私訊在 /admin/line（那是私訊，性質不同所以分開）。
- * 收件匣的範圍就是這三家。TikTok 與 Threads 2026-08-21 由系統擁有者決定不做 ——
- * 它們從來沒有真的接過（沒有 API 程式碼、沒有路由、沒有金鑰），只是頁面上曾有一段說明文字。
+ * 🔴 **LINE 跟其他三家有兩個關鍵差異，改這一頁之前一定要知道：**
  *
- * ⚠️ 留言是**每次進來即時抓的**，不存資料庫。所以「已回覆」是比對實際回覆算出來的，
- *    你在各平台 App 裡回的也算數，不會出現「後台說沒回、其實回過了」。
+ *   1. **一位客戶一列，不是一則訊息一列。** LINE 是對話不是留言板，41 則訊息攤成
+ *      41 列會把其他平台淹掉。每位只取「他最後問的那句」，完整對話在 /admin/line。
+ *
+ *   2. **「已回」的意思不一樣。** 其他三家是從實際回覆算出來的**真相** ——
+ *      你在各平台 App 裡回的也算數。LINE 算不出來，因為它的 webhook
+ *      **收不到系統擁有者從手機回出去的訊息**（實測：a_at 全部是空的，他一律用手機回）。
+ *      所以 LINE 那幾列多一顆「標記已回」給人手動清，其他三家沒有也不需要。
+ *
+ * ⚠️ 回覆框也因此分兩種文案：其他三家是**公開回覆**，LINE 是**私訊**（見 CommentReply）。
+ *
+ * TikTok 與 Threads 2026-08-21 由系統擁有者決定不做；LINE VOOM 的貼文留言
+ * 2026-08-25 查證 LINE 沒有開放 API，接不了。
+ *
+ * ⚠️ 三家平台的留言是**每次進來即時抓的**，不存資料庫。LINE 則是讀自己的資料庫。
  */
 import { redirect } from "next/navigation";
 import { getAdminCheckArgs, isCurrentUserAdmin } from "@/lib/admin-check";
@@ -26,7 +37,6 @@ import {
 } from "@/lib/inbox-types";
 import { YOUTUBE_REDIRECT_URI, isYoutubeConfigured } from "@/lib/youtube";
 import { META_REDIRECT_URI, isMetaConfigured } from "@/lib/meta";
-import { listAwaitingReply } from "@/lib/line-bot/store";
 import { markLineHandledAction } from "@/lib/actions/line-bot";
 import CommentReply from "./CommentReply";
 import UnbindButton from "./UnbindYoutube";
@@ -40,6 +50,7 @@ const PLATFORM_ICON: Record<InboxPlatform, IconName> = {
   youtube: "play",
   facebook: "users",
   instagram: "camera",
+  line: "chat",
 };
 
 function fmtTime(iso: string): string {
@@ -56,14 +67,6 @@ function fmtTime(iso: string): string {
   }).format(d);
 }
 
-/** 「等了多久」。給 LINE 待回提醒用 —— 「3 小時」比「8/25 13:04」更有急迫感。 */
-function waitedFor(from: Date): string {
-  const mins = Math.max(0, Math.floor((Date.now() - from.getTime()) / 60000));
-  if (mins < 60) return `${mins} 分鐘`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} 小時`;
-  return `${Math.floor(hours / 24)} 天`;
-}
 
 export default async function InboxPage({
   searchParams,
@@ -81,18 +84,11 @@ export default async function InboxPage({
   const sp = await searchParams;
   const snapshot = await loadInbox();
 
-  // LINE 只在這裡取一個數字，對話本身留在 /admin/line（私訊性質不同，不混排）。
-  // 刻意排在 loadInbox 後面**依序**跑，不跟它併行 —— 連線池只有 3 條，搶起來
-  // 會讓三個平台一起 P2024 超時，畫面看起來就像「全部都沒留言」。
-  // 查失敗就當沒有，不能讓 LINE 拖垮整個收件匣。
-  const lineWaiting = await listAwaitingReply().catch((e) => {
-    console.error("[inbox] 抓 LINE 待回名單失敗:", e);
-    return null;
-  });
+
   const ytConfigured = isYoutubeConfigured();
   const metaConfigured = isMetaConfigured();
 
-  const filter = (["youtube", "facebook", "instagram"] as const).includes(sp.p as InboxPlatform)
+  const filter = (["youtube", "facebook", "instagram", "line"] as const).includes(sp.p as InboxPlatform)
     ? (sp.p as InboxPlatform)
     : null;
   const shown: InboxComment[] = filter
@@ -102,6 +98,7 @@ export default async function InboxPage({
   const ytSource = snapshot.sources.find((s) => s.platform === "youtube")!;
   const fbSource = snapshot.sources.find((s) => s.platform === "facebook")!;
   const igSource = snapshot.sources.find((s) => s.platform === "instagram")!;
+  const lineSource = snapshot.sources.find((s) => s.platform === "line")!;
   const metaBound = fbSource.bound || igSource.bound;
 
   return (
@@ -112,113 +109,14 @@ export default async function InboxPage({
           留言收件匣
         </h1>
         <p className={styles.subtitle} style={{ color: CIS.textMute }}>
-          YouTube、Facebook 粉專、Instagram 的留言全部收在這裡，依時間排好，直接回。
-          LINE 的一對一私訊在
+          YouTube、Facebook 粉專、Instagram 的留言，加上 LINE 的一對一私訊，
+          全部收在這裡依時間排好，直接回。完整的 LINE 對話在
           <a href="/admin/line" style={{ color: CIS.blueSoft }}>「LINE 機器人」</a>那一頁。
         </p>
 
         {/* ── LINE 待回提醒 ──
             LINE 的對話不混進下面的清單（私訊 ≠ 公開留言），但「有人在等你」
             這件事一定要在這一頁看得到，否則你每天只開收件匣就會漏掉 LINE。 */}
-        {lineWaiting !== null && lineWaiting.length === 0 && (
-          <div
-            className={styles.notice}
-            style={{ background: "transparent", borderColor: CIS.cardBorder, color: CIS.textMute }}
-          >
-            LINE 目前沒有待回的訊息。
-          </div>
-        )}
-
-        {lineWaiting !== null && lineWaiting.length > 0 && (
-          <div
-            className={styles.lineBox}
-            style={{ borderColor: CHIP.warn.border, background: "rgba(245,158,11,.06)" }}
-          >
-            <div className={styles.lineHead} style={{ color: CHIP.warn.color }}>
-              <Icon name="chat" size={18} />
-              <b>LINE 有 {lineWaiting.length} 位客戶在等回覆</b>
-              <span style={{ color: CIS.textMute }}>
-                ・最久的等了 {waitedFor(lineWaiting[0].lastAt)}
-              </span>
-              <a
-                href="/admin/line"
-                style={{ marginLeft: "auto", color: CIS.blueSoft, fontSize: 14, textDecoration: "none" }}
-              >
-                開 LINE 後台 →
-              </a>
-            </div>
-
-            {/* 這句話很重要，不能省：不解釋的話，你會以為系統在說你沒回，
-                而你明明在手機上回過了 —— 然後就再也不信這個數字。 */}
-            <div className={styles.lineHint} style={{ color: CIS.textMute }}>
-              LINE 不會把你從手機回出去的訊息通知系統，所以這裡分不出你回了沒。
-              已經回過的按「<b>已回</b>」清掉就好；客戶再傳新訊息會自己亮回來。
-            </div>
-
-            {lineWaiting.map((p) => (
-              <div key={p.lineUserId} className={styles.lineRow} style={{ borderColor: CIS.divider }}>
-                <span className={styles.lineWho}>{p.displayName || "（未取得名稱）"}</span>
-                <span className={styles.lineText} style={{ color: CIS.textMute }}>
-                  {p.lastText?.replace(/\s+/g, " ").trim() || "（非文字訊息）"}
-                </span>
-                <span className={styles.lineWait} style={{ color: CHIP.warn.color }}>
-                  等了 {waitedFor(p.lastAt)}
-                </span>
-                <span className={styles.lineActions}>
-                  <a
-                    href={`/admin/line?u=${encodeURIComponent(p.lineUserId)}`}
-                    className={styles.btn}
-                    style={{ borderColor: CIS.blueDeep, background: CIS.blueDeep, color: "#fff" }}
-                  >
-                    去回
-                  </a>
-                  {/* 只送 lineUserId 與 next=1。action 本身會再擋一次權限 ——
-                      server action 可以被直接 POST，畫面上看不到不等於外面叫不到。 */}
-                  <form action={markLineHandledAction}>
-                    <input type="hidden" name="lineUserId" value={p.lineUserId} />
-                    <input type="hidden" name="next" value="1" />
-                    <button
-                      type="submit"
-                      className={styles.btn}
-                      style={{ borderColor: CIS.cardBorder, color: CIS.textSub }}
-                      title="已經在手機回過了，把這位從待回名單清掉"
-                    >
-                      已回
-                    </button>
-                  </form>
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ── 綁定結果回饋：成功要講，失敗更要講原因 ── */}
-        {(sp.yt === "bound" || sp.meta === "bound") && (
-          <div
-            className={styles.notice}
-            style={{ background: "rgba(34,197,94,.1)", borderColor: "rgba(34,197,94,.35)", color: "#4ade80" }}
-          >
-            {sp.yt === "bound" ? "YouTube" : "Facebook／Instagram"} 綁定成功。
-          </div>
-        )}
-        {(sp.yt === "fail" || sp.meta === "fail") && (
-          <div
-            className={styles.notice}
-            style={{ background: "rgba(244,63,94,.1)", borderColor: "rgba(244,63,94,.35)", color: "#fb7185" }}
-          >
-            <b>{sp.yt === "fail" ? "YouTube" : "Facebook／Instagram"} 綁定失敗。</b>
-            {sp.why ? <> 原因：{sp.why}</> : null}
-          </div>
-        )}
-        {(sp.yt === "state_invalid" || sp.meta === "state_invalid") && (
-          <div
-            className={styles.notice}
-            style={{ background: "rgba(245,158,11,.1)", borderColor: "rgba(245,158,11,.35)", color: "#fbbf24" }}
-          >
-            授權驗證碼對不上（多半是停太久或換了分頁）。重新點一次綁定就好。
-          </div>
-        )}
-
         {/* ── 平台狀態列 ── */}
         <div className={styles.sourceRow}>
           <SourceCard
@@ -261,6 +159,40 @@ export default async function InboxPage({
             unbindTarget={null}
             sameAsFacebook
           />
+          {/* LINE 不走 OAuth（金鑰在環境變數），所以不共用 SourceCard。
+              這張卡的重點只有一句話：LINE 的「已回」判斷跟其他三家不一樣。 */}
+          <div
+            className={styles.sourceCard}
+            style={{ background: CIS.card, borderColor: CIS.cardBorder }}
+          >
+            <div className={styles.sourceHead}>
+              <Icon name="chat" size={17} />
+              <span className={styles.sourceName} style={{ color: PLATFORM_COLOR.line }}>
+                LINE
+              </span>
+              <span
+                className={styles.chip}
+                style={
+                  lineSource.bound
+                    ? { background: CHIP.success.bg, borderColor: CHIP.success.border, color: CHIP.success.color }
+                    : { background: CHIP.neutral.bg, borderColor: CHIP.neutral.border, color: CHIP.neutral.color }
+                }
+              >
+                {lineSource.bound ? `${lineSource.comments.length} 位` : "未設定"}
+              </span>
+            </div>
+            {lineSource.error ? (
+              <p className={styles.sourceDetail} style={{ color: CHIP.danger.color }}>
+                {lineSource.error}
+              </p>
+            ) : (
+              <p className={styles.sourceDetail} style={{ color: CIS.textMute }}>
+                一位客戶一列，顯示他最後問的那句。
+                <b>LINE 不會把你從手機回出去的訊息通知系統</b>，所以已經回過的要自己按「已回」；
+                客戶再傳新訊息會自動亮回來。
+              </p>
+            )}
+          </div>
         </div>
 
         {/* ── 留言清單 ── */}
@@ -278,7 +210,7 @@ export default async function InboxPage({
           <>
             <div className={styles.filterRow}>
               <FilterTab href="/admin/inbox" active={!filter} label="全部" count={snapshot.all.length} />
-              {(["youtube", "facebook", "instagram"] as const).map((p) => {
+              {(["youtube", "facebook", "instagram", "line"] as const).map((p) => {
                 const src = snapshot.sources.find((s) => s.platform === p)!;
                 if (!src.bound) return null;
                 return (
@@ -359,6 +291,17 @@ export default async function InboxPage({
                               </a>
                             </>
                           ) : null}
+                          {c.platform === "line" ? (
+                            <>
+                              {" ・ "}
+                              <a
+                                href={`/admin/line?u=${encodeURIComponent(c.id)}`}
+                                style={{ color: CIS.blueSoft }}
+                              >
+                                看完整對話 →
+                              </a>
+                            </>
+                          ) : null}
                         </div>
                       </div>
                       <span
@@ -371,6 +314,22 @@ export default async function InboxPage({
                       >
                         {c.answeredByOwner ? "已回" : "待回覆"}
                       </span>
+                      {/* 只有 LINE 需要這顆：其他三家的「已回」是從實際回覆算出來的真相，
+                          LINE 算不出來（webhook 收不到手機送出的訊息），只能給人手動清。 */}
+                      {c.needsManualClear && !c.answeredByOwner && (
+                        <form action={markLineHandledAction}>
+                          <input type="hidden" name="lineUserId" value={c.id} />
+                          <input type="hidden" name="next" value="1" />
+                          <button
+                            type="submit"
+                            className={styles.btn}
+                            style={{ borderColor: CHIP.warn.border, color: CHIP.warn.color, minHeight: 30 }}
+                            title="已經在手機回過了，把這列標成已回"
+                          >
+                            標記已回
+                          </button>
+                        </form>
+                      )}
                     </div>
 
                     <p className={styles.commentText}>{c.text}</p>

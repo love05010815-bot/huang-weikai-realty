@@ -9,12 +9,13 @@
  * ⚠️ 這支檔案刻意不 import 任何東西：server 端的抓取與 client 端的回覆框都要用。
  */
 
-export type InboxPlatform = "youtube" | "facebook" | "instagram";
+export type InboxPlatform = "youtube" | "facebook" | "instagram" | "line";
 
 export const PLATFORM_LABEL: Record<InboxPlatform, string> = {
   youtube: "YouTube",
   facebook: "Facebook",
   instagram: "Instagram",
+  line: "LINE",
 };
 
 /** 各平台的代表色，用來在混合列表裡一眼分辨 */
@@ -22,7 +23,19 @@ export const PLATFORM_COLOR: Record<InboxPlatform, string> = {
   youtube: "#ff4e45",
   facebook: "#4a90e2",
   instagram: "#e17bb0",
+  line: "#06c755",
 };
+
+/**
+ * 一對一私訊的平台。目前只有 LINE。
+ *
+ * 為什麼要標出來：其他三家的留言與回覆都是**公開**的，LINE 是**私訊**。
+ * 混在同一份清單裡看起來一樣，但回下去的後果不一樣 ——
+ * 回覆框要換句話講，而且 LINE 的推播會吃每月免費額度。
+ */
+export function isPrivatePlatform(p: InboxPlatform): boolean {
+  return p === "line";
+}
 
 export type InboxReply = {
   author: string;
@@ -53,6 +66,14 @@ export type InboxComment = {
    */
   answeredByOwner: boolean;
   replies: InboxReply[];
+  /**
+   * LINE 專用：這串還在等你回，而且要靠人手動標記才清得掉。
+   *
+   * 存在的理由：LINE 的 webhook **收不到你從手機回出去的訊息**，所以
+   * answeredByOwner 對 LINE 來說是「有沒有被標記處理過」，不是真的「回了沒」。
+   * 畫面上要多一顆「已回」給人手動清，其他三家不需要（那三家算得出真相）。
+   */
+  needsManualClear?: boolean;
 };
 
 /** 某個平台的抓取結果。失敗要講原因，不能靜靜回空陣列裝作沒留言。 */

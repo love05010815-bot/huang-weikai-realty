@@ -15,6 +15,7 @@ import {
   type PlatformFetch,
 } from "@/lib/inbox-types";
 import { fetchFacebookComments, fetchInstagramComments } from "@/lib/meta";
+import { fetchLineComments } from "@/lib/line-bot/inbox";
 import { getBoundChannel, isYoutubeBound, listChannelComments } from "@/lib/youtube";
 
 /** YouTube 的資料轉成收件匣的共同形狀。 */
@@ -79,9 +80,10 @@ export async function loadInbox(): Promise<InboxSnapshot> {
     fetchYoutube(),
     fetchFacebookComments(),
     fetchInstagramComments(),
+    fetchLineComments(),
   ]);
 
-  const order: InboxPlatform[] = ["youtube", "facebook", "instagram"];
+  const order: InboxPlatform[] = ["youtube", "facebook", "instagram", "line"];
   const sources: PlatformFetch[] = settled.map((r, i) => {
     if (r.status === "fulfilled") return r.value;
     // 連 fetch 函式本身都爆了（理論上不該發生，因為裡面都 try 過）。

@@ -12,6 +12,7 @@ import { revalidatePath } from "next/cache";
 import { isCurrentUserAdmin } from "@/lib/admin-check";
 import type { InboxPlatform } from "@/lib/inbox-types";
 import { replyMetaComment, unbindMeta } from "@/lib/meta";
+import { sendLineReplyAction } from "@/lib/actions/line-bot";
 import { replyToComment as replyYoutube } from "@/lib/youtube";
 
 type Result = { ok: boolean; error?: string };
@@ -21,8 +22,9 @@ const MAX_REPLY = 4000;
 /**
  * 回覆一則留言。
  *
- * ⚠️ 三個平台的回覆**都是公開的**，跟 LINE 的一對一私訊不同。
- *    畫面上會講明，這裡不再做二次確認。
+ * ⚠️ YouTube／FB／IG 的回覆**都是公開的**；**LINE 是一對一私訊**，
+ *    而且走推播、會吃每月免費訊息額度。畫面上兩者的說明不一樣，
+ *    這裡不再做二次確認。
  */
 export async function replyInboxCommentAction(
   platform: InboxPlatform,
@@ -44,6 +46,12 @@ export async function replyInboxCommentAction(
     case "facebook":
     case "instagram":
       r = await replyMetaComment(commentId, message);
+      break;
+    case "line":
+      // ⚠️ LINE 的 commentId 放的是 **lineUserId**（見 line-bot/inbox.ts）——
+      //    LINE 沒有「回某一則訊息」這種事，回覆是推播給那個人。
+      //    sendLineReplyAction 內部會：送出成功才寫記錄、自動接手、標記已回。
+      r = await sendLineReplyAction(commentId, message);
       break;
     default:
       // 型別上到不了，但真的到了要講清楚而不是靜靜成功
