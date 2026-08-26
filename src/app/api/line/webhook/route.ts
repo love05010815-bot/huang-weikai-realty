@@ -23,6 +23,7 @@ import {
 import { generateReply } from "@/lib/line-bot/ai";
 import {
   getLineBotSecret,
+  getLineBotToken,
   getProfileName,
   replyMessage,
   showLoading,
