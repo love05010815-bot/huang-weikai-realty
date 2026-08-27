@@ -25,9 +25,15 @@
  *    貼上去等於把官方界線改成手畫的 —— 細節見 `port-zones.ts` 檔頭。
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Map as LeafletMapType, Marker } from "leaflet";
-import { COORDS, MAP_CENTER, type Project, type ProjectStatus } from "@/data/port-projects";
+import {
+  COORDS,
+  MAP_CENTER,
+  type Project,
+  type ProjectArea,
+  type ProjectStatus,
+} from "@/data/port-projects";
 import { ZONES, zoneBounds } from "@/data/port-zones";
 import styles from "./Map.module.css";
 // Leaflet 的樣式一定要在頂層 import。放進 useEffect 動態 import 不會生效，
@@ -53,6 +59,78 @@ const DISTRICT_NAME = "梧棲清水市鎮重劃區";
 
 /** 膠囊尺寸。跟 `.lmCluster` 的 width/height 一致（那邊是 border-box） */
 const CLUSTER_SIZE: [number, number] = [150, 36];
+
+/**
+ * 縮到聚合層級時，圖釘要收成**哪幾顆**膠囊。一個 group 一顆。
+ *
+ * ## 為什麼是多顆，不是一顆
+ *
+ * 初始視野框的是整個海線生活圈（圖釘＋六塊色塊，對角 10.6 km），實測落在
+ * **zoom 12**，本來就低於 `CLUSTER_ZOOM` —— 也就是說「膠囊」不是縮到很遠才
+ * 會看到的東西，**那就是客戶進來的第一眼**。
+ *
+ * 只做一顆的話，沙鹿建案一進來就會被吞進「梧棲清水市鎮重劃區」這顆膠囊：
+ * 名字是錯的（沙鹿不在重劃區），釘的位置也是錯的（釘在重劃區重心，離沙鹿
+ * 六公里）。而且**不會報錯**，畫面看起來還很正常。
+ *
+ * ## 沙鹿建案進來時要做的事
+ *
+ * 只要把下面那行註解打開。`areas` 對應 `ProjectArea`，新增區域一定要一起加進來
+ * —— 沒加進來的不會消失（會退回畫成圖釘，見 `buildClusters`），但就沒有膠囊。
+ *
+ * ⚠️ `name` 若跟 `port-zones.ts` 的色塊同名，那塊色塊的 tooltip 會**自動讓位**
+ *    （兩個標籤都落在色塊中央，同時掛就是兩行字疊在一起糊成一團）。
+ *    所以改名要兩邊一起改，`buildClusters` 的結果同時餵給圖釘與色塊兩個 effect。
+ *
+ * ⚠️ **兩個 group 的重心太近，膠囊就會疊在一起**（膠囊是 150x36，沒有閃避邏輯）。
+ *    實測：拿梧棲／清水硬拆成兩組時重心只差 25x26 px，整個疊住。
+ *    沙鹿那組算過沒問題 —— 重心距重劃區 6.17 km，zoom 12 換算相距 109x140 px，
+ *    垂直 140 遠大於 36，不會疊。**再加第三組之前先算一次這個距離。**
+ */
+const PIN_GROUPS: ReadonlyArray<{ id: string; name: string; areas: readonly ProjectArea[] }> = [
+  { id: "shizheng", name: DISTRICT_NAME, areas: ["梧棲", "清水", "市鎮中心"] },
+  // { id: "shalu", name: "沙鹿", areas: ["沙鹿"] },
+];
+
+/** 一顆膠囊至少要代表這麼多案。只剩一案還畫成 150px 的膠囊，不如直接畫那根圖釘 */
+const MIN_CLUSTER = 2;
+
+type Placed = { p: Project; lat: number; lng: number };
+type Cluster = { id: string; name: string; lat: number; lng: number; members: Placed[] };
+
+/**
+ * 算出這個縮放層級下要畫幾顆膠囊、剩下哪些照常畫圖釘。
+ *
+ * 純函式、不碰 Leaflet —— 圖釘那個 effect 跟色塊那個 effect 要看**同一份**結果，
+ * 各算各的就會出現「膠囊蓋著色塊、色塊的字卻還在」這種疊字畫面。
+ */
+function buildClusters(placed: Placed[], zoom: number): { clusters: Cluster[]; loose: Placed[] } {
+  // 放得夠大就不聚合，全部照常畫
+  if (zoom >= CLUSTER_ZOOM) return { clusters: [], loose: placed };
+
+  const clusters: Cluster[] = [];
+  const taken = new Set<Placed>();
+
+  for (const g of PIN_GROUPS) {
+    const members = placed.filter((x) => g.areas.includes(x.p.area));
+    if (members.length < MIN_CLUSTER) continue;
+    for (const x of members) taken.add(x);
+    clusters.push({
+      id: g.id,
+      name: g.name,
+      // 重心用實際圖釘現算，不寫死一個點 —— 寫死的話補了建案、或某一區的案子
+      // 補上座標之後，膠囊還是釘在舊位置，而且不會報錯。
+      lat: members.reduce((s, x) => s + x.lat, 0) / members.length,
+      lng: members.reduce((s, x) => s + x.lng, 0) / members.length,
+      members,
+    });
+  }
+
+  // ⚠️ 沒被任何 group 認領的（`ProjectArea` 加了新區、卻忘了加進 `PIN_GROUPS`），
+  //    一律退回畫成圖釘。擠一點但看得到，好過默默消失 —— 這頁的失敗模式一向是
+  //    「靜默失效」，寧可醜也不要不見。
+  return { clusters, loose: placed.filter((x) => !taken.has(x)) };
+}
 
 /** 銷售階段配色，跟清單的 badge 同一組 */
 const TONE: Record<ProjectStatus, { bg: string; ink: string }> = {
@@ -156,6 +234,24 @@ export default function LeafletMap({
   const [zoom, setZoom] = useState(CLUSTER_ZOOM);
   const [ring, setRing] = useState<Array<[number, number]>>([]);
 
+  /**
+   * 標得出位置的建案 ＋ 這個縮放層級下的聚合結果。
+   *
+   * 畫圖釘與畫色塊是兩個 effect，但**必須看同一份聚合結果** —— 各算各的就會
+   * 出現「膠囊蓋在色塊上、色塊自己的字也還在」的疊字畫面。
+   */
+  const placed = useMemo(
+    () =>
+      projects
+        .map((p) => {
+          const c = COORDS[p.id];
+          return c ? { p, lat: c.lat, lng: c.lng } : null;
+        })
+        .filter(Boolean) as Placed[],
+    [projects]
+  );
+  const { clusters, loose } = useMemo(() => buildClusters(placed, zoom), [placed, zoom]);
+
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     setFixMode(q.get("fix") === "1");
@@ -226,6 +322,8 @@ export default function LeafletMap({
     const map = mapRef.current;
     const L = LRef.current;
     if (!map || !L) return;
+    // 這個縮放層級下有膠囊的區名。同名的色塊要把自己的 tooltip 讓出來。
+    const capsuleNames = new Set(clusters.map((c) => c.name));
     const layers = ZONES.map((z) => {
       const poly = L.polygon(z.ring, {
         color: z.color,
@@ -242,10 +340,13 @@ export default function LeafletMap({
         interactive: false,
       }).addTo(map);
 
-      // ⚠️ 縮到聚合層級時，重劃區的名字改由那顆膠囊來寫。
-      //    兩個標籤都落在色塊正中央（膠囊釘在 MAP_CENTER，tooltip 在多邊形中心，
-      //    zoom 13 時只差 3～4 px），同時掛就是兩行字疊在一起糊成一團。
-      if (!(z.official && zoom < CLUSTER_ZOOM)) {
+      // ⚠️ 有同名膠囊蓋在上面時，這塊色塊的名字改由膠囊來寫。
+      //    兩個標籤都落在色塊正中央（膠囊釘在成員圖釘的重心，tooltip 在多邊形
+      //    中心，zoom 13 時只差 3～4 px），同時掛就是兩行字疊在一起糊成一團。
+      //
+      //    以名字比對而不是看 `z.official`：篩選後某一區只剩一案時就不會畫膠囊
+      //    （見 MIN_CLUSTER），這時色塊的字必須自己出現，不然那塊就變成無名色塊。
+      if (!capsuleNames.has(z.name)) {
         poly.bindTooltip(z.name, {
           permanent: true,
           direction: "center",
@@ -257,7 +358,7 @@ export default function LeafletMap({
     return () => {
       for (const l of layers) l.remove();
     };
-  }, [ready, zoom]);
+  }, [ready, zoom, clusters]);
 
   /* ── 校正模式：點地圖吐座標 ── */
   useEffect(() => {
@@ -292,34 +393,33 @@ export default function LeafletMap({
     for (const m of markersRef.current.values()) m.remove();
     markersRef.current.clear();
 
-    const placed = projects
-      .map((p) => {
-        const c = COORDS[p.id];
-        return c ? { p, lat: c.lat, lng: c.lng } : null;
-      })
-      .filter(Boolean) as Array<{ p: Project; lat: number; lng: number }>;
-
-    // 縮得太遠就收成一顆，點了才展開 —— 理由見 CLUSTER_ZOOM 的註解
-    if (zoom < CLUSTER_ZOOM && placed.length > 1) {
-      const cluster = L.marker([MAP_CENTER.lat, MAP_CENTER.lng], {
+    // 縮得太遠就一區收成一顆膠囊，點了才展開 —— 理由見 PIN_GROUPS 的註解。
+    // 沒被任何 group 認領的仍然照常畫圖釘（`loose`），不會消失。
+    for (const c of clusters) {
+      const cluster = L.marker([c.lat, c.lng], {
         // 這裡也不寫案數 —— 滑上去跳出來的字一樣算「顯示」
-        title: `${DISTRICT_NAME}，點開看區內建案`,
+        title: `${c.name}，點開看這一區的建案`,
         zIndexOffset: 800,
         icon: L.divIcon({
           className: styles.lmCluster,
-          html: DISTRICT_NAME,
+          html: c.name,
           iconSize: CLUSTER_SIZE,
           iconAnchor: [CLUSTER_SIZE[0] / 2, CLUSTER_SIZE[1] / 2],
         }),
       })
         .addTo(map)
-        // animate:false 的理由跟初始視野同一個（見上面那段註解）
-        .on("click", () => map.setView([MAP_CENTER.lat, MAP_CENTER.lng], 15, { animate: false }));
-      markersRef.current.set("__cluster__", cluster);
-      return;
+        // 展開到「這一區」而不是寫死的中心點＋zoom 15：點沙鹿那顆就該落在沙鹿。
+        // animate:false 的理由跟初始視野同一個（見上面那段註解）。
+        .on("click", () =>
+          map.fitBounds(
+            L.latLngBounds(c.members.map((m) => [m.lat, m.lng] as [number, number])),
+            { padding: [40, 40], maxZoom: 16, animate: false }
+          )
+        );
+      markersRef.current.set(`__cluster_${c.id}__`, cluster);
     }
 
-    for (const { p, lat, lng } of spread(placed)) {
+    for (const { p, lat, lng } of spread(loose)) {
       const tone = TONE[p.status];
       const on = p.id === selectedId;
       // 有星星的畫布是 34x38（見 PIN_VB），選中放大 1.28 倍
@@ -347,7 +447,9 @@ export default function LeafletMap({
     }
 
     // 初始視野在「建立地圖」那一步就框好了（含商圈），這裡只管畫圖釘。
-  }, [projects, selectedId, mine, onSelect, ready, zoom]);
+    // `projects` 與 `zoom` 不在相依裡是對的 —— 兩者都已經吃進 clusters／loose 了
+    // （見上面的 useMemo），再列一次只會多重畫一輪。
+  }, [clusters, loose, selectedId, mine, onSelect, ready]);
 
   /* ── 外部選了某個建案（例如點下方清單）就飛過去 ── */
   useEffect(() => {
