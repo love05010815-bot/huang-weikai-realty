@@ -139,9 +139,10 @@ export type AmenityGroup = {
 };
 
 export const DISTRICT_AMENITIES: AmenityGroup[] = [
-  { label: "超市賣場", items: [] },
-  { label: "醫療", items: [] },
-  { label: "公園藝文", items: [] },
+  { label: "超市賣場", items: ["全聯清水四維東店", "三井outlet", "清水第二市場"] },
+  { label: "醫療", items: ["梧棲童綜合醫院"] },
+  { label: "公園藝文", items: ["頂漁寮公園"] },
+  // 瑋凱 2026-08-27 給資料時這一類沒提，先留空（留空整類不顯示）
   { label: "熱門商圈", items: [] },
 ];
 
@@ -312,7 +313,11 @@ export const PROJECTS: Project[] = [
   // ───── 勝美建設 ─────
   {
     id: "shengmei-xinhengbin", name: "勝美新橫濱", builder: "勝美建設", area: "清水",
-    status: "completed", completion: "2018", units: 228, sources: ["owner", "housefeel"],
+    status: "completed", completion: "2018", units: 228,
+    // 瑋凱 2026-08-27：這種「某一案特別近」的機能寫在各案 note，
+    // 不要往整區共用的 DISTRICT_AMENITIES 加 —— 加了等於對 39 案都宣稱樓下有全家
+    note: "大樓下方就有全家超商",
+    sources: ["owner", "housefeel"],
   },
 
   // ───── 勝興建設 ─────
