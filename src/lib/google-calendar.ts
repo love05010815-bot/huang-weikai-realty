@@ -100,8 +100,34 @@ export function getAuthUrl(state: string): string {
   return `${AUTH_URL}?${p.toString()}`;
 }
 
-/** 用 authorization code 換 refresh token,存 DB。回成功與否。*/
-export async function exchangeCodeForToken(code: string): Promise<boolean> {
+/**
+ * Google 回的錯誤 body 通常是 `{"error":"invalid_grant","error_description":"..."}`。
+ * 只取 `error` 那個代碼,而且濾成安全字元 —— 這個值會被放進網址列給後台看,
+ * **不可以把 body 原文丟出去**(裡面可能夾帶 code 或其他不該外流的字串)。
+ */
+function pickGoogleError(body: string): string {
+  let raw = "";
+  try {
+    const j = JSON.parse(body) as { error?: unknown };
+    if (typeof j.error === "string") raw = j.error;
+  } catch {
+    raw = "";
+  }
+  const safe = raw.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 40);
+  return safe || "unknown";
+}
+
+/**
+ * 用 authorization code 換 refresh token,存 DB。
+ *
+ * 🔴 **2026-08-27 改成連「為什麼失敗」一起回傳,原本只回 true/false。**
+ *    Google 明明有講原因,卻只進 `console.error` —— 而 Vercel 的日誌**撈不到函數的
+ *    console 輸出**(實測 `--level error`、`-q google-cal`、`-x` 展開全部查無,只看得到
+ *    請求行)。結果就是線上綁失敗時,畫面只寫「請確認 OAuth 設定」,原因永久消失,
+ *    連查都沒得查。**凡是靠 console.error 當唯一診斷出口的地方,在這個專案等於沒有出口。**
+ *    回傳的 reason 只有錯誤代碼(`invalid_grant` 之類),不含 code、token 或任何機密。
+ */
+export async function exchangeCodeForToken(code: string): Promise<{ ok: boolean; reason: string }> {
   try {
     const res = await fetch(TOKEN_URL, {
       method: "POST",
@@ -115,19 +141,20 @@ export async function exchangeCodeForToken(code: string): Promise<boolean> {
       }),
     });
     if (!res.ok) {
-      console.error("[google-cal] code 換 token 失敗:", (await res.text()).slice(0, 200));
-      return false;
+      const body = (await res.text()).slice(0, 300);
+      console.error("[google-cal] code 換 token 失敗:", body);
+      return { ok: false, reason: `token_${res.status}_${pickGoogleError(body)}` };
     }
     const d = await res.json();
     if (!d.refresh_token) {
       console.error("[google-cal] 回應無 refresh_token(可能未帶 prompt=consent)");
-      return false;
+      return { ok: false, reason: "no_refresh_token" };
     }
     await setConfig("google_refresh_token", d.refresh_token);
-    return true;
+    return { ok: true, reason: "" };
   } catch (e) {
     console.error("[google-cal] exchangeCode 例外:", e);
-    return false;
+    return { ok: false, reason: "exception" };
   }
 }
 

@@ -37,7 +37,38 @@ type SearchParams = {
   status?: string;
   q?: string;
   google?: string;
+  /** 綁定失敗的原因代碼（2026-08-27 新增，由 /api/appointment/google/callback 帶回） */
+  why?: string;
 };
+
+/**
+ * 把 callback 帶回來的代碼翻成人話。
+ *
+ * 認得的就講清楚要怎麼修；認不得的照原樣顯示代碼就好 —— **不要吞掉**，
+ * 顯示一個看不懂的代碼，也遠好過顯示一句「請確認 OAuth 設定」然後什麼線索都沒有。
+ */
+function googleFailText(why?: string): string {
+  if (!why) return "原因不明（這次沒有帶回代碼）。";
+  if (why.startsWith("google_access_denied")) {
+    return "你在 Google 的同意畫面上按了取消，或這個帳號不在 OAuth「測試使用者」名單裡。";
+  }
+  if (why.startsWith("google_")) return "Google 在授權階段就拒絕了，沒有發出授權碼。";
+  if (why === "no_code") return "Google 沒有回傳授權碼。";
+  if (why === "no_refresh_token") {
+    return "Google 沒有給 refresh token。帳號先前已授權過而這次沒重新同意時會這樣，請到帳號的「第三方應用程式權限」移除本站後再綁一次。";
+  }
+  if (why.includes("invalid_grant")) {
+    return "授權碼無效或已用過（重整頁面、按了上一頁、或授權碼過期都會這樣）。請重新綁一次，一次走完不要重整。";
+  }
+  if (why.includes("invalid_client")) {
+    return "OAuth 用戶端 ID 或密鑰不對（線上的 AUTH_GOOGLE_ID／AUTH_GOOGLE_SECRET 與 Google 上的那組對不起來）。";
+  }
+  if (why.includes("redirect_uri_mismatch")) {
+    return "重新導向網址沒登記在這個 OAuth 用戶端裡。";
+  }
+  if (why === "exception") return "換 token 時發生例外（多半是連不到 Google 或資料庫寫入失敗）。";
+  return "換 token 失敗。";
+}
 
 type AsyncTruth = {
   label: string;
@@ -396,7 +427,17 @@ export default async function AppointmentsAdminPage({
         ) : null}
         {sp.google === "fail" ? (
           <div style={{ color: "#fb7185", marginBottom: 12, fontSize: 15 }}>
-            Google 日曆綁定失敗，請確認 OAuth 設定後重試。
+            Google 日曆綁定失敗：{googleFailText(sp.why)}
+            {sp.why ? (
+              <span style={{ color: "#9ca3af", fontSize: 13 }}>（代碼 {sp.why}）</span>
+            ) : null}
+          </div>
+        ) : null}
+        {/* 2026-08-27：state 對不上本來完全不顯示，畫面跟「沒按過」一模一樣 */}
+        {sp.google === "state_invalid" ? (
+          <div style={{ color: "#fb7185", marginBottom: 12, fontSize: 15 }}>
+            Google 日曆綁定失敗：授權過程被中斷（state 對不上）。多半是中途重整、用了舊分頁，
+            或授權花太久超過 10 分鐘。請重新按一次綁定，全程用同一個分頁走完。
           </div>
         ) : null}
 
