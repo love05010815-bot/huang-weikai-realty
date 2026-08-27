@@ -1844,34 +1844,22 @@
   /* 尺寸寫死並用 border-box，才跟 divIcon 的 iconSize/iconAnchor 對得起來 ——
      不然 padding 與外框會把實際尺寸撐大，膠囊就不是正對著市鎮中心的中心點。 */
   box-sizing: border-box;
-  width: 170px;
-  height: 42px;
+  /* 2026-08-27 拿掉左邊那顆數字徽章之後縮過：150x36 剛好裝得下
+     「梧棲清水市鎮重劃區」九個字（13px × 9 ≈ 117，加左右 padding 24 與外框 4）。
+     ⚠️ 改字或改字級就要重算，並同步 LeafletMap 的 CLUSTER_SIZE。 */
+  width: 150px;
+  height: 36px;
   display: flex !important;
   align-items: center;
   justify-content: center;
-  gap: 6px;
   padding: 4px 12px;
   border-radius: 999px;
   background: #01354d !important;
   border: 2px solid #fff !important;
   box-shadow: 0 2px 8px rgba(1, 53, 77, 0.35);
   color: #fff;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 800;
   white-space: nowrap;
   cursor: pointer;
-}
-
-.lmCluster span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: #ffc107;
-  color: #01354d;
-  font-size: 12px;
-  font-weight: 900;
 }

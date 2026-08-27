@@ -18,9 +18,11 @@
  * 3. **`?fix=1` 是座標校正模式**，網址加參數才出現。刻意在瀏覽器端讀網址 ——
  *    頁面一讀 server 的 searchParams 就會從靜態掉成每次請求渲染。
  *
- * 4. **`?zones=1` 是商圈界線繪製模式**。商圈沒有官方界線，`port-zones.ts` 裡那三塊
+ * 4. **`?zones=1` 是商圈界線繪製模式**。商圈沒有官方界線，`port-zones.ts` 裡沙鹿那五塊
  *    是照真實地標圈出來的示意範圍；系統擁有者要調的話用這個模式在地圖上依序點，
  *    畫面會吐出可以直接貼回 `port-zones.ts` 的 `ring` 陣列。
+ *    ⚠️ **畫出來的 ring 只能拿去換商圈。** 市鎮重劃區那塊是地政局公告的四至，
+ *    貼上去等於把官方界線改成手畫的 —— 細節見 `port-zones.ts` 檔頭。
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -38,10 +40,19 @@ import "leaflet/dist/leaflet.css";
  */
 const CLUSTER_ZOOM = 14;
 
-/** 聚合圖示：一個講清楚「這裡有幾案、點了會展開」的膠囊 */
-function clusterHtml(count: number) {
-  return `<span>${count}</span>台中港市鎮中心`;
-}
+/**
+ * 縮到聚合層級時，那顆膠囊上寫的字。
+ *
+ * **只寫名稱、不寫案數**（2026-08-27 系統擁有者指定，原本左邊掛一顆黃色數字徽章）——
+ * 跟圖例「只標名稱、不標戶數」同一個規矩。
+ *
+ * 這串字跟 `port-zones.ts` 裡那塊 official 色塊是**同一個地方的同一個名字**，
+ * 兩邊要一起改，不然縮放前後客戶會看到兩個名字。
+ */
+const DISTRICT_NAME = "梧棲清水市鎮重劃區";
+
+/** 膠囊尺寸。跟 `.lmCluster` 的 width/height 一致（那邊是 border-box） */
+const CLUSTER_SIZE: [number, number] = [150, 36];
 
 /** 銷售階段配色，跟清單的 badge 同一組 */
 const TONE: Record<ProjectStatus, { bg: string; ink: string }> = {
@@ -210,32 +221,41 @@ export default function LeafletMap({
     };
   }, []);
 
-  /* ── 商圈色塊（跟建案篩選無關，畫一次就好）── */
+  /* ── 範圍色塊（跟建案篩選無關）── */
   useEffect(() => {
     const map = mapRef.current;
     const L = LRef.current;
     if (!map || !L) return;
-    const layers = ZONES.map((z) =>
-      L.polygon(z.ring, {
+    const layers = ZONES.map((z) => {
+      const poly = L.polygon(z.ring, {
         color: z.color,
-        weight: 2,
+        // 官方界線畫粗虛線、示意商圈畫細實線 —— 客戶會把虛線那塊當成法定範圍，
+        // 兩種混在同一張圖上就一定要看得出差別（見 port-zones.ts 檔頭）
+        weight: z.official ? 3 : 2,
+        dashArray: z.official ? "7 5" : undefined,
         // 填色要夠淡，色塊是背景不是主角 —— 太濃會把上面的建案圖釘吃掉
         fillColor: z.color,
         fillOpacity: 0.16,
         // 色塊不吃滑鼠事件：不然想點色塊裡的圖釘會先點到色塊
         interactive: false,
-      })
-        .addTo(map)
-        .bindTooltip(z.name, {
+      }).addTo(map);
+
+      // ⚠️ 縮到聚合層級時，重劃區的名字改由那顆膠囊來寫。
+      //    兩個標籤都落在色塊正中央（膠囊釘在 MAP_CENTER，tooltip 在多邊形中心，
+      //    zoom 13 時只差 3～4 px），同時掛就是兩行字疊在一起糊成一團。
+      if (!(z.official && zoom < CLUSTER_ZOOM)) {
+        poly.bindTooltip(z.name, {
           permanent: true,
           direction: "center",
           className: styles.lmZoneLabel,
-        })
-    );
+        });
+      }
+      return poly;
+    });
     return () => {
       for (const l of layers) l.remove();
     };
-  }, [ready]);
+  }, [ready, zoom]);
 
   /* ── 校正模式：點地圖吐座標 ── */
   useEffect(() => {
@@ -280,14 +300,14 @@ export default function LeafletMap({
     // 縮得太遠就收成一顆，點了才展開 —— 理由見 CLUSTER_ZOOM 的註解
     if (zoom < CLUSTER_ZOOM && placed.length > 1) {
       const cluster = L.marker([MAP_CENTER.lat, MAP_CENTER.lng], {
-        title: `台中港市鎮中心，${placed.length} 個建案`,
+        // 這裡也不寫案數 —— 滑上去跳出來的字一樣算「顯示」
+        title: `${DISTRICT_NAME}，點開看區內建案`,
         zIndexOffset: 800,
         icon: L.divIcon({
           className: styles.lmCluster,
-          html: clusterHtml(placed.length),
-          // 跟 .lmCluster 的 width/height 一致（那邊是 border-box）
-          iconSize: [170, 42],
-          iconAnchor: [85, 21],
+          html: DISTRICT_NAME,
+          iconSize: CLUSTER_SIZE,
+          iconAnchor: [CLUSTER_SIZE[0] / 2, CLUSTER_SIZE[1] / 2],
         }),
       })
         .addTo(map)
