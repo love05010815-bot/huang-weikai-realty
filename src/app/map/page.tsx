@@ -31,8 +31,12 @@ import SiteNav from "@/app/_ui/SiteNav";
 const stats = projectStats();
 
 /**
- * 地圖上的示意商圈塊數（官方界線那塊不算）。寫死成「五塊」的話，
- * 之後 port-zones.ts 增減商圈，這句文案會默默對不上，而且不會報錯。
+ * 地圖上非官方界線的色塊數（官方那塊不算）。寫死成「五塊」的話，
+ * 之後 port-zones.ts 增減，這句文案會默默對不上，而且不會報錯。
+ *
+ * ⚠️ 2026-08-27 起這些**不全是沙鹿的商圈**了（多了梧棲市區，之後還會有清水市區），
+ *    所以下面那句文案已經把「沙鹿的」拿掉 —— 再加一塊非沙鹿的區域時，
+ *    只要確認文案沒有重新寫死區域名就好。
  */
 const LOCAL_ZONE_COUNT = ZONES.filter((z) => !z.official).length;
 
@@ -183,7 +187,7 @@ export default async function MapPage() {
               宣稱這裡有沙鹿建案。重劃區的資訊降級成下面那塊的一部分。 */}
           <h1 className={styles.title}>台中海線建案地圖・梧棲＋清水</h1>
           <p className={styles.lede}>
-            {`這裡整理了梧棲與清水的 ${stats.total} 個建案、合計 ${stats.units.toLocaleString("zh-TW")} 戶。地圖範圍是整個台中港生活圈 —— 除了核心的${DISTRICT.alias}重劃區，也畫出沙鹿的 ${LOCAL_ZONE_COUNT} 塊商圈範圍。`}
+            {`這裡整理了梧棲與清水的 ${stats.total} 個建案、合計 ${stats.units.toLocaleString("zh-TW")} 戶。地圖範圍是整個台中港生活圈 —— 除了核心的${DISTRICT.alias}重劃區，也畫出周邊 ${LOCAL_ZONE_COUNT} 塊生活圈範圍。`}
           </p>
 
           <p className={styles.bounds}>
