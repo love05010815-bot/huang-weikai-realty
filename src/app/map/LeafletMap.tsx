@@ -88,7 +88,7 @@ const CLUSTER_SIZE: [number, number] = [150, 36];
  *    垂直 140 遠大於 36，不會疊。**再加第三組之前先算一次這個距離。**
  */
 const PIN_GROUPS: ReadonlyArray<{ id: string; name: string; areas: readonly ProjectArea[] }> = [
-  { id: "shizheng", name: DISTRICT_NAME, areas: ["梧棲", "清水", "市鎮中心"] },
+  { id: "shizheng", name: DISTRICT_NAME, areas: ["梧棲", "清水"] },
   // { id: "shalu", name: "沙鹿", areas: ["沙鹿"] },
 ];
 

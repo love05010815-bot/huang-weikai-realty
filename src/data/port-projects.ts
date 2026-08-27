@@ -68,15 +68,12 @@ export const STATUS_LABEL: Record<ProjectStatus, string> = {
  * ⚠️ 商圈那四個目前**一個建案都沒有**（39 案全在重劃區內）。這是刻意留的空位 ——
  *    系統擁有者說之後會補商圈的建案。要補的時候把該案的 `area` 設成對應的值即可。
  *
- * ⚠️ 「市鎮中心」保留但**不再出現在篩選臉上**（系統擁有者 2026-08-27：不需要核心區這塊）。
- *    目前還有 3 案掛著它：佳泰琢閱、協勝港心、長虹天籟 —— 這 3 案現在只有「全部」看得到。
- *    等系統擁有者指定它們各自歸梧棲還是清水，再把 area 改掉、這個值就可以整個拿掉。
- *    **不要自己猜** —— area 這一欄來自他的建案總表，猜錯就是把位置標錯。
+ * 原本有個「市鎮中心」值，2026-08-27 系統擁有者拍板不要這一塊，掛著它的 3 案
+ * （佳泰琢閱、協勝港心、長虹天籟）**由他指定全部歸梧棲**，該值已整個拿掉。
  */
 export type ProjectArea =
   | "梧棲"
   | "清水"
-  | "市鎮中心"
   | "鹿寮"
   | "萬家福"
   | "沙鹿車站"
@@ -86,7 +83,6 @@ export type ProjectArea =
 export const AREA_LABEL: Record<ProjectArea, string> = {
   梧棲: "梧棲區",
   清水: "清水區",
-  市鎮中心: "市鎮中心核心",
   鹿寮: "鹿寮商圈",
   萬家福: "萬家福商圈",
   沙鹿車站: "沙鹿車站商圈",
@@ -280,7 +276,7 @@ export const PROJECTS: Project[] = [
 
   // ───── 佳泰建設 ─────
   {
-    id: "jiatai-zhuoyue", name: "佳泰琢閱", builder: "佳泰建設", area: "市鎮中心",
+    id: "jiatai-zhuoyue", name: "佳泰琢閱", builder: "佳泰建設", area: "梧棲",
     status: "presale", completion: "興建中", units: 467, sources: ["owner", "housefeel"],
   },
 
@@ -312,7 +308,7 @@ export const PROJECTS: Project[] = [
 
   // ───── 協勝建設 ─────
   {
-    id: "xiesheng-gangxin", name: "協勝港心", builder: "協勝建設", area: "市鎮中心",
+    id: "xiesheng-gangxin", name: "協勝港心", builder: "協勝建設", area: "梧棲",
     status: "presale", completion: "興建中", units: 231, sources: ["owner", "housefeel"],
   },
 
@@ -334,7 +330,7 @@ export const PROJECTS: Project[] = [
     sources: ["owner", "housefeel", "mrjoewang"],
   },
   {
-    id: "changhong-tianlai", name: "長虹天籟", builder: "長虹建設", area: "市鎮中心",
+    id: "changhong-tianlai", name: "長虹天籟", builder: "長虹建設", area: "梧棲",
     status: "presale", completion: "興建中", units: 373, sources: ["owner", "mrjoewang"],
   },
 
@@ -565,7 +561,6 @@ export function projectStats() {
     builders: builders.size,
     wuqi: PROJECTS.filter((p) => p.area === "梧棲").length,
     qingshui: PROJECTS.filter((p) => p.area === "清水").length,
-    core: PROJECTS.filter((p) => p.area === "市鎮中心").length,
     /** 地圖上標得出位置的案數 */
     located: PROJECTS.filter((p) => COORDS[p.id]).length,
     /** 其中位置可信（有巷弄門牌）的案數 */

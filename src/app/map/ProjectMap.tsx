@@ -39,10 +39,15 @@ const STATUS_FILL: Record<ProjectStatus, { fill: string; ink: string; stroke: st
   completed: { fill: "#A9D6A5", ink: "#1F4A22", stroke: "#8ABF86" },
 };
 
-/** 三個區塊在畫布上的範圍。清水在北、梧棲在南，核心區夾在中間 */
+/**
+ * 兩個區塊在畫布上的範圍。清水在北、梧棲在南。
+ *
+ * ⚠️ 這支是**死程式碼**（`page.tsx` 註明已被 ProjectExplorer 取代，沒有人 import）。
+ *    2026-08-27 拿掉 ProjectArea 的「市鎮中心」時順手讓它編得過而已，沒有重新排版。
+ *    真要復活這張圖，y/h 要重算 —— 中間那條被拿掉後版面會空一塊。
+ */
 const ZONES: Array<{ key: ProjectArea; y: number; h: number; tint: string }> = [
   { key: "清水", y: 96, h: 300, tint: "#EDF4FA" },
-  { key: "市鎮中心", y: 412, h: 140, tint: "#FBF3E4" },
   { key: "梧棲", y: 568, h: 320, tint: "#F1F7F0" },
 ];
 

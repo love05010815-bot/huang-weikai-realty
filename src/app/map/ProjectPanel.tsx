@@ -179,7 +179,6 @@ export default function ProjectPanel({
           ["all", `全區（${stats.total}）`],
           ["梧棲", `梧棲區（${stats.wuqi}）`],
           ["清水", `清水區（${stats.qingshui}）`],
-          ["市鎮中心", `核心區（${stats.core}）`],
         ] as Array<[AreaFilter, string]>).map(([key, label]) => (
           <button
             key={key}
