@@ -35,6 +35,7 @@ import {
   SOURCES,
   STATUS_LABEL,
   filledAmenities,
+  AREA_FILTERS,
   houseAge,
   projectStats,
   type Project,
@@ -48,7 +49,6 @@ import LeafletMap from "./LeafletMap";
 import PhotoCarousel from "../listings/PhotoCarousel";
 import styles from "./Map.module.css";
 
-type StatusFilter = "all" | ProjectStatus;
 type AreaFilter = "all" | ProjectArea;
 
 /**
@@ -135,7 +135,6 @@ export default function ProjectExplorer({
 }: {
   listings?: Record<string, ProjectListing[]>;
 }) {
-  const [status, setStatus] = useState<StatusFilter>("all");
   const [area, setArea] = useState<AreaFilter>("all");
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -151,10 +150,15 @@ export default function ProjectExplorer({
     [listings]
   );
 
+  /** 每個區域各有幾案。商圈現在都是 0 —— 照實顯示，不要藏 */
+  const areaCounts = useMemo(() => {
+    const m: Partial<Record<ProjectArea, number>> = {};
+    for (const p of PROJECTS) m[p.area] = (m[p.area] ?? 0) + 1;
+    return m;
+  }, []);
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = PROJECTS.filter((p) => {
-      if (status !== "all" && p.status !== status) return false;
       if (area !== "all" && p.area !== area) return false;
       if (!q) return true;
       return (
@@ -205,7 +209,7 @@ export default function ProjectExplorer({
       const byUnits = (b.units ?? 0) - (a.units ?? 0);
       return byUnits !== 0 ? byUnits : a.name.localeCompare(b.name, "zh-Hant");
     });
-  }, [status, area, query]);
+  }, [area, query]);
 
   const selected = useMemo(
     () => PROJECTS.find((p) => p.id === selectedId) ?? null,
@@ -222,24 +226,6 @@ export default function ProjectExplorer({
 
       {/* ── 篩選 ── */}
       <div className={styles.filterBar}>
-        <div className={styles.chips} role="group" aria-label="依銷售階段篩選">
-          {([
-            ["all", `全部（${stats.total}）`],
-            ["presale", `預售中（${stats.presale}）`],
-            ["newly", `新成屋（${stats.newly}）`],
-            ["completed", `成屋（${stats.completed}）`],
-          ] as Array<[StatusFilter, string]>).map(([k, label]) => (
-            <button
-              key={k}
-              type="button"
-              className={status === k ? styles.chipOn : styles.chip}
-              onClick={() => setStatus(k)}
-              aria-pressed={status === k}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
 
         <label className={styles.search}>
           <span className={styles.srOnly}>搜尋建案或建商</span>
@@ -253,21 +239,32 @@ export default function ProjectExplorer({
         </label>
       </div>
 
-      <div className={styles.chips} role="group" aria-label="依位置篩選">
-        {([
-          ["all", `全區（${stats.total}）`],
-          ["梧棲", `梧棲區（${stats.wuqi}）`],
-          ["清水", `清水區（${stats.qingshui}）`],
-          ["市鎮中心", `核心區（${stats.core}）`],
-        ] as Array<[AreaFilter, string]>).map(([k, label]) => (
+      {/* ── 篩選：一排，依區域（2026-08-27 系統擁有者指定，原本上面還有一排銷售階段）──
+
+          ⚠️ 沙鹿那四個商圈目前案數都是 0（39 案全在重劃區內），這是刻意留的空位，
+             系統擁有者說之後會補商圈的建案。**不要因為現在是 0 就把它們藏起來** ——
+             藏了他補完資料會找不到臉在哪。案數照實顯示，點下去有專屬的空狀態文字。
+
+          ⚠️ 「核心區」不在這排（系統擁有者：不需要核心區這塊）。還掛著那個值的 3 案
+             目前只有「全部」看得到，詳見 port-projects.ts 的 ProjectArea 註解。 */}
+      <div className={styles.chips} role="group" aria-label="依區域篩選">
+        <button
+          type="button"
+          className={area === "all" ? styles.chipOn : styles.chip}
+          onClick={() => setArea("all")}
+          aria-pressed={area === "all"}
+        >
+          {`全部（${stats.total}）`}
+        </button>
+        {AREA_FILTERS.map(({ value, label }) => (
           <button
-            key={k}
+            key={value}
             type="button"
-            className={area === k ? styles.chipOn : styles.chip}
-            onClick={() => setArea(k)}
-            aria-pressed={area === k}
+            className={area === value ? styles.chipOn : styles.chip}
+            onClick={() => setArea(value)}
+            aria-pressed={area === value}
           >
-            {label}
+            {`${label}（${areaCounts[value] ?? 0}）`}
           </button>
         ))}
       </div>
@@ -306,8 +303,13 @@ export default function ProjectExplorer({
             <p className={styles.lmNote}>
               {/* 不要寫「資訊會出現在下方／右邊」—— 桌機在右、手機在下，
                   寫死方位一定有一半的人被誤導 */}
-              {`地圖上有 ${rows.length} 個建案。點大樓圖示看建案資訊與我的在售物件；` +
-                "縮小到看整個生活圈時，建案會收成一顆藍色膠囊，點它就展開。"}
+              {rows.length === 0
+                ? // 選到還沒有建案的商圈時，講清楚是「這一區還沒有」，
+                  // 不要讓畫面看起來像壞掉。地圖色塊仍然在，客戶還是看得到位置。
+                  "這一區目前沒有我在追蹤的建案。地圖上的色塊還在，可以先看看位置；" +
+                  "想找這一帶的房子直接跟我說，我手上不一定有掛在網站上。"
+                : `地圖上有 ${rows.length} 個建案。點大樓圖示看建案資訊與我的在售物件；` +
+                  "縮小到看整個生活圈時，建案會收成一顆藍色膠囊，點它就展開。"}
             </p>
             {/* ⚠️ 這行不可以拿掉。商圈沒有官方界線，色塊是照地標圈出來的示意範圍，
                 不講清楚就等於對外發表沒查證過的界線 —— 這個專案 8/21 已經因為
