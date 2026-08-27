@@ -309,7 +309,7 @@ export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
                 ))}
               </select>
               <div className={styles.hint} style={{ color: CIS.textMute }}>
-                前台是分成兩區顯示的，選錯就會出現在另一區。
+                前台側欄的「影片類別」照這個分，選錯就會被歸到另一類。
               </div>
             </div>
 

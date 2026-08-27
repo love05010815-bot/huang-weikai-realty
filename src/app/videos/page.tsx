@@ -22,13 +22,13 @@ import vid from "./videos.module.css";
 import VideoLibrary from "./VideoLibrary";
 
 export const metadata: Metadata = {
-  title: "影音專區｜台中海線房仲黃瑋凱｜買屋知識與房屋開箱",
+  title: "影音專區｜台中海線房仲黃瑋凱｜房產知識、生活知識與房屋開箱",
   description:
-    "台中海線房仲黃瑋凱自製影音。知識型影片講買賣觀念、稅費與貸款；房屋開箱帶你實際走一遍屋內。沙鹿、梧棲、清水、龍井。",
+    "台中海線房仲黃瑋凱自製影音。房產知識講買賣觀念、稅費與貸款；生活知識談居家維護與周邊生活機能；房屋開箱帶你實際走一遍屋內。沙鹿、梧棲、清水、龍井。",
   alternates: { canonical: `${SITE_URL}/videos` },
   openGraph: {
     title: "影音專區｜台中海線房仲黃瑋凱",
-    description: "買屋知識與房屋開箱，看完再決定。",
+    description: "房產知識、生活知識與房屋開箱，看完再決定。",
     url: `${SITE_URL}/videos`,
     type: "website",
   },

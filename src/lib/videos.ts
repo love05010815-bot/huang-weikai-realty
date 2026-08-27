@@ -1,13 +1,20 @@
 /**
  * 🎬 影音 —— 系統擁有者自己拍的影片
  *
- * 分兩類（系統擁有者指定）：
- *   knowledge  知識型     買賣觀念、稅務、貸款、市場分析那種
+ * 分三類（系統擁有者指定）：
+ *   knowledge  房產知識   買賣觀念、稅務、貸款、市場分析那種
+ *   life       生活知識   居家維護、裝潢、社區與周邊生活機能那種
  *   tour       房屋開箱   實際帶看某一間房子
+ *
+ * ⚠️ 2026-08-27 把原本的「知識型」拆成「房產知識」與「生活知識」。
+ *    資料庫的 key **刻意維持 `knowledge`** —— 現有兩支都是稅務題材，本來就屬房產知識。
+ *    改 key 的話得多跑一次 UPDATE，漏掉的那幾筆會變成前台認不得的分類（會被當成
+ *    `knowledge` 吞掉、不會報錯），所以只換對外名稱、不動資料。
+ *    以後真要拆歷史影片，是他自己去後台一支一支改分類，不是寫 migration。
  *
  * ## 為什麼是自己一筆一筆加，不是從 YouTube 頻道自動抓
  *
- * 分類這件事 YouTube 那邊沒有 —— 頻道上不會告訴你哪支是知識型、哪支是開箱。
+ * 分類這件事 YouTube 那邊沒有 —— 頻道上不會告訴你哪支是房產知識、哪支是生活知識、哪支是開箱。
  * 就算自動抓進來，還是得手動分一次類，那不如直接貼網址。
  * （要做自動帶入的話 YouTube 授權已經接好了，見 `src/lib/youtube.ts`，
  *   但那是另一件事，不要為了它把這個表設計得更複雜。）
@@ -45,15 +52,20 @@
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 
-export const VIDEO_CATEGORIES = ["knowledge", "tour"] as const;
+export const VIDEO_CATEGORIES = ["knowledge", "life", "tour"] as const;
 export type VideoCategory = (typeof VIDEO_CATEGORIES)[number];
 
 /** 分類的對外名稱與說明。要改文案只改這裡，前後台一起變。 */
 export const CATEGORY_META: Record<VideoCategory, { label: string; eyebrow: string; desc: string }> = {
   knowledge: {
-    label: "知識型",
-    eyebrow: "KNOWLEDGE",
+    label: "房產知識",
+    eyebrow: "PROPERTY",
     desc: "買賣觀念、稅費、貸款、市場動向。看完再決定，比聽人說更踏實。",
+  },
+  life: {
+    label: "生活知識",
+    eyebrow: "LIFE",
+    desc: "搬進去以後的事。居家維護、裝潢、社區相處與周邊生活機能，在地人的角度。",
   },
   tour: {
     label: "房屋開箱",
@@ -344,7 +356,7 @@ function toRecord(row: Row): VideoRecord {
   return {
     id: row.id,
     // 資料庫裡萬一有不認得的分類（手改過、或以後拿掉某一類），
-    // 一律當知識型，不要讓整頁掛掉
+    // 一律當房產知識，不要讓整頁掛掉
     category: isVideoCategory(row.category) ? row.category : "knowledge",
     title: row.title,
     url: row.url,

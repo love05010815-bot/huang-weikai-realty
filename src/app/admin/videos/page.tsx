@@ -14,7 +14,7 @@ import { adminEmails } from "@/auth";
 import { CIS } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
 import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
-import { CATEGORY_META, listAllVideos, type VideoRecord } from "@/lib/videos";
+import { CATEGORY_META, VIDEO_CATEGORIES, listAllVideos, type VideoRecord } from "@/lib/videos";
 import VideosManager from "./VideosManager";
 import styles from "@/app/admin/listings/listings-admin.module.css";
 
@@ -39,8 +39,13 @@ export default async function VideosAdminPage() {
   }
 
   const activeCount = rows.filter((r) => r.status === "active").length;
-  const knowledgeCount = rows.filter((r) => r.status === "active" && r.category === "knowledge").length;
-  const tourCount = rows.filter((r) => r.status === "active" && r.category === "tour").length;
+  // ⚠️ 照 VIDEO_CATEGORIES 跑，不要一類一行手寫 —— 以後加一個分類，
+  //    手寫的版本會默默少一格統計，而且不會有人告訴你。
+  const perCategory: [string, number, string][] = VIDEO_CATEGORIES.map((c) => [
+    CATEGORY_META[c].label,
+    rows.filter((r) => r.status === "active" && r.category === c).length,
+    CIS.textSub,
+  ]);
   // 認不出 YouTube ID 的：卡片不能內嵌播放，只能連出去。不是錯誤，但值得知道有幾支。
   const externalCount = rows.filter((r) => r.status === "active" && !r.videoId).length;
   const pinnedCount = rows.filter((r) => r.status === "active" && r.pinned).length;
@@ -83,12 +88,11 @@ export default async function VideosAdminPage() {
         ) : null}
 
         <div className={styles.summaryRow}>
-          {[
+          {([
             ["上架中", activeCount, "#4ade80"],
-            [CATEGORY_META.knowledge.label, knowledgeCount, CIS.textSub],
-            [CATEGORY_META.tour.label, tourCount, CIS.textSub],
+            ...perCategory,
             ["置頂中", pinnedCount, pinnedCount > 0 ? "#fbbf24" : CIS.textMute],
-          ].map(([label, value, color]) => (
+          ] as [string, number, string][]).map(([label, value, color]) => (
             <div
               key={String(label)}
               className={styles.summary}

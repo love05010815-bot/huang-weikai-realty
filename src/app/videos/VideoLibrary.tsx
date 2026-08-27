@@ -110,11 +110,13 @@ export default function VideoLibrary({
     }
   }
 
-  const counts: Record<Filter, number> = {
-    all: videos.length,
-    knowledge: videos.filter((v) => v.category === "knowledge").length,
-    tour: videos.filter((v) => v.category === "tour").length,
-  };
+  // ⚠️ 照 VIDEO_CATEGORIES 算出來，不要一類一行手寫 ——
+  //    以後加一個分類，手寫的版本會少一個數字，而且側欄那顆按鈕會顯示 undefined。
+  const counts = useMemo(() => {
+    const result: Record<string, number> = { all: videos.length };
+    for (const c of VIDEO_CATEGORIES) result[c] = videos.filter((v) => v.category === c).length;
+    return result;
+  }, [videos]);
 
   return (
     <div className={styles.layout}>
