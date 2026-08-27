@@ -1,5 +1,9 @@
 /**
- * /map — 台中港市鎮中心（梧棲＋清水重劃區）區域頁
+ * /map — 台中海線建案地圖（台中港生活圈：梧棲＋清水建案，商圈範圍畫到沙鹿）
+ *
+ * ⚠️ **可見文案的範圍是「生活圈」，但 metadata（TITLE／DESCRIPTION／keywords／og／
+ *    twitter）刻意仍然是「台中港市鎮中心重劃區」** —— 那是房產網站最常用的搜尋詞，
+ *    改掉會掉搜尋。所以「H1 寫海線、<title> 寫市鎮中心」是刻意的，不是漏改。
  *
  * 主體是 `ProjectExplorer.tsx`（地圖＋篩選＋詳情＋在售物件，2026-08-23 由
  * 「地圖」與「建案總覽」兩層合併而成）。建案資料在 src/data/port-projects.ts。
@@ -18,12 +22,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { OWNER, SITE_URL } from "@/config/owner";
 import { DISTRICT, PROJECTS, SOURCES, projectStats } from "@/data/port-projects";
+import { ZONES } from "@/data/port-zones";
 import { getMapListingsByProject } from "@/lib/map-listings";
 import ProjectExplorer, { type ProjectListing } from "./ProjectExplorer";
 import styles from "./Map.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
 
 const stats = projectStats();
+
+/**
+ * 地圖上的示意商圈塊數（官方界線那塊不算）。寫死成「五塊」的話，
+ * 之後 port-zones.ts 增減商圈，這句文案會默默對不上，而且不會報錯。
+ */
+const LOCAL_ZONE_COUNT = ZONES.filter((z) => !z.official).length;
 
 const TITLE = `台中港市鎮中心建案總覽｜梧棲・清水重劃區 ${stats.total} 個建案一次看｜台中海線房仲${OWNER.name}`;
 const DESCRIPTION = `台中港市鎮中心重劃區（橫跨梧棲區與清水區）${stats.total} 個建案總覽：遠雄幸福成、聯悅馨、長虹天擎、聯虹鉑玥、遠雄之星系列等，可依行政區、預售／成屋與建商篩選，並標示規模與銷售階段。由台中海線房仲${OWNER.name}整理自公開資訊。`;
@@ -165,19 +176,25 @@ export default async function MapPage() {
       <section className={styles.hero}>
         <div className={styles.container}>
           <span className={styles.eyebrow}>台中海線・區域研究</span>
-          <h1 className={styles.title}>台中港市鎮中心重劃區・梧棲＋清水</h1>
+          {/* ⚠️ 標題講的是「整個生活圈」，不是重劃區 —— 2026-08-26 起地圖範圍已擴大到
+              沙鹿的商圈，2026-08-27 系統擁有者指定把這塊的名稱改過來。
+              建案本身仍然只有梧棲＋清水（沙鹿是商圈色塊、沒有建案），
+              所以標題寫「梧棲＋清水」而不是把沙鹿也列進去 —— 列進去等於對客戶
+              宣稱這裡有沙鹿建案。重劃區的資訊降級成下面那塊的一部分。 */}
+          <h1 className={styles.title}>台中海線建案地圖・梧棲＋清水</h1>
           <p className={styles.lede}>
-            {`重劃區面積 ${DISTRICT.areaHa} 公頃，${DISTRICT.completedYear}竣工，橫跨梧棲與清水兩個行政區。這裡整理了區內 ${stats.total} 個建案、合計 ${stats.units.toLocaleString("zh-TW")} 戶。`}
+            {`這裡整理了梧棲與清水的 ${stats.total} 個建案、合計 ${stats.units.toLocaleString("zh-TW")} 戶。地圖範圍是整個台中港生活圈 —— 除了核心的${DISTRICT.alias}重劃區，也畫出沙鹿的 ${LOCAL_ZONE_COUNT} 塊商圈範圍。`}
           </p>
 
           <p className={styles.bounds}>
             <b>重劃區四至：</b>
             {DISTRICT.bounds}
             <br />
-            <b>涵蓋地段：</b>
+            <b>重劃區涵蓋地段：</b>
             {`梧棲區${DISTRICT.sections.梧棲區.join("、")}，清水區${DISTRICT.sections.清水區.join("、")}`}
             <br />
             <span className={styles.boundsNote}>
+              {`重劃區本身 ${DISTRICT.areaHa} 公頃、${DISTRICT.completedYear}竣工，橫跨梧棲與清水兩個行政區。`}
               在地習慣把它拆成「梧棲重劃區」與「清水重劃區」兩半來稱呼，但那是
               <b>同一個重劃案</b>跨兩個行政區，不是兩個重劃區。
             </span>
@@ -192,7 +209,7 @@ export default async function MapPage() {
               留著只會讓人以為下面還有 02。2026-08-23 拿掉。 */}
           <h2 className={styles.layerTitle}>建案地圖</h2>
           <p className={styles.layerDesc}>
-            {`區內 ${stats.total} 個建案，位置由${OWNER.alias}本人逐一標定。點大樓圖示看建案資訊，我有物件在售的建案會一併列出物件。`}
+            {`梧棲與清水的 ${stats.total} 個建案，位置由${OWNER.alias}本人逐一標定。點大樓圖示看建案資訊，我有物件在售的建案會一併列出物件。`}
           </p>
 
           <ProjectExplorer listings={listings} />
