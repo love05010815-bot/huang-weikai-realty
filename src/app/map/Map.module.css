@@ -390,6 +390,23 @@
   word-break: break-word;
 }
 
+/* 周邊機能：一類一行（超市賣場 / 醫療 / 公園藝文 / 熱門商圈）。
+   分類名用 block 撐成獨立一行，項目接在後面，長清單才不會擠成一團。 */
+.amenityGroup {
+  display: block;
+  font-weight: 500;
+}
+
+.amenityGroup + .amenityGroup {
+  margin-top: 5px;
+}
+
+.amenityGroup b {
+  color: var(--muted);
+  font-weight: 700;
+  margin-right: 6px;
+}
+
 .sub {
   display: block;
   font-weight: 500;

@@ -100,6 +100,14 @@ export type Project = {
   floors?: string;
   /** 基地面積（坪） */
   siteAreaPing?: number;
+  /**
+   * 公設比，原文照建商公開資料寫，例如「約 32%」「31～34%」。
+   *
+   * ⚠️ **沒有確切數字就留空，不要抓一個大概填進去。** 公設比是客戶拿來算
+   *    實際使用坪數的依據，寫錯就是廣告不實。同一個建案不同戶型也會有落差，
+   *    所以用字串存區間，不是單一數字。
+   */
+  publicRatio?: string;
   /** 資料出處，對應 SOURCES 的 key */
   sources: string[];
   /** 自己的備註，會顯示在詳情 */
@@ -107,6 +115,91 @@ export type Project = {
 };
 
 /** 資料出處。畫面會把這些列成參考來源 */
+/* ─────────────── 周邊生活機能 ─────────────── */
+
+/**
+ * 周邊生活機能。**整個重劃區共用一份，不是每案一份** ——
+ * 39 個建案全部落在同一個 114 公頃的重劃區內（約 1 公里見方），
+ * 走路或三分鐘車程到的超市、醫療、公園幾乎是同一批。做成每案一份的話，
+ * 會變成 39 份九成相同的清單，改一間店要改 39 個地方，一定會漏。
+ *
+ * 真的有某案特別近或特別遠，寫在那一案的 `note` 裡，不要為此拆成每案一份。
+ *
+ * ⚠️ **沒有實際查證過的不要寫。** 這是給客戶看的生活機能：寫到已經收掉的店、
+ *    或把距離講得比實際近，都是廣告不實。系統擁有者是海線在地房仲，
+ *    這份以他提供的為準，不要拿網路搜尋結果填進來。
+ *
+ * `items` 是空陣列的分類，畫面上整個不顯示（不會出現「醫療：」後面空白）。
+ */
+export type AmenityGroup = {
+  /** 分類標題，例如「超市賣場」 */
+  label: string;
+  /** 這一類有哪些。留空 = 還沒填，畫面不顯示這一類 */
+  items: string[];
+};
+
+export const DISTRICT_AMENITIES: AmenityGroup[] = [
+  { label: "超市賣場", items: [] },
+  { label: "醫療", items: [] },
+  { label: "公園藝文", items: [] },
+  { label: "熱門商圈", items: [] },
+];
+
+/** 有填東西的分類才回傳 —— 四類全空時回空陣列，畫面就整段不顯示 */
+export function filledAmenities(): AmenityGroup[] {
+  return DISTRICT_AMENITIES.filter((g) => g.items.length > 0);
+}
+
+/* ─────────────── 屋齡 ─────────────── */
+
+/**
+ * 從 `completion` 算屋齡。**不另外存屋齡欄位** —— 存了每年就要全部改一次，
+ * 一定會有人忘記，然後網站上就掛著去年的屋齡。改成每次顯示時現算。
+ *
+ * `completion` 的寫法很雜（39 案實際出現過的）：
+ *   「2017」單一年、「約 2025」概數、「約 2016～17」區間、「興建中」沒有年份。
+ *
+ * 區間的處理：兩個年份都算，回傳「約 9～10 年」。**刻意不取比較晚的那年**，
+ * 取晚的會讓屋齡看起來比較新，那是往對自己有利的方向取巧。
+ */
+export function houseAge(completion: string, now = new Date()): string | null {
+  const thisYear = now.getFullYear();
+
+  // 「2016～17」的 17 要補成 2017，直接當 17 年會變成西元 17 年
+  const m = completion.match(/(\d{4})\s*[～~\-–]\s*(\d{2,4})/);
+  const years: number[] = [];
+  if (m) {
+    const from = Number(m[1]);
+    const rawTo = m[2];
+    const to = rawTo.length === 4 ? Number(rawTo) : Math.floor(from / 100) * 100 + Number(rawTo);
+    years.push(from, to);
+  } else {
+    const one = completion.match(/(\d{4})/);
+    if (one) years.push(Number(one[1]));
+  }
+
+  // 「興建中」這種沒有年份的，不要硬算
+  if (years.length === 0) return null;
+
+  const approx = completion.includes("約");
+  const ages = years.map((y) => thisYear - y);
+
+  // 完工年還沒到 —— 講「屋齡 -1 年」很怪，直接說還沒完工
+  if (ages.every((a) => a < 0)) return null;
+
+  const lo = Math.min(...ages);
+  const hi = Math.max(...ages);
+  const prefix = approx ? "約 " : "";
+
+  // 今年才完工的算 0 年，寫「屋齡 0 年」不像話
+  // 「未滿」本身就是概數了，前面再加「約」會變成「約未滿 1 年」，不通順
+  if (hi === 0) return "未滿 1 年";
+  if (lo === hi) return `${prefix}${hi} 年`;
+  // 區間但低標是 0（例：約 2026～27，今年 2026）
+  if (lo <= 0) return `未滿 ${hi + 1} 年`;
+  return `${prefix}${lo}～${hi} 年`;
+}
+
 export const SOURCES: Record<string, { label: string; url: string }> = {
   owner: {
     label: "黃瑋凱｜台中海線在地建案總表",

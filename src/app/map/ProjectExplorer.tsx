@@ -34,6 +34,8 @@ import {
   PROJECTS,
   SOURCES,
   STATUS_LABEL,
+  filledAmenities,
+  houseAge,
   projectStats,
   type Project,
   type ProjectArea,
@@ -382,10 +384,10 @@ export default function ProjectExplorer({
                     <dd>{`${fmt(selected.units)} 戶`}</dd>
                   </div>
                 )}
-                {selected.statusNote && (
+                {houseAge(selected.completion) && (
                   <div>
-                    <dt>銷售狀態</dt>
-                    <dd>{selected.statusNote}</dd>
+                    <dt>屋齡</dt>
+                    <dd>{houseAge(selected.completion)}</dd>
                   </div>
                 )}
                 {selected.streets && (
@@ -402,8 +404,14 @@ export default function ProjectExplorer({
                 )}
                 {selected.floors && (
                   <div>
-                    <dt>樓層</dt>
+                    <dt>樓高</dt>
                     <dd>{selected.floors}</dd>
+                  </div>
+                )}
+                {selected.publicRatio && (
+                  <div>
+                    <dt>公設比</dt>
+                    <dd>{selected.publicRatio}</dd>
                   </div>
                 )}
                 {selected.siteAreaPing != null && (
@@ -416,6 +424,19 @@ export default function ProjectExplorer({
                   <div>
                     <dt>備註</dt>
                     <dd>{selected.note}</dd>
+                  </div>
+                )}
+                {filledAmenities().length > 0 && (
+                  <div>
+                    <dt>周邊機能</dt>
+                    <dd>
+                      {filledAmenities().map((g) => (
+                        <span key={g.label} className={styles.amenityGroup}>
+                          <b>{g.label}</b>
+                          {g.items.join("、")}
+                        </span>
+                      ))}
+                    </dd>
                   </div>
                 )}
                 <div>
