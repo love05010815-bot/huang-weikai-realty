@@ -229,10 +229,12 @@ export default function LeafletMap({
     const layers = ZONES.map((z) => {
       const poly = L.polygon(z.ring, {
         color: z.color,
-        // 官方界線畫粗虛線、示意商圈畫細實線 —— 客戶會把虛線那塊當成法定範圍，
-        // 兩種混在同一張圖上就一定要看得出差別（見 port-zones.ts 檔頭）
+        // 官方界線畫粗框、示意商圈畫細框 —— 客戶會把界線清楚那塊當成法定範圍，
+        // 兩種混在同一張圖上就要看得出差別（見 port-zones.ts 檔頭）
+        //
+        // ⚠️ 2026-08-27 系統擁有者指定：官方界線改回實線，不要 dashArray。
+        //    所以現在兩種的差別只剩粗細與顏色，別自己把虛線加回來。
         weight: z.official ? 3 : 2,
-        dashArray: z.official ? "7 5" : undefined,
         // 填色要夠淡，色塊是背景不是主角 —— 太濃會把上面的建案圖釘吃掉
         fillColor: z.color,
         fillOpacity: 0.16,
