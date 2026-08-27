@@ -74,6 +74,10 @@ function ContactRow({ icon, label, href }: { icon: React.ReactNode; label: strin
 }
 
 function SocialBtn({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
+  // 網址還沒填就整顆不要畫 —— href="" 的 <a> 點下去是「重新整理本頁」，
+  // 客戶會以為連結壞掉。owner.ts 的註解一直說會自動隱藏，但這裡以前沒做。
+  if (!href) return null;
+
   return (
     <a
       href={href}
