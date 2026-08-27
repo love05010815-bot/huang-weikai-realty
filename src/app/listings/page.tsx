@@ -12,6 +12,7 @@ import type { Metadata } from "next";
 import { OWNER, SITE_URL } from "@/config/owner";
 import { getPublicListings } from "@/lib/listings";
 import styles from "../home.module.css";
+import SiteNav from "@/app/_ui/SiteNav";
 import lst from "./listings.module.css";
 import FeaturedTitle from "./FeaturedTitle";
 import PhotoCarousel from "./PhotoCarousel";
@@ -75,6 +76,7 @@ export default async function ListingsPage() {
               線上預約
             </Link>
           </div>
+          <SiteNav variant="sub" />
         </div>
       </header>
 

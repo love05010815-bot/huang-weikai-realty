@@ -12,6 +12,7 @@ import type { Metadata } from "next";
 import { OWNER, SITE_URL } from "@/config/owner";
 import { INTRO_LINES, AREAS, YEARS } from "@/config/profile";
 import styles from "../home.module.css";
+import SiteNav from "@/app/_ui/SiteNav";
 
 const TITLE = `關於瑋凱｜台中海線房仲${OWNER.name}｜十五年不動產經驗`;
 const DESCRIPTION = `${OWNER.name}，${OWNER.company}梧棲新市鎮旗艦店副店長。二十歲入行、十五年不動產經驗，連續三年年度千萬經紀人。深耕台中海線沙鹿、梧棲、清水、龍井，陪您把買房賣房的每個決定都做對。`;
@@ -64,6 +65,7 @@ export default function AboutPage() {
               線上預約
             </Link>
           </div>
+          <SiteNav variant="sub" />
         </div>
       </header>
 

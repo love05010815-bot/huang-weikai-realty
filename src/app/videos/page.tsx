@@ -18,6 +18,7 @@ import { OWNER, SITE_URL } from "@/config/owner";
 import { getPublicVideos } from "@/lib/videos";
 import { getVideoViewCounts } from "@/lib/video-views";
 import styles from "@/app/home.module.css";
+import SiteNav from "@/app/_ui/SiteNav";
 import vid from "./videos.module.css";
 import VideoLibrary from "./VideoLibrary";
 
@@ -65,6 +66,7 @@ export default async function VideosPage() {
               線上預約
             </Link>
           </div>
+          <SiteNav variant="sub" />
         </div>
       </header>
 

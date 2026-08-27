@@ -1,0 +1,159 @@
+/* 📱 手機版導覽選單的樣式。脈絡見 SiteNav.tsx 的檔頭。
+
+   ⚠️ 這支**故意自己帶樣式**，不寫進 home.module.css。
+   因為 /map 用的是另一個 CSS module（Map.module.css），共用元件要能貼到任何一頁上，
+   樣式就不能綁在某一頁的 module 裡。顏色一律吃 `.page` 傳下來的 CSS 變數
+   （每一頁的 `.page` 都定義了同一組），後面補了 fallback，
+   萬一哪天被放到沒有 `.page` 的地方也不會變成一片黑。 */
+
+/* 1045px 以上完全不存在。桌機那條 <ul class="nav"> 還在，
+   兩個同時出現就會變成一個 header 兩套選單。
+
+   ⚠️ 1044 這個數字跟 home.module.css 的
+   `@media (max-width: 1044px) { .nav { display: none } }` 是**同一個斷點**，
+   兩邊要一起改。留空隙的話中間那段寬度會「兩套都不見」或「兩套疊著」，
+   而且只有把視窗拉到那個寬度才看得出來。 */
+.wrap {
+  display: none;
+}
+
+@media (max-width: 1044px) {
+  .wrap {
+    display: block;
+  }
+}
+
+/* ⚠️ 不要給 .wrap 加 position: relative。
+   下面的面板靠 position: absolute 貼在 <header> 上（header 是 sticky ＝ 已定位），
+   才能撐滿整個 header 寬度。加了 relative 面板就會縮成漢堡鈕那麼寬。 */
+
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 44px 是手指點得到的最小尺寸，比視覺上需要的大一點是刻意的 */
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 2px solid var(--line, #dce4e9);
+  border-radius: 12px;
+  background: #fff;
+  color: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  /* 面板是 absolute、backdrop 也是，靜態定位的按鈕會被它們蓋掉。
+     抬到最上層，關的時候才按得到。 */
+  position: relative;
+  z-index: 2;
+}
+
+.toggle:hover {
+  border-color: var(--primary, #01354d);
+}
+
+/* 三條線 → 打開變叉叉。用 aria-expanded 當選擇器，
+   就不用在 TSX 那邊拼 className 字串。 */
+.bars {
+  position: relative;
+  display: block;
+  width: 18px;
+  height: 14px;
+}
+
+.bars span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--ink, #122a38);
+  transition: top 0.18s ease, transform 0.18s ease, opacity 0.18s ease;
+}
+
+.bars span:nth-child(1) {
+  top: 0;
+}
+
+.bars span:nth-child(2) {
+  top: 6px;
+}
+
+.bars span:nth-child(3) {
+  top: 12px;
+}
+
+.toggle[aria-expanded="true"] .bars span:nth-child(1) {
+  top: 6px;
+  transform: rotate(45deg);
+}
+
+.toggle[aria-expanded="true"] .bars span:nth-child(2) {
+  opacity: 0;
+}
+
+.toggle[aria-expanded="true"] .bars span:nth-child(3) {
+  top: 6px;
+  transform: rotate(-45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bars span {
+    transition: none;
+  }
+}
+
+/* 從 header 底下才開始（top: 100%），所以不會蓋住漢堡鈕。
+   高度給滿一個視窗，蓋住下面的內容就好。 */
+.backdrop {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(18, 42, 56, 0.34);
+  cursor: default;
+  z-index: 0;
+}
+
+.panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-bottom: 1px solid var(--line, #dce4e9);
+  box-shadow: 0 14px 30px rgba(18, 42, 56, 0.16);
+  /* 項目變多、或在很矮的螢幕上（橫著拿的手機）也要捲得到最後一項 */
+  max-height: 76dvh;
+  overflow-y: auto;
+  z-index: 1;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 20px 14px;
+}
+
+.link {
+  display: block;
+  /* 直向 15px ＋ 字高，一項約 52px，手指不會按錯行 */
+  padding: 15px 4px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink, #122a38);
+  text-decoration: none;
+  border-bottom: 1px solid var(--line, #dce4e9);
+}
+
+.list li:last-child .link {
+  border-bottom: 0;
+}
+
+.link:hover,
+.link:active {
+  color: var(--primary, #01354d);
+}

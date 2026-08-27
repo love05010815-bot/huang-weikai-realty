@@ -342,6 +342,54 @@
   }
 }
 
+/* 📱 1044px 以下 header 多了一顆漢堡鈕（見 `_ui/SiteNav.tsx`），
+   等於憑空多出 44px ＋ 一個間距。原本的 .brand 是 flex-shrink: 0（不讓），
+   所以多出來的寬度全部由漢堡鈕自己吞 —— **鈕被擠出畫面右邊**。
+
+   實測（production build、真的視窗寬度，不是離屏量的）：
+
+     390px 以上 ✅ 不溢出
+     375px     header 溢出  4px（iPhone SE 2/3、13 mini）
+     360px     header 溢出 19px（多數 Android）
+     320px     header 溢出 59px
+
+   修的是「誰該讓」，不是把鈕做小：窄螢幕上讓 brand 可以縮，
+   縮到不夠時副標那行小字用「…」收掉。**logo 跟「凱心成家」四個字都留著**，
+   被收掉的只有「太平洋房屋 台中海線房仲」的尾巴，而且只有真的擠到才會收。
+
+   ⚠️ 這裡的 1044 要跟上面 .nav 那條、以及 SiteNav.module.css 的斷點**三個一致**。
+      任何一個不一樣，中間那段寬度就會變成「鈕在、但沒人幫它讓位」＝ 又破版一次。 */
+@media (max-width: 1044px) {
+  .navWrap {
+    gap: 10px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .brand {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  /* logo 右邊那塊文字。min-width: 0 是關鍵 —— flex 子元素預設 min-width: auto，
+     不歸零的話 text-overflow 永遠不會生效（會直接撐破，看起來像沒寫）。 */
+  .brand > span {
+    min-width: 0;
+    /* 320px（iPhone SE 一代那種）brand 只剩 118px，比「凱心成家」四個字加 logo 還窄，
+       不鎖 nowrap 的話那四個字會折成兩行、**header 從 78px 撐到 109px**。
+       實測出來的：320px 時鎖住是 78px、不鎖是 109px。 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .brandSub {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 /* 電話鈕 154px。導覽列曾經有 6 項、header 要 981px 才放得下，那時把這個
    斷點從 560 拉到 1000 讓電話鈕先讓位。2026-08-20 服務區域與戰績併成
    「關於我」之後導覽列變回 5 項、只需要 859px，壓力解除，斷點放回 560 ——

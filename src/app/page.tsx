@@ -9,6 +9,7 @@ import { INTRO_LINES, AREAS } from "@/config/profile";
 import { HOME_FEATURED_COUNT } from "@/config/listings";
 import { getPublicListings } from "@/lib/listings";
 import styles from "./home.module.css";
+import SiteNav from "@/app/_ui/SiteNav";
 // 卡片樣式跟 /listings 共用同一份，改一處兩邊都會變
 import lst from "./listings/listings.module.css";
 import FeaturedTitle from "./listings/FeaturedTitle";
@@ -216,6 +217,7 @@ export default async function HomePage() {
               線上預約
             </Link>
           </div>
+          <SiteNav variant="home" />
         </div>
       </header>
 

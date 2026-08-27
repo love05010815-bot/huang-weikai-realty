@@ -21,6 +21,7 @@ import { DISTRICT, PROJECTS, SOURCES, projectStats } from "@/data/port-projects"
 import { getMapListingsByProject } from "@/lib/map-listings";
 import ProjectExplorer, { type ProjectListing } from "./ProjectExplorer";
 import styles from "./Map.module.css";
+import SiteNav from "@/app/_ui/SiteNav";
 
 const stats = projectStats();
 
@@ -157,6 +158,7 @@ export default async function MapPage() {
           <Link href="/card/booking" className={styles.headerCta}>
             預約諮詢
           </Link>
+          <SiteNav variant="sub" />
         </div>
       </header>
 

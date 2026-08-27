@@ -15,6 +15,7 @@ import type { Metadata } from "next";
 import { OWNER, SITE_URL } from "@/config/owner";
 import TaxCalculator from "./TaxCalculator";
 import styles from "../home.module.css";
+import SiteNav from "@/app/_ui/SiteNav";
 import tax from "./tax.module.css";
 
 const TITLE = `稅費與租金補貼試算｜台中海線房仲${OWNER.name}｜買賣租屋前先算清楚`;
@@ -68,6 +69,7 @@ export default function TaxPage() {
               線上預約
             </Link>
           </div>
+          <SiteNav variant="sub" />
         </div>
       </header>
 
