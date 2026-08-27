@@ -74,8 +74,9 @@ export const STATUS_LABEL: Record<ProjectStatus, string> = {
 export type ProjectArea =
   | "梧棲"
   | "清水"
-  | "鹿寮"
-  | "萬家福"
+  | "梧棲市區"
+  | "清水市區"
+  | "鹿寮萬家福"
   | "沙鹿車站"
   | "新光田";
 
@@ -83,8 +84,9 @@ export type ProjectArea =
 export const AREA_LABEL: Record<ProjectArea, string> = {
   梧棲: "梧棲區",
   清水: "清水區",
-  鹿寮: "鹿寮商圈",
-  萬家福: "萬家福商圈",
+  梧棲市區: "梧棲市區",
+  清水市區: "清水市區",
+  鹿寮萬家福: "鹿寮萬家福商圈",
   沙鹿車站: "沙鹿車站商圈",
   新光田: "新光田特區",
 };
@@ -97,10 +99,15 @@ export const AREA_LABEL: Record<ProjectArea, string> = {
  * 因為那是同一個重劃案跨兩個行政區，客戶習慣拆開講）。
  */
 export const AREA_FILTERS: ReadonlyArray<{ value: ProjectArea; label: string }> = [
+  // 重劃區兩半（同一個重劃案跨兩個行政區，客戶習慣拆開講）
   { value: "梧棲", label: "梧棲重劃區" },
   { value: "清水", label: "清水重劃區" },
-  { value: "鹿寮", label: "鹿寮商圈" },
-  { value: "萬家福", label: "萬家福商圈" },
+  // 兩個舊市區
+  { value: "梧棲市區", label: "梧棲市區" },
+  { value: "清水市區", label: "清水市區" },
+  // 沙鹿那三個。「鹿寮萬家福」是 2026-08-27 系統擁有者把原本分開的
+  // 鹿寮商圈與萬家福商圈併成一塊（兩塊上下相鄰、寬度幾乎一樣）
+  { value: "鹿寮萬家福", label: "鹿寮萬家福商圈" },
   { value: "沙鹿車站", label: "沙鹿車站商圈" },
   { value: "新光田", label: "新光田特區" },
 ];
