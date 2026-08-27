@@ -217,33 +217,8 @@ export default function ProjectExplorer({
 
   return (
     <div className={styles.explorer}>
-      {/* ── 概況 ── */}
-      <ul className={styles.statRow}>
-        <li>
-          <b>{stats.total}</b>
-          <span>個建案</span>
-        </li>
-        <li>
-          <b>{stats.builders}</b>
-          <span>家建商</span>
-        </li>
-        <li>
-          <b>{stats.presale}</b>
-          <span>預售中</span>
-        </li>
-        <li>
-          <b>{stats.newly}</b>
-          <span>新成屋</span>
-        </li>
-        <li>
-          <b>{stats.completed}</b>
-          <span>成屋</span>
-        </li>
-        <li>
-          <b>{fmt(stats.units)}</b>
-          <span>{`戶（${stats.withUnits} 案合計）`}</span>
-        </li>
-      </ul>
+      {/* 概況統計列（39個建案／19家建商／…）2026-08-27 系統擁有者指定拿掉。
+          `stats` 本身沒有刪 —— 下面的篩選膠囊還在用它顯示各階段案數。 */}
 
       {/* ── 篩選 ── */}
       <div className={styles.filterBar}>
@@ -473,6 +448,10 @@ export default function ProjectExplorer({
                           </ul>
                           {/* 這裡刻意只有兩顆：物件介紹＋預約諮詢。
                               「影片賞析」是 /listings 才有的，系統擁有者指定這頁不要。 */}
+                          {/* 👆 兩顆按鈕都掛 data-listing-slug／data-listing-action，
+                              全站的 ListingClickTracker 會自己聽到並記一次點擊。
+                              這裡的 slug 用地圖物件的 id（UUID）—— 地圖物件沒有 slug，
+                              跟精選好案那些人看得懂的 slug 共用同一張表也不會撞。 */}
                           <div className={styles.saleBtns}>
                             {item.linkHref && (
                               <a
@@ -480,11 +459,18 @@ export default function ProjectExplorer({
                                 href={item.linkHref}
                                 target="_blank"
                                 rel="noopener noreferrer"
+                                data-listing-slug={item.id}
+                                data-listing-action="link"
                               >
                                 物件介紹 ↗
                               </a>
                             )}
-                            <Link className={styles.saleBtn} href="/card/booking">
+                            <Link
+                              className={styles.saleBtn}
+                              href="/card/booking"
+                              data-listing-slug={item.id}
+                              data-listing-action="booking"
+                            >
                               預約諮詢
                             </Link>
                           </div>

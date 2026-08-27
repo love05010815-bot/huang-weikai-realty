@@ -21,6 +21,7 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import { resolvePhotoSrc } from "@/lib/photo-src";
 import { MAX_PHOTOS, type MapListingRecord, type MapListingStatus } from "@/lib/map-listings";
 import { houseolItemSummary, type HouseolItem } from "@/lib/houseol-item";
+import type { ListingClickStats } from "@/lib/listing-clicks";
 import {
   deleteMapListingAction,
   moveMapListingAction,
@@ -70,10 +71,13 @@ export default function MapListingsManager({
   initial,
   projects,
   inventory,
+  clickStats = {},
 }: {
   initial: MapListingRecord[];
   projects: ProjectOption[];
   inventory: HouseolItem[];
+  /** 每一筆物件的兩顆按鈕各被點過幾次。讀不到時是空物件，畫面顯示 0。 */
+  clickStats?: ListingClickStats;
 }) {
   const [rows, setRows] = useState(initial);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -283,6 +287,28 @@ export default function MapListingsManager({
                             {r.photos.length > 0 && ` ・ ${r.photos.length} 張照片`}
                             {r.linkHref && " ・ 有物件資訊連結"}
                           </small>
+                          {/* 👆 兩顆按鈕分開看 ——「想看物件詳情」跟「想直接約」
+                              是不同的訊號，加總成一個數字就看不出來了。
+                              統計的 key 是這筆物件的 id，前台按鈕上掛的也是它。 */}
+                          {(() => {
+                            const stat = clickStats[r.id];
+                            const cells: Array<[string, number, number]> = [
+                              ["物件介紹", stat?.actions.link.total ?? 0, stat?.actions.link.recent ?? 0],
+                              ["預約諮詢", stat?.actions.booking.total ?? 0, stat?.actions.booking.recent ?? 0],
+                            ];
+                            return (
+                              <span className={styles.clickRow}>
+                                {cells.map(([label, total, recent]) => (
+                                  <span key={label} className={styles.clickCell}>
+                                    {label}
+                                    <b className={total > 0 ? styles.clickHot : undefined}>{total}</b>
+                                    人次
+                                    {recent > 0 && <em>{`近7天 ${recent}`}</em>}
+                                  </span>
+                                ))}
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
                       <div className={styles.itemBtns}>

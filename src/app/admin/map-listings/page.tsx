@@ -21,6 +21,7 @@ import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
 import { listAllMapListings, type MapListingRecord } from "@/lib/map-listings";
 import { loadHouseolInventory } from "@/lib/houseol-inventory";
 import { getHouseolAddressMap } from "@/lib/houseol-address";
+import { getListingClickStats, type ListingClickStats } from "@/lib/listing-clicks";
 import { PROJECTS } from "@/data/port-projects";
 import MapListingsManager from "./MapListingsManager";
 import styles from "./map-listings-admin.module.css";
@@ -43,6 +44,14 @@ export default async function MapListingsAdminPage() {
     rows = await listAllMapListings();
   } catch (e) {
     loadError = e instanceof Error ? e.message : String(e);
+  }
+
+  // 點擊統計。讀不到就給空物件，畫面顯示 0 —— 統計壞掉不該讓整個後台打不開
+  let clickStats: ListingClickStats = {};
+  try {
+    clickStats = await getListingClickStats();
+  } catch {
+    // 忽略：上面 loadError 已經會處理「資料庫整個連不上」那種情況
   }
 
   const active = rows.filter((r) => r.status === "active");
@@ -119,7 +128,7 @@ export default async function MapListingsAdminPage() {
             </li>
           </ul>
 
-          <MapListingsManager initial={rows} projects={options} inventory={inventory} />
+          <MapListingsManager initial={rows} projects={options} inventory={inventory} clickStats={clickStats} />
         </>
       )}
     </main>

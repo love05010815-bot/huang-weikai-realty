@@ -375,6 +375,38 @@
   color: #a69a97 !important;
 }
 
+/* ── 點擊統計（每一列物件底下那排小字）── */
+.clickRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #a69a97;
+}
+
+.clickCell {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.clickCell b {
+  font-size: 13px;
+  font-weight: 800;
+  color: #d0c6c4;
+}
+
+/* 有人點過就上色 —— 一整排 0 裡面要能一眼看到哪筆有動靜 */
+.clickHot {
+  color: #4ade80 !important;
+}
+
+.clickCell em {
+  font-style: normal;
+  color: #7d7472;
+}
+
 /* ── 愛屋庫存挑案 ── */
 .invBlock {
   display: grid;
