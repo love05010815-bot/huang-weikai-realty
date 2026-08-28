@@ -1,29 +1,87 @@
-/* 📱 手機版導覽選單的樣式。脈絡見 SiteNav.tsx 的檔頭。
+/* 🧭 全站導覽列的樣式（桌機那一條 ＋ 手機漢堡選單）。脈絡見 SiteNav.tsx 的檔頭。
 
    ⚠️ 這支**故意自己帶樣式**，不寫進 home.module.css。
    因為 /map 用的是另一個 CSS module（Map.module.css），共用元件要能貼到任何一頁上，
    樣式就不能綁在某一頁的 module 裡。顏色一律吃 `.page` 傳下來的 CSS 變數
-   （每一頁的 `.page` 都定義了同一組），後面補了 fallback，
+   （六個公開頁的 `.page` 都定義了同一組），後面補了 fallback，
    萬一哪天被放到沒有 `.page` 的地方也不會變成一片黑。 */
 
-/* 1045px 以上完全不存在。桌機那條 <ul class="nav"> 還在，
-   兩個同時出現就會變成一個 header 兩套選單。
+/* ============================================================
+   斷點：1044 / 1045
 
-   ⚠️ 1044 這個數字跟 home.module.css 的
-   `@media (max-width: 1044px) { .nav { display: none } }` 是**同一個斷點**，
-   兩邊要一起改。留空隙的話中間那段寬度會「兩套都不見」或「兩套疊著」，
-   而且只有把視窗拉到那個寬度才看得出來。 */
-.wrap {
+   ⚠️ 這個數字是**用真的視窗寬度掃出來的，不是離屏量的**。
+   離屏量會低估：量出來說 985px 就夠，實際渲染到 1005px 都還在溢出
+   （捲軸與 flex 的實際收斂不一樣）。
+
+   2026-08-25 影音那條從錨點「影音」改成獨立分頁「影音專區」（4 個字）之後掃的：
+
+     1021px  header 溢出 19px
+     1025px  header 溢出 15px
+     1035px  header 溢出  5px
+     1045px  ✅ 第一個完全不溢出的寬度
+     1055px 以上 ✅
+
+   所以取 1044（1045 的前一格）。
+   **要再加導覽項目或改標籤，重跑一次這個掃描再改斷點**，
+   不然就是回到「某個寬度默默破版」的狀態。
+
+   ⚠️ 這個數字在本檔出現兩次（.desktopNav 與 .mobile），**兩個一定要一致**。
+      留空隙的話中間那段寬度會「兩套選單都在」或「兩套都不見」，
+      而且只有把視窗拉到那個寬度才看得出來。
+   ============================================================ */
+
+/* ---------- 桌機那一條（1045px 以上） ---------- */
+
+/* 2026-08-27 從 home.module.css 的 .nav 原封不動搬過來，
+   讓六個公開頁共用同一份清單。搬家前後在 1045px 實測是同一組計算值。 */
+.desktopNav {
+  display: flex;
+  /* gap 從 26 縮到 20 是為了讓整條在 1000px 就放得下，
+     再寬一點的話 981px 的需求會頂到 1000 的斷點。 */
+  gap: 20px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.desktopLink {
+  /* 中文可逐字斷行。空間一緊，flex 就把每項壓窄、文字折成兩行，
+     header 會從 78px 撐到 83px。鎖住之後寧可整條導覽列隱藏，也不要折行。 */
+  white-space: nowrap;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--ink, #122a38);
+  text-decoration: none;
+}
+
+.desktopLink:hover {
+  color: var(--primary, #01354d);
+}
+
+@media (max-width: 1044px) {
+  .desktopNav {
+    display: none;
+  }
+}
+
+/* ---------- 手機的漢堡鈕（1044px 以下） ---------- */
+
+.mobile {
   display: none;
 }
 
 @media (max-width: 1044px) {
-  .wrap {
+  .mobile {
     display: block;
+    /* 元件是插在 brand 與 navCta 之間（桌機那條導覽列本來的位置）。
+       手機上導覽列不見了，若不調順序就會變成「brand｜漢堡鈕｜線上預約」，
+       漢堡鈕卡在中間。order: 1 把它推到最後 —— flex 預設 order: 0，
+       比所有人大就排到最右邊。 */
+    order: 1;
   }
 }
 
-/* ⚠️ 不要給 .wrap 加 position: relative。
+/* ⚠️ 不要給 .mobile 加 position: relative。
    下面的面板靠 position: absolute 貼在 <header> 上（header 是 sticky ＝ 已定位），
    才能撐滿整個 header 寬度。加了 relative 面板就會縮成漢堡鈕那麼寬。 */
 
@@ -135,7 +193,7 @@
 .list {
   list-style: none;
   margin: 0;
-  padding: 6px 20px 14px;
+  padding: 6px 20px 0;
 }
 
 .link {
@@ -149,11 +207,31 @@
   border-bottom: 1px solid var(--line, #dce4e9);
 }
 
-.list li:last-child .link {
-  border-bottom: 0;
-}
-
 .link:hover,
 .link:active {
   color: var(--primary, #01354d);
+}
+
+/* 📞 一鍵撥號。外框式，跟 header 那顆實心的「線上預約」分開 —— 兩顆都做成實心
+   會變成兩個主要按鈕互相搶，客戶反而不知道該按哪個。
+   最後一項連結的底線由它接手（.list 的下邊距收成 0），所以視覺上是連著的一整塊。 */
+.phone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 14px 20px 18px;
+  padding: 13px 20px;
+  border: 2px solid var(--primary, #01354d);
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--primary, #01354d);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.phone:hover {
+  background: var(--primary, #01354d);
+  color: #fff;
 }

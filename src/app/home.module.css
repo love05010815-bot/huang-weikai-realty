@@ -284,63 +284,17 @@
   white-space: nowrap;
 }
 
-.nav {
-  display: flex;
-  /* 6 個項目。gap 從 26 縮到 20 是為了讓整條在 1000px 就放得下，
-     再寬一點的話 981px 的需求會頂到 1000 的斷點。 */
-  gap: 20px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.nav a {
-  /* 中文可逐字斷行。空間一緊，flex 就把每項壓窄、文字折成兩行，
-     header 會從 78px 撐到 83px。鎖住之後寧可整條導覽列隱藏，也不要折行。 */
-  white-space: nowrap;
-  font-size: 14.5px;
-  font-weight: 700;
-  color: var(--ink);
-  text-decoration: none;
-}
-
-.nav a:hover {
-  color: var(--primary);
-}
-
+/* 導覽列（.nav）2026-08-27 搬到 `_ui/SiteNav.module.css` 的 .desktopNav 了 ——
+   桌機那條與手機漢堡選單要共用同一份清單，而 /map 用的是另一個 CSS module，
+   樣式綁在這裡就沒辦法給它用。**在這裡改 .nav 不會有任何效果，也不會報錯。** */
 .navCta {
   display: flex;
   gap: 10px;
 }
 
-/* 低於這個寬度就把整條導覽列藏起來，不要硬擠。
-   （導覽列從 4 項增加到「稅費試算」變 5 項時，從 860 調到 920。）
-
-   ⚠️ 2026-08-25 調到 1000，而且 **920 那個值當時就已經是錯的**：
-   實測 header 內容在 6 項時就要 936px 才放得下 —— 也就是 921～936px 之間
-   header 會撐爆、整頁橫向捲動，只是沒人在那個寬度看過。
-
-   ⚠️ 這個數字**要用真的視窗寬度掃出來，不要用離屏量的**。
-   離屏量會低估：量出來說 985px 就夠，實際渲染到 1005px 都還在溢出
-   （捲軸與 flex 的實際收斂不一樣）。
-
-   2026-08-25 影音那條從錨點「影音」改成獨立分頁「影音專區」（4 個字），
-   照規矩重掃一次：
-
-     1021px  header 溢出 19px
-     1025px  header 溢出 15px
-     1035px  header 溢出  5px
-     1045px  ✅ 第一個完全不溢出的寬度
-     1055px 以上 ✅
-
-   所以取 1044（1045 的前一格）。
-   **要再加導覽項目或改標籤，重跑一次這個掃描再改斷點**，
-   不然就是回到「某個寬度默默破版」的狀態。*/
-@media (max-width: 1044px) {
-  .nav {
-    display: none;
-  }
-}
+/* 導覽列在 1044px 以下要隱藏、換成漢堡鈕 —— 那條規則與整段斷點掃描紀錄
+   一起搬到 `_ui/SiteNav.module.css` 了。要改斷點去那裡改，兩個模式在同一個檔，
+   比較不會只改到一半。 */
 
 /* 📱 1044px 以下 header 多了一顆漢堡鈕（見 `_ui/SiteNav.tsx`），
    等於憑空多出 44px ＋ 一個間距。原本的 .brand 是 flex-shrink: 0（不讓），

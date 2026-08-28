@@ -170,10 +170,10 @@ export default async function MapPage() {
             {OWNER.name}
             <span>台中海線房仲</span>
           </Link>
+          <SiteNav variant="sub" />
           <Link href="/card/booking" className={styles.headerCta}>
             預約諮詢
           </Link>
-          <SiteNav variant="sub" />
         </div>
       </header>
 

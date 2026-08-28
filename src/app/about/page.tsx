@@ -60,12 +60,12 @@ export default function AboutPage() {
               <small className={styles.brandSub}>{OWNER.company} 台中海線房仲</small>
             </span>
           </Link>
+          <SiteNav variant="sub" />
           <div className={styles.navCta}>
             <Link className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`} href="/card/booking">
               線上預約
             </Link>
           </div>
-          <SiteNav variant="sub" />
         </div>
       </header>
 
