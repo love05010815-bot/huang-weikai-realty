@@ -40,8 +40,8 @@ const stats = projectStats();
  */
 const LOCAL_ZONE_COUNT = ZONES.filter((z) => !z.official).length;
 
-const TITLE = `台中港市鎮中心建案總覽｜梧棲・清水重劃區 ${stats.total} 個建案一次看｜台中海線房仲${OWNER.name}`;
-const DESCRIPTION = `台中港市鎮中心重劃區（橫跨梧棲區與清水區）${stats.total} 個建案總覽：遠雄幸福成、聯悅馨、長虹天擎、聯虹鉑玥、遠雄之星系列等，可依行政區、預售／成屋與建商篩選，並標示規模與銷售階段。由台中海線房仲${OWNER.name}整理自公開資訊。`;
+const TITLE = `台中港市鎮中心建案總覽｜梧棲・清水重劃區 ${stats.district} 個建案一次看｜台中海線房仲${OWNER.name}`;
+const DESCRIPTION = `台中港市鎮中心重劃區（橫跨梧棲區與清水區）${stats.district} 個建案總覽：遠雄幸福成、聯悅馨、長虹天擎、聯虹鉑玥、遠雄之星系列等，可依行政區、預售／成屋與建商篩選，並標示規模與銷售階段。由台中海線房仲${OWNER.name}整理自公開資訊。`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -69,16 +69,16 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     locale: "zh_TW",
-    title: `台中港市鎮中心建案總覽｜梧棲市政重劃區 ${stats.total} 個建案`,
-    description: `${stats.total} 個建案、共 ${stats.units.toLocaleString("zh-TW")} 戶，可依行政區、預售／成屋與建商篩選。`,
+    title: `台中港市鎮中心建案總覽｜梧棲市政重劃區 ${stats.district} 個建案`,
+    description: `${stats.district} 個建案、共 ${stats.districtUnits.toLocaleString("zh-TW")} 戶，可依行政區、預售／成屋與建商篩選。`,
     url: "/map",
     siteName: `${OWNER.name}｜台中海線房仲`,
     images: [{ url: "/profile.jpg", width: 1029, height: 1543, alt: `${OWNER.name}形象照` }],
   },
   twitter: {
     card: "summary_large_image",
-    title: `台中港市鎮中心建案總覽｜梧棲市政重劃區 ${stats.total} 個建案`,
-    description: `${stats.total} 個建案、共 ${stats.units.toLocaleString("zh-TW")} 戶，可依預售／成屋與建商篩選。`,
+    title: `台中港市鎮中心建案總覽｜梧棲市政重劃區 ${stats.district} 個建案`,
+    description: `${stats.district} 個建案、共 ${stats.districtUnits.toLocaleString("zh-TW")} 戶，可依預售／成屋與建商篩選。`,
     images: ["/profile.jpg"],
   },
 };
@@ -102,7 +102,7 @@ const JSON_LD = {
   },
   mainEntity: {
     "@type": "ItemList",
-    name: `${DISTRICT.alias}建案清單`,
+    name: "台中海線建案清單",
     numberOfItems: PROJECTS.length,
     itemListElement: PROJECTS.map((p, i) => ({
       "@type": "ListItem",
@@ -182,12 +182,13 @@ export default async function MapPage() {
           <span className={styles.eyebrow}>台中海線・區域研究</span>
           {/* ⚠️ 標題講的是「整個生活圈」，不是重劃區 —— 2026-08-26 起地圖範圍已擴大到
               沙鹿的商圈，2026-08-27 系統擁有者指定把這塊的名稱改過來。
-              建案本身仍然只有梧棲＋清水（沙鹿是商圈色塊、沒有建案），
-              所以標題寫「梧棲＋清水」而不是把沙鹿也列進去 —— 列進去等於對客戶
-              宣稱這裡有沙鹿建案。重劃區的資訊降級成下面那塊的一部分。 */}
-          <h1 className={styles.title}>台中海線建案地圖・梧棲＋清水</h1>
+
+              沙鹿是 2026-08-27 補進 28 案之後才寫進標題的。**在那之前刻意不寫**，
+              因為當時沙鹿一案都沒有，寫進去等於對客戶宣稱這裡有沙鹿建案。
+              以後要再往標題加一個地名，判準一樣：**那一區真的有建案了才加。** */}
+          <h1 className={styles.title}>台中海線建案地圖・梧棲｜清水｜沙鹿</h1>
           <p className={styles.lede}>
-            {`這裡整理了梧棲與清水的 ${stats.total} 個建案、合計 ${stats.units.toLocaleString("zh-TW")} 戶。地圖範圍是整個台中港生活圈 —— 除了核心的${DISTRICT.alias}重劃區，也畫出周邊 ${LOCAL_ZONE_COUNT} 塊生活圈範圍。`}
+            {`這裡整理了台中海線 ${stats.total} 個建案、合計 ${stats.units.toLocaleString("zh-TW")} 戶：${DISTRICT.alias}重劃區（梧棲＋清水）${stats.district} 案，沙鹿車站商圈 ${stats.byArea["沙鹿車站"] ?? 0} 案。地圖範圍是整個台中港生活圈，除了重劃區也畫出周邊 ${LOCAL_ZONE_COUNT} 塊生活圈範圍。`}
           </p>
 
           <p className={styles.bounds}>
@@ -212,8 +213,16 @@ export default async function MapPage() {
           {/* 兩層合併成一層之後就只剩這一個區塊，編號「01」沒有對照組，
               留著只會讓人以為下面還有 02。2026-08-23 拿掉。 */}
           <h2 className={styles.layerTitle}>建案地圖</h2>
+          {/* ⚠️ 這句**跟著資料自動變**，不要寫死。2026-08-27 補進沙鹿 28 案時，
+              那批一個座標都沒有，地圖上不會有圖釘；若這裡還寫死「位置由本人逐一標定」，
+              就是對客戶宣稱 67 案都標好了，而畫面上只有 39 顆圖釘。
+              系統擁有者用 `/map?fix=1` 把座標補完之後，這句會自己變回乾淨的版本。 */}
           <p className={styles.layerDesc}>
-            {`梧棲與清水的 ${stats.total} 個建案，位置由${OWNER.alias}本人逐一標定。點大樓圖示看建案資訊，我有物件在售的建案會一併列出物件。`}
+            {`台中海線 ${stats.total} 個建案。${
+              stats.located === stats.total
+                ? `位置由${OWNER.alias}本人逐一標定。`
+                : `其中 ${stats.located} 案的位置由${OWNER.alias}本人逐一標定；另外 ${stats.total - stats.located} 案還沒標上地圖，先列在下方清單裡。`
+            }點大樓圖示看建案資訊，我有物件在售的建案會一併列出物件。`}
           </p>
 
           <ProjectExplorer listings={listings} />

@@ -403,11 +403,11 @@ export default function ProjectExplorer({
                     <dd>{selected.note}</dd>
                   </div>
                 )}
-                {filledAmenities().length > 0 && (
+                {filledAmenities(selected.area).length > 0 && (
                   <div>
                     <dt>周邊機能</dt>
                     <dd>
-                      {filledAmenities().map((g) => (
+                      {filledAmenities(selected.area).map((g) => (
                         <span key={g.label} className={styles.amenityGroup}>
                           <b>{g.label}</b>
                           {g.items.join("、")}
@@ -518,7 +518,7 @@ export default function ProjectExplorer({
           要改回預設展開就加 open。 */}
       <details className={styles.indexBlock}>
         <summary className={styles.indexSummary}>
-          {`區內建案一覽（${rows.length}／${stats.total}）`}
+          {`建案一覽（${rows.length}／${stats.total}）`}
           {mineTotal > 0 && <span className={styles.indexMine}>{`我有 ${mineTotal} 件在售`}</span>}
           <em>展開看全部</em>
         </summary>

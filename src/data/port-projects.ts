@@ -160,16 +160,22 @@ export type Project = {
 /* ─────────────── 周邊生活機能 ─────────────── */
 
 /**
- * 周邊生活機能。**整個重劃區共用一份，不是每案一份** ——
- * 39 個建案全部落在同一個 114 公頃的重劃區內（約 1 公里見方），
- * 走路或三分鐘車程到的超市、醫療、公園幾乎是同一批。做成每案一份的話，
- * 會變成 39 份九成相同的清單，改一間店要改 39 個地方，一定會漏。
+ * 周邊生活機能。**一個區共用一份，不是每案一份** ——
+ * 同一區的建案彼此走路或三分鐘車程可到的超市、醫療、公園幾乎是同一批。
+ * 做成每案一份的話，會變成幾十份九成相同的清單，改一間店要改幾十個地方，一定會漏。
  *
  * 真的有某案特別近或特別遠，寫在那一案的 `note` 裡，不要為此拆成每案一份。
+ *
+ * ⚠️ **2026-08-27 起這份改成「依 area 查表」，不再是全站共用一份。**
+ *    原因：那份清單（清水第二市場、頂漁寮公園、梧棲童綜合醫院）是重劃區的機能，
+ *    沙鹿車站商圈那 28 案離那裡好幾公里。全站共用的話，等於對每一個沙鹿建案
+ *    宣稱它的生活圈是清水的市場與公園 —— 就是下面那條「廣告不實」自己在講的事，
+ *    而且**不會報錯、畫面看起來還很正常**。
  *
  * ⚠️ **沒有實際查證過的不要寫。** 這是給客戶看的生活機能：寫到已經收掉的店、
  *    或把距離講得比實際近，都是廣告不實。系統擁有者是海線在地房仲，
  *    這份以他提供的為準，不要拿網路搜尋結果填進來。
+ *    **沒有資料的區就讓它空著** —— 空的整段不顯示，比填錯好。
  *
  * `items` 是空陣列的分類，畫面上整個不顯示（不會出現「醫療：」後面空白）。
  */
@@ -180,6 +186,7 @@ export type AmenityGroup = {
   items: string[];
 };
 
+/** 重劃區（梧棲＋清水兩半）的機能。瑋凱 2026-08-27 提供 */
 export const DISTRICT_AMENITIES: AmenityGroup[] = [
   { label: "超市賣場", items: ["全聯清水四維東店", "三井outlet", "清水第二市場"] },
   { label: "醫療", items: ["梧棲童綜合醫院"] },
@@ -188,9 +195,20 @@ export const DISTRICT_AMENITIES: AmenityGroup[] = [
   { label: "熱門商圈", items: [] },
 ];
 
-/** 有填東西的分類才回傳 —— 四類全空時回空陣列，畫面就整段不顯示 */
-export function filledAmenities(): AmenityGroup[] {
-  return DISTRICT_AMENITIES.filter((g) => g.items.length > 0);
+/**
+ * area → 那一區的機能。**沒列到的區＝還沒有資料，整段不顯示。**
+ *
+ * ⚠️ 沙鹿車站商圈那 28 案刻意先空著 —— 等系統擁有者提供在地機能再填。
+ *    **不要把 `DISTRICT_AMENITIES` 借過去湊**，那是重劃區的機能，差好幾公里。
+ */
+const AMENITIES_BY_AREA: Partial<Record<ProjectArea, AmenityGroup[]>> = {
+  梧棲: DISTRICT_AMENITIES,
+  清水: DISTRICT_AMENITIES,
+};
+
+/** 那一區有填東西的分類才回傳 —— 全空（或整個區沒資料）就回空陣列，畫面整段不顯示 */
+export function filledAmenities(area: ProjectArea): AmenityGroup[] {
+  return (AMENITIES_BY_AREA[area] ?? []).filter((g) => g.items.length > 0);
 }
 
 /* ─────────────── 屋齡 ─────────────── */
@@ -476,6 +494,277 @@ export const PROJECTS: Project[] = [
     id: "farglory-xingcheng", name: "遠雄星呈", builder: "遠雄建設", area: "清水",
     status: "presale", completion: "約 2027", units: 663, sources: ["owner", "housefeel", "farglory"],
   },
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     沙鹿車站商圈 28 案（2026-08-27 系統擁有者提供的整理）
+
+     ⚠️ **這批一筆座標都沒有。** 圖釘要等系統擁有者用 `/map?fix=1` 逐案點。
+        在那之前它們只出現在建案清單與篩選臉，地圖上沒有圖釘 ——
+        `COORDS` 查不到就不畫，不會報錯，所以不要以為是壞了。
+
+     ⚠️ 其中 8 案的坐落地點是**梧棲區**（佳瑞京湛、精銳錦、佳格聚晴山、富宇富嶼、
+        德光一築、德光二城、悠助意境、沅臻城市），但 2026-08-27 系統擁有者指定
+        「全部算沙鹿車站商圈」，所以 area 一律 `沙鹿車站`。
+        **日後標上座標時，這 8 顆圖釘會落在沙鹿色塊外面 —— 那是預期畫面**，
+        跟重劃區那 7 案同一回事，不要為了框住它們去動色塊界線。
+
+     ⚠️ 屋齡是把系統擁有者給的「約 N 年」換算成 completion 年份寫進來的
+        （`houseAge()` 會再算回去，2026 年時兩邊對得上）。
+        **明年屋齡自己 +1 是正常的，不要回頭改這裡的年份。**
+
+     ⚠️ 兩個很容易打錯的建商：**佳鏵建設（佳鏵大心）不是佳鋐建設**（本檔已有
+        佳鋐樂邑／樂灣／新邑／晴灣／科藝）；**德光會的建商是德邑建設**，
+        不是德光建設，雖然案名有「德光」兩個字。
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  // ───── 富宇建設 ─────
+  {
+    id: "fuyu-guangyu", name: "富宇光嶼", builder: "富宇建設", area: "沙鹿車站",
+    status: "presale", completion: "2028", units: 146,
+    street: "新站一路", streets: "沙鹿區 新站一路 × 新站二路",
+    layout: "2 房，約 22～28 坪", floors: "地上 15 層", siteAreaPing: 829,
+    sources: ["owner"],
+  },
+  {
+    id: "fuyu-zhencang", name: "富宇臻藏", builder: "富宇建設", area: "沙鹿車站",
+    status: "presale", completion: "2027", units: 98,
+    street: "和平街", streets: "沙鹿區 和平街／居仁段",
+    layout: "2 房 23～28 坪、3 房 34～35 坪", floors: "地上 12 層／地下 4 層", siteAreaPing: 688,
+    sources: ["owner"],
+  },
+  {
+    id: "fuyu-fuyu", name: "富宇富嶼", builder: "富宇建設", area: "沙鹿車站",
+    status: "presale", completion: "2029", units: 180,
+    street: "興農路", streets: "梧棲區 興農路／興農段",
+    layout: "3 房約 37～38 坪、3+1 房／4 房約 42 坪", floors: "地上 19 層／地下 4 層", siteAreaPing: 1023,
+    sources: ["owner"],
+  },
+
+  // ───── 合總建設 ─────
+  // 系列案「小時代」1、2、3、5 —— **沒有 4**，跟遠雄之星沒有遠4 一樣，不是漏了。
+  {
+    id: "hezong-xiaoshidai1", name: "合總小時代1", builder: "合總建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2020～21", units: 82,
+    street: "斗潭路", streets: "沙鹿區 斗潭路 155 巷",
+    layout: "2 房 25／28 坪、3 房 35 坪", floors: "地上 12 層／地下 2 層", siteAreaPing: 751,
+    sources: ["owner"],
+  },
+  {
+    id: "hezong-xiaoshidai2", name: "合總小時代2", builder: "合總建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2022", units: 126,
+    street: "斗潭路", streets: "沙鹿區 斗潭路／文光國小一帶",
+    layout: "2 房約 22.7～26.8 坪、3 房約 36.9～37.1 坪", floors: "地上 11 層／地下 2 層", siteAreaPing: 1296,
+    sources: ["owner"],
+  },
+  {
+    id: "hezong-xiaoshidai3", name: "合總小時代3", builder: "合總建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2023", units: 129,
+    street: "斗潭路", streets: "沙鹿區 斗潭路 211 巷一帶",
+    layout: "2 房 23～26 坪、3 房約 36 坪", floors: "地上 14 層／地下 2 層", siteAreaPing: 1369,
+    sources: ["owner"],
+  },
+  {
+    id: "hezong-xiaoshidai5", name: "合總小時代5", builder: "合總建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2023～24", units: 56,
+    street: "斗潭路", streets: "沙鹿區 斗潭路 275 巷一帶",
+    layout: "2～3 房為主", floors: "地上 12 層／地下 2 層", siteAreaPing: 552,
+    sources: ["owner"],
+  },
+
+  // ───── 德光建設 ─────
+  {
+    id: "deguang-ju", name: "德光聚", builder: "德光建設", area: "沙鹿車站",
+    status: "newly", statusNote: "新成屋／2026 年交屋", completion: "2026", units: 136,
+    street: "永寧路", streets: "沙鹿區 永寧路／新站區",
+    layout: "2 房約 26 坪、3 房 32～34 坪", floors: "地上 15 層／地下 2 層", siteAreaPing: 893,
+    sources: ["owner"],
+  },
+  {
+    id: "deguang-yizhu", name: "德光一築", builder: "德光建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2023", units: 66,
+    street: "中華路一段", streets: "梧棲區 中華路一段 826 巷",
+    layout: "2 房約 24～26 坪、3 房約 33.8 坪", floors: "地上 12 層／地下 2 層", siteAreaPing: 493,
+    sources: ["owner"],
+  },
+  {
+    id: "deguang-ercheng", name: "德光二城", builder: "德光建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2024", units: 122,
+    street: "中華路一段", streets: "梧棲區 中華路一段 828 號",
+    layout: "2 房約 25 坪、3 房約 31～35 坪", floors: "約地上 15 層", siteAreaPing: 861,
+    sources: ["owner"],
+  },
+
+  // ───── 德邑建設 ─────
+  // ⚠️ 案名有「德光」，建商卻是**德邑建設**，不是上面那家德光建設。
+  {
+    id: "deguang-hui", name: "德光會", builder: "德邑建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2025", units: 78,
+    street: "永寧路", streets: "沙鹿區 永寧路一帶",
+    layout: "2～3 房，約 26 坪起", floors: "地上 14 層／地下 2 層", siteAreaPing: 638,
+    sources: ["owner"],
+  },
+
+  // ───── 勝麗建設 ─────
+  {
+    id: "shengli-jiaoxiangqu", name: "勝麗交響曲", builder: "勝麗建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2025", units: 366,
+    street: "新站一路", streets: "沙鹿區 新站一路／永寧路一段",
+    layout: "2 房 25～29 坪、3 房 31～40 坪、4 房約 45 坪",
+    floors: "地上 14～15 層／地下 3 層", siteAreaPing: 2028,
+    sources: ["owner"],
+  },
+
+  // ───── 勝興建設 ─────
+  {
+    id: "shengxing-xingzhan", name: "勝興興站", builder: "勝興建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2025", units: 230,
+    street: "永寧路一段", streets: "沙鹿區 永寧路一段",
+    layout: "2 房 27～28 坪、3 房 36～40 坪、4 房約 48 坪",
+    floors: "地上 15 層／地下 4 層", siteAreaPing: 1174,
+    sources: ["owner"],
+  },
+
+  // ───── 大華建設 ─────
+  {
+    id: "dahua-luming", name: "大華鹿鳴", builder: "大華建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2025", units: 86,
+    street: "新站三路", streets: "沙鹿區 新站三路",
+    layout: "3 房約 38 坪、4 房約 44～45 坪", floors: "地上 15 層／地下 3 層", siteAreaPing: 606,
+    sources: ["owner"],
+  },
+
+  // ───── 佳瑞建設 ─────
+  {
+    id: "jiarui-jingzhan", name: "佳瑞京湛", builder: "佳瑞建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2024～25", units: 129,
+    street: "青年路", streets: "梧棲區 青年路／沙鹿西站重劃區",
+    layout: "2 房 24～28 坪、3 房 36～37 坪", floors: "地上 15 層", siteAreaPing: 829,
+    sources: ["owner"],
+  },
+
+  // ───── 和築建設 ─────
+  {
+    id: "hezhu-t1", name: "和築T1", builder: "和築建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2024", units: 178,
+    street: "興安路", streets: "沙鹿區 興安路 60 巷一帶",
+    layout: "2 房 23～25 坪、3 房 32～36 坪", floors: "地上 13 層／地下 2 層", siteAreaPing: 1382,
+    sources: ["owner"],
+  },
+
+  // ───── 世朋建設 ─────
+  {
+    id: "kaiyue-w", name: "凱悅W", builder: "世朋建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2024", units: 68,
+    street: "中正街", streets: "沙鹿區 中正街／沙鹿站前",
+    layout: "1+1 房約 17.6 坪、2 房約 19～22 坪", floors: "地上 11 層／地下 1 層", siteAreaPing: 193,
+    sources: ["owner"],
+  },
+
+  // ───── 建商待確認 ─────
+  {
+    id: "zhanqian-qingshidai", name: "站前青世代", builder: "待確認", area: "沙鹿車站",
+    status: "completed", completion: "約 2020", units: 26,
+    street: "興益路", streets: "沙鹿區 興益路 61 巷",
+    layout: "2 房約 31 坪、3 房約 35 坪", floors: "地上 7 層／地下 1 層", siteAreaPing: 289,
+    // ⚠️ 系統擁有者給的總表上這一案建商就寫「待確認」。**不要自己上網找一個填進去** ——
+    //    建商名是客戶會拿去查的東西，猜錯等於給錯資訊。查到了再改。
+    sources: ["owner"],
+  },
+
+  // ───── 鴻豫建設 ─────
+  {
+    id: "hongyu-jing", name: "鴻豫境", builder: "鴻豫建設", area: "沙鹿車站",
+    status: "presale", statusNote: "預售／興建中", completion: "興建中", units: 132,
+    street: "天仁北街", streets: "沙鹿區 天仁北街近沙田路",
+    layout: "2 房約 25 坪、3 房約 35 坪", floors: "地上 12 層／地下 2 層", siteAreaPing: 979,
+    sources: ["owner"],
+  },
+
+  // ───── 佳鏵建設 ─────
+  // ⚠️ **佳鏵不是佳鋐。** 本檔另有佳鋐建設（樂邑／樂灣／新邑／晴灣／科藝），兩家不同。
+  {
+    id: "jiahua-daxin", name: "佳鏵大心", builder: "佳鏵建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2023～24", units: 122,
+    street: "斗潭路", streets: "沙鹿區 斗潭路 341 巷",
+    layout: "2 房約 27 坪、3 房約 37 坪", floors: "地上 10 層／地下 2 層", siteAreaPing: 1047,
+    sources: ["owner"],
+  },
+
+  // ───── 佳鋐建設（沙鹿）─────
+  {
+    id: "jiahong-keyi", name: "佳鋐科藝", builder: "佳鋐建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2021～22", units: 176,
+    street: "中山路", streets: "沙鹿區 中山路 119 號一帶",
+    layout: "2～3 房為主", floors: "地上 7 層／地下 2 層", siteAreaPing: 1757,
+    note: "總戶數為概數（總表寫「約 176 戶」）。",
+    sources: ["owner"],
+  },
+
+  // ───── 侑峰體系 ─────
+  {
+    id: "youfeng-xinshenghuo", name: "侑峰鑫生活", builder: "侑峰體系", area: "沙鹿車站",
+    status: "completed", completion: "約 2025", units: 59,
+    street: "台灣大道七段", streets: "沙鹿區 台灣大道七段 737 號",
+    layout: "2 房約 24 坪、2+1 房約 29 坪、3 房 34～44 坪",
+    floors: "地上 11 層／地下 3 層", siteAreaPing: 359,
+    sources: ["owner"],
+  },
+
+  // ───── 開普建設 ─────
+  {
+    id: "qingchunxueyuan-shalu", name: "青春學苑－沙鹿分館", builder: "開普建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2020～21", units: 191,
+    street: "興安路", streets: "沙鹿區 興安路 64-3 號",
+    layout: "1 房／套房，約 4 坪起", floors: "地上 5 層／地下 1 層", siteAreaPing: 297,
+    sources: ["owner"],
+  },
+
+  // ───── 久築建設 ─────
+  {
+    id: "kuailetiane-huasha", name: "快樂天鵝華廈區", builder: "久築建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2021", units: 156,
+    street: "中山路", streets: "沙鹿區 中山路 76 巷一帶",
+    layout: "2 房 22／23 坪、3 房 32／33 坪", floors: "華廈，地上 7 層／地下 1 層", siteAreaPing: 1594,
+    note: "總戶數為概數（總表寫「約 156 戶」）。",
+    sources: ["owner"],
+  },
+
+  // ───── 悅築建設 ─────
+  {
+    id: "jingrui-jin", name: "精銳錦", builder: "悅築建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2024～25", units: 141,
+    street: "文明街", streets: "梧棲區 文明街一帶",
+    layout: "3 房約 37～38 坪", floors: "地上 13 層／地下 2 層", siteAreaPing: 1378,
+    sources: ["owner"],
+  },
+
+  // ───── 詠唐建設 ─────
+  {
+    id: "jiage-juqingshan", name: "佳格聚晴山", builder: "詠唐建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2022", units: 75,
+    street: "永寧路", streets: "梧棲區 永寧路 67 巷一帶",
+    layout: "2 房約 20.7～26 坪、3 房約 31 坪", floors: "地上 7 層／地下 1 層", siteAreaPing: 590,
+    sources: ["owner"],
+  },
+
+  // ───── 悠助建設 ─────
+  {
+    id: "youzhu-yijing", name: "悠助意境", builder: "悠助建設", area: "沙鹿車站",
+    status: "newly", statusNote: "新成屋／2026 年", completion: "2026", units: 7,
+    street: "興農路", streets: "梧棲區 興農路 165 巷",
+    layout: "透天，建坪約 64.7～65.9 坪、地坪約 22.5～25.3 坪", floors: "透天 4 層", siteAreaPing: 172,
+    note: "這一案是透天，不是大樓 —— 目前全站唯一一案，坪數欄講的是建坪與地坪。",
+    sources: ["owner"],
+  },
+
+  // ───── 百騏建設 ─────
+  {
+    id: "yuanzhen-chengshi", name: "沅臻城市", builder: "百騏建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2023", units: 54,
+    street: "興農路", streets: "梧棲區 興農路 285 巷",
+    layout: "2 房 27 坪、3 房 39 坪", floors: "地上 14 層／地下 2 層", siteAreaPing: 520,
+    sources: ["owner"],
+  },
 ];
 
 /* ─────────────── 座標 ─────────────── */
@@ -557,8 +846,23 @@ export const MAP_CENTER = { lat: 24.2655, lng: 120.5375 } as const;
 export function projectStats() {
   const units = PROJECTS.reduce((sum, p) => sum + (p.units ?? 0), 0);
   const builders = new Set(PROJECTS.map((p) => p.builder));
+  /**
+   * 重劃區那半邊（梧棲＋清水）。**凡是句子裡有「重劃區」三個字，數量就要用這個，
+   * 不能用 `total`** —— 2026-08-27 補進沙鹿車站商圈 28 案之後 `total` 是全站案數，
+   * 拿去接在「重劃區」後面就變成對客戶宣稱重劃區有 67 案。
+   */
+  const district = PROJECTS.filter((p) => p.area === "梧棲" || p.area === "清水");
   return {
     total: PROJECTS.length,
+    /** 重劃區（梧棲＋清水兩半）的案數 */
+    district: district.length,
+    /** 各區案數。新增 area 時這裡自己會多一個 key，不用回來改 */
+    byArea: PROJECTS.reduce((acc, p) => {
+      acc[p.area] = (acc[p.area] ?? 0) + 1;
+      return acc;
+    }, {} as Partial<Record<ProjectArea, number>>),
+    /** 重劃區那半邊的總戶數 */
+    districtUnits: district.reduce((sum, p) => sum + (p.units ?? 0), 0),
     presale: PROJECTS.filter((p) => p.status === "presale").length,
     newly: PROJECTS.filter((p) => p.status === "newly").length,
     completed: PROJECTS.filter((p) => p.status === "completed").length,

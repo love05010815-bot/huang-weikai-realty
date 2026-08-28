@@ -316,11 +316,11 @@ function ProjectCard({
                 <dd>{p.note}</dd>
               </div>
             )}
-            {filledAmenities().length > 0 && (
+            {filledAmenities(p.area).length > 0 && (
               <div>
                 <dt>周邊機能</dt>
                 <dd>
-                  {filledAmenities().map((g) => (
+                  {filledAmenities(p.area).map((g) => (
                     <span key={g.label} className={styles.amenityGroup}>
                       <b>{g.label}</b>
                       {g.items.join("、")}
