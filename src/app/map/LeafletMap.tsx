@@ -89,7 +89,11 @@ const CLUSTER_SIZE: [number, number] = [150, 36];
  */
 const PIN_GROUPS: ReadonlyArray<{ id: string; name: string; areas: readonly ProjectArea[] }> = [
   { id: "shizheng", name: DISTRICT_NAME, areas: ["梧棲", "清水"] },
-  // { id: "shalu", name: "沙鹿", areas: ["沙鹿"] },
+  // ⚠️ 名字刻意用色塊的「沙鹿火車站商圈」，不是篩選臉的「沙鹿車站商圈」（差一個「火」）。
+  //    實測膠囊重心與那塊色塊的中心在 zoom 12 只差 19x8 px、zoom 13 差 37x16 px ——
+  //    膠囊 150x36，兩個標籤一定疊住。**同名才會讓色塊的字自動讓位**（見上面那條）。
+  //    要改成跟篩選臉一致之前，先想好疊字怎麼解。
+  { id: "shalu", name: "沙鹿火車站商圈", areas: ["沙鹿車站"] },
 ];
 
 /** 一顆膠囊至少要代表這麼多案。只剩一案還畫成 150px 的膠囊，不如直接畫那根圖釘 */

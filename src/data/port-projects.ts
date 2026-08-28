@@ -833,6 +833,24 @@ export const COORDS: Record<string, Coord> = {
   "zhonggang-yunding1": { lat: 24.26408, lng: 120.53372, precision: "exact" },
   "farglory-star3": { lat: 24.26696, lng: 120.54219, precision: "exact" },
 
+  /* ── 沙鹿車站商圈（系統擁有者本人用 /map?fix=1 點的，2026-08-27）──
+     28 案先標了這 11 案，其餘 17 案還沒標，那些在地圖上不會有圖釘。
+
+     ⚠️ 逐筆用「點在多邊形內」驗過，**11 筆全部落在沙鹿火車站商圈色塊裡面**，
+        包含總表上行政區寫梧棲區的沅臻城市與佳瑞京湛。
+        （先前預期梧棲那幾案會落在色塊外，實測不成立，不要照那個假設去判斷。） */
+  "yuanzhen-chengshi": { lat: 24.23706, lng: 120.55065, precision: "exact" },
+  "jiarui-jingzhan": { lat: 24.2385, lng: 120.55116, precision: "exact" },
+  "shengli-jiaoxiangqu": { lat: 24.23631, lng: 120.55488, precision: "exact" },
+  "shengxing-xingzhan": { lat: 24.23556, lng: 120.55388, precision: "exact" },
+  "deguang-hui": { lat: 24.23327, lng: 120.55199, precision: "exact" },
+  "deguang-ju": { lat: 24.23289, lng: 120.55268, precision: "exact" },
+  "fuyu-guangyu": { lat: 24.23607, lng: 120.55571, precision: "exact" },
+  "dahua-luming": { lat: 24.23734, lng: 120.55585, precision: "exact" },
+  "hezong-xiaoshidai5": { lat: 24.22795, lng: 120.55402, precision: "exact" },
+  "hezong-xiaoshidai3": { lat: 24.22728, lng: 120.55398, precision: "exact" },
+  "hezhu-t1": { lat: 24.23302, lng: 120.55478, precision: "exact" },
+
   /* ✅ 2026-08-23：39 案全部標完，而且全部是本人親手點的。
      我用 OSM 路網推的那批已經全數被覆蓋掉 —— 實測落差 180～270 公尺，
      留著只會誤導客戶。以後新增建案，座標一律走 /map?fix=1 由本人標。 */
