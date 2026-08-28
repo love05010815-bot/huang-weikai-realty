@@ -65,8 +65,9 @@ export const STATUS_LABEL: Record<ProjectStatus, string> = {
  * 位置。原本只有重劃區那三個值，2026-08-27 系統擁有者要把 `/map` 的篩選改成
  * 「整個海線生活圈」，所以把沙鹿那四個商圈也加進來。
  *
- * ⚠️ 商圈那四個目前**一個建案都沒有**（39 案全在重劃區內）。這是刻意留的空位 ——
- *    系統擁有者說之後會補商圈的建案。要補的時候把該案的 `area` 設成對應的值即可。
+ * 2026-08-27 陸續補進商圈的建案：沙鹿車站 28 案、鹿寮萬家福 64 案，全部由系統擁有者整理。
+ * **梧棲市區、清水市區、北勢靜宜、新光田目前仍是 0 案**，那是刻意留的空位；
+ * 要補的時候把該案的 `area` 設成對應的值即可，篩選臉與統計都會自己跟上。
  *
  * 原本有個「市鎮中心」值，2026-08-27 系統擁有者拍板不要這一塊，掛著它的 3 案
  * （佳泰琢閱、協勝港心、長虹天籟）**由他指定全部歸梧棲**，該值已整個拿掉。
@@ -111,8 +112,8 @@ export const AREA_FILTERS: ReadonlyArray<{ value: ProjectArea; label: string }> 
   // 鹿寮商圈與萬家福商圈併成一塊（兩塊上下相鄰、寬度幾乎一樣）。
   //
   // ⚠️ 「北勢靜宜」是 2026-08-27 補的 —— 它在 port-zones.ts 早就有色塊，
-  //    卻一直沒有篩選臉，是五塊色塊裡唯一篩不到的。**目前 0 案**，
-  //    等系統擁有者提供建案清單（跟沙鹿那 28 案一樣由他整理）。
+  //    卻一直沒有篩選臉，是五塊色塊裡唯一篩不到的。**目前仍是 0 案**，
+  //    等系統擁有者提供建案清單（他 8/27 先給了鹿寮萬家福那 64 案，北勢靜宜還沒給）。
   { value: "鹿寮萬家福", label: "鹿寮萬家福商圈" },
   { value: "沙鹿車站", label: "沙鹿車站商圈" },
   { value: "北勢靜宜", label: "北勢靜宜商圈" },
@@ -770,6 +771,439 @@ export const PROJECTS: Project[] = [
     status: "completed", completion: "約 2023", units: 54,
     street: "興農路", streets: "梧棲區 興農路 285 巷",
     layout: "2 房 27 坪、3 房 39 坪", floors: "地上 14 層／地下 2 層", siteAreaPing: 520,
+    sources: ["owner"],
+  },
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     鹿寮萬家福商圈 —— 2026-08-27 系統擁有者提供的整理（他稱「鹿寮家樂福生活圈」）。
+     64 案，全部 sources: ["owner"]，跟沙鹿車站那 28 案同一個來源。
+
+     ⚠️ 他的表上很多欄位寫「待確認」，這裡的處理原則是**寧可留空也不填大概**：
+       ・建商待確認的 18 案，`builder` 就寫「待確認」（這欄是必填，畫面會照實顯示）。
+       ・戶數／樓高／基地面積待確認的，整個欄位省略，不要填 0 或猜。
+       ・**公設比一律沒有**（他的表沒給），不要為了畫面好看去補。
+
+     ⚠️ `completion` 存的是**完工年**，不是屋齡 —— 他表上寫「約 3 年」「約 31～32 年」
+        那種，這裡換算成年份（2026 － N）再存，例如「約 2023」「約 1994～95」。
+        屋齡是 `houseAge()` 每次渲染時現算的，所以明年不會變成舊資料。
+        沒有年份可推的（成屋／新成屋／興建中）就存那個狀態字，屋齡那列不顯示。
+
+     ⚠️ 這批**一筆座標都沒有**，地圖上不會有圖釘，清單裡會標「未標位置」。
+        要標請系統擁有者用 /map?fix=1 逐案點。
+     ═══════════════════════════════════════════════════════════════════════ */
+  {
+    id: "kaiyue-jingxi", name: "凱悅京璽", builder: "凱悅建設體系", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋", units: 46,
+    street: "中華路二段", streets: "沙鹿區 中華路二段 428 號／432 巷一帶",
+    layout: "大樓＋透天產品", floors: "地上 4 層／地下 1 層", siteAreaPing: 690,
+    sources: ["owner"],
+  },
+  {
+    id: "yupin-yuan-2", name: "御品院2", builder: "沂昌建設", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋", units: 12,
+    street: "民族路", streets: "沙鹿區 民族路 20 巷一帶",
+    layout: "地坪 28～35 坪／建坪 60～67 坪", floors: "地上 4 層", siteAreaPing: 134,
+    sources: ["owner"],
+  },
+  {
+    id: "fuwang-xinhaicheng", name: "富旺心海城", builder: "富旺國際開發", area: "鹿寮萬家福",
+    status: "completed", completion: "約 2023", units: 179,
+    street: "民族路", streets: "沙鹿區 民族路 50 號一帶",
+    layout: "2～3 房為主", floors: "地上 10 層／地下 2 層", siteAreaPing: 1015,
+    sources: ["owner"],
+  },
+  {
+    id: "jiahong-dajing", name: "佳鋐大境", builder: "佳鋐建設", area: "鹿寮萬家福",
+    status: "newly", completion: "新成屋",
+    street: "中華路二段", streets: "沙鹿區 中華路二段 210 號一帶",
+    layout: "2～3 房為主",
+    note: "鹿寮延伸生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "zhifu-haole", name: "致富好樂", builder: "待確認", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "taiju-yaomei-2", name: "太聚曜美2", builder: "太聚建設", area: "鹿寮萬家福",
+    status: "newly", completion: "新成屋",
+    statusNote: "成屋／新案", streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "deguang-yao", name: "德光耀", builder: "德光建設", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    statusNote: "近年建案", street: "光明街", streets: "沙鹿區 光明街 220 號一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "yangguang-city", name: "暘光City", builder: "待確認", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "ancheng-zhumei", name: "安城築美", builder: "安城建設體系", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "jiage-xinyue", name: "佳格心悅", builder: "佳格建設體系", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "fude-xingyao", name: "富德星耀", builder: "富德建設", area: "鹿寮萬家福",
+    status: "presale", completion: "興建中",
+    statusNote: "預售／興建", street: "星輝路", streets: "沙鹿區 星輝路 30 巷一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "dibao-32", name: "帝堡32", builder: "帝堡建設體系", area: "鹿寮萬家福",
+    status: "presale", completion: "2026", units: 84,
+    statusNote: "預售／興建", street: "民族路", streets: "沙鹿區 民族路一帶",
+    floors: "地上 9 層", siteAreaPing: 263,
+    sources: ["owner"],
+  },
+  {
+    id: "yongyifa-mimi", name: "永益發覓蜜", builder: "永益發建設體系", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "yihong-yile", name: "逸竑逸樂", builder: "逸竑建設體系", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "ancheng-shi", name: "安城市", builder: "安城建設體系", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "zhaodeng-ying", name: "兆登櫻", builder: "兆登建設體系", area: "鹿寮萬家福",
+    status: "presale", completion: "2026",
+    statusNote: "預售，預計 2026 年下半年", street: "星輝路", streets: "沙鹿區 星輝路 110 巷一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "dibao-15", name: "帝堡15", builder: "帝堡建設體系", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋", units: 57,
+    street: "中山路", streets: "沙鹿區 中山路 669 巷 15 號",
+    floors: "地上 12 層", siteAreaPing: 518,
+    sources: ["owner"],
+  },
+  {
+    id: "fuyu-haide-gongyuan", name: "富宇海德公園", builder: "富宇建設", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋", units: 152,
+    street: "中山路", streets: "沙鹿區 中山路 665 號之 1 一帶",
+    floors: "地上 14 層", siteAreaPing: 1036,
+    sources: ["owner"],
+  },
+  {
+    id: "fuyu-fanersai", name: "富宇凡爾賽", builder: "富宇建設", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "fuyu-fenghui", name: "富宇豐卉", builder: "富宇建設", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋", units: 38,
+    street: "中山路", streets: "沙鹿區 中山路 651 巷一帶",
+    floors: "地上 10 層", siteAreaPing: 371,
+    sources: ["owner"],
+  },
+  {
+    id: "dibao-18", name: "帝堡18", builder: "帝堡建設體系", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋", units: 80,
+    street: "星海路", streets: "沙鹿區 星海路 15 巷 39 號一帶",
+    floors: "地上 12 層", siteAreaPing: 514,
+    sources: ["owner"],
+  },
+  {
+    id: "qingkong-shu", name: "晴空墅", builder: "待確認", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    statusNote: "透天成屋", streets: "沙鹿區 鹿寮家樂福生活圈",
+    layout: "透天產品",
+    sources: ["owner"],
+  },
+  {
+    id: "xing-qingkong", name: "星晴空", builder: "待確認", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "shengyang-qingkong-3", name: "聖揚晴空3", builder: "聖揚建設體系", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "fuli-5", name: "馥麗5", builder: "待確認", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "kunlianfu-zhifu", name: "坤聯富智富+", builder: "坤聯富建設", area: "鹿寮萬家福",
+    status: "presale", completion: "2030",
+    statusNote: "預售，預計 2030 年", street: "星河路", streets: "沙鹿區 星河路一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "kaiyue-moma", name: "凱悅MOMA透天／華廈區", builder: "凱悅建設體系", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    street: "星河路", streets: "沙鹿區 星河路一帶",
+    layout: "華廈＋透天產品",
+    sources: ["owner"],
+  },
+  {
+    id: "dazhuang-qianyinyuan", name: "大樁謙隱園", builder: "大樁建設體系", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "fuyu-zhongshanhui", name: "富宇中山匯", builder: "富宇建設", area: "鹿寮萬家福",
+    status: "presale", completion: "2028",
+    statusNote: "預售，預計 2028 年", street: "中山路", streets: "沙鹿區 中山路／長春路一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "kaiyue-jingzhan", name: "凱悅京綻－大樓區", builder: "凱悅建設體系", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "kaiyue-aimyshi", name: "凱悅愛My市", builder: "凱悅建設體系", area: "鹿寮萬家福",
+    status: "newly", completion: "新成屋",
+    street: "星河路", streets: "沙鹿區 星河路 59 號一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "fuyu-shidai-huayuan", name: "富宇時代花園", builder: "富宇建設", area: "鹿寮萬家福",
+    status: "presale", completion: "2026", units: 202,
+    statusNote: "預售／興建", street: "星河路", streets: "沙鹿區 星河路／福德路 186 巷",
+    layout: "2～3 房為主",
+    sources: ["owner"],
+  },
+  {
+    id: "fuyu-shidai-zhiqiu", name: "富宇時代之丘", builder: "富宇建設", area: "鹿寮萬家福",
+    status: "presale", completion: "2027", units: 111,
+    statusNote: "預售，預計 2027 年", street: "福德路", streets: "沙鹿區 福德路 186 巷／松蔭巷",
+    layout: "2～3 房為主",
+    sources: ["owner"],
+  },
+  {
+    id: "fuyu-shidai-yusuo", name: "富宇時代御所", builder: "富宇建設", area: "鹿寮萬家福",
+    status: "presale", completion: "2027", units: 59,
+    statusNote: "預售，預計 2027 年", street: "福德路", streets: "沙鹿區 福德路 186 巷一帶",
+    layout: "2～3 房為主",
+    sources: ["owner"],
+  },
+  {
+    id: "dadaocheng-liyu", name: "大稻埕禮御", builder: "大稻埕建設體系", area: "鹿寮萬家福",
+    status: "presale", completion: "2027",
+    statusNote: "預售，預計 2027 年", streets: "沙鹿區 成衣段／鹿寮核心",
+    sources: ["owner"],
+  },
+  {
+    id: "lintai-qinshan", name: "林泰親善", builder: "林泰建設體系", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "cunmao-langjing", name: "村懋朗境", builder: "村懋建設體系", area: "鹿寮萬家福",
+    status: "newly", completion: "新成屋",
+    statusNote: "成屋／新案", streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "fuwang-xinhaizhan", name: "富旺心海綻", builder: "富旺國際開發", area: "鹿寮萬家福",
+    status: "presale", completion: "2028",
+    statusNote: "預售，預計 2028 年", street: "民族路", streets: "沙鹿區 星美二街／民族路一帶",
+    layout: "2～3 房為主",
+    sources: ["owner"],
+  },
+  {
+    id: "cunmao-puyue", name: "村懋璞悅", builder: "村懋建設體系", area: "鹿寮萬家福",
+    status: "newly", completion: "新成屋",
+    statusNote: "成屋／新案", streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "jiazan-dazan", name: "佳瓚大讚", builder: "佳瓚建設體系", area: "鹿寮萬家福",
+    status: "presale", completion: "2027",
+    statusNote: "預售，預計 2027 年", street: "中山路", streets: "沙鹿區 中山路 495 巷一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "danlian-a", name: "丹聯大樓／丹聯A區", builder: "待確認", area: "鹿寮萬家福",
+    status: "completed", completion: "約 1994～95", units: 126,
+    street: "中山路", streets: "沙鹿區 中山路 533 號一帶",
+    floors: "地上 16 層",
+    sources: ["owner"],
+  },
+  {
+    id: "huawei-zhijian", name: "華偉知見", builder: "華偉建設體系", area: "鹿寮萬家福",
+    status: "presale", completion: "2028",
+    statusNote: "預售，預計 2028 年", street: "中山路", streets: "沙鹿區 中山路永安巷一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "shiji-fuyuguo", name: "世紀富裕國", builder: "待確認", area: "鹿寮萬家福",
+    status: "completed", completion: "約 2007", units: 75,
+    street: "福鹿街", streets: "沙鹿區 福鹿街 56 號一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "shiji-fuyuguo-2", name: "世紀富裕國2", builder: "待確認", area: "鹿寮萬家福",
+    status: "completed", completion: "約 2008", units: 70,
+    street: "光榮街", streets: "沙鹿區 光榮街 79 號一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "fuyueju-3", name: "富躍居3", builder: "待確認", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "huangjia-zuoan", name: "皇家左岸", builder: "皇家建設體系", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "huangjia-jiguang", name: "皇家極光", builder: "皇家建設體系", area: "鹿寮萬家福",
+    status: "newly", completion: "新成屋",
+    street: "光華路", streets: "沙鹿區 光華路 391 巷 55 號一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "kaiyue-shishang", name: "凱悅時尚", builder: "凱悅建設體系", area: "鹿寮萬家福",
+    status: "completed", completion: "約 2014", units: 17,
+    street: "福田北街", streets: "沙鹿區 福田北街 400 號一帶",
+    floors: "地上 5 層",
+    sources: ["owner"],
+  },
+  {
+    id: "huangjia-huangpin-2", name: "皇家皇品2", builder: "皇家建設體系", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋", units: 13,
+    street: "福田北街", streets: "沙鹿區 福田北街 487 號一帶",
+    layout: "透天住宅", siteAreaPing: 765,
+    sources: ["owner"],
+  },
+  {
+    id: "jiali-lijing", name: "嘉麗儷景", builder: "待確認", area: "鹿寮萬家福",
+    status: "newly", completion: "新成屋",
+    street: "光華路", streets: "沙鹿區 光華路 536 號一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "luming-yusuo", name: "鹿鳴寓所", builder: "待確認", area: "鹿寮萬家福",
+    status: "newly", completion: "新成屋",
+    street: "賢孝街", streets: "沙鹿區 賢孝街 28 號一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "jiutang-huayang-tiane", name: "久樘花漾天鵝", builder: "久樘開發", area: "鹿寮萬家福",
+    status: "newly", completion: "新成屋",
+    street: "三民路", streets: "沙鹿區 三民路 107 號一帶",
+    layout: "2～3 房為主",
+    note: "鹿寮延伸生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "fuyu-yunji", name: "富宇云集", builder: "富宇建設", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮延伸生活圈",
+    note: "鹿寮延伸生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "maoyang-tianyue", name: "茂洋天玥", builder: "茂洋建設體系", area: "鹿寮萬家福",
+    status: "completed", completion: "約 2024",
+    street: "台灣大道七段", streets: "沙鹿區 台灣大道七段 822 號一帶",
+    layout: "2～3 房為主",
+    note: "鹿寮延伸生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "taiju-yaomei", name: "太聚曜美", builder: "太聚建設", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "yuanqian-newyang", name: "元謙NEW漾", builder: "元謙建設體系", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋", units: 49,
+    street: "長春路", streets: "沙鹿區 長春路 202 巷一帶",
+    siteAreaPing: 1486,
+    note: "鹿寮／北勢交界",
+    sources: ["owner"],
+  },
+  {
+    id: "weixiao-zhumei", name: "微笑築美", builder: "待確認", area: "鹿寮萬家福",
+    status: "completed", completion: "約 2024",
+    statusNote: "透天", street: "長春路", streets: "沙鹿區 長春路 202 巷一帶",
+    layout: "透天產品",
+    note: "鹿寮延伸生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "qingpu-yuan", name: "青樸院", builder: "待確認", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮延伸生活圈",
+    note: "鹿寮延伸生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "weixiao-daweilai-3", name: "微笑大未來3", builder: "待確認", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋", units: 37,
+    street: "民族路一段", streets: "沙鹿區 民族路一段 2 巷 102 號",
+    sources: ["owner"],
+  },
+  {
+    id: "xinhaiyuan-yangshidai", name: "心海苑／漾世代", builder: "待確認", area: "鹿寮萬家福",
+    status: "completed", completion: "約 2020", units: 43,
+    street: "中山路", streets: "沙鹿區 中山路中峰巷 145 號一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "lufeng-jing", name: "鹿峰靜", builder: "待確認", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "dibao-31", name: "帝堡31", builder: "帝堡建設體系", area: "鹿寮萬家福",
+    status: "newly", completion: "新成屋",
+    street: "中山路", streets: "沙鹿區 中山路 626 號一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "luze-liyu", name: "鹿澤禮寓", builder: "待確認", area: "鹿寮萬家福",
+    status: "newly", completion: "新成屋",
+    street: "福田北街", streets: "沙鹿區 福田北街 120 號一帶",
+    note: "鹿寮延伸生活圈",
+    sources: ["owner"],
+  },
+  {
+    id: "fuguiyuan-huasha", name: "富貴園華廈區", builder: "待確認", area: "鹿寮萬家福",
+    status: "completed", completion: "成屋",
+    streets: "沙鹿區 鹿寮家樂福生活圈",
+    layout: "華廈產品",
     sources: ["owner"],
   },
 ];

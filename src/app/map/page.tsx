@@ -21,7 +21,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { OWNER, SITE_URL } from "@/config/owner";
-import { DISTRICT, PROJECTS, SOURCES, projectStats } from "@/data/port-projects";
+import { DISTRICT, PROJECTS, SOURCES, projectStats, AREA_FILTERS } from "@/data/port-projects";
 import { ZONES } from "@/data/port-zones";
 import { getMapListingsByProject } from "@/lib/map-listings";
 import ProjectExplorer, { type ProjectListing } from "./ProjectExplorer";
@@ -39,6 +39,21 @@ const stats = projectStats();
  *    只要確認文案沒有重新寫死區域名就好。
  */
 const LOCAL_ZONE_COUNT = ZONES.filter((z) => !z.official).length;
+
+/**
+ * 重劃區以外、有建案的生活圈，照案數多的排前面 ——「鹿寮萬家福商圈 64 案、沙鹿車站商圈 28 案」。
+ *
+ * ⚠️ **一定要用算的，不要把區名寫死。** 2026-08-27 這句原本寫死成「沙鹿車站商圈 N 案」，
+ *    當天補進鹿寮萬家福 64 案之後，句子裡的 39＋28 就跟 `stats.total`（131）對不起來，
+ *    等於漏講 64 案 —— 而且不會報錯、畫面看起來還很正常。
+ *    這裡改成從 `AREA_FILTERS` 掃出所有非重劃區、案數 > 0 的區，之後再補哪一區都不用回來改。
+ */
+const AREA_BREAKDOWN = AREA_FILTERS.filter((f) => f.value !== "梧棲" && f.value !== "清水")
+  .map((f) => ({ label: f.label, n: stats.byArea[f.value] ?? 0 }))
+  .filter((x) => x.n > 0)
+  .sort((a, b) => b.n - a.n)
+  .map((x) => `${x.label} ${x.n} 案`)
+  .join("、");
 
 const TITLE = `台中港市鎮中心建案總覽｜梧棲・清水重劃區 ${stats.district} 個建案一次看｜台中海線房仲${OWNER.name}`;
 const DESCRIPTION = `台中港市鎮中心重劃區（橫跨梧棲區與清水區）${stats.district} 個建案總覽：遠雄幸福成、聯悅馨、長虹天擎、聯虹鉑玥、遠雄之星系列等，可依行政區、預售／成屋與建商篩選，並標示規模與銷售階段。由台中海線房仲${OWNER.name}整理自公開資訊。`;
@@ -188,7 +203,7 @@ export default async function MapPage() {
               以後要再往標題加一個地名，判準一樣：**那一區真的有建案了才加。** */}
           <h1 className={styles.title}>台中海線建案地圖・梧棲｜清水｜沙鹿</h1>
           <p className={styles.lede}>
-            {`這裡整理了台中海線 ${stats.total} 個建案、合計 ${stats.units.toLocaleString("zh-TW")} 戶：${DISTRICT.alias}重劃區（梧棲＋清水）${stats.district} 案，沙鹿車站商圈 ${stats.byArea["沙鹿車站"] ?? 0} 案。地圖範圍是整個台中港生活圈，除了重劃區也畫出周邊 ${LOCAL_ZONE_COUNT} 塊生活圈範圍。`}
+            {`這裡整理了台中海線 ${stats.total} 個建案、合計 ${stats.units.toLocaleString("zh-TW")} 戶：${DISTRICT.alias}重劃區（梧棲＋清水）${stats.district} 案，${AREA_BREAKDOWN}。地圖範圍是整個台中港生活圈，除了重劃區也畫出周邊 ${LOCAL_ZONE_COUNT} 塊生活圈範圍。`}
           </p>
 
           <p className={styles.bounds}>
