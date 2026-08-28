@@ -851,6 +851,30 @@ export const COORDS: Record<string, Coord> = {
   "hezong-xiaoshidai3": { lat: 24.22728, lng: 120.55398, precision: "exact" },
   "hezhu-t1": { lat: 24.23302, lng: 120.55478, precision: "exact" },
 
+  /* ── 沙鹿第二批（系統擁有者本人標的，2026-08-27）──
+     ⚠️ 這批 16 筆也全部落在沙鹿火車站商圈色塊裡面，含總表寫梧棲區的
+        精銳錦、佳格聚晴山、德光一築、德光二城、悠助意境。
+        **8 個梧棲區的案子已標 7 個，7 個全在色塊內** ——
+        「行政區寫梧棲＝會落在沙鹿色塊外」這個假設已被實測徹底推翻，不要再用。
+
+     剩富宇富嶼一案沒座標（預售，2029 完工）。 */
+  "kaiyue-w": { lat: 24.23613, lng: 120.56005, precision: "exact" },
+  "zhanqian-qingshidai": { lat: 24.23135, lng: 120.55153, precision: "exact" },
+  "fuyu-zhencang": { lat: 24.23962, lng: 120.56133, precision: "exact" },
+  "hongyu-jing": { lat: 24.22415, lng: 120.5552, precision: "exact" },
+  "jiahua-daxin": { lat: 24.22964, lng: 120.55525, precision: "exact" },
+  "hezong-xiaoshidai1": { lat: 24.22489, lng: 120.55253, precision: "exact" },
+  "hezong-xiaoshidai2": { lat: 24.2272, lng: 120.55367, precision: "exact" },
+  "jiahong-keyi": { lat: 24.23767, lng: 120.57097, precision: "exact" },
+  "youfeng-xinshenghuo": { lat: 24.23606, lng: 120.56967, precision: "exact" },
+  "qingchunxueyuan-shalu": { lat: 24.23147, lng: 120.55418, precision: "exact" },
+  "kuailetiane-huasha": { lat: 24.23914, lng: 120.57196, precision: "exact" },
+  "jingrui-jin": { lat: 24.24069, lng: 120.55364, precision: "exact" },
+  "jiage-juqingshan": { lat: 24.23092, lng: 120.54852, precision: "exact" },
+  "deguang-yizhu": { lat: 24.23478, lng: 120.54914, precision: "exact" },
+  "deguang-ercheng": { lat: 24.2348, lng: 120.54848, precision: "exact" },
+  "youzhu-yijing": { lat: 24.23337, lng: 120.54881, precision: "exact" },
+
   /* ✅ 2026-08-23：39 案全部標完，而且全部是本人親手點的。
      我用 OSM 路網推的那批已經全數被覆蓋掉 —— 實測落差 180～270 公尺，
      留著只會誤導客戶。以後新增建案，座標一律走 /map?fix=1 由本人標。 */
