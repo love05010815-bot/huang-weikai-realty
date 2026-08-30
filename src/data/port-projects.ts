@@ -1217,8 +1217,9 @@ export const PROJECTS: Project[] = [
         星海路 15 巷 39 號、地上 12 層、約 514 坪，座標也標了），所以沒有重複建。
 
      ⚠️ 「小時代6」**照他寫的原文命名**，沒有補成「合總小時代6」。
-        本檔已有的合總小時代 1／2／3／5 都叫「合總小時代N」而且 area 是**沙鹿車站**，
-        我問過他要不要把那四案一起改到鹿寮，他沒回答，所以**那四案原封不動**。
+        本檔已有的合總小時代 1／2／3／5 都叫「合總小時代N」而且 area 是**沙鹿車站**。
+        **2026-08-27 系統擁有者拍板：那四案維持沙鹿車站，不跟著小時代6 搬到鹿寮。**
+        所以同一個系列會跨兩個商圈，這是他指定的，不要「順手統一」。
         另外掛了 aliases「合總小時代6」，搜尋兩種寫法都找得到（aliases 不顯示）。 */
   {
     id: "hezong-xiaoshidai6", name: "小時代6", builder: "合總建設", area: "鹿寮萬家福",
@@ -1438,6 +1439,13 @@ export const COORDS: Record<string, Coord> = {
   "yupin-yuan-2": { lat: 24.2502, lng: 120.55654, precision: "exact" }, // 御品院2
   "fuguiyuan-huasha": { lat: 24.24573, lng: 120.56928, precision: "exact" }, // 富貴園華廈區
   "fuyu-fuyu": { lat: 24.23537, lng: 120.55165, precision: "exact" }, // 富宇富嶼
+
+  /* ── 最後 3 案（2026-08-27）── 標完這批，**133 案全部有座標，清單裡不再有「未標位置」**。
+     核對過：id、案名、區域、無重複、無孤兒，3 筆都在鹿寮萬家福色塊內，
+     跟既有 130 筆比對 80 公尺內沒有鄰居。 */
+  "cunmao-puyue": { lat: 24.2484, lng: 120.56052, precision: "exact" }, // 村懋璞悅
+  "hezong-xiaoshidai6": { lat: 24.25052, lng: 120.56428, precision: "exact" }, // 小時代6
+  "kaijun-deguangxingzhan": { lat: 24.24885, lng: 120.56724, precision: "exact" }, // 德光星綻
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
