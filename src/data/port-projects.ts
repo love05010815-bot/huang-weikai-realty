@@ -1319,6 +1319,56 @@ export const COORDS: Record<string, Coord> = {
   /* ✅ 2026-08-23：39 案全部標完，而且全部是本人親手點的。
      我用 OSM 路網推的那批已經全數被覆蓋掉 —— 實測落差 180～270 公尺，
      留著只會誤導客戶。以後新增建案，座標一律走 /map?fix=1 由本人標。 */
+
+  /* ── 鹿寮萬家福商圈，第一批 39 案（2026-08-27，系統擁有者用 /map?fix=1 親手點的）──
+     逐筆核對過：id 都在建案表裡、案名對得上、area 都是鹿寮萬家福、沒有重複、
+     沒有覆蓋到既有座標，**39 筆全部落在鹿寮萬家福色塊裡面**。
+
+     兩組落點很近的都查過原因，不是點錯：
+       ・富宇時代御所 ↔ 之丘 37 公尺 —— 兩案都在福德路 186 巷（他的總表就這樣寫）
+       ・富宇凡爾賽 ↔ 富宇豐卉 59 公尺 —— 都在中山路 651 巷一帶（凡爾賽總表沒給門牌，
+         位置是他憑在地認知點的）
+
+     ⚠️ 鹿寮萬家福還有 25 案沒座標，清單裡會標「未標位置」。 */
+  "jiutang-huayang-tiane": { lat: 24.24175, lng: 120.57064, precision: "exact" }, // 久樘花漾天鵝
+  "dazhuang-qianyinyuan": { lat: 24.25551, lng: 120.571, precision: "exact" }, // 大樁謙隱園
+  "dadaocheng-liyu": { lat: 24.25098, lng: 120.56364, precision: "exact" }, // 大稻埕禮御
+  "jiazan-dazan": { lat: 24.24841, lng: 120.56338, precision: "exact" }, // 佳瓚大讚
+  "fuyu-haide-gongyuan": { lat: 24.25637, lng: 120.56891, precision: "exact" }, // 富宇海德公園
+  "fuyu-fanersai": { lat: 24.25512, lng: 120.56823, precision: "exact" }, // 富宇凡爾賽
+  "maoyang-tianyue": { lat: 24.23882, lng: 120.56768, precision: "exact" }, // 茂洋天玥
+  "danlian-a": { lat: 24.24443, lng: 120.55562, precision: "exact" }, // 丹聯大樓／丹聯A區
+  "jiahong-dajing": { lat: 24.24848, lng: 120.55507, precision: "exact" }, // 佳鋐大境
+  "fuwang-xinhaicheng": { lat: 24.25002, lng: 120.55751, precision: "exact" }, // 富旺心海城
+  "yuanqian-newyang": { lat: 24.25569, lng: 120.56382, precision: "exact" }, // 元謙NEW漾
+  "yongyifa-mimi": { lat: 24.25646, lng: 120.56214, precision: "exact" }, // 永益發覓蜜
+  "fuyu-fenghui": { lat: 24.25557, lng: 120.56791, precision: "exact" }, // 富宇豐卉
+  "dibao-18": { lat: 24.25526, lng: 120.5669, precision: "exact" }, // 帝堡18
+  "xinhaiyuan-yangshidai": { lat: 24.25624, lng: 120.56613, precision: "exact" }, // 心海苑／漾世代
+  "zhaodeng-ying": { lat: 24.2526, lng: 120.56307, precision: "exact" }, // 兆登櫻
+  "shiji-fuyuguo": { lat: 24.24382, lng: 120.56471, precision: "exact" }, // 世紀富裕國
+  "ancheng-shi": { lat: 24.25454, lng: 120.56353, precision: "exact" }, // 安城市
+  "taiju-yaomei": { lat: 24.2562, lng: 120.56032, precision: "exact" }, // 太聚曜美
+  "ancheng-zhumei": { lat: 24.24757, lng: 120.56087, precision: "exact" }, // 安城築美
+  "yangguang-city": { lat: 24.24578, lng: 120.55926, precision: "exact" }, // 暘光City
+  "cunmao-langjing": { lat: 24.2518, lng: 120.56215, precision: "exact" }, // 村懋朗境
+  "jiage-xinyue": { lat: 24.24811, lng: 120.56147, precision: "exact" }, // 佳格心悅
+  "shiji-fuyuguo-2": { lat: 24.24299, lng: 120.56441, precision: "exact" }, // 世紀富裕國2
+  "fuyu-zhongshanhui": { lat: 24.25252, lng: 120.56973, precision: "exact" }, // 富宇中山匯
+  "fuyu-shidai-huayuan": { lat: 24.25128, lng: 120.56874, precision: "exact" }, // 富宇時代花園
+  "fuyu-shidai-yusuo": { lat: 24.25036, lng: 120.56877, precision: "exact" }, // 富宇時代御所
+  "fuyu-shidai-zhiqiu": { lat: 24.25055, lng: 120.56847, precision: "exact" }, // 富宇時代之丘
+  "deguang-yao": { lat: 24.24601, lng: 120.55794, precision: "exact" }, // 德光耀
+  "huangjia-jiguang": { lat: 24.24584, lng: 120.56877, precision: "exact" }, // 皇家極光
+  "kaiyue-shishang": { lat: 24.24544, lng: 120.5695, precision: "exact" }, // 凱悅時尚
+  "huangjia-huangpin-2": { lat: 24.24512, lng: 120.57038, precision: "exact" }, // 皇家皇品2
+  "luze-liyu": { lat: 24.24618, lng: 120.57129, precision: "exact" }, // 鹿澤禮寓
+  "jiali-lijing": { lat: 24.24316, lng: 120.57048, precision: "exact" }, // 嘉麗儷景
+  "luming-yusuo": { lat: 24.24216, lng: 120.56944, precision: "exact" }, // 鹿鳴寓所
+  "fuyu-yunji": { lat: 24.24016, lng: 120.56727, precision: "exact" }, // 富宇云集
+  "huangjia-zuoan": { lat: 24.24453, lng: 120.55831, precision: "exact" }, // 皇家左岸
+  "zhifu-haole": { lat: 24.2469, lng: 120.55382, precision: "exact" }, // 致富好樂
+  "taiju-yaomei-2": { lat: 24.24537, lng: 120.55426, precision: "exact" }, // 太聚曜美2
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
