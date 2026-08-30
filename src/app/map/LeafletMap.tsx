@@ -31,8 +31,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Map as LeafletMapType, Marker } from "leaflet";
 import {
+  AREA_FILTERS,
+  AREA_LABEL,
   COORDS,
   MAP_CENTER,
+  PROJECTS,
   type Project,
   type ProjectArea,
   type ProjectStatus,
@@ -234,7 +237,22 @@ export default function LeafletMap({
 
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [picked, setPicked] = useState<string | null>(null);
+  /**
+   * 校正模式收集到的座標。**2026-08-27 從「一次只顯示一筆」改成累積** ——
+   * 舊版每點一下就蓋掉上一筆，系統擁有者要標 64 案就得來回複製 64 次。
+   */
+  const [fixList, setFixList] = useState<Array<{ id: string; name: string; lat: number; lng: number }>>([]);
+  /** 目前要標的建案 id。點一下地圖之後會自動跳到下一個還沒座標的案子 */
+  const [fixTarget, setFixTarget] = useState<string>("");
+  /**
+   * 給地圖 click handler 讀的 `fixTarget`。
+   *
+   * ⚠️ 不能直接在 handler 裡用 state —— 那個 effect 的相依只有 [ready, fixMode]，
+   *    handler 會閉包住第一次的 fixTarget，永遠標到同一案。把相依加上 fixTarget
+   *    也可以，但每換一次建案就要 off/on 一次事件，用 ref 乾淨。
+   */
+  const fixTargetRef = useRef("");
+  fixTargetRef.current = fixTarget;
   const [fixMode, setFixMode] = useState(false);
   const [zoneMode, setZoneMode] = useState(false);
   /**
@@ -265,6 +283,50 @@ export default function LeafletMap({
     [projects]
   );
   const { clusters, loose } = useMemo(() => buildClusters(placed, zoom), [placed, zoom]);
+
+  /**
+   * 校正模式的建案下拉。**還沒有座標的排前面**（那才是要標的），已經有的排後面
+   * 並標「已標」—— 舊座標要修正時也找得到。
+   *
+   * 用全部 PROJECTS 而不是傳進來的 `projects`：`projects` 是篩選後的清單，
+   * 忘了切篩選臉就會有一半建案選不到。
+   */
+  const fixOptions = useMemo(() => {
+    const done = new Set(fixList.map((x) => x.id));
+    // 同一區排在一起。PROJECTS 是照建商分組的，直接用它的順序會在區之間跳來跳去，
+    // 標 64 案時等於地圖要一直大幅移動。
+    const areaOrder = AREA_FILTERS.map((f) => f.value);
+    return PROJECTS.map((x) => {
+      const has = !!COORDS[x.id];
+      return {
+        id: x.id,
+        has,
+        area: x.area,
+        name: x.name,
+        label:
+          `${AREA_LABEL[x.area]}｜${x.name}` +
+          (done.has(x.id) ? "（這次已點）" : has ? "（已標）" : ""),
+      };
+    }).sort(
+      (a, b) =>
+        Number(a.has) - Number(b.has) ||
+        areaOrder.indexOf(a.area) - areaOrder.indexOf(b.area) ||
+        a.name.localeCompare(b.name, "zh-Hant")
+    );
+  }, [fixList]);
+
+  /**
+   * 點完一案就自動跳到下一個「還沒座標、這次也還沒點」的建案。
+   * 沒有這段的話每點一下都要回去手動換建案，64 案會點到不想點。
+   */
+  useEffect(() => {
+    if (!fixMode) return;
+    const done = new Set(fixList.map((x) => x.id));
+    if (fixTarget && !done.has(fixTarget)) return;
+    // 照下拉的順序找下一個（同區排在一起），不要用 PROJECTS 的原始順序
+    const next = fixOptions.find((x) => !x.has && !done.has(x.id));
+    setFixTarget(next ? next.id : "");
+  }, [fixMode, fixList, fixTarget, fixOptions]);
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
@@ -374,12 +436,22 @@ export default function LeafletMap({
     };
   }, [ready, zoom, clusters]);
 
-  /* ── 校正模式：點地圖吐座標 ── */
+  /* ── 校正模式：點地圖收座標（會累積）── */
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !fixMode) return;
-    const handler = (e: import("leaflet").LeafletMouseEvent) =>
-      setPicked(`{ lat: ${e.latlng.lat.toFixed(5)}, lng: ${e.latlng.lng.toFixed(5)}, precision: "exact" },`);
+    const handler = (e: import("leaflet").LeafletMouseEvent) => {
+      setFixList((list) => {
+        const id = fixTargetRef.current;
+        if (!id) return list;
+        const p = PROJECTS.find((x) => x.id === id);
+        if (!p) return list;
+        // 同一案再點一次就覆蓋，不要留兩筆
+        const next = list.filter((x) => x.id !== id);
+        next.push({ id, name: p.name, lat: +e.latlng.lat.toFixed(5), lng: +e.latlng.lng.toFixed(5) });
+        return next;
+      });
+    };
     map.on("click", handler);
     return () => {
       map.off("click", handler);
@@ -487,8 +559,36 @@ export default function LeafletMap({
       {fixMode && (
         <div className={styles.lmFix}>
           <b>座標校正模式</b>
-          <p>在地圖上點建案的正確位置，下面會給你可以貼回 port-projects.ts 的一行。</p>
-          <code>{picked ?? "（還沒點）"}</code>
+          <p>
+            先在下面選建案，再到地圖上點它的位置。
+            <b>點完會自動跳到下一個還沒座標的案子</b>，所以可以一直點下去，
+            最後整段複製一次給我就好。同一案再點一次會覆蓋，不會留兩筆。
+          </p>
+          <select
+            className={styles.lmFixPick}
+            value={fixTarget}
+            onChange={(e) => setFixTarget(e.target.value)}
+          >
+            <option value="">（選一個建案）</option>
+            {fixOptions.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <code>
+            {fixList.length === 0
+              ? "（還沒點）"
+              : fixList
+                  .map((x) => `"${x.id}": { lat: ${x.lat}, lng: ${x.lng}, precision: "exact" }, // ${x.name}`)
+                  .join(String.fromCharCode(10))}
+          </code>
+          <button type="button" onClick={() => setFixList((l) => l.slice(0, -1))}>
+            {`刪掉最後一筆（目前 ${fixList.length} 筆）`}
+          </button>
+          <button type="button" onClick={() => setFixList([])}>
+            全部清空
+          </button>
         </div>
       )}
 

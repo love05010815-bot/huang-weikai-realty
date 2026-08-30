@@ -1663,10 +1663,28 @@
   font-size: 12px;
   word-break: break-all;
   user-select: all;
+  /* 校正模式現在會累積很多行，沒有這兩條就全部擠成一行、也選不到全部 */
+  white-space: pre-wrap;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+/* 校正模式的建案下拉（2026-08-27 新增）*/
+.lmFixPick {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 13px;
 }
 
 .lmFix button {
   margin-top: 8px;
+  margin-right: 8px;
   padding: 6px 12px;
   border: 1px solid var(--line);
   border-radius: 999px;
