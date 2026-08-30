@@ -1369,6 +1369,46 @@ export const COORDS: Record<string, Coord> = {
   "huangjia-zuoan": { lat: 24.24453, lng: 120.55831, precision: "exact" }, // 皇家左岸
   "zhifu-haole": { lat: 24.2469, lng: 120.55382, precision: "exact" }, // 致富好樂
   "taiju-yaomei-2": { lat: 24.24537, lng: 120.55426, precision: "exact" }, // 太聚曜美2
+
+  /* ── 鹿寮萬家福第二批 24 案 ＋ 沙鹿車站最後 1 案（2026-08-27，同樣是他用 /map?fix=1 點的）──
+     核對過：id、案名、無重複、無覆蓋，**25 筆全部落在自己那一區的色塊內**。
+
+     ⚠️ 其中 **富宇富嶼**（area 沙鹿車站、坐落卻是梧棲區興農路）**落在沙鹿色塊裡面**。
+        本檔上面那段舊註解預測「那 8 案標了會落在色塊外」——那 8 案現在全部標完，
+        **8 個全在色塊內，預測整個不成立**（沙鹿色塊 8/27 已由他重畫成 41 點）。
+
+     ⚠️ 三組落點在 60 公尺內的，共同點是**沒有門牌的那一案**（總表寫「鹿寮家樂福生活圈」），
+        位置是他憑在地認知點的，旁邊那案才有門牌：
+          ・晴空墅（透天，無門牌）↔ 心海苑／漾世代（中山路中峰巷 145 號）28 公尺
+          ・富貴園華廈區（無門牌）↔ 皇家極光（光華路 391 巷 55 號）53 公尺
+          ・富貴園華廈區（無門牌）↔ 凱悅時尚（福田北街 400 號）39 公尺
+        **這三筆沒有門牌可以交叉查證**，跟前一批那兩組（總表寫同一條巷）不一樣。
+        已回報請他確認，他沒說要改就是對的，不要自己挪。 */
+  "kaiyue-jingxi": { lat: 24.25277, lng: 120.55704, precision: "exact" }, // 凱悅京璽
+  "fuwang-xinhaizhan": { lat: 24.25095, lng: 120.5593, precision: "exact" }, // 富旺心海綻
+  "dibao-32": { lat: 24.25024, lng: 120.55975, precision: "exact" }, // 帝堡32
+  "fude-xingyao": { lat: 24.25011, lng: 120.56057, precision: "exact" }, // 富德星耀
+  "lintai-qinshan": { lat: 24.25111, lng: 120.56277, precision: "exact" }, // 林泰親善
+  "dibao-15": { lat: 24.2573, lng: 120.56818, precision: "exact" }, // 帝堡15
+  "xing-qingkong": { lat: 24.25696, lng: 120.56727, precision: "exact" }, // 星晴空
+  "lufeng-jing": { lat: 24.25752, lng: 120.57156, precision: "exact" }, // 鹿峰靜
+  "shengyang-qingkong-3": { lat: 24.25748, lng: 120.57316, precision: "exact" }, // 聖揚晴空3
+  "fuli-5": { lat: 24.25569, lng: 120.57184, precision: "exact" }, // 馥麗5
+  "kunlianfu-zhifu": { lat: 24.25461, lng: 120.5697, precision: "exact" }, // 坤聯富智富+
+  "kaiyue-moma": { lat: 24.25467, lng: 120.57128, precision: "exact" }, // 凱悅MOMA透天／華廈區
+  "dibao-31": { lat: 24.2552, lng: 120.56894, precision: "exact" }, // 帝堡31
+  "qingkong-shu": { lat: 24.25619, lng: 120.5664, precision: "exact" }, // 晴空墅
+  "kaiyue-jingzhan": { lat: 24.25192, lng: 120.56867, precision: "exact" }, // 凱悅京綻－大樓區
+  "kaiyue-aimyshi": { lat: 24.25176, lng: 120.56927, precision: "exact" }, // 凱悅愛My市
+  "fuyueju-3": { lat: 24.24698, lng: 120.56648, precision: "exact" }, // 富躍居3
+  "huawei-zhijian": { lat: 24.24633, lng: 120.56423, precision: "exact" }, // 華偉知見
+  "weixiao-zhumei": { lat: 24.25639, lng: 120.56521, precision: "exact" }, // 微笑築美
+  "weixiao-daweilai-3": { lat: 24.25798, lng: 120.56589, precision: "exact" }, // 微笑大未來3
+  "qingpu-yuan": { lat: 24.25767, lng: 120.56171, precision: "exact" }, // 青樸院
+  "yihong-yile": { lat: 24.25681, lng: 120.56132, precision: "exact" }, // 逸竑逸樂
+  "yupin-yuan-2": { lat: 24.2502, lng: 120.55654, precision: "exact" }, // 御品院2
+  "fuguiyuan-huasha": { lat: 24.24573, lng: 120.56928, precision: "exact" }, // 富貴園華廈區
+  "fuyu-fuyu": { lat: 24.23537, lng: 120.55165, precision: "exact" }, // 富宇富嶼
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
