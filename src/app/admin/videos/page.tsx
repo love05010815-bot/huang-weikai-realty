@@ -15,6 +15,7 @@ import { CIS } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
 import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
 import { CATEGORY_META, VIDEO_CATEGORIES, listAllVideos, type VideoRecord } from "@/lib/videos";
+import { getVideoViewStats, type VideoViewStats } from "@/lib/video-views";
 import VideosManager from "./VideosManager";
 import styles from "@/app/admin/listings/listings-admin.module.css";
 
@@ -37,6 +38,12 @@ export default async function VideosAdminPage() {
   } catch (e) {
     loadError = e instanceof Error ? e.message : String(e);
   }
+
+  // 👁 播放次數。`getVideoViewStats()` 自己就會吞掉錯誤回空物件 ——
+  //    統計是附加資訊，它壞掉不該讓整個後台打不開（跟前台同一個原則）。
+  //    所以這裡不用再包 try，拿到空物件時每一列顯示 0，不會是白畫面。
+  const viewStats: VideoViewStats = await getVideoViewStats();
+  const totalViews = Object.values(viewStats).reduce((sum, s) => sum + s.total, 0);
 
   const activeCount = rows.filter((r) => r.status === "active").length;
   // ⚠️ 照 VIDEO_CATEGORIES 跑，不要一類一行手寫 —— 以後加一個分類，
@@ -92,6 +99,7 @@ export default async function VideosAdminPage() {
             ["上架中", activeCount, "#4ade80"],
             ...perCategory,
             ["置頂中", pinnedCount, pinnedCount > 0 ? "#fbbf24" : CIS.textMute],
+            ["總播放", totalViews, totalViews > 0 ? "#60a5fa" : CIS.textMute],
           ] as [string, number, string][]).map(([label, value, color]) => (
             <div
               key={String(label)}
@@ -117,7 +125,7 @@ export default async function VideosAdminPage() {
           FB 或 IG 的影片也可以貼，只是嵌不進來，卡片會變成「點了開新分頁」。
         </div>
 
-        <VideosManager initial={rows} />
+        <VideosManager initial={rows} viewStats={viewStats} />
       </div>
     </main>
   );

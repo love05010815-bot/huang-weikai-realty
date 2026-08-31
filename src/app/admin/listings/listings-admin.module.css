@@ -446,6 +446,14 @@
   text-align: center;
 }
 
+/* 只有一個指標時用（影音後台的播放次數）。
+   不加這個的話那一格會擠在三欄格線的最左邊、右邊空兩格，看起來像壞掉。
+   ⚠️ 這份 CSS 是精選好案與影音兩頁共用的，加東西前先想一下另一頁會不會被波及；
+      這個 class 只有影音在用，精選好案那三欄不受影響。 */
+.clickStatsSingle {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .clickLabel {
   font-size: 11px;
   line-height: 1.4;

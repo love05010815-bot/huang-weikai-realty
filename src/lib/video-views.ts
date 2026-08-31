@@ -29,6 +29,19 @@ import { taipeiDay } from "@/lib/site-visits";
 /** key = 影片 id，value = 累計觀看次數 */
 export type VideoViewCounts = Record<string, number>;
 
+/**
+ * 後台看的：累計 ＋ 近 7 天。
+ *
+ * 只有總數的話看不出「這支還在被看，還是三個月前的舊帳」——
+ * 兩個數字擺在一起才知道哪支現在有熱度。
+ * 欄位名 `total` / `recent` 與 `listing-clicks.ts` 一致，後台兩頁的版型才共用得了。
+ */
+export type VideoViewStat = { total: number; recent: number };
+export type VideoViewStats = Record<string, VideoViewStat>;
+
+/** 「近 N 天」的 N。跟 `listing-clicks.ts` 的 RECENT_DAYS 一樣是 7，含今天。 */
+const RECENT_DAYS = 7;
+
 // ---------------------------------------------------------------- 連線紀律
 
 function isConnectionError(error: unknown): boolean {
@@ -89,7 +102,7 @@ export async function recordVideoView(videoId: string): Promise<void> {
 
 // ---------------------------------------------------------------- 讀
 
-type Row = { video_id: unknown; total: unknown };
+type Row = { video_id: unknown; total: unknown; recent: unknown };
 
 /** ⚠️ SUM() 在 TiDB 回 DECIMAL、Prisma 給字串。不要相信欄位型別，一律轉。 */
 function toNumber(value: unknown): number {
@@ -100,16 +113,31 @@ function toNumber(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+/** 近 7 天的起算日（含今天），`YYYY-MM-DD` */
+function recentSince(): string {
+  const today = taipeiDay();
+  const t = Date.parse(`${today}T00:00:00Z`);
+  return new Date(t - (RECENT_DAYS - 1) * 86400000).toISOString().slice(0, 10);
+}
+
 /**
- * 全部影片的累計觀看次數，**一趟 query 撈完**（不是一支影片打一次）。
+ * 全部影片的觀看次數，**一趟 query 撈完**（不是一支影片打一次）。
+ * 累計與近 7 天在同一句 SQL 裡算完 —— 分兩句就是兩趟 round trip，
+ * 而 Vercel 上 pool 只有 3 條。
  *
  * 🔴 讀不到就回空物件，**不要往上丟錯誤** —— 觀看次數是附加資訊，
- * 它壞掉不該讓整個影音頁打不開。
+ * 它壞掉不該讓影音頁或後台打不開。
  */
-export async function getVideoViewCounts(): Promise<VideoViewCounts> {
+export async function getVideoViewStats(): Promise<VideoViewStats> {
+  const since = recentSince();
   const run = () =>
     db.$queryRawUnsafe<Row[]>(
-      `SELECT video_id, SUM(views) AS total FROM site_video_view GROUP BY video_id`,
+      `SELECT video_id,
+              SUM(views)                                        AS total,
+              COALESCE(SUM(CASE WHEN day >= ? THEN views END), 0) AS recent
+         FROM site_video_view
+        GROUP BY video_id`,
+      since,
     );
 
   try {
@@ -123,10 +151,10 @@ export async function getVideoViewCounts(): Promise<VideoViewCounts> {
       }
     });
 
-    const out: VideoViewCounts = {};
+    const out: VideoViewStats = {};
     for (const row of rows) {
       const id = String(row.video_id ?? "");
-      if (id) out[id] = toNumber(row.total);
+      if (id) out[id] = { total: toNumber(row.total), recent: toNumber(row.recent) };
     }
     return out;
   } catch (error) {
@@ -135,6 +163,16 @@ export async function getVideoViewCounts(): Promise<VideoViewCounts> {
   }
 }
 
+/**
+ * 前台要的只有累計數字。**故意共用同一句 SQL** ——
+ * 另外寫一句只查 total 的，日後改欄位或改重試邏輯就會漏改一邊。
+ */
+export async function getVideoViewCounts(): Promise<VideoViewCounts> {
+  const stats = await getVideoViewStats();
+  const out: VideoViewCounts = {};
+  for (const [id, stat] of Object.entries(stats)) out[id] = stat.total;
+  return out;
+}
 /** 刪影片時把它的觀看紀錄一起清掉，不要留孤兒資料 */
 export async function deleteVideoViews(videoId: string): Promise<void> {
   try {

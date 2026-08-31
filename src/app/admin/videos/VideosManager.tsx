@@ -34,6 +34,7 @@ import {
   setVideoPinnedAction,
   setVideoStatusAction,
 } from "@/lib/actions/videos";
+import type { VideoViewStats } from "@/lib/video-views";
 import styles from "@/app/admin/listings/listings-admin.module.css";
 
 type FormState = {
@@ -132,7 +133,14 @@ const inputStyle = {
   color: CIS.text,
 };
 
-export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
+export default function VideosManager({
+  initial,
+  viewStats,
+}: {
+  initial: VideoRecord[];
+  /** 👁 每支影片的播放次數。讀不到時是空物件，每一列顯示 0，不是錯誤 */
+  viewStats: VideoViewStats;
+}) {
   const router = useRouter();
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -612,6 +620,38 @@ export default function VideosManager({ initial }: { initial: VideoRecord[] }) {
                         <a href={row.url} target="_blank" rel="noopener noreferrer" style={{ color: CIS.blueSoft }}>
                           {row.url.length > 52 ? `${row.url.slice(0, 52)}…` : row.url} ↗
                         </a>
+                      </div>
+
+                      {/* 👁 播放次數。算的是「按下播放」不是「看到縮圖」——
+                          捲過去看到十張縮圖的那個數字沒有意義（見 lib/video-views.ts）。
+                          版型與數字的意思都跟精選好案的點擊統計一致（總數大字、近 7 天小字），
+                          只是這裡只有一個指標，所以用單欄那個 class。 */}
+                      <div
+                        className={`${styles.clickStats} ${styles.clickStatsSingle}`}
+                        style={{ borderColor: CIS.cardBorder }}
+                      >
+                        {(() => {
+                          const stat = viewStats[row.id];
+                          const total = stat?.total ?? 0;
+                          const recent = stat?.recent ?? 0;
+                          return (
+                            <div className={styles.clickCell}>
+                              <div className={styles.clickLabel} style={{ color: CIS.textMute }}>
+                                播放次數
+                              </div>
+                              <div
+                                className={styles.clickValue}
+                                style={{ color: total > 0 ? "#60a5fa" : CIS.textMute }}
+                              >
+                                {total}
+                                <span className={styles.clickUnit}>人次</span>
+                              </div>
+                              <div className={styles.clickRecent} style={{ color: CIS.textMute }}>
+                                近 7 天 {recent}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {row.summary ? (

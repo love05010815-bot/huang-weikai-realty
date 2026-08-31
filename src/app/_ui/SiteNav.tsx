@@ -177,7 +177,7 @@ export default function SiteNav({ variant }: { variant: Variant }) {
                   桌機的 header 右上角本來就有這顆，但 **560px 以下它是隱藏的**
                   （見 home.module.css 的 `.navCta .navCtaPhone`）——
                   也就是「真的能打電話的那個裝置反而看不到撥號鈕」。
-                  2026-08-27 系統擁有者指定補在選單最下面。
+                  2026-08-31 系統擁有者指定補在選單最下面。
                   樣式做成外框式，跟 header 那顆實心的「線上預約」分開，
                   避免兩顆長得一樣的主要按鈕互相搶。 */}
               <a className={styles.phone} href={`tel:${OWNER.phoneRaw}`} onClick={close}>
