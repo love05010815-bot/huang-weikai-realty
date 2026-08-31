@@ -14,10 +14,16 @@
  * ⚠️ 這**不是**幫他重畫界線，是把他自己點的那條線上的雜訊拿掉。
  *    位移上限就是 tol，而且演算法保證不超過。
  *
- * ## 官方界線不准套
+ * ## 官方界線預設拒絕，要套得自己打開
  *
- * 重劃區（`official: true`）是地政局公告的四至，照 OSM 路網描出來的，
- * 那條線本來就該長那樣。這支會直接拒絕，見 `assertNotOfficial()`。
+ * 重劃區（`official: true`）是地政局公告的四至照 OSM 路網描出來的，不是手點的，
+ * 所以預設 **exit 2 拒絕** —— 免得有人順手把七塊一起套下去。
+ *
+ * ⚠️ **2026-08-31 系統擁有者指定「重劃區這塊的線也拉直」，用 `--official-ok` 打開，
+ *    而且那次用的是 `--tol 5` 不是 10。** 官方界線用比較緊的容差有理由：
+ *    5 公尺的位移在 zoom 16 只有 2.2 px、zoom 15 只有 1.1 px，肉眼分不出來，
+ *    等於純粹把「同一條直路上多描的幾點」拿掉，不會被說成「把界線改到別的地方」。
+ *    要對官方界線用 10 公尺以上，先問過他。
  *
  * ## 用法
  *
@@ -29,6 +35,9 @@
  *
  *   # 吃系統擁有者剛貼過來的那段（檔案或 stdin 都可以）
  *   node scripts/straighten-ring.mjs --file /tmp/ring.txt --tol 20
+ *
+ *   # 官方界線（要明講，預設擋著）
+ *   node scripts/straighten-ring.mjs --zone wuqi-qingshui-shizheng --tol 5 --official-ok
  *
  * ⚠️ `/map?zones=1` 收座標時是 `toFixed(4)`，也就是**每個點都已經被吸到
  *    約 11x10 公尺的格子上**。所以 tol 小於 15 公尺基本上不會有效果。
@@ -69,13 +78,15 @@ function zoneFromFile(id) {
   return { id, name, official, ring: parseRing(chunk.slice(rs)) };
 }
 
-function assertNotOfficial(z) {
+function assertNotOfficial(z, allowed) {
   if (!z.official) return;
-  console.error(
-    `拒絕：「${z.name}」是 official 界線（地政局公告的四至，照 OSM 路網描的）。\n` +
-      "那條線不是手點出來的，沒有要拉直的雜訊；動它等於把官方界線改成我們畫的。\n" +
-      "細節見 port-zones.ts 檔頭。"
-  );
+  if (allowed) {
+    console.error(`⚠️ 「${z.name}」是 official 界線，靠 --official-ok 放行。容差請壓在 5 公尺。`);
+    return;
+  }
+  console.error(`拒絕：「${z.name}」是 official 界線（地政局公告的四至，照 OSM 路網描的）。`);
+  console.error("預設擋著，免得七塊一起被套下去。系統擁有者 2026-08-31 已授權對這塊拉直，");
+  console.error("要做請明確加 --official-ok，容差用 5 不是 10（理由見本檔檔頭）。");
   process.exit(2);
 }
 
@@ -174,7 +185,7 @@ const tols = (arg("tol", "20") ?? "20").split(",").map((s) => +s.trim()).filter(
 let src;
 if (zoneId) {
   src = zoneFromFile(zoneId);
-  assertNotOfficial(src);
+  assertNotOfficial(src, process.argv.includes("--official-ok"));
 } else {
   const text = file ? fs.readFileSync(file, "utf8") : fs.readFileSync(0, "utf8");
   src = { id: "(貼上的)", name: arg("name", "(貼上的)"), official: false, ring: parseRing(text) };
