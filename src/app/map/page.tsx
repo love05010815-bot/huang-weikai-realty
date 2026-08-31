@@ -120,11 +120,12 @@ export const metadata: Metadata = {
   authors: [{ name: OWNER.name }],
   robots: { index: true, follow: true },
   alternates: { canonical: "/map" },
+  /* ⚠️ description 刻意不寫戶數 —— 見下方 lede 那段註解（45 案缺 units）。不要補回去。 */
   openGraph: {
     type: "article",
     locale: "zh_TW",
     title: `台中海線建案地圖｜梧棲・清水・沙鹿 ${stats.total} 個建案`,
-    description: `${stats.total} 個建案、共 ${stats.units.toLocaleString("zh-TW")} 戶，可依區域、預售／成屋與建商篩選。`,
+    description: `${stats.total} 個建案，可依區域、預售／成屋與建商篩選。`,
     url: "/map",
     siteName: `${OWNER.name}｜台中海線房仲`,
     images: [{ url: "/profile.jpg", width: 1029, height: 1543, alt: `${OWNER.name}形象照` }],
@@ -132,7 +133,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: `台中海線建案地圖｜梧棲・清水・沙鹿 ${stats.total} 個建案`,
-    description: `${stats.total} 個建案、共 ${stats.units.toLocaleString("zh-TW")} 戶，可依預售／成屋與建商篩選。`,
+    description: `${stats.total} 個建案，可依預售／成屋與建商篩選。`,
     images: ["/profile.jpg"],
   },
 };
@@ -248,8 +249,12 @@ export default async function MapPage() {
               ⚠️ 這行 H1、`<title>`、og:title **三處要一起改**。只改一個不會報錯，
               但 Google 看到的、LINE 分享看到的、客戶點進來看到的會變成三種說法。 */}
           <h1 className={styles.title}>台中海線建案地圖・梧棲｜清水｜沙鹿</h1>
+          {/* 🔴 2026-08-31 系統擁有者拍板：這句不要再出現「合計 N 戶」。
+              理由：133 案裡有 45 案沒有 units，`stats.units` 只是有資料那 88 案的合計，
+              接在「133 個建案」後面會被讀成 133 案的總戶數 —— 低報，但不準。
+              要恢復戶數，先把 45 案補齊再說。og／twitter 的 description 同批拿掉了。 */}
           <p className={styles.lede}>
-            {`這裡整理了台中海線 ${stats.total} 個建案、合計 ${stats.units.toLocaleString("zh-TW")} 戶：${DISTRICT.alias}重劃區（梧棲＋清水）${stats.district} 案，${AREA_BREAKDOWN}。地圖範圍是整個台中港生活圈，除了重劃區也畫出周邊 ${LOCAL_ZONE_COUNT} 塊生活圈範圍。`}
+            {`這裡整理了台中海線 ${stats.total} 個建案：${DISTRICT.alias}重劃區（梧棲＋清水）${stats.district} 案，${AREA_BREAKDOWN}。地圖範圍是整個台中港生活圈，除了重劃區也畫出周邊 ${LOCAL_ZONE_COUNT} 塊生活圈範圍。`}
           </p>
 
           <p className={styles.bounds}>
