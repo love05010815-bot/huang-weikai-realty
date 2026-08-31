@@ -37,7 +37,7 @@ import {
 } from "@/lib/inbox-types";
 import { YOUTUBE_REDIRECT_URI, isYoutubeConfigured } from "@/lib/youtube";
 import { META_REDIRECT_URI, isMetaConfigured } from "@/lib/meta";
-import { markLineHandledAction } from "@/lib/actions/line-bot";
+import { markAllLineHandledAction, markLineHandledAction } from "@/lib/actions/line-bot";
 import LineMedia from "@/app/admin/_components/LineMedia";
 import CommentReply from "./CommentReply";
 import UnbindButton from "./UnbindYoutube";
@@ -95,6 +95,10 @@ export default async function InboxPage({
   const shown: InboxComment[] = filter
     ? snapshot.all.filter((c) => c.platform === filter)
     : snapshot.all;
+
+  // 「LINE 全部標記已回」那顆的出現條件與數字。用 waiting（全部平台的待回）去濾，
+  // 不是用 shown —— 切到別的平台分頁時那顆不該消失，數字也不該跟著變。
+  const lineWaiting = snapshot.waiting.filter((c) => c.platform === "line").length;
 
   const ytSource = snapshot.sources.find((s) => s.platform === "youtube")!;
   const fbSource = snapshot.sources.find((s) => s.platform === "facebook")!;
@@ -226,6 +230,20 @@ export default async function InboxPage({
                 );
               })}
               <span className={styles.spacer} />
+              {/* 只有 LINE 有這顆：其他三家的「已回」是從實際回覆算出來的真相，不該給人手動清。
+                  出現條件是「LINE 還有人在待回」——沒得清的時候不要佔位置。 */}
+              {lineWaiting > 0 && (
+                <form action={markAllLineHandledAction}>
+                  <button
+                    type="submit"
+                    className={styles.btn}
+                    style={{ borderColor: CHIP.warn.border, color: CHIP.warn.color, minHeight: 30 }}
+                    title={`已經在手機把這 ${lineWaiting} 位都回過了，一次標成已回。之後他們再傳新訊息會自己亮回來。`}
+                  >
+                    LINE 全部標記已回（{lineWaiting}）
+                  </button>
+                </form>
+              )}
               <span style={{ color: CIS.textMute, fontSize: 14 }}>
                 待回覆{" "}
                 <b style={{ color: snapshot.waiting.length > 0 ? "#fbbf24" : CIS.textMute }}>

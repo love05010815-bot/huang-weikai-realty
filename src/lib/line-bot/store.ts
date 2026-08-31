@@ -428,3 +428,28 @@ export async function markHandled(lineUserId: string, handled: boolean): Promise
     lineUserId,
   );
 }
+
+/**
+ * 「全部標記已回」：一次清掉所有現在亮著的待回。給「在手機上把整批回完了」用。
+ *
+ * 🔴 **WHERE 條件必須跟 listWaiting() 的完全一樣**，否則會標到不在清單上的人 ——
+ *    那些人會從此消失在待回名單，而畫面上根本沒顯示過他們。所以這裡刻意重複
+ *    「最後一則是客戶發的、而且還沒被清掉」這兩個條件，不要簡化成整表 UPDATE。
+ *
+ * 可逆：個別客戶可以在 /admin/line 的詳情頁按「標回未回」放回去。
+ * 回傳實際異動的列數，呼叫端要拿它回報，不要假設有動到。
+ */
+export async function markAllHandled(): Promise<number> {
+  await ensureTables();
+  return db.$executeRawUnsafe(
+    `UPDATE line_bot_user u
+        SET u.handled_at = CURRENT_TIMESTAMP(3)
+      WHERE (SELECT m.role FROM line_bot_message m
+              WHERE m.line_user_id = u.line_user_id
+              ORDER BY m.created_at DESC, m.id DESC LIMIT 1) = 'user'
+        AND (u.handled_at IS NULL
+             OR u.handled_at < (SELECT m.created_at FROM line_bot_message m
+                                 WHERE m.line_user_id = u.line_user_id
+                                 ORDER BY m.created_at DESC, m.id DESC LIMIT 1))`,
+  );
+}

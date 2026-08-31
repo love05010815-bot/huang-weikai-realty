@@ -8,7 +8,7 @@
 import { revalidatePath } from "next/cache";
 import { isCurrentUserAdmin } from "@/lib/admin-check";
 import { getLineBotToken, pushMessage } from "@/lib/line-bot/client";
-import { markHandled, saveMessage, setMuted } from "@/lib/line-bot/store";
+import { markAllHandled, markHandled, saveMessage, setMuted } from "@/lib/line-bot/store";
 
 type Result = { ok: boolean; error?: string };
 
@@ -101,6 +101,23 @@ export async function markLineHandledAction(formData: FormData): Promise<void> {
   if (!lineUserId) return;
 
   await markHandled(lineUserId, next);
+  revalidatePath("/admin/line");
+  revalidatePath("/admin/inbox");
+}
+
+/**
+ * 「LINE 全部標記已回」—— 在手機上把整批回完之後，一次清掉。
+ *
+ * 只清 LINE，不動 YouTube／FB／IG：那三家的「已回」是從實際回覆內容算出來的真相，
+ * 沒有手動清的餘地，也不該給。
+ *
+ * ⚠️ 這顆按鈕的前提是「你真的整批都回過了」。只回了一部分就按，沒回到的人會一起
+ *    從待回名單消失。個別要放回去，到 /admin/line 點那個人按「標回未回」。
+ */
+export async function markAllLineHandledAction(): Promise<void> {
+  if (!(await isCurrentUserAdmin())) return;
+
+  await markAllHandled();
   revalidatePath("/admin/line");
   revalidatePath("/admin/inbox");
 }
