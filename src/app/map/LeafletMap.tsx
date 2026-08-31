@@ -40,7 +40,7 @@ import {
   type ProjectArea,
   type ProjectStatus,
 } from "@/data/port-projects";
-import { ZONES, zoneBounds } from "@/data/port-zones";
+import { ZONES, zoneBounds, zoneForArea } from "@/data/port-zones";
 import styles from "./Map.module.css";
 // Leaflet 的樣式一定要在頂層 import。放進 useEffect 動態 import 不會生效，
 // 圖磚會亂疊、控制項會跑版。
@@ -219,12 +219,21 @@ function spread(list: Array<{ p: Project; lat: number; lng: number }>) {
 
 export default function LeafletMap({
   projects,
+  area,
   selectedId,
   onSelect,
   mine = {},
 }: {
   /** 要畫的建案（已經過篩選） */
   projects: Project[];
+  /**
+   * 目前選到哪顆篩選臉。**只用來決定換臉時視野飛到哪裡**，不影響畫什麼 ——
+   * 要畫的東西已經在 `projects` 裡了。
+   *
+   * ⚠️ 不能從 `projects` 反推是哪一區：0 案的那幾區（梧棲市區、清水市區、
+   *    北勢靜宜、新光田）篩下去 `projects` 是空陣列，跟「搜尋不到東西」長得一模一樣。
+   */
+  area: "all" | ProjectArea;
   selectedId: string | null;
   onSelect: (p: Project) => void;
   /** 建案 id → 在售物件數，有的話圖釘右上加一顆深藍點 */
@@ -547,6 +556,51 @@ export default function LeafletMap({
     // （見上面的 useMemo），再列一次只會多重畫一輪。
   }, [clusters, loose, selectedId, mine, onSelect, ready]);
 
+  /**
+   * 換篩選臉就把視野移到那一塊。
+   *
+   * 為什麼要有這段（2026-08-31 系統擁有者回報）：篩選只換掉 `projects`，
+   * **地圖視野原本完全不動**。客戶先點膠囊進到重劃區、再按「鹿寮萬家福商圈」，
+   * 看到的還是重劃區、而且一根圖釘都沒有 —— 那 66 案全在六公里外的畫面外。
+   * 而且**不會報錯**，畫面看起來就像「這一區沒有建案」。
+   *
+   * 框的是 **色塊 ∪ 這一區的圖釘**，不是只框圖釘：
+   *   ・0 案的那幾區沒有圖釘可框，只框圖釘的話按下去什麼都不會發生，又是一次靜默失效。
+   *   ・客戶按的那顆臉寫的是「商圈」，他要看的是商圈的範圍，不是圖釘的外接矩形。
+   *
+   * ⚠️ 八個區實測都落在 zoom 14–15（≥ CLUSTER_ZOOM），所以到站看到的是一根根圖釘，
+   *    不會又收回一顆膠囊。**之後加新色塊或改 ring 要重算這件事** —— 掉到 13 的話
+   *    客戶點了商圈只會看到一顆膠囊，等於白點。「全部」則回到初始的整個生活圈
+   *    （zoom 12，本來就該有膠囊）。
+   */
+  const firstFocus = useRef(true);
+  useEffect(() => {
+    const map = mapRef.current;
+    const L = LRef.current;
+    if (!map || !L) return;
+    // 第一輪不做 —— 建立地圖那一步已經框好初始視野了，再框一次只是重複
+    if (firstFocus.current) {
+      firstFocus.current = false;
+      return;
+    }
+    const pts: Array<[number, number]> =
+      area === "all"
+        ? [
+            ...Object.values(COORDS).map((c) => [c.lat, c.lng] as [number, number]),
+            ...zoneBounds(),
+          ]
+        : [
+            ...(zoneForArea(area)?.ring ?? []),
+            ...placed.map((x) => [x.lat, x.lng] as [number, number]),
+          ];
+    // 既沒色塊也沒圖釘就停在原地 —— 空 bounds 會把地圖丟到 [0,0] 的外海
+    if (pts.length === 0) return;
+    // animate:false 的理由跟初始視野同一個（見「建立地圖」那段註解）
+    map.fitBounds(L.latLngBounds(pts), { padding: [30, 30], maxZoom: 16, animate: false });
+    // `placed` 跟 `area` 是同一輪一起更新的，這裡讀到的一定是新的那份。
+    // 刻意不把它列進相依：列了會變成「在搜尋框每打一個字視野就跳一次」。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [area, ready]);
   /* ── 外部選了某個建案（例如點下方清單）就飛過去 ── */
   useEffect(() => {
     const map = mapRef.current;

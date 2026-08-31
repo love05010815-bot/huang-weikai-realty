@@ -109,6 +109,10 @@
  * 來源：自由時報地產天下〈新光田特區 特五號道路加持、近距中科〉、樂居新光田特區房價頁。
  */
 
+// 只匯入型別（`import type`），編譯後整行會被抹掉 —— 不會產生
+// port-projects ↔ port-zones 的執行期循環相依。
+import type { ProjectArea } from "./port-projects";
+
 /** 一塊範圍。`ring` 是多邊形頂點，順時針或逆時針都可以，Leaflet 會自己閉合。 */
 export type Zone = {
   id: string;
@@ -697,4 +701,37 @@ export const ZONES: Zone[] = [
  */
 export function zoneBounds(): Array<[number, number]> {
   return ZONES.flatMap((z) => z.ring);
+}
+
+/**
+ * 篩選臉的區域 → 它對應的那一塊色塊。點篩選臉時地圖要飛過去，靠這張表。
+ *
+ * ⚠️ **梧棲與清水共用同一塊**：重劃區是一個重劃案跨兩個行政區，色塊只有一塊，
+ *    所以選「梧棲重劃區」與「清水重劃區」框到的範圍一樣，只有圖釘會變。
+ *    這是對的，不要為了讓兩者看起來不同去把官方界線切成兩半。
+ *
+ * ⚠️ 型別刻意寫 `Record<ProjectArea, …>` 而不是 `Partial<…>` —— `ProjectArea`
+ *    之後加了新值、這裡忘了補，會**編譯不過**。用 Partial 的話漏一條的下場是
+ *    「點那顆篩選臉地圖不動」，而且不會報錯。這頁的失敗模式一向是靜默失效。
+ */
+const ZONE_BY_AREA: Record<ProjectArea, string> = {
+  梧棲: "wuqi-qingshui-shizheng",
+  清水: "wuqi-qingshui-shizheng",
+  梧棲市區: "wuqi-downtown",
+  清水市區: "qingshui-downtown",
+  鹿寮萬家福: "luliao",
+  沙鹿車站: "shalu-station",
+  北勢靜宜: "beishi-providence",
+  新光田: "xin-guangtian",
+};
+
+/**
+ * 這個區域對應的色塊。查不到回 undefined —— 呼叫端要自己決定怎麼退場，
+ * 不要在這裡亂回一塊，那會讓地圖飛到別的區。
+ *
+ * ⚠️ 上面那張表的值是**字串 id**，打錯字型別是抓不到的（都是 string）。
+ *    改過 id 之後跑一次 `npm run build` 不會發現，要實際點一輪篩選臉。
+ */
+export function zoneForArea(area: ProjectArea): Zone | undefined {
+  return ZONES.find((z) => z.id === ZONE_BY_AREA[area]);
 }

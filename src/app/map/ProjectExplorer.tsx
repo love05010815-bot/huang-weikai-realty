@@ -275,7 +275,13 @@ export default function ProjectExplorer({
           手機仍然上下堆疊 —— 兩欄在 900px 以下塞不下。 */}
       <div className={styles.split}>
         <div className={styles.lmWrap}>
-          <LeafletMap projects={rows} selectedId={selectedId} onSelect={onSelect} mine={mine} />
+          <LeafletMap
+            projects={rows}
+            area={area}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            mine={mine}
+          />
           <div className={styles.lmBar}>
             <div className={styles.lmLegend}>
               {(Object.keys(TONE_SWATCH) as ProjectStatus[]).map((k) => (
