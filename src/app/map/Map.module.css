@@ -369,8 +369,8 @@
 
 .detailList > div {
   display: grid;
-  grid-template-columns: 84px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 12px;
   padding: 7px 0;
   border-bottom: 1px dashed var(--line);
 }
@@ -379,14 +379,28 @@
   border-bottom: 0;
 }
 
-/* 左邊那排標題（建設公司／位置／完工／坐落／周邊機能／資料出處）：
-   2026-08-31 系統擁有者指定「顏色再明顯一點，也可以加粗體」。
-   面板底色是 #fcfaf6（不是純白，算對比要用這個）：--muted(#5c6a73) 對比 5.4:1，
-   改成 --ink(#122a38) 之後 14.3:1。
-   ⚠️ 現在 dt 與 dd 同色同字重，**分左右靠的是 `.detailList > div` 那個 84px 固定欄**，
-      不是靠顏色。要動那個 grid 之前先想一下標題還分不分得出來。 */
+/* 左邊那排標題（建設公司／位置／完工／坐落／周邊機能／資料出處）。
+
+   2026-08-31 第一版：系統擁有者說「顏色再明顯一點，也可以加粗體」，於是 dt 從
+   --muted 改成 --ink 並加粗。**但那樣 dt 與 dd 變成同色同字重，左右只剩欄位分隔**，
+   他看了截圖再指定「左邊那塊用別的顏色或加框底，但要維持整體版面一致」。
+
+   這一版：標題做成米色膠囊 ——
+     底 --soft(#f7f0e2)、左邊一條 --accent(#dab38a)、字 --primary(#01354d)。
+   三個都是站上既有的品牌變數（首頁那套深藍＋米色），沒有另外調新顏色，
+   所以跟其他區塊看起來是同一套。#01354d 在 #f7f0e2 上對比約 11.5:1。
+
+   ⚠️ `align-self: start` 是必要的：周邊機能／資料出處那兩列的 dd 有好幾行，
+      不加的話膠囊會被拉成一整條，跟旁邊短列的高度對不齊，版面會亂。
+   ⚠️ 欄寬 84 → 96px 是為了塞得下膠囊的內距與左條（最長的標題是四個字）。
+      要再改欄寬先確認「建設公司」「周邊機能」不會被擠成兩行。 */
 .detailList dt {
-  color: var(--ink);
+  align-self: start;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border-left: 3px solid var(--accent);
+  background: var(--soft);
+  color: var(--primary);
   font-weight: 700;
   font-size: 13px;
 }
