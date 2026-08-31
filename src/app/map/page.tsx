@@ -118,7 +118,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     locale: "zh_TW",
-    title: `台中海線建案地圖｜梧棲・清水・沙鹿 ${stats.total} 個建案`,
+    title: `台中海線建案地圖｜梧棲・清水・沙鹿・鹿寮 ${stats.total} 個建案`,
     description: `${stats.total} 個建案、共 ${stats.units.toLocaleString("zh-TW")} 戶，可依區域、預售／成屋與建商篩選。`,
     url: "/map",
     siteName: `${OWNER.name}｜台中海線房仲`,
@@ -126,7 +126,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: `台中海線建案地圖｜梧棲・清水・沙鹿 ${stats.total} 個建案`,
+    title: `台中海線建案地圖｜梧棲・清水・沙鹿・鹿寮 ${stats.total} 個建案`,
     description: `${stats.total} 個建案、共 ${stats.units.toLocaleString("zh-TW")} 戶，可依預售／成屋與建商篩選。`,
     images: ["/profile.jpg"],
   },
@@ -234,8 +234,13 @@ export default async function MapPage() {
 
               沙鹿是 2026-08-27 補進 28 案之後才寫進標題的。**在那之前刻意不寫**，
               因為當時沙鹿一案都沒有，寫進去等於對客戶宣稱這裡有沙鹿建案。
-              以後要再往標題加一個地名，判準一樣：**那一區真的有建案了才加。** */}
-          <h1 className={styles.title}>台中海線建案地圖・梧棲｜清水｜沙鹿</h1>
+              以後要再往標題加一個地名，判準一樣：**那一區真的有建案了才加。**
+
+              ⚠️ 2026-08-31 補上「鹿寮」—— 鹿寮萬家福商圈 66 案，是整頁最大的一區，
+              先前 `<title>`、og:title 與這行 H1 三處全都漏掉它（符合上面那條判準，不是破例）。
+              同一天系統擁有者拍板把 `<title>` 改成四個地名打頭，**這三處要一起對齊 ——
+              只改一個的話，Google 看到的、LINE 分享看到的、客戶點進來看到的會是三種說法。** */}
+          <h1 className={styles.title}>台中海線建案地圖・梧棲｜清水｜沙鹿｜鹿寮</h1>
           <p className={styles.lede}>
             {`這裡整理了台中海線 ${stats.total} 個建案、合計 ${stats.units.toLocaleString("zh-TW")} 戶：${DISTRICT.alias}重劃區（梧棲＋清水）${stats.district} 案，${AREA_BREAKDOWN}。地圖範圍是整個台中港生活圈，除了重劃區也畫出周邊 ${LOCAL_ZONE_COUNT} 塊生活圈範圍。`}
           </p>
