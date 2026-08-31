@@ -379,8 +379,15 @@
   border-bottom: 0;
 }
 
+/* 左邊那排標題（建設公司／位置／完工／坐落／周邊機能／資料出處）：
+   2026-08-31 系統擁有者指定「顏色再明顯一點，也可以加粗體」。
+   面板底色是 #fcfaf6（不是純白，算對比要用這個）：--muted(#5c6a73) 對比 5.4:1，
+   改成 --ink(#122a38) 之後 14.3:1。
+   ⚠️ 現在 dt 與 dd 同色同字重，**分左右靠的是 `.detailList > div` 那個 84px 固定欄**，
+      不是靠顏色。要動那個 grid 之前先想一下標題還分不分得出來。 */
 .detailList dt {
-  color: var(--muted);
+  color: var(--ink);
+  font-weight: 700;
   font-size: 13px;
 }
 
