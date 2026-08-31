@@ -22,6 +22,9 @@
   overflow: hidden;
   text-decoration: none;
   color: inherit;
+  /* 用 `/listings#<slug>` 直接跳到某一筆時，卡片頂端會剛好被 sticky header
+     蓋住（header 實測 78px），留 92px 讓位，跳過去看得到標題。 */
+  scroll-margin-top: 92px;
   transition: transform 0.15s ease, border-color 0.15s ease;
 }
 

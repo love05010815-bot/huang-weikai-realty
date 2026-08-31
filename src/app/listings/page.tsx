@@ -98,8 +98,13 @@ export default async function ListingsPage() {
               </p>
             ) : (
               <div className={lst.grid}>
+                {/* 每張卡片的 id ＝ slug，所以每一筆都有自己的網址：`/listings#<slug>`。
+                    為的是「把某一筆直接傳給客戶」——不加的話只能叫他自己在清單裡找。
+                    ⚠️ 跳過去會被 sticky header 蓋住，靠 `listings.module.css` 的
+                    `.card { scroll-margin-top }` 讓位。**兩者要一起在**，
+                    少一個就是「網址跳到了、但看到的是卡片中段，標題被 header 吃掉」。 */}
                 {listings.map((item, i) => (
-                  <article key={item.slug} className={lst.card}>
+                  <article key={item.slug} id={item.slug} className={lst.card}>
                     {/* 一張照片就是一張圖；兩張以上會自動變成可左右滑的相簿。
                         第一排三張是首屏，封面圖立刻載；其餘等捲到才載。 */}
                     <PhotoCarousel
