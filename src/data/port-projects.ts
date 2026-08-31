@@ -672,14 +672,13 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
 
-  // ───── 建商待確認 ─────
+  // ───── 長霖建設 ─────
   {
-    id: "zhanqian-qingshidai", name: "站前青世代", builder: "待確認", area: "沙鹿車站",
+    id: "zhanqian-qingshidai", name: "站前青世代", builder: "長霖建設", area: "沙鹿車站",
     status: "completed", completion: "約 2020", units: 26,
     street: "興益路", streets: "沙鹿區 興益路 61 巷",
     layout: "2 房約 31 坪、3 房約 35 坪", floors: "地上 7 層／地下 1 層", siteAreaPing: 289,
-    // ⚠️ 系統擁有者給的總表上這一案建商就寫「待確認」。**不要自己上網找一個填進去** ——
-    //    建商名是客戶會拿去查的東西，猜錯等於給錯資訊。查到了再改。
+    // 總表原本寫「待確認」，2026-08-27 系統擁有者查到並指定為長霖建設。
     sources: ["owner"],
   },
 
@@ -1438,7 +1437,7 @@ export const COORDS: Record<string, Coord> = {
   "yihong-yile": { lat: 24.25681, lng: 120.56132, precision: "exact" }, // 逸竑逸樂
   "yupin-yuan-2": { lat: 24.2502, lng: 120.55654, precision: "exact" }, // 御品院2
   "fuguiyuan-huasha": { lat: 24.24573, lng: 120.56928, precision: "exact" }, // 富貴園華廈區
-  "fuyu-fuyu": { lat: 24.23537, lng: 120.55165, precision: "exact" }, // 富宇富嶼
+  "fuyu-fuyu": { lat: 24.23535, lng: 120.55138, precision: "exact" }, // 富宇富嶼（2026-08-27 系統擁有者重新標一次，較前一筆 24.23537/120.55165 位移約 27 公尺，採後給的）
 
   /* ── 最後 3 案（2026-08-27）── 標完這批，**133 案全部有座標，清單裡不再有「未標位置」**。
      核對過：id、案名、區域、無重複、無孤兒，3 筆都在鹿寮萬家福色塊內，
