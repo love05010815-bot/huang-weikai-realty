@@ -355,9 +355,17 @@ export default function ProjectExplorer({
                 <div>
                   <dt>完工</dt>
                   <dd>
-                    {selected.completion.includes("興建中")
-                      ? selected.completion
-                      : `${selected.completion} 完工`}
+                    {/*
+                      ⚠️ 只有「帶年份」的才加「完工」兩個字。
+                      `completion` 的值很雜：「2023」「約 2025」「約 2016～17」是年份，
+                      但也有「興建中」「成屋」「新成屋」這種純狀態字。
+                      原本只特判了「興建中」，所以 45 案（成屋 34、新成屋 11）畫面上
+                      是「成屋 完工」「新成屋 完工」，唸不通 —— 2026-08-31 改成看有沒有
+                      四位數年份。新增別種狀態字時不用回來改。
+                    */}
+                    {/\d{4}/.test(selected.completion)
+                      ? `${selected.completion} 完工`
+                      : selected.completion}
                   </dd>
                 </div>
                 {selected.units != null && (

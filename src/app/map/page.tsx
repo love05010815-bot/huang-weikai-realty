@@ -1,9 +1,10 @@
 /**
- * /map — 台中海線建案地圖（台中港生活圈：梧棲＋清水建案，商圈範圍畫到沙鹿）
+ * /map — 台中海線建案地圖（台中港生活圈：梧棲、清水、沙鹿共 4 個有建案的區）
  *
- * ⚠️ **可見文案的範圍是「生活圈」，但 metadata（TITLE／DESCRIPTION／keywords／og／
- *    twitter）刻意仍然是「台中港市鎮中心重劃區」** —— 那是房產網站最常用的搜尋詞，
- *    改掉會掉搜尋。所以「H1 寫海線、<title> 寫市鎮中心」是刻意的，不是漏改。
+ * ⚠️ **2026-08-31 起 metadata 已經跟頁面同範圍了**（先前刻意只寫重劃區，
+ *    那是頁面還只有 39 案時的決定；長到 133 案之後那個限制反而在擋流量）。
+ *    「台中港市鎮中心」仍放在 `<title>` 最前面，是加沙鹿與鹿寮、不是換掉，
+ *    細節見 TITLE 上面那段。
  *
  * 主體是 `ProjectExplorer.tsx`（地圖＋篩選＋詳情＋在售物件，2026-08-23 由
  * 「地圖」與「建案總覽」兩層合併而成）。建案資料在 src/data/port-projects.ts。
@@ -55,8 +56,23 @@ const AREA_BREAKDOWN = AREA_FILTERS.filter((f) => f.value !== "梧棲" && f.valu
   .map((x) => `${x.label} ${x.n} 案`)
   .join("、");
 
-const TITLE = `台中港市鎮中心建案總覽｜梧棲・清水重劃區 ${stats.district} 個建案一次看｜台中海線房仲${OWNER.name}`;
-const DESCRIPTION = `台中港市鎮中心重劃區（橫跨梧棲區與清水區）${stats.district} 個建案總覽：遠雄幸福成、聯悅馨、長虹天擎、聯虹鉑玥、遠雄之星系列等，可依行政區、預售／成屋與建商篩選，並標示規模與銷售階段。由台中海線房仲${OWNER.name}整理自公開資訊。`;
+/**
+ * ⚠️ 2026-08-31 改：metadata 從「只講重劃區 39 案」放寬成「整個海線 133 案」。
+ *
+ * 原本刻意只寫重劃區，理由是「台中港市鎮中心」是房產網站最常用的搜尋詞。
+ * 但這頁後來長到 133 案、跨四個有建案的區，標題卻還在賣 39 案 ——
+ * 搜「沙鹿建案」「鹿寮建案」的人找不到這頁，等於 94 案的內容白做。
+ *
+ * **做法是加不是換**：「台中港市鎮中心」仍放在標題最前面（原有排名不動），
+ * 後面才補沙鹿與鹿寮，keywords 也只增不刪。
+ *
+ * ⚠️ **只寫真的有建案的區。** 目前 `AREA_FILTERS` 裡的梧棲市區、清水市區、
+ *    北勢靜宜、新光田都是 0 案，**不准寫進標題或 keywords** —— 那等於
+ *    對搜尋的人宣稱這裡有那一區的建案，點進來會撲空。判準跟當初沙鹿 0 案時
+ *    不把沙鹿寫進 H1 是同一條。
+ */
+const TITLE = `台中港市鎮中心・沙鹿・鹿寮建案總覽｜${stats.total} 個建案一次看｜台中海線房仲${OWNER.name}`;
+const DESCRIPTION = `台中海線 ${stats.total} 個建案總覽：${DISTRICT.alias}重劃區（梧棲＋清水）${stats.district} 案，${AREA_BREAKDOWN}。遠雄之星系列、遠雄幸福成、聯悅馨、勝麗交響曲、合總小時代、富宇與凱悅系列等，可依區域、預售／成屋與建商篩選，並標示規模與銷售階段。由台中海線房仲${OWNER.name}整理自公開資訊。`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -76,6 +92,15 @@ export const metadata: Metadata = {
     "遠雄幸福成",
     "聯悅馨",
     "台中海線建商",
+    // 2026-08-31 補：沙鹿車站商圈 28 案、鹿寮萬家福商圈 66 案進來之後才加的。
+    // ⚠️ 只加真的有建案的區 —— 梧棲市區／清水市區／北勢靜宜／新光田目前 0 案，不要加。
+    "台中海線建案",
+    "沙鹿建案",
+    "沙鹿車站商圈",
+    "沙鹿新成屋",
+    "沙鹿預售屋",
+    "鹿寮建案",
+    "鹿寮萬家福商圈",
     OWNER.name,
   ],
   authors: [{ name: OWNER.name }],
@@ -84,16 +109,16 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     locale: "zh_TW",
-    title: `台中港市鎮中心建案總覽｜梧棲市政重劃區 ${stats.district} 個建案`,
-    description: `${stats.district} 個建案、共 ${stats.districtUnits.toLocaleString("zh-TW")} 戶，可依行政區、預售／成屋與建商篩選。`,
+    title: `台中海線建案地圖｜梧棲・清水・沙鹿 ${stats.total} 個建案`,
+    description: `${stats.total} 個建案、共 ${stats.units.toLocaleString("zh-TW")} 戶，可依區域、預售／成屋與建商篩選。`,
     url: "/map",
     siteName: `${OWNER.name}｜台中海線房仲`,
     images: [{ url: "/profile.jpg", width: 1029, height: 1543, alt: `${OWNER.name}形象照` }],
   },
   twitter: {
     card: "summary_large_image",
-    title: `台中港市鎮中心建案總覽｜梧棲市政重劃區 ${stats.district} 個建案`,
-    description: `${stats.district} 個建案、共 ${stats.districtUnits.toLocaleString("zh-TW")} 戶，可依預售／成屋與建商篩選。`,
+    title: `台中海線建案地圖｜梧棲・清水・沙鹿 ${stats.total} 個建案`,
+    description: `${stats.total} 個建案、共 ${stats.units.toLocaleString("zh-TW")} 戶，可依預售／成屋與建商篩選。`,
     images: ["/profile.jpg"],
   },
 };
@@ -101,7 +126,7 @@ export const metadata: Metadata = {
 const JSON_LD = {
   "@context": "https://schema.org",
   "@type": "WebPage",
-  name: `${DISTRICT.alias}建案總覽`,
+  name: "台中海線建案總覽",
   description: DESCRIPTION,
   url: `${SITE_URL}/map`,
   inLanguage: "zh-Hant-TW",
