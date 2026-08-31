@@ -219,6 +219,34 @@ for (const tol of tols) {
   );
 }
 
+/**
+ * 逐段報告：拉直後的每一條邊「吃掉」了原本幾個點、那些點離這條邊最遠多少。
+ *
+ * ## 這才是決定容差的依據，不是那個數字本身
+ *
+ * 2026-08-31 學到的：系統擁有者沿一條**直路**點 21 下，那 21 點離兩端連線最遠
+ * 只有 13 公尺、平均 5 公尺 —— 全部是手抖加上四位小數的格子（約 11x10 公尺）。
+ * 這種情況下容差開 5 公尺**反而是把雜訊留下來**（那一段還剩 9 折），畫面就是他說的
+ * 「歪七扭八」。開到 10 公尺才變成一條直線，而且離他的點最遠也只有 9 公尺 ——
+ * **比他自己的點誤差還小，等於比原線更貼近那條路。**
+ *
+ * 所以判準是：**看每一段吃掉的那些點是不是本來就落在一條直線上**。
+ *   ・最大偏離 <= 他的點誤差（格子 11 公尺上下） → 那條路是直的，可以併成一段
+ *   ・明顯更大 → 那條路真的有彎，容差要降下來，不要把彎抹掉
+ */
+function runReport(orig, kept) {
+  const idx = kept.map((p) => orig.findIndex((q) => q[0] === p[0] && q[1] === p[1]));
+  const rows = [];
+  for (let k = 0; k < kept.length; k++) {
+    const a = idx[k], b = idx[(k + 1) % kept.length];
+    const run = a <= b ? orig.slice(a, b + 1) : [...orig.slice(a), ...orig.slice(0, b + 1)];
+    const A = kept[k], B = kept[(k + 1) % kept.length];
+    const off = run.map((p) => segDist(p, A, B));
+    rows.push({ i: k + 1, n: run.length, len: Math.hypot(A[0] - B[0], A[1] - B[1]),
+                max: Math.max(...off), avg: off.reduce((x, y) => x + y, 0) / off.length });
+  }
+  return rows;
+}
 // 只指定一個容差才吐 ring —— 給了一串是在比較，不該讓人以為可以直接貼
 if (results.length === 1) {
   const { tol, ring } = results[0];
@@ -227,4 +255,16 @@ if (results.length === 1) {
   console.log("ring: [");
   for (const [la, ln] of ring) console.log(`      [${la}, ${ln}],`);
   console.log("    ],");
+
+  const rows = runReport(xy0, results[0].kept);
+  console.log("");
+  console.log("逐段：吃掉幾點 | 這段多長 | 那些點離這段最遠／平均 | 判讀");
+  for (const r of rows)
+    console.log(
+      `  #${String(r.i).padStart(2)} | ${String(r.n).padStart(3)} 點 | ${r.len.toFixed(0).padStart(5)}m | ` +
+        `${r.max.toFixed(1).padStart(5)}m ／ ${r.avg.toFixed(1)}m | ` +
+        (r.max <= 14 ? "直的，併成一段沒問題" : "⚠️ 這段可能真的有彎，容差要降")
+    );
+  console.log("");
+  console.log("⚠️ 有任何一段標了 ⚠️，不要用這個容差 —— 那是把真正的轉彎抹掉了。");
 }
