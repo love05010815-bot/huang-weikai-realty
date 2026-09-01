@@ -18,6 +18,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { OWNER } from "@/config/owner";
 import { Icon } from "@/app/admin/_ui/icons";
 import {
   computeUnit,
@@ -137,7 +138,7 @@ export default function CompareManager() {
         onRival={setRivalText}
       />
 
-      <section className={styles.card}>
+      <section className={`${styles.card} ${styles.noPrint}`}>
         <h2 className={styles.h2}>三個只有你知道的狀況</h2>
         <p className={styles.hint}>591 上查不到這三件事，但第四段「卡在哪」要靠它們才判得準。</p>
         <Question label="1. 有沒有買方打電話來問這一戶？" value={call} onChange={setCall} yes="有" no="沒有" />
@@ -145,7 +146,7 @@ export default function CompareManager() {
         <Question label="3. 帶看之後有沒有人出價？" value={offer} onChange={setOffer} yes="有出價" no="沒出價" />
       </section>
 
-      <div className={styles.runbar}>
+      <div className={`${styles.runbar} ${styles.noPrint}`}>
         <button type="button" className={styles.run} onClick={runParse} disabled={!mineText.trim() && !rivalText.trim()}>
           <Icon name="radar" size={18} /> 辨識並分析
         </button>
@@ -157,6 +158,7 @@ export default function CompareManager() {
       {result ? (
         <>
           <ConfirmTable rows={rows!} A={result.A} onChange={refresh} onReparse={runParse} onCopyDiag={() => copy(buildDiagnostic(rows!), "diag")} copied={copied === "diag"} />
+          <PrintHead A={result.A} />
           <Section1 A={result.A} />
           <Section2 A={result.A} />
           <Section3 A={result.A} />
@@ -176,7 +178,7 @@ export default function CompareManager() {
             </section>
           ) : null}
 
-          <section className={`${styles.card} ${styles.sec}`}>
+          <section className={`${styles.card} ${styles.sec} ${styles.noPrint}`}>
             <h2 className={styles.sech}>傳給屋主</h2>
             <p className={styles.cap}>上面四段加結論，整理成一段可以直接貼到 LINE 的文字。</p>
             <div className={styles.btnrow}>
@@ -186,11 +188,39 @@ export default function CompareManager() {
               <button type="button" className={styles.ghost} onClick={() => setShowPlain((v) => !v)}>
                 {showPlain ? "收起來" : "先看看內容"}
               </button>
+              <button type="button" className={styles.ghost} onClick={() => window.print()}
+                title="會開啟瀏覽器的列印視窗，目的地選「另存為 PDF」就會存成檔案">
+                <Icon name="list" size={14} /> 列印 / 存成 PDF
+              </button>
             </div>
             {showPlain ? <pre className={styles.plain}>{result.plain}</pre> : null}
           </section>
         </>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * 只有列印（存 PDF）時才出現的表頭。
+ * 螢幕上不顯示 —— 後台已經有頁面標題了，再放一份是重複；
+ * 但 PDF 是要單獨傳給屋主的，沒有表頭就不知道是誰、什麼時候、哪個社區。
+ * ⚠️ 這裡只放**事實**（社區名、日期、資料來源、房仲聯絡方式），不要放宣傳語或保證。
+ */
+function PrintHead({ A }: { A: Analysis }) {
+  const d = new Date();
+  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return (
+    <div className={styles.printHead}>
+      <div className={styles.printTitle}>
+        同社區行情比對　{A.self?.community || ""}
+      </div>
+      <div className={styles.printMeta}>
+        資料來源：591 公開刊登，{date} 整理
+      </div>
+      <div className={styles.printBy}>
+        {OWNER.name}｜{OWNER.title}｜{OWNER.phone}
+      </div>
     </div>
   );
 }
@@ -202,7 +232,7 @@ function PasteCard({
 }: { mineText: string; rivalText: string; onMine: (v: string) => void; onRival: (v: string) => void }) {
   return (
     <>
-      <section className={styles.card}>
+      <section className={`${styles.card} ${styles.noPrint}`}>
         <h2 className={styles.h2}>
           我的物件 <span className={`${styles.tag} ${styles.tagSelf}`}>本案</span>
         </h2>
@@ -213,7 +243,7 @@ function PasteCard({
           placeholder="Ctrl+A 全選 → Ctrl+C 複製 → 在這裡 Ctrl+V 貼上" />
       </section>
 
-      <section className={styles.card}>
+      <section className={`${styles.card} ${styles.noPrint}`}>
         <h2 className={styles.h2}>
           競品 <span className={styles.tag}>同社區在賣的</span>
         </h2>
@@ -300,7 +330,7 @@ function ConfirmTable({
   };
 
   return (
-    <section className={styles.card}>
+    <section className={`${styles.card} ${styles.noPrint}`}>
       <h2 className={styles.h2}>
         確認表 <span className={styles.tag}>數字可以直接點進去改</span>
       </h2>

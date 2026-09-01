@@ -251,3 +251,91 @@ textarea.taSmall:focus, textarea.taBig:focus {
   overflow: auto; white-space: pre-wrap; word-break: break-word;
   font-family: Consolas, "Noto Sans TC", "Microsoft JhengHei", monospace;
 }
+
+/* =========================================================================
+   列印 / 另存為 PDF
+   =========================================================================
+   🔴 **後台是深色的，紙不是。** 直接列印會印出滿版黑底，浪費碳粉又看不清楚。
+      這裡把整組 `--cmp-*` 變數覆寫成淺色 —— 因為顏色全部走變數，覆寫變數
+      就等於整份跟著翻面，不用一條一條改（這也是當初堅持不硬寫色碼的回報）。
+      ⚠️ 變數是用 inline style 設在 .wrap 上的，要蓋掉必須加 !important。
+
+   ⚠️ **只印分析。** 貼上區、三個是非題、確認表、按鈕、純文字區都掛 .noPrint ——
+      那些是你操作用的，屋主收到的 PDF 不該有。
+   ========================================================================= */
+@media print {
+  @page { size: A4; margin: 14mm 12mm; }
+
+  .noPrint { display: none !important; }
+  .printHead { display: block !important; }
+
+  .wrap, .page {
+    /* 底色與文字 */
+    --cmp-card: #ffffff !important;
+    --cmp-card-soft: #f5f6f8 !important;
+    --cmp-border: #c8ced6 !important;
+    --cmp-divider: #e4e8ed !important;
+    --cmp-text: #111827 !important;
+    --cmp-sub: #374151 !important;
+    --cmp-mute: #5b6472 !important;
+    --cmp-ink: #111827 !important;
+    --cmp-hover: transparent !important;
+    --cmp-input: #ffffff !important;
+    --cmp-input-focus: #ffffff !important;
+    /* 重點色（紙上要更深才看得清楚） */
+    --cmp-accent: #b91c1c !important;
+    --cmp-accent-deep: #991b1b !important;
+    --cmp-accent-bg: #fdeaea !important;
+    --cmp-highlight: #92400e !important;
+    --cmp-highlight-bg: #fdf6e7 !important;
+    --cmp-highlight-bg-strong: #f8e6c0 !important;
+    /* 狀態色 */
+    --cmp-ok-bg: #edf9f1 !important;  --cmp-ok-bd: #b3ddc3 !important;  --cmp-ok-fg: #15803d !important;
+    --cmp-warn-bg: #fdf6e7 !important; --cmp-warn-bd: #eed9a2 !important; --cmp-warn-fg: #92400e !important;
+    --cmp-bad-bg: #fdecea !important;  --cmp-bad-bd: #f0bdb7 !important;  --cmp-bad-fg: #b91c1c !important;
+    --cmp-info-bg: #eef2ff !important; --cmp-info-fg: #3730a3 !important;
+    --cmp-neutral-bg: #eef0f3 !important; --cmp-neutral-fg: #475569 !important;
+
+    background: #fff !important;
+    color: var(--cmp-text) !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  /* 語意色塊要印出來，不然「紅色＝有問題」的意思就沒了 */
+  .verdict, .alert, .chkBad td, .chkGood td, .cmpSelf td, .cmpOff td, .oneline, .concl, .badge, .stat {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* 卡片在紙上不需要陰影與大圓角，段落之間留白就好 */
+  .card { border: 1px solid var(--cmp-border); border-radius: 6px; padding: 12px 14px; margin: 0 0 10px; break-inside: avoid; }
+  .sech { break-after: avoid; font-size: 15px; }
+  .cap, .note, .vbody { font-size: 11.5px; }
+
+  /* 🔴 表格的 min-width 在螢幕上是為了橫向捲動，印到 A4 會爆出紙外 —— 一定要拿掉 */
+  .tblbox { overflow: visible !important; border-radius: 6px; }
+  .table, .cmp, .vs, .chk { min-width: 0 !important; width: 100% !important; font-size: 10.5px !important; }
+  .table th, .table td { padding: 5px 6px !important; }
+  .cmp td, .vs td, .chk td { padding: 5px 6px !important; }
+  .tblbox table { break-inside: auto; }
+  .tblbox tr { break-inside: avoid; }
+
+  .verdict { padding: 10px 14px; }
+  .vt { font-size: 18px; }
+  .concl { font-size: 12px; line-height: 1.8; padding: 12px 14px; }
+  .oneline { font-size: 11.5px; padding: 10px 12px; }
+
+  /* 連結不要印出網址（Chrome 預設可能會加） */
+  .wrap a::after { content: "" !important; }
+}
+
+/* 列印表頭：螢幕上完全不顯示 */
+.printHead { display: none; }
+.printTitle { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.printMeta { font-size: 11px; color: var(--cmp-mute); }
+.printBy {
+  font-size: 11px; color: var(--cmp-sub); margin-top: 8px;
+  padding-top: 8px; border-top: 1px solid var(--cmp-border);
+  margin-bottom: 14px;
+}
