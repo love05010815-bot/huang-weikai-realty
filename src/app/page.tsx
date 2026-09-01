@@ -218,6 +218,11 @@ export default async function HomePage() {
       <main id="top">
         {/* ---------------- HERO ---------------- */}
         <section className={styles.hero} aria-label={`${OWNER.name}個人形象介紹`}>
+          {/* 社群連結放在 hero 最上面 —— 2026-09-01 系統擁有者要求「手機或網頁一點開就看得到」。
+              ⚠️ **不能改放按鈕下面**：860px 以下 `.heroPhotoWrap` 是 `order: -1`，
+                 形象照（260×320）排在所有文字前面，按鈕已經在手機第一屏以外了。
+                 這種錯法桌機看起來完全正常，只有手機看不到，而且不會有任何錯誤訊息。 */}
+          <SocialLinks variant="bar" />
           <div className={styles.heroInner}>
             <div>
               <span className={styles.eyebrow}>台中海線資產配置專家</span>

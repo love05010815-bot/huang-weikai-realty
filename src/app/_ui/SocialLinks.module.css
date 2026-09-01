@@ -77,3 +77,82 @@
     border-radius: 14px;
   }
 }
+
+/* ============================================================
+   variant="bar" —— 首頁 hero 最上面那一條
+
+   目的只有一個：**手機跟桌機一打開就看得到，不用捲。**
+   所以它放在 `.heroInner` 前面（860px 以下形象照是 order:-1，排在所有文字前面，
+   放按鈕下面手機第一屏會看不到）。
+
+   ⚠️ 這裡**故意不用底磚**。hero 的底是 `--soft` → 白的淺色漸層，
+      白色底磚放上去只剩影子看得見，四顆會糊成一團。品牌色直接放最乾淨。
+   ============================================================ */
+.bar {
+  max-width: 1080px;
+  margin: 0 auto 26px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.barTitle {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--muted, #7a6f68);
+  margin-right: 8px;
+}
+
+/* icon 本身 30px，靠 padding 把可點範圍撐到 44px —— 手指的最小目標尺寸。
+   只把 icon 做大會讓那一排在窄螢幕上太笨重。 */
+.barBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: transform 0.18s ease, background-color 0.18s ease;
+}
+
+.barBtn:hover,
+.barBtn:focus-visible {
+  transform: translateY(-2px);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.barBtn:focus-visible {
+  outline: 2px solid var(--accent, #dab38a);
+  outline-offset: 1px;
+}
+
+/* 860px 是 hero 從兩欄變一欄、整段改置中的斷點（見 home.module.css）。
+   那一排跟著置中，不然會孤零零貼在右邊。 */
+@media (max-width: 860px) {
+  .bar {
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+}
+
+/* ⚠️ 這裡本來寫「380px 以下把「追蹤瑋凱」收掉」，**是我自己算錯、已經拿掉了**。
+   實際量過：四顆 44px ＋ 三個 4px 間距 ＋ 標題約 52px ＋ 8px 右邊距 ≈ 252px，
+   而 375px 手機扣掉 hero 左右各 20px 還有 335px —— **根本放得下**。
+   收掉的話 iPhone 375／Android 360 這些最常見的尺寸全都看不到那四個字，
+   等於把「叫人去追蹤」的那句話刪掉，換來的空間根本沒人需要。
+
+   真的窄到放不下時（320px 以下）交給 `.bar` 的 `flex-wrap: wrap` ——
+   標題自己掉到上面一行、icon 仍然置中，不會破版。 */
+
+@media (prefers-reduced-motion: reduce) {
+  .barBtn {
+    transition: none;
+  }
+  .barBtn:hover,
+  .barBtn:focus-visible {
+    transform: none;
+  }
+}

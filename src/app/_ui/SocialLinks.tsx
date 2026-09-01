@@ -1,16 +1,27 @@
 /**
- * 📱 追蹤社群 —— FB / IG / YouTube / TikTok 一排品牌 icon
+ * 📱 社群連結 —— FB / IG / YouTube / TikTok
  *
  * ## 網址在哪裡改
  *
  * **`src/config/owner.ts` 的 `SOCIAL`，不是這裡。** 這支只負責排版與隱藏規則。
  * 名片頁 /card 的社群列吃的是同一份設定，所以填一次兩個頁面一起出現。
  *
+ * ## 兩種樣式，用在兩種背景上
+ *
+ *   `variant="bar"`   首頁 hero 最上面那一條。**光禿禿的品牌 icon，沒有底磚**——
+ *                     hero 是淺色漸層，白底磚在上面等於看不見邊。
+ *   `variant="tiles"` 首頁「預約諮詢」區塊（深藍底）與未來任何深色區塊。
+ *                     白色圓角底磚，四個品牌色才跳得出來。
+ *
+ * ⚠️ **`bar` 一定要放在 `.heroInner` 前面，不能放在 hero 的按鈕下面。**
+ *    860px 以下 `.heroPhotoWrap` 是 `order: -1`，**形象照排在所有文字前面**
+ *    （260×320 ＋ 20px）。放按鈕下面的話手機第一屏根本看不到，
+ *    但桌機看起來完全正常 —— 這種「只有手機壞掉」的差別不會有任何錯誤訊息。
+ *
  * ## ⚠️ 沒填網址的平台會整顆消失，不是變灰
  *
- * `href=""` 的 `<a>` 點下去是「重新整理本頁」，客戶會以為連結壞掉，
- * 所以沒填的直接不畫。**四個都沒填的話整區（含「追蹤瑋凱」標題）都不會出現**——
- * 這是刻意的，免得首頁多一塊只有標題的空白。
+ * `href=""` 的 `<a>` 點下去是「重新整理本頁」，客戶會以為連結壞掉，所以沒填的直接不畫。
+ * **四個都沒填的話整區（含標題）都不會出現**，這是刻意的，免得留下一塊只有標題的空白。
  *
  * 副作用是：**網址填錯或漏填時，畫面上什麼都不會發生，也不會有錯誤訊息。**
  * 改完 `SOCIAL` 一定要實際看一眼首頁，不要只看 build 有沒有過。
@@ -32,30 +43,48 @@ const PLATFORMS = [
   { key: "tiktok", label: "TikTok", href: SOCIAL.tiktok, Icon: TiktokIcon },
 ] as const;
 
-export default function SocialLinks({ title = "追蹤瑋凱" }: { title?: string }) {
+type Props = {
+  variant?: "bar" | "tiles";
+  /** 標題文字。`bar` 與 `tiles` 都會顯示，傳空字串就不顯示 */
+  title?: string;
+};
+
+export default function SocialLinks({ variant = "tiles", title = "追蹤瑋凱" }: Props) {
   const live = PLATFORMS.filter((p) => p.href);
   if (live.length === 0) return null;
 
+  const bar = variant === "bar";
+  const size = bar ? 30 : 28;
+
+  const items = live.map(({ key, label, href, Icon }) => (
+    <a
+      key={key}
+      className={bar ? styles.barBtn : styles.btn}
+      href={href}
+      target="_blank"
+      /* noreferrer 一定要留：少了它，對方後台看得到客戶是從哪一頁點過去的，
+         而且 target="_blank" 沒有 noopener 會讓新開的分頁能操作我們這頁 */
+      rel="noopener noreferrer"
+      aria-label={`${OWNER.name}的 ${label}`}
+      title={label}
+    >
+      <Icon size={size} />
+    </a>
+  ));
+
+  if (bar) {
+    return (
+      <div className={styles.bar}>
+        {title && <span className={styles.barTitle}>{title}</span>}
+        {items}
+      </div>
+    );
+  }
+
   return (
     <div className={styles.wrap}>
-      <p className={styles.title}>{title}</p>
-      <div className={styles.row}>
-        {live.map(({ key, label, href, Icon }) => (
-          <a
-            key={key}
-            className={styles.btn}
-            href={href}
-            target="_blank"
-            /* noreferrer 一定要留：少了它，對方後台看得到客戶是從哪一頁點過去的，
-               而且 target="_blank" 沒有 noopener 會讓新開的分頁能操作我們這頁 */
-            rel="noopener noreferrer"
-            aria-label={`${OWNER.name}的 ${label}`}
-            title={label}
-          >
-            <Icon size={28} />
-          </a>
-        ))}
-      </div>
+      {title && <p className={styles.title}>{title}</p>}
+      <div className={styles.row}>{items}</div>
     </div>
   );
 }
