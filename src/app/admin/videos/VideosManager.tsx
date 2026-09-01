@@ -12,7 +12,7 @@
  */
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import { CIS } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
@@ -150,6 +150,25 @@ export default function VideosManager({
   const [progress, setProgress] = useState(0);
   const [uploadNote, setUploadNote] = useState<{ ok: boolean; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * ⚠️ **點「編輯」之後把表單捲進畫面。少了這段，按鈕看起來就是壞的。**
+   *
+   * 編輯表單是**取代頁面最上面那顆「新增影片」按鈕**（見下面 `editing === null ?`），
+   * 影片清單則永遠在它下面。所以點最後一個分類（房屋開箱）某一列的「編輯」時，
+   * 表單確實開了、state 也對、什麼錯都沒有，**但它在畫面外上方好幾百 px，畫面
+   * 一動也不動** —— 2026-09-01 系統擁有者回報「影音編輯按下去沒反應」就是這個。
+   * 分類從兩類拆成三類（`8bcfbe6`）之後頁面變長，這個問題才變明顯。
+   *
+   * ⚠️ 刻意用 `smooth` —— 他要看到畫面在動，才知道按鈕有吃到點擊。
+   * ⚠️ 表單上的 `scrollMarginTop` 是給手機版讓位：899px 以下 adminShell 的
+   *    topbar 是 sticky、min-height 56px，不讓位表單頂端會被它蓋掉。
+   */
+  useEffect(() => {
+    if (editing === null) return;
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [editing]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -297,7 +316,20 @@ export default function VideosManager({
           新增影片
         </button>
       ) : (
-        <div className={styles.form} style={{ background: CIS.card, borderColor: CIS.cardBorder }}>
+        <div
+          ref={formRef}
+          className={styles.form}
+          style={{ background: CIS.card, borderColor: CIS.cardBorder, scrollMarginTop: 72 }}
+        >
+          {/* ⚠️ 這行不是裝飾。表單本身原本沒有任何標題，開起來第一個欄位就是「分類」——
+              從最底下捲上來之後，畫面上沒有一個字告訴你「正在改哪一支」，甚至分不出
+              這是新增還是編輯。改錯一支不會報錯，存下去才發現。 */}
+          <div className={styles.subtitle} style={{ color: CIS.text, margin: "0 0 12px", fontSize: 15 }}>
+            {editing === "new"
+              ? "新增影片"
+              : `正在編輯：${initial.find((r) => r.id === editing)?.title ?? "這支影片"}`}
+          </div>
+
           <div className={styles.formGrid}>
             <div className={styles.field}>
               <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-category">
