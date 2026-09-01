@@ -1,201 +1,253 @@
 /* /admin/compare 的樣式。
-   ⚠️ 這一頁的分析段落是要「截圖或複製給屋主看」的，所以字級比其他後台頁大一點、
-      留白多一點。改的時候記得它的讀者不只是你。 */
+ *
+ * 🔴 **這裡不准硬寫色碼。** 後台是深色底（`CIS.bg` 深棕黑），色票只有 `_components/cis.ts`
+ *    一個來源。變數由 CompareManager 在最外層用 inline style 從 CIS 轉成 `--cmp-*` 傳下來。
+ *    第一版整份寫死淺色，結果卡片是白的、文字框繼承到淺色字打在白底上，
+ *    貼進去的東西完全看不到 —— 這個檔只寫版面，顏色一律 var()。
+ *    （唯一例外是 #fff：那是反白文字，不是色票的一員。）
+ *
+ * ⚠️ 分析段落是要「截圖或複製給屋主看」的，字級比其他後台頁大一點、留白多一點。
+ *    改的時候記得它的讀者不只是你。
+ */
 
-.page { max-width: 1100px; }
+.page { max-width: 1100px; padding: 24px 18px 56px; }
 .head { margin-bottom: 18px; }
 .h1 {
   display: flex; align-items: center; gap: 8px;
-  font-size: 22px; font-weight: 700; margin: 0 0 6px;
+  font-size: 26px; font-weight: 700; margin: 0 0 6px;
 }
-.lede { color: #6b7280; font-size: 14px; margin: 0; line-height: 1.7; }
+.lede { color: var(--cmp-mute); font-size: 14px; margin: 0; line-height: 1.7; }
+.lede b { color: var(--cmp-sub); }
 
-.wrap { display: block; }
+.wrap { display: block; color: var(--cmp-text); }
 
 .card {
-  background: #fff; border: 1px solid #e3e5e8; border-radius: 10px;
-  padding: 18px 20px; margin-bottom: 16px;
+  background: var(--cmp-card);
+  border: 1px solid var(--cmp-border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
 }
 .h2 { font-size: 16px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.hint { color: #6b7280; font-size: 13px; margin: 0 0 10px; line-height: 1.7; }
-.hint b { color: #b45309; }
+.hint { color: var(--cmp-mute); font-size: 13px; margin: 0 0 10px; line-height: 1.7; }
+.hint b { color: var(--cmp-highlight); }
 
 .tag {
-  font-size: 12px; font-weight: 400; background: #eef2ff; color: #4338ca;
-  border-radius: 4px; padding: 2px 8px;
+  font-size: 12px; font-weight: 400; border-radius: 4px; padding: 2px 8px;
+  background: var(--cmp-info-bg); color: var(--cmp-info-fg);
 }
-.tagSelf { background: #fef3c7; color: #92400e; }
-.tagOn { background: #4f46e5; color: #fff; margin-right: 6px; }
+.tagSelf { background: var(--cmp-highlight-bg-strong); color: var(--cmp-highlight); }
+.tagOn { background: var(--cmp-accent-deep); color: #fff; margin-right: 6px; }
 
+/* 🔴 文字框：底色一定要比卡片暗、文字一定要明確指定。
+   寫 color: inherit 就是第一版看不到字的原因。 */
 textarea.taSmall, textarea.taBig {
-  width: 100%; border: 1px solid #d7dade; border-radius: 8px; padding: 12px;
-  font-family: Consolas, "Microsoft JhengHei", monospace; font-size: 13px;
-  line-height: 1.6; resize: vertical; background: #fcfcfd; color: inherit;
+  width: 100%;
+  border: 1px solid var(--cmp-border);
+  border-radius: 10px;
+  padding: 12px;
+  font-family: Consolas, "Noto Sans TC", "Microsoft JhengHei", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+  background: var(--cmp-input);
+  color: var(--cmp-text);
 }
-textarea.taSmall:focus, textarea.taBig:focus { outline: 2px solid #6366f1; outline-offset: -1px; background: #fff; }
+textarea.taSmall::placeholder, textarea.taBig::placeholder { color: var(--cmp-mute); opacity: 0.75; }
+textarea.taSmall:focus, textarea.taBig:focus {
+  outline: 2px solid var(--cmp-accent); outline-offset: -1px; background: var(--cmp-input-focus);
+}
 .taSmall { height: 110px; }
 .taBig { height: 200px; }
 
 /* ---- 三個是非題 ---- */
 .qrow {
   display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
-  padding: 9px 0; border-bottom: 1px dashed #e6e8eb;
+  padding: 9px 0; border-bottom: 1px dashed var(--cmp-divider);
 }
 .qrow:last-child { border-bottom: none; }
-.qlabel { flex: 1 1 260px; font-size: 15px; }
+.qlabel { flex: 1 1 260px; font-size: 15px; color: var(--cmp-sub); }
 .opts { display: flex; gap: 8px; }
 .opt {
-  border: 1px solid #d7dade; border-radius: 999px; padding: 5px 16px;
-  font-size: 14px; cursor: pointer; background: #fff; font-family: inherit; color: inherit;
+  border: 1px solid var(--cmp-border); border-radius: 999px; padding: 5px 16px;
+  font-size: 14px; cursor: pointer; font-family: inherit;
+  background: transparent; color: var(--cmp-sub);
 }
-.opt:hover { border-color: #a5b4fc; }
-.optOn { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+.opt:hover { border-color: var(--cmp-accent); color: var(--cmp-text); }
+.optOn { background: var(--cmp-accent-deep); border-color: var(--cmp-accent-deep); color: #fff; }
 
 /* ---- 按鈕 ---- */
 .runbar { text-align: center; margin: 22px 0; }
 .run {
   display: inline-flex; align-items: center; gap: 8px;
-  background: #4f46e5; color: #fff; border: none; border-radius: 8px;
+  background: var(--cmp-accent-deep); color: #fff; border: none; border-radius: 10px;
   padding: 13px 40px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit;
 }
-.run:hover { background: #4338ca; }
-.run:disabled { background: #c7cbf0; cursor: not-allowed; }
-.runhint { display: block; margin-top: 10px; font-size: 13px; color: #9ca3af; }
+.run:hover { filter: brightness(1.12); }
+.run:disabled { background: var(--cmp-neutral-bg); color: var(--cmp-mute); cursor: not-allowed; }
+.runhint { display: block; margin-top: 10px; font-size: 13px; color: var(--cmp-mute); }
 .ghost {
-  background: #fff; color: #4f46e5; border: 1px solid #c7cbf0; border-radius: 6px;
-  padding: 7px 14px; font-size: 13px; cursor: pointer; font-family: inherit;
+  background: transparent; color: var(--cmp-accent); border: 1px solid var(--cmp-border);
+  border-radius: 8px; padding: 7px 14px; font-size: 13px; cursor: pointer; font-family: inherit;
 }
-.ghost:hover { background: #f5f5ff; }
+.ghost:hover { background: var(--cmp-hover); }
 .btnrow { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
 /* ---- 統計小卡 ---- */
 .stats { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
-.stat { flex: 1 1 150px; background: #f8fafc; border: 1px solid #e5e9ef; border-radius: 8px; padding: 10px 14px; }
-.statK { font-size: 12px; color: #6b7280; }
-.statV { font-size: 20px; font-weight: 700; }
-.statHot { background: #fff7ed; border-color: #fed7aa; }
-.statHot .statV { color: #c2410c; }
+.stat {
+  flex: 1 1 150px; background: var(--cmp-card-soft);
+  border: 1px solid var(--cmp-border); border-radius: 10px; padding: 10px 14px;
+}
+.statK { font-size: 12px; color: var(--cmp-mute); }
+.statV { font-size: 20px; font-weight: 700; color: var(--cmp-text); }
+.statHot { background: var(--cmp-warn-bg); border-color: var(--cmp-warn-bd); }
+.statHot .statV { color: var(--cmp-warn-fg); }
 
 /* ---- 提示框 ---- */
-.alert { border-radius: 8px; padding: 12px 16px; font-size: 14px; margin-bottom: 12px; line-height: 1.8; }
+.alert { border-radius: 10px; padding: 12px 16px; font-size: 14px; margin-bottom: 12px; line-height: 1.8; }
 .alert ul { margin: 6px 0 0; padding-left: 20px; }
-.alertWarn { background: #fffbeb; border: 1px solid #fde68a; }
-.alertBad { background: #fef2f2; border: 1px solid #fecaca; }
-.alertOk { background: #ecfdf5; border: 1px solid #a7f3d0; }
+.alertWarn { background: var(--cmp-warn-bg); border: 1px solid var(--cmp-warn-bd); color: var(--cmp-text); }
+.alertBad { background: var(--cmp-bad-bg); border: 1px solid var(--cmp-bad-bd); color: var(--cmp-text); }
+.alertOk { background: var(--cmp-ok-bg); border: 1px solid var(--cmp-ok-bd); color: var(--cmp-text); }
+.alertWarn b { color: var(--cmp-warn-fg); }
+.alertBad b { color: var(--cmp-bad-fg); }
+.alertOk b { color: var(--cmp-ok-fg); }
 
 /* ---- 表格外殼：一律內部橫向捲動，不要讓整頁歪掉 ---- */
-.tblbox { overflow-x: auto; border: 1px solid #e3e5e8; border-radius: 8px; }
-.table { border-collapse: collapse; width: 100%; min-width: 1000px; font-size: 13px; background: #fff; }
-.table th {
-  background: #f8fafc; text-align: left; padding: 9px 8px; font-weight: 600;
-  white-space: nowrap; border-bottom: 1px solid #e3e5e8; color: #475569;
+.tblbox { overflow-x: auto; border: 1px solid var(--cmp-border); border-radius: 10px; }
+.table {
+  border-collapse: collapse; width: 100%; min-width: 1000px;
+  font-size: 13px; background: transparent; color: var(--cmp-text);
 }
-.table td { padding: 5px 8px; border-bottom: 1px solid #f1f3f5; vertical-align: middle; }
+.table th {
+  background: var(--cmp-card-soft); text-align: left; padding: 9px 8px; font-weight: 600;
+  white-space: nowrap; border-bottom: 1px solid var(--cmp-border); color: var(--cmp-mute);
+}
+.table td { padding: 5px 8px; border-bottom: 1px solid var(--cmp-divider); vertical-align: middle; }
 .table tr:last-child td { border-bottom: none; }
 .r { text-align: right; }
 .num { text-align: right; }
-.u { font-weight: 400; color: #94a3b8; font-size: 11px; }
-.dash { color: #cbd5e1; }
+.u { font-weight: 400; color: var(--cmp-mute); font-size: 11px; }
+.dash { color: var(--cmp-mute); opacity: 0.5; }
 
 /* 確認表的列狀態 */
-.rowSelf td { background: #fffbeb; }
-.rowDup td { background: #f5f3ff; }
-.rowBad td { background: #fef2f2; }
+.rowSelf td { background: var(--cmp-highlight-bg); }
+.rowDup td { background: var(--cmp-accent-bg); }
+.rowBad td { background: var(--cmp-bad-bg); }
 
+/* 🔴 表格內的輸入格：同樣不能 inherit，要明確給色 */
 .cell {
   width: 100%; min-width: 52px; border: 1px solid transparent; background: transparent;
-  border-radius: 4px; padding: 4px 5px; font-family: inherit; font-size: 13px; color: inherit;
+  border-radius: 6px; padding: 4px 5px; font-family: inherit; font-size: 13px;
+  color: var(--cmp-text);
 }
-.cell:hover { border-color: #dfe3e8; background: #fff; }
-.cell:focus { border-color: #6366f1; background: #fff; outline: none; }
+.cell:hover { border-color: var(--cmp-border); background: var(--cmp-input); }
+.cell:focus { border-color: var(--cmp-accent); background: var(--cmp-input-focus); outline: none; }
+.cell option { background: var(--cmp-card-soft); color: var(--cmp-text); }
 .num .cell { text-align: right; }
 .w5 { width: 58px; } .w6 { width: 68px; } .w7 { width: 84px; } .w12 { width: 150px; }
 
 /* 車位那一格：型式 + 「車位價含在開價裡嗎」 */
 .parkcell { white-space: nowrap; }
 .parkcell select.cell { width: 62px; min-width: 0; display: inline-block; }
-.incl { font-size: 11px; color: #475569; cursor: pointer; user-select: none; margin-left: 2px; }
+.incl { font-size: 11px; color: var(--cmp-sub); cursor: pointer; user-select: none; margin-left: 2px; }
 .incl input { vertical-align: -1px; margin: 0 1px 0 0; }
-.inclOff { color: #cbd5e1; cursor: not-allowed; }
+.inclOff { color: var(--cmp-mute); opacity: 0.5; cursor: not-allowed; }
 
 .unitCell { font-weight: 700; }
-.del { border: none; background: none; color: #cbd5e1; cursor: pointer; padding: 2px 4px; line-height: 1; }
-.del:hover { color: #ef4444; }
+.del { border: none; background: none; color: var(--cmp-mute); cursor: pointer; padding: 2px 4px; line-height: 1; }
+.del:hover { color: var(--cmp-bad-fg); }
 
 .badge { display: inline-block; font-size: 11px; border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
-.badgeSelf { background: #f59e0b; color: #fff; }
-.badgeDup { background: #7c3aed; color: #fff; }
-.badgeMaybe { background: #fb923c; color: #fff; }
-.badgeUni { background: #e5e7eb; color: #4b5563; }
-.badgePark { background: #e0e7ff; color: #3730a3; }
-.badgeMulti { background: #ede9fe; color: #6d28d9; }
-.badgeOff { background: #dc2626; color: #fff; }
+.badgeSelf { background: var(--cmp-highlight-bg-strong); color: var(--cmp-highlight); }
+.badgeDup { background: var(--cmp-info-bg); color: var(--cmp-text); }
+.badgeMaybe { background: var(--cmp-warn-bg); color: var(--cmp-warn-fg); }
+/* ⚠️ 徽章是 11px 小字，要 4.5:1。CHIP 的預設前景色是配 CIS.bg 調的，
+   放在比 bg 亮一點的卡片上會掉到 4.3～4.4，所以這兩個改成亮底深字。 */
+.badgeUni { background: var(--cmp-neutral-bg); color: var(--cmp-sub); }
+.badgePark { background: var(--cmp-info-bg); color: var(--cmp-text); }
+.badgeMulti { background: var(--cmp-accent-bg); color: var(--cmp-text); }
+.badgeOff { background: var(--cmp-bad-fg); color: var(--cmp-ink); font-weight: 600; }
 
 /* ---- 分析段落（要給屋主看的，字大一點、乾淨一點） ---- */
-.sec { border-color: #d8dce2; }
-.sech { font-size: 18px; border-left: 4px solid #4f46e5; padding-left: 10px; margin: 0 0 10px; }
-.cap { font-size: 15px; color: #374151; margin: 0 0 14px; line-height: 1.8; }
+.sec { }
+.sech {
+  font-size: 18px; border-left: 4px solid var(--cmp-accent);
+  padding-left: 10px; margin: 0 0 10px; color: var(--cmp-text);
+}
+.cap { font-size: 15px; color: var(--cmp-sub); margin: 0 0 14px; line-height: 1.8; }
+.cap b { color: var(--cmp-text); }
 
 .cmp { min-width: 760px; font-size: 14px; }
-.cmp th { padding: 10px; font-size: 13px; line-height: 1.35; background: #f1f5f9; }
-.cmp td { padding: 10px; border-bottom: 1px solid #eef1f4; }
-.cmpSelf td { background: #fffbeb; font-weight: 600; }
-.cmpSelf td:first-child { border-left: 3px solid #f59e0b; }
-.cmpOff td { background: #fff1f2; color: #9f1239; }
-.cmpOff td:first-child { border-left: 3px solid #e11d48; }
+.cmp th { padding: 10px; font-size: 13px; line-height: 1.35; }
+.cmp td { padding: 10px; border-bottom: 1px solid var(--cmp-divider); }
+.cmpSelf td { background: var(--cmp-highlight-bg); font-weight: 600; }
+.cmpSelf td:first-child { border-left: 3px solid var(--cmp-highlight); }
+.cmpOff td { background: var(--cmp-bad-bg); color: var(--cmp-bad-fg); }
+.cmpOff td:first-child { border-left: 3px solid var(--cmp-bad-fg); }
 
 .note {
-  margin-top: 12px; font-size: 13px; color: #4b5563; background: #f8fafc;
-  border-left: 3px solid #cbd5e1; padding: 10px 14px; border-radius: 0 6px 6px 0; line-height: 1.8;
+  margin-top: 12px; font-size: 13px; color: var(--cmp-sub); background: var(--cmp-card-soft);
+  border-left: 3px solid var(--cmp-border); padding: 10px 14px;
+  border-radius: 0 8px 8px 0; line-height: 1.8;
 }
+.note b { color: var(--cmp-text); }
 .note p { margin: 0 0 6px; }
 .note p:last-child { margin-bottom: 0; }
 .note ol { margin: 6px 0 0; padding-left: 20px; }
 
 /* ---- 第二段 ---- */
 .vs { min-width: 520px; font-size: 14px; }
-.vs th { padding: 10px; background: #f1f5f9; }
+.vs th { padding: 10px; }
 .vs th:first-child { width: 110px; }
 .vs td { padding: 10px; }
-.vs td:first-child { color: #64748b; font-size: 13px; }
-.up { color: #b91c1c; font-weight: 600; font-size: 12px; }
-.dn { color: #047857; font-weight: 600; font-size: 12px; }
+.vs td:first-child { color: var(--cmp-mute); font-size: 13px; }
+.up { color: var(--cmp-bad-fg); font-weight: 600; font-size: 12px; }
+.dn { color: var(--cmp-ok-fg); font-weight: 600; font-size: 12px; }
 .oneline {
-  margin-top: 12px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px;
-  padding: 14px 18px; font-size: 15px; line-height: 1.85;
+  margin-top: 12px; background: var(--cmp-highlight-bg);
+  border: 1px solid var(--cmp-highlight-bg-strong); border-radius: 10px;
+  padding: 14px 18px; font-size: 15px; line-height: 1.85; color: var(--cmp-text);
 }
 
 /* ---- 第三段 ---- */
-.subh { font-size: 15px; margin: 0 0 8px; color: #1f2328; }
-.thr { font-size: 12px; font-weight: 400; color: #94a3b8; margin-left: 6px; }
+.subh { font-size: 15px; margin: 0 0 8px; color: var(--cmp-text); }
+.thr { font-size: 12px; font-weight: 400; color: var(--cmp-mute); margin-left: 6px; }
 .chk { min-width: 600px; font-size: 14px; }
 .chk td { padding: 11px 12px; }
-.chk td:first-child { color: #475569; width: 42%; }
+.chk td:first-child { color: var(--cmp-sub); width: 42%; }
 .chk td:nth-child(2) { white-space: nowrap; font-size: 15px; }
-.chkBad td { background: #fef2f2; }
-.chkGood td { background: #f0fdf4; }
-.chkNa td { background: #fafbfc; }
+.chk td:last-child { color: var(--cmp-sub); }
+.chkBad td { background: var(--cmp-bad-bg); }
+.chkBad b { color: var(--cmp-bad-fg); }
+.chkGood td { background: var(--cmp-ok-bg); }
+.chkGood b { color: var(--cmp-ok-fg); }
+.chkNa td { background: transparent; }
 
 /* ---- 第四段 ---- */
-.verdict { border-radius: 10px; padding: 16px 20px; margin-bottom: 14px; }
-.verdictBad { background: #fef2f2; border: 1px solid #fecaca; }
-.verdictOk { background: #ecfdf5; border: 1px solid #a7f3d0; }
-.vk { font-size: 12px; color: #94a3b8; letter-spacing: 2px; }
+.verdict { border-radius: 12px; padding: 16px 20px; margin-bottom: 14px; }
+.verdictBad { background: var(--cmp-bad-bg); border: 1px solid var(--cmp-bad-bd); }
+.verdictOk { background: var(--cmp-ok-bg); border: 1px solid var(--cmp-ok-bd); }
+.vk { font-size: 12px; color: var(--cmp-mute); letter-spacing: 2px; }
 .vt { font-size: 24px; font-weight: 700; margin: 2px 0 6px; }
-.verdictBad .vt { color: #b91c1c; }
-.verdictOk .vt { color: #047857; }
-.vw { font-size: 13px; color: #64748b; }
-.vbody { font-size: 15px; line-height: 1.9; margin: 0; }
+.verdictBad .vt { color: var(--cmp-bad-fg); }
+.verdictOk .vt { color: var(--cmp-ok-fg); }
+.vw { font-size: 13px; color: var(--cmp-mute); }
+.vbody { font-size: 15px; line-height: 1.9; margin: 0; color: var(--cmp-sub); }
+.vbody b { color: var(--cmp-text); }
 
 /* ---- 結論與純文字 ---- */
 .concl {
-  background: #fafaf9; border: 1px solid #e7e5e4; border-left: 4px solid #78716c;
-  border-radius: 0 8px 8px 0; padding: 18px 22px; font-size: 15px; line-height: 2;
+  background: var(--cmp-card-soft); border: 1px solid var(--cmp-border);
+  border-left: 4px solid var(--cmp-highlight); border-radius: 0 10px 10px 0;
+  padding: 18px 22px; font-size: 15px; line-height: 2; color: var(--cmp-text);
 }
-.tail { color: #57534e; font-size: 14px; }
+.tail { color: var(--cmp-mute); font-size: 14px; }
 .plain {
-  margin-top: 14px; background: #0f172a; color: #e2e8f0; border-radius: 8px;
+  margin-top: 14px; background: rgba(0, 0, 0, 0.38); color: var(--cmp-text);
+  border: 1px solid var(--cmp-border); border-radius: 10px;
   padding: 16px 18px; font-size: 12.5px; line-height: 1.75; max-height: 420px;
   overflow: auto; white-space: pre-wrap; word-break: break-word;
-  font-family: Consolas, "Microsoft JhengHei", monospace;
+  font-family: Consolas, "Noto Sans TC", "Microsoft JhengHei", monospace;
 }

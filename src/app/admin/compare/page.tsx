@@ -19,6 +19,7 @@ import { adminEmails } from "@/auth";
 import { Icon } from "@/app/admin/_ui/icons";
 import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
 import CompareManager from "./CompareManager";
+import { COMPARE_THEME } from "./theme";
 import styles from "./compare.module.css";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,7 @@ export default async function ComparePage() {
   if (!(await isCurrentUserAdmin())) return <AdminGateNotice kind="not_allowed" email={email} />;
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} style={COMPARE_THEME}>
       <header className={styles.head}>
         <h1 className={styles.h1}>
           <Icon name="radar" size={22} /> 競品分析

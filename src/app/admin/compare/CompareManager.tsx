@@ -46,9 +46,11 @@ import {
   type Answers,
   type RivalUnit,
 } from "@/lib/rival-analysis";
+import { COMPARE_THEME } from "./theme";
 import styles from "./compare.module.css";
 
 type YesNo = "yes" | "no" | null;
+
 
 const PARKING_OPTIONS: ParkingKind[] = ["平面", "機械", "有", "無"];
 
@@ -126,7 +128,7 @@ export default function CompareManager() {
   }
 
   return (
-    <div className={styles.wrap}>
+    <div className={styles.wrap} style={COMPARE_THEME}>
       <PasteCard
         mineText={mineText}
         rivalText={rivalText}
