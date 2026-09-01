@@ -66,7 +66,8 @@ export const STATUS_LABEL: Record<ProjectStatus, string> = {
  * 「整個海線生活圈」，所以把沙鹿那四個商圈也加進來。
  *
  * 2026-08-27 陸續補進商圈的建案：沙鹿車站 28 案、鹿寮萬家福 64 案，全部由系統擁有者整理。
- * **梧棲市區、清水市區、北勢靜宜、新光田目前仍是 0 案**，那是刻意留的空位；
+ * 2026-09-01 再補北勢靜宜 80 案（同樣是他整理的）。
+ * **梧棲市區、清水市區、新光田目前仍是 0 案**，那是刻意留的空位；
  * 要補的時候把該案的 `area` 設成對應的值即可，篩選臉與統計都會自己跟上。
  *
  * 原本有個「市鎮中心」值，2026-08-27 系統擁有者拍板不要這一塊，掛著它的 3 案
@@ -111,9 +112,9 @@ export const AREA_FILTERS: ReadonlyArray<{ value: ProjectArea; label: string }> 
   // 沙鹿那四個。「鹿寮萬家福」是 2026-08-27 系統擁有者把原本分開的
   // 鹿寮商圈與萬家福商圈併成一塊（兩塊上下相鄰、寬度幾乎一樣）。
   //
-  // ⚠️ 「北勢靜宜」是 2026-08-27 補的 —— 它在 port-zones.ts 早就有色塊，
-  //    卻一直沒有篩選臉，是五塊色塊裡唯一篩不到的。**目前仍是 0 案**，
-  //    等系統擁有者提供建案清單（他 8/27 先給了鹿寮萬家福那 64 案，北勢靜宜還沒給）。
+  // 「北勢靜宜」的篩選臉是 2026-08-27 補的（它在 port-zones.ts 早就有色塊，
+  //    卻一直沒有篩選臉，是五塊色塊裡唯一篩不到的）。**2026-09-01 系統擁有者給了 80 案，
+  //    不再是 0 案** —— 但那 80 案還沒有座標，點下去有清單、地圖上沒有圖釘。
   { value: "鹿寮萬家福", label: "鹿寮萬家福商圈" },
   { value: "沙鹿車站", label: "沙鹿車站商圈" },
   { value: "北勢靜宜", label: "北勢靜宜商圈" },
@@ -259,7 +260,9 @@ export const SHALU_STATION_AMENITIES: AmenityGroup[] = [
 /**
  * area → 那一區的機能。**沒列到的區＝還沒有資料，整段不顯示。**
  *
- * ⚠️ **北勢靜宜、新光田、兩個市區刻意空著**（那四區目前 0 案）——
+ * ⚠️ **北勢靜宜、新光田、兩個市區的機能刻意空著。**
+ *    ⚠️ 2026-09-01 起**北勢靜宜已經有 80 案了，但機能還是空的** —— 空的整段不顯示，
+ *    那 80 案的詳情面板不會有「周邊機能」這一區塊。要補就跟他要那一區的實際清單 ——
  *    等系統擁有者提供在地機能再填。**不要拿別區的借過去湊**：
  *    `DISTRICT_AMENITIES` 是重劃區的（清水第二市場、頂漁寮公園、梧棲童綜合醫院），
  *    `LULIAO_AMENITIES` 是鹿寮的（沙鹿的量販與沙鹿院區）—— 兩份差好幾公里。
@@ -361,7 +364,8 @@ export const SOURCES: Record<string, { label: string; url: string }> = {
 /* ─────────────── 建案 ─────────────── */
 
 /**
- * 39 案。順序照系統擁有者的總表（依建商分組），畫面自己會排序，不用動這裡的順序。
+ * 順序照系統擁有者的總表（依建商分組再依他給的批次往下接），畫面自己會排序，
+ * 不用動這裡的順序。**案數不要寫死在這裡** —— 用 `projectStats().total`。
  *
  * `sources` 一定含 `owner`——建商／區域／完工／狀態都是他給的。
  * 另外掛的來源（housefeel、leju…）是戶數與坪數樓層那些欄位的出處。
@@ -1299,6 +1303,473 @@ export const PROJECTS: Project[] = [
     status: "presale", statusNote: "預售，預計 2028 年 1 月完工", completion: "2028", units: 66,
     street: "中山路", streets: "沙鹿區 中山路金星 2 巷／福鹿街",
     layout: "大樓", floors: "地上 12 層／地下 2 層", siteAreaPing: 452,
+    sources: ["owner"],
+  },
+  /* ─────────── 北勢靜宜商圈 80 案（2026-09-01 系統擁有者提供）───────────
+     這一區在 `port-zones.ts` 早就有色塊、在 AREA_FILTERS 早就有篩選臉，
+     但從 2026-08-27 起一直是 0 案 —— 點下去有色塊沒建案。這批補進來之後不再是了。
+
+     ⚠️ **這 80 案目前全部沒有座標**（`port-coords.ts` 裡一筆都沒有），
+        所以地圖上不會出現圖釘，清單裡會標「未標位置」。要標位置得等他逐案給門牌。
+
+     ⚠️ **建商寫法對齊了既有寫法，不是照他原文抄** —— 上次「富旺國際 vs 富旺國際開發」
+        的教訓：同一家兩種寫法會讓建案清單把它拆成兩組建商（清單照 `builder` 字串分組）。
+        這次對齊了四家：安城建設→**安城建設體系**、麗豐建設體系→**麗豐建設**、
+        永益發建設→**永益發建設體系**、德邑建設體系→**德邑建設**。
+        另外他自己那份裡「宏亞建設(#07)」與「宏亞建設體系(#78)」打架，**統一用宏亞建設**。
+
+     ⚠️ `completion: "預售中"` 是這批新增的狀態字，給「預售／新案」用 ——
+        跟「興建中」刻意分開：**興建＝他明講在蓋了，新案＝只知道在賣、有沒有動工不知道**。
+        畫面對非年份的值原本就會直接顯示，不用改元件。
+
+     ⚠️ 建商「待確認」29 案是**他自己標的**，不是我漏填。 */
+  {
+    id: "ancheng-zhimei", name: "安城至美", builder: "安城建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋", units: 20,
+    street: "福至路", streets: "沙鹿區 福至路 80 巷 86 號",
+    layout: "透天，建坪約 55 坪、地坪約 23.1～29.6 坪", floors: "地上 3～4 層", siteAreaPing: 540,
+    sources: ["owner"],
+  },
+  {
+    id: "zhengli-puyue-dunfeng", name: "璞悅敦峰", builder: "鉦立建設", area: "北勢靜宜",
+    status: "completed", completion: "成屋", units: 25,
+    street: "福至路", streets: "沙鹿區 福至路 258 號",
+    layout: "透天", floors: "地上 4 層", siteAreaPing: 686,
+    sources: ["owner"],
+  },
+  {
+    id: "fuyu-yang", name: "富宇漾", builder: "富宇建設", area: "北勢靜宜",
+    status: "presale", statusNote: "預售／興建中", completion: "興建中", units: 258,
+    street: "福成路", streets: "沙鹿區 福成路／鎮南路永福巷一帶",
+    layout: "2 房約 22／25 坪、3 房約 34 坪", floors: "地上 7 層／地下 2 層", siteAreaPing: 2534,
+    sources: ["owner"],
+  },
+  {
+    id: "haohao-yuanguan", name: "好好園館", builder: "有本", area: "北勢靜宜",
+    status: "completed", completion: "成屋", units: 73,
+    street: "福成路", streets: "沙鹿區 福成路 255 巷 8 號",
+    floors: "地上 6 層", siteAreaPing: 744,
+    sources: ["owner"],
+  },
+  {
+    id: "yongren-fuzhi-2", name: "永仁福至2", builder: "永仁建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋", units: 11,
+    street: "福至路", streets: "沙鹿區 福至路 86 號一帶",
+    layout: "連棟透天", floors: "地上 3 層", siteAreaPing: 335,
+    sources: ["owner"],
+  },
+  {
+    id: "viva-xibanya", name: "VIVA西班牙", builder: "佳唐建設", area: "北勢靜宜",
+    status: "completed", completion: "成屋", units: 41,
+    street: "福至路", streets: "沙鹿區 福至路 150 巷一帶",
+    layout: "透天", siteAreaPing: 1600,
+    sources: ["owner"],
+  },
+  {
+    id: "hongya-zhencheng", name: "昇揚臻澄華廈", builder: "宏亞建設", area: "北勢靜宜",
+    status: "newly", statusNote: "新成屋／3 年屋", completion: "約 2023", units: 37,
+    street: "福成路", streets: "沙鹿區 福成路 130 巷 46 弄 10 號",
+    floors: "地上 8 層／地下 1 層", siteAreaPing: 591,
+    sources: ["owner"],
+  },
+  {
+    id: "honggu-limei", name: "宏固里美", builder: "宏固建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋", units: 26,
+    street: "南斗路", streets: "沙鹿區 南斗路、南斗路 379 巷",
+    layout: "連棟透天", floors: "地上 3 層", siteAreaPing: 554,
+    sources: ["owner"],
+  },
+  {
+    id: "qinghong-xinyuan", name: "清浤芯園", builder: "清浤建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋", units: 14,
+    street: "自由路", streets: "沙鹿區 自由路 210 號",
+    layout: "透天", floors: "地上 3～4 層", siteAreaPing: 484,
+    sources: ["owner"],
+  },
+  {
+    id: "ancheng-wangyue", name: "安城望玥", builder: "安城建設體系", area: "北勢靜宜",
+    status: "newly", statusNote: "新成屋／1 年", completion: "約 2025", units: 5,
+    street: "南斗路", streets: "沙鹿區 南斗路 70 巷 59 號",
+    layout: "連棟透天", floors: "地上 4 層", siteAreaPing: 149,
+    sources: ["owner"],
+  },
+  {
+    id: "jiaji-ziyou-shidai", name: "傢基自由時代華廈", builder: "傢基建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋", units: 12,
+    street: "自由路", streets: "沙鹿區 自由路 146 巷一帶",
+    floors: "地上 5 層", siteAreaPing: 256,
+    sources: ["owner"],
+  },
+  {
+    id: "huiguo-lujing", name: "惠國麓境", builder: "惠國建設體系", area: "北勢靜宜",
+    status: "presale", statusNote: "預售／新案", completion: "預售中",
+    sources: ["owner"],
+  },
+  {
+    id: "rian-cheng-2", name: "日安埕2", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "jiachuan-yushu-5", name: "家川御墅5", builder: "家川建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    layout: "透天",
+    sources: ["owner"],
+  },
+  {
+    id: "fusheng-meide", name: "富盛美德", builder: "富盛建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "zhuyin-chuncui", name: "住寅純萃", builder: "住寅建設體系", area: "北勢靜宜",
+    status: "presale", statusNote: "預售／新案", completion: "預售中",
+    sources: ["owner"],
+  },
+  {
+    id: "dingyi-fuzhu", name: "鼎一賦築", builder: "鼎一建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    street: "平等七街", streets: "沙鹿區 平等七街一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "guoyang-ju", name: "過洋居", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    layout: "透天",
+    sources: ["owner"],
+  },
+  {
+    id: "facai-shu", name: "發財墅", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    layout: "透天",
+    sources: ["owner"],
+  },
+  {
+    id: "lifeng-yipin", name: "麗豐藝品", builder: "麗豐建設", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "yongyifa-chujian", name: "永益發初見", builder: "永益發建設體系", area: "北勢靜宜",
+    status: "newly", statusNote: "新成屋／近年案", completion: "新成屋",
+    street: "六路十四街", streets: "沙鹿區 六路十四街一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "jingyi-chunjing", name: "敬益淳境", builder: "敬益建設體系", area: "北勢靜宜",
+    status: "presale", statusNote: "預售／新案", completion: "預售中",
+    sources: ["owner"],
+  },
+  {
+    id: "hezhen-di", name: "和臻邸", builder: "待確認", area: "北勢靜宜",
+    status: "presale", statusNote: "預售／新案", completion: "預售中",
+    sources: ["owner"],
+  },
+  {
+    id: "fulin-bw", name: "富霖B&W", builder: "富霖建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "lubaoshi", name: "綠寶石", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "yourui-xishu", name: "佑睿囍墅", builder: "佑睿建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    layout: "透天",
+    sources: ["owner"],
+  },
+  {
+    id: "yongjin-qinghe", name: "永晉青禾", alias: "好樣來來", builder: "永晉建設", area: "北勢靜宜",
+    status: "newly", completion: "約 2024", units: 20,
+    street: "六路一街", streets: "沙鹿區 六路一街 9 號一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "zhongke-yusifang", name: "中科豫四方", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "shuheyuan-2c", name: "樹合院2期C", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    layout: "透天",
+    sources: ["owner"],
+  },
+  {
+    id: "jizhen-huangxi", name: "吉鎮皇璽", builder: "吉鎮建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "xinsheng-ruobai", name: "昕晟若白", builder: "昕晟建設體系", area: "北勢靜宜",
+    status: "completed", statusNote: "成屋／近年案", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "yang-tiane", name: "漾天鵝", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "shanshui-fengjin", name: "山水豐晉", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "renwen-yangzhen", name: "人文養真", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "wushi-yizhang", name: "悟實壹章", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "wushi-erzhang", name: "悟實貳章", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "baoyu-liyue", name: "寶宇麗悅", builder: "寶宇建設", area: "北勢靜宜",
+    status: "completed", statusNote: "成屋／近年案", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "fuyu-yazhu", name: "富宇雅築", builder: "富宇建設", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "fubao-zhifu-lianmeng", name: "福寶致富聯盟", builder: "福寶建設體系", area: "北勢靜宜",
+    status: "presale", statusNote: "預售／新案", completion: "預售中",
+    sources: ["owner"],
+  },
+  {
+    id: "zhifu-dadao", name: "致富大道", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "fuyu-dijing", name: "富宇帝景", builder: "富宇建設", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    street: "北勢東路", streets: "沙鹿區 北勢東路 281 號一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "fuyu-jing", name: "富宇境", builder: "富宇建設", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    street: "平等路", streets: "沙鹿區 平等路 152 巷一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "futeng-youtianju", name: "富騰有田居", builder: "富騰建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "panyu-yunju", name: "磐鈺雲居", builder: "磐鈺建設", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    street: "北中五街", streets: "沙鹿區 北中五街一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "baoyu-lishe", name: "寶宇麗舍", builder: "寶宇建設", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "wulu-yingshan", name: "吾廬映山", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "dasheng-sendi", name: "大昇森邸", builder: "大昇建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "fuyu-heyue", name: "富宇禾悅", builder: "富宇建設", area: "北勢靜宜",
+    status: "newly", statusNote: "新成屋／近年案", completion: "新成屋", units: 123,
+    street: "平等六街", streets: "沙鹿區 平等六街一帶",
+    siteAreaPing: 1102,
+    sources: ["owner"],
+  },
+  {
+    id: "fuyu-hemu", name: "富宇禾沐", builder: "富宇建設", area: "北勢靜宜",
+    status: "newly", statusNote: "新成屋／近年案", completion: "新成屋", units: 61,
+    street: "平等六街", streets: "沙鹿區 平等六街一帶",
+    siteAreaPing: 602,
+    sources: ["owner"],
+  },
+  {
+    id: "shiliu-juri", name: "十六鉅日", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "yue-shanqiu", name: "樾山丘", builder: "待確認", area: "北勢靜宜",
+    status: "presale", statusNote: "預售／新案", completion: "預售中",
+    sources: ["owner"],
+  },
+  {
+    id: "mu-shanlin", name: "沐山林", builder: "待確認", area: "北勢靜宜",
+    status: "presale", statusNote: "預售／新案", completion: "預售中",
+    sources: ["owner"],
+  },
+  {
+    id: "chengfeng-cangfeng", name: "澄峰藏峰", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "bochang-zhenpin", name: "博昌臻品", builder: "博昌建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "rimu-jingran", name: "日沐井然", builder: "待確認", area: "北勢靜宜",
+    status: "completed", statusNote: "成屋／近年案", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "caiying-xinyuan", name: "采縈昕苑", builder: "采縈開發建設", area: "北勢靜宜",
+    status: "presale", statusNote: "預售／預計 2026 年下半年完工", completion: "約 2026", units: 16,
+    street: "福至路", streets: "沙鹿區 福至路 30 巷一帶",
+    layout: "2 房約 26 坪、3 房約 31 坪", floors: "地上 5 層", siteAreaPing: 206,
+    sources: ["owner"],
+  },
+  {
+    id: "ruquan-ruyi", name: "如泉如意", builder: "待確認", area: "北勢靜宜",
+    status: "presale", statusNote: "預售／新案", completion: "預售中",
+    sources: ["owner"],
+  },
+  {
+    id: "dazhuang-shiliuyun-2", name: "大樁十六韻2", builder: "大樁建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "caixiang-fuyu", name: "采翔富鈺", builder: "采翔建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "yage-zhijing", name: "亞哥織境", builder: "亞哥建設體系", area: "北勢靜宜",
+    status: "presale", statusNote: "預售／新案", completion: "預售中",
+    sources: ["owner"],
+  },
+  {
+    id: "huaipu-yangzhen", name: "懷璞養真", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "zhifu-yihaozan", name: "致富一號讚", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "zheyu-win-plus", name: "哲宇W IN+", builder: "哲宇建設體系", area: "北勢靜宜",
+    status: "completed", statusNote: "成屋／近年案", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "zheyu-casa-plus", name: "哲宇CASA+", builder: "哲宇建設體系", area: "北勢靜宜",
+    status: "completed", statusNote: "成屋／近年案", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "deyi-zhifu-2", name: "德邑致富2－必勝特區", builder: "德邑建設", area: "北勢靜宜",
+    status: "presale", statusNote: "預售／新案", completion: "預售中",
+    sources: ["owner"],
+  },
+  {
+    id: "guoxiong-beiou-senlin", name: "國雄北歐莊園－森林區", builder: "國雄建設", area: "北勢靜宜",
+    status: "completed", statusNote: "成屋／近年案", completion: "成屋",
+    street: "中山路", streets: "沙鹿區 中山路紅竹巷一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "zhifu-shishang", name: "致富時上", builder: "待確認", area: "北勢靜宜",
+    status: "presale", statusNote: "預售／新案", completion: "預售中",
+    sources: ["owner"],
+  },
+  {
+    id: "wanji-qingshan", name: "萬基青山", builder: "萬基建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "xuyu-xiang", name: "敘宇翔", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "yuqing-youlin", name: "餘慶有鄰", builder: "待確認", area: "北勢靜宜",
+    status: "presale", statusNote: "預售／新案", completion: "預售中",
+    street: "鎮南路二段", streets: "沙鹿區 鎮南路二段／東晉十一街",
+    sources: ["owner"],
+  },
+  {
+    id: "zhucuo-bieshu", name: "築厝別墅", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    layout: "透天",
+    sources: ["owner"],
+  },
+  {
+    id: "qinghong-xinyuan-2", name: "清浤芯園2", builder: "清浤建設體系", area: "北勢靜宜",
+    status: "completed", statusNote: "成屋／近年案", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "qingchuan-quan", name: "青川泉", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋", units: 4,
+    street: "南昌路", streets: "沙鹿區 南昌路 61 巷一帶",
+    layout: "透天", siteAreaPing: 124,
+    sources: ["owner"],
+  },
+  {
+    id: "haiming-kuanyu", name: "海銘寬玉", builder: "海銘建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "xingfu-meishu", name: "幸福美墅", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    layout: "透天",
+    sources: ["owner"],
+  },
+  {
+    id: "changli-pinyue-2", name: "昶立品悅2", builder: "昶立建設體系", area: "北勢靜宜",
+    status: "completed", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "xinsheng-xincheng", name: "昕晟心城", builder: "昕晟建設體系", area: "北勢靜宜",
+    status: "completed", statusNote: "成屋／近年案", completion: "成屋",
+    sources: ["owner"],
+  },
+  {
+    id: "hongya-lixiangguo", name: "宏亞里想國－大樓區", builder: "宏亞建設", area: "北勢靜宜",
+    status: "presale", statusNote: "預售／預計 2027 年 5 月完工", completion: "2027", units: 77,
+    street: "中山路", streets: "沙鹿區 中山路紅竹巷一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "jiutang-jingyang-tiane", name: "久樘晶漾天鵝", builder: "久樘開發", area: "北勢靜宜",
+    status: "newly", statusNote: "成屋／約 1 年", completion: "約 2025", units: 124,
+    street: "北中七街", streets: "沙鹿區 北中七街 75 號一帶",
+    sources: ["owner"],
+  },
+  {
+    id: "liudajia", name: "六大家", builder: "待確認", area: "北勢靜宜",
+    status: "completed", completion: "約 2012", units: 6,
+    street: "六路十九街", streets: "沙鹿區 六路十九街 17 號",
+    layout: "透天住宅", floors: "地上 4 層", siteAreaPing: 383,
     sources: ["owner"],
   },
 ];
