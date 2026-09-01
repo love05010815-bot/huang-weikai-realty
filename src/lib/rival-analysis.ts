@@ -6,7 +6,7 @@
  *    而且那種不一致不會報錯，只會讓兩段話互相矛盾地送到屋主眼前。
  */
 
-import { normCommunity, type ParkingKind, type RivalRow } from "@/lib/rival-parser";
+import { normCommunity, type ParkingKind, type RivalRow, type RoomTypeStat } from "@/lib/rival-parser";
 
 /* ---------------- 型別 ---------------- */
 
@@ -213,6 +213,12 @@ export interface Analysis {
   communityOwner: number | null;
   communityCuts: number | null;
   communityViews: number | null;
+  /** 591 社區頁自己算好的各房型在售間數與價格帶 */
+  roomTypes: RoomTypeStat[];
+  /** 本案房型那一筆（找不到就是 null） */
+  selfRoomType: RoomTypeStat | null;
+  /** 本案開價落在該房型價格帶的哪個位置，0=下緣 100=上緣；超出範圍會是負數或 >100 */
+  bandPct: number | null;
   cutPct: number | null;
   newPct: number | null;
   ownerPct: number | null;
@@ -290,6 +296,17 @@ export function analyze(units: RivalUnit[], rows: RivalRow[]): Analysis {
 
   const selfListingCount = self ? self.listingCount : null;
 
+  /* 各房型在售間數與價格帶 —— 591 社區頁自己算好的，不用去抓。
+     取「房型最多的那一筆」為準：同一份貼上裡每一頁的社區資訊都一樣，
+     但有些頁面只複製到一半，取最完整的那份才不會漏房型。 */
+  let roomTypes: RoomTypeStat[] = [];
+  for (const r of rows) if (r.roomTypes.length > roomTypes.length) roomTypes = r.roomTypes;
+  const selfRoomType = self?.rooms != null ? roomTypes.find((t) => t.rooms === self.rooms) ?? null : null;
+  let bandPct: number | null = null;
+  if (selfRoomType?.low != null && selfRoomType.high != null && self?.price != null && selfRoomType.high > selfRoomType.low) {
+    bandPct = Math.round(((self.price - selfRoomType.low) / (selfRoomType.high - selfRoomType.low)) * 100);
+  }
+
   /* 熱度面 */
   const selfViews = self ? self.views : null;
   const otherViews = others.map((u) => u.views).filter((v): v is number => v != null);
@@ -312,6 +329,7 @@ export function analyze(units: RivalUnit[], rows: RivalRow[]): Analysis {
     rivalIsOtherType, rivalIsOtherBuilding, sameTypeCount,
     communityListings, communityNew, communityOwner, communityCuts,
     communityViews: pick("communityViews"),
+    roomTypes, selfRoomType, bandPct,
     cutPct: pct(communityCuts), newPct: pct(communityNew), ownerPct: pct(communityOwner),
     pastedCount: rows.length,
     realUnits: units.length,
@@ -436,6 +454,16 @@ export function buildConclusion(A: Analysis, dx: Diagnosis): Conclusion | null {
   if (A.communityCuts) lead += `，其中 ${A.communityCuts} 戶已經降價`;
   segs.push({ t: lead + "。", req: true });
 
+  if (A.selfRoomType) {
+    const t = A.selfRoomType;
+    segs.push({
+      t: `其中跟您同樣是${t.label}的有 ${t.count} 間` +
+         (t.low != null && t.high != null ? `，開價從 ${t.low.toLocaleString()} 萬到 ${t.high.toLocaleString()} 萬。` : "。"),
+      short: `其中跟您同樣是${t.label}的有 ${t.count} 間。`,
+      req: false,
+    });
+  }
+
   const priced = A.units.filter((u) => u.unit != null);
   const rank = priced.filter((u) => !u.isSelf && u.unit! < s.unit!).length + 1;
   segs.push({ t: `您這一戶單價 ${s.unit.toFixed(1)} 萬/坪，在 ${priced.length} 戶中排第 ${rank} 低。`, req: true });
@@ -475,6 +503,20 @@ export function buildConclusion(A: Analysis, dx: Diagnosis): Conclusion | null {
 }
 
 /* ---------------- 顯示用小工具 ---------------- */
+
+/**
+ * 把「落在價格帶第幾 %」講成人話。
+ * ⚠️ 這是**開價**的價格帶，不是成交價 —— 講給屋主聽的時候不要說成「行情」。
+ */
+export function bandWord(pct: number): string {
+  if (pct < 0) return `最低價以下（比最便宜的還低）`;
+  if (pct > 100) return `最高價以上（比最貴的還高）`;
+  if (pct <= 20) return `偏低的位置（第 ${pct}%）`;
+  if (pct <= 45) return `中間偏低（第 ${pct}%）`;
+  if (pct <= 55) return `正中間（第 ${pct}%）`;
+  if (pct <= 80) return `中間偏高（第 ${pct}%）`;
+  return `偏高的位置（第 ${pct}%）`;
+}
 
 export const n1 = (x: number) => Math.round(x * 10) / 10;
 
@@ -654,6 +696,14 @@ export function buildPlainText(A: Analysis, dx: Diagnosis, C: Conclusion | null)
   }
   if (A.communityOwner != null) {
     L.push(`・屋主自售：${A.communityOwner.toLocaleString()} 間` + (A.ownerPct != null ? `（佔在售 ${A.ownerPct}%）` : ""));
+  }
+  if (A.selfRoomType) {
+    const t = A.selfRoomType;
+    L.push(`・本案房型（${t.label}）在售：${t.count.toLocaleString()} 間　→ 這才是真正在跟本案搶客的數量`);
+    if (t.low != null && t.high != null) {
+      L.push(`・該房型的開價帶：${t.low.toLocaleString()}～${t.high.toLocaleString()} 萬` +
+        (A.bandPct != null ? `　→ 本案 ${A.self!.price!.toLocaleString()} 萬，落在${bandWord(A.bandPct)}` : ""));
+    }
   }
   L.push(`・比對後的真實在售戶數：${A.realUnits} 戶` + (A.dupRate > 0 ? `（${A.pastedCount} 筆去重，重複率 ${A.dupRate}%）` : ""));
   L.push(`・本案被幾家仲介刊登：${A.selfListingCount} 家　${A.selfOverListed ? "→ 超過門檻" : "→ 未達門檻"}`);

@@ -18,6 +18,29 @@
 
 export type ParkingKind = "平面" | "機械" | "有" | "無";
 
+/**
+ * 591 社區頁自己算好的「各房型在售幾間、價格帶多少」。
+ *
+ * 這是使用者最想要的那個數字（「同房型到底有幾間在跟我搶」），而且**不用去抓** ——
+ * 它就印在每一頁的「社區資訊」區塊裡，Ctrl+A 全選時會一起複製進來。
+ *
+ * ⚠️ **同一段裡的「坪數範圍」不要抓。** 591 那幾個數字在複製時順序會被打散
+ *    （`5162坪` 其實是 `~51~62坪` 之類），抓了會給出錯的坪數。只有「間數」與
+ *    「價格帶」是完整可信的。
+ */
+export interface RoomTypeStat {
+  /** 房數，例如「二房」→ 2 */
+  rooms: number;
+  /** 原文標籤，例如「二房」 */
+  label: string;
+  /** 該房型在售幾間 */
+  count: number;
+  /** 價格帶下緣（萬） */
+  low: number | null;
+  /** 價格帶上緣（萬） */
+  high: number | null;
+}
+
 export interface RivalRow {
   /** 原始貼上的那一段，診斷報告要用 */
   raw: string;
@@ -51,6 +74,8 @@ export interface RivalRow {
   communityOwner: number | null;
   communityCuts: number | null;
   communityViews: number | null;
+  /** 591 社區頁自己算好的各房型在售間數與價格帶 */
+  roomTypes: RoomTypeStat[];
 
   /** 開價 ÷ 建坪，四捨五入到小數第一位 */
   unit: number | null;
@@ -153,6 +178,61 @@ function communityBlock(full: string): string {
   if (i < 0) i = full.indexOf("社區資訊");
   if (i < 0) return "";
   return full.slice(i, i + 400);
+}
+
+/**
+ * 房型分佈那一段比上面那塊長（每個房型後面跟著被打散的坪數數字），
+ * 所以另外切一塊，收到「實價登錄」為止 —— 再往後就是成交紀錄，
+ * 那裡的「坪數：60.1坪／總價：1,553萬」會汙染價格帶。
+ */
+function roomTypeBlock(full: string): string {
+  let i = full.indexOf("熱賣物件");
+  if (i < 0) i = full.indexOf("社區資訊");
+  if (i < 0) return "";
+  let end = full.indexOf("實價登錄", i);
+  if (end < 0 || end - i > 900) end = i + 900;
+  return full.slice(i, end);
+}
+
+const CN_DIGITS: Record<string, number> = {
+  一: 1, 二: 2, 兩: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10,
+};
+function roomsToNum(s: string): number | null {
+  if (/^[0-9]+$/.test(s)) return parseInt(s, 10);
+  return CN_DIGITS[s] ?? null;
+}
+
+/**
+ * 抓「二房(93間) … 780~1,198 萬」這種成對的資料。
+ * 每個房型的價格帶只在「這個房型到下一個房型之間」找，不會跨段抓錯。
+ */
+export function parseRoomTypes(full: string): RoomTypeStat[] {
+  const block = roomTypeBlock(full);
+  if (!block) return [];
+
+  const re = /([一二三四五六七八九十兩]|[0-9]{1,2})\s*房\s*[（(]\s*([\d,]+)\s*間\s*[)）]/g;
+  const hits: { rooms: number; label: string; count: number; from: number; at: number }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(block)) !== null) {
+    const rooms = roomsToNum(m[1]);
+    const count = toNum(m[2]);
+    if (rooms == null || count == null) continue;
+    hits.push({ rooms, label: `${m[1]}房`, count, at: m.index, from: m.index + m[0].length });
+  }
+
+  return hits.map((h, k) => {
+    const end = k + 1 < hits.length ? hits[k + 1].at : block.length;
+    const seg = block.slice(h.from, end);
+    const range = seg.match(/([\d,]+)\s*[~～-]\s*([\d,]+)\s*萬/);
+    const single = range ? null : seg.match(/([\d,]+)\s*萬\s*起?/);
+    return {
+      rooms: h.rooms,
+      label: h.label,
+      count: h.count,
+      low: range ? toNum(range[1]) : single ? toNum(single[1]) : null,
+      high: range ? toNum(range[2]) : null,
+    };
+  });
 }
 
 /**
@@ -290,6 +370,7 @@ function parseOne(rawBlock: string): RivalRow {
     communityOwner: firstNum(cb, [/屋主刊登\s*\n?\s*([\d,]+)\s*\n?\s*間/, /屋主刊登[^0-9]{0,8}([\d,]+)/]),
     communityCuts: firstNum(cb, [/降價\s*\n?\s*([\d,]+)\s*\n?\s*間/, /降價[^0-9]{0,8}([\d,]+)\s*間/]),
     communityViews: firstNum(cb, [/([\d,]+)\s*\n?\s*人瀏覽/]),
+    roomTypes: parseRoomTypes(full),
 
     unit: null,
     warn: [],

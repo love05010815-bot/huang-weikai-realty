@@ -26,7 +26,9 @@ ${o.p} 萬元${(o.p / o.a).toFixed(2)}萬/坪
 房屋資料型態：${o.bt ?? "電梯大樓"}車位：${o.park ?? "3.3坪，機械式，已含售金內"}
 所屬公司：${o.ag ?? "某某房屋"}
 屋況特色 別區 32.5坪 668萬 20.55萬/坪
-社區資訊熱賣物件44間近半個月上架6間屋主刊登2間降價9間1820人瀏覽`;
+社區資訊熱賣物件44間近半個月上架6間屋主刊登2間降價9間1820人瀏覽
+全部 二房(19間) ~2425坪 570~898 萬 三房(25間) 3945坪 998~1,588 萬
+實價登錄 總價： 1,553萬`;
 
 const run = (mineOpt, rivalOpts, ans, tweak) => {
   const mine = parseMany(mk(mineOpt)).map(computeUnit);
@@ -119,12 +121,28 @@ console.log("\n=== E 型態混雜會汙染中位數 ===");
   ok(A2.A.offType.length === 0 && A2.dx.key === "price", "刪掉別墅→價格問題", A2.dx.key, "price");
 }
 
+console.log("");
+console.log("=== G 房型分佈接進分析 ===");
+{
+  const { A, C } = run(SELF, 六戶, { call: "yes", view: "no", offer: "no" });
+  ok(A.roomTypes.length === 2, "抓到 2 種房型", A.roomTypes.length, 2);
+  ok(A.selfRoomType?.rooms === 2 && A.selfRoomType?.count === 19, "本案是 2 房 → 19 間", A.selfRoomType?.count, 19);
+  ok(A.selfRoomType?.low === 570 && A.selfRoomType?.high === 898, "價格帶 570~898",
+     `${A.selfRoomType?.low}~${A.selfRoomType?.high}`, "570~898");
+  // 本案 698 萬落在 570~898 之間 → (698-570)/(898-570) = 39%
+  ok(A.bandPct === 39, "本案落在價格帶第 39%", A.bandPct, 39);
+  // 🔴 實價登錄的「總價 1,553 萬」不可以被當成價格帶
+  ok(!A.roomTypes.some((t) => t.high === 1553), "沒抓到實價登錄的 1,553 萬", "ok", "ok");
+  ok(C.count <= MAXCHARS, "加了同房型那句仍 ≤200 字", C.count, "≤200");
+  ok(C.body.includes("19 間"), "屋主結論有講同房型幾間", C.body.includes("19 間") ? "有" : "沒有", "有");
+}
+
 console.log("\n=== F 純文字版 ===");
 {
   const { A, dx, C } = run(SELF, 六戶, { call: "yes", view: "no", offer: "no" });
   const txt = buildPlainText(A, dx, C);
   for (const seg of ["第一段：比較表", "第二段：貼身對手", "第三段：體質檢測", "第四段：判讀卡在哪", "給您的結論",
-                     "【單價最接近】", "【條件最像】", "社區已降價戶數", "瀏覽量代表線上關注"]) {
+                     "【單價最接近】", "【條件最像】", "社區已降價戶數", "瀏覽量代表線上關注", "本案房型（二房）在售", "該房型的開價帶"]) {
     ok(txt.includes(seg), seg, txt.includes(seg) ? "有" : "缺", "要有");
   }
   ok(txt.split("\n").length > 30, "行數合理", txt.split("\n").length, ">30");

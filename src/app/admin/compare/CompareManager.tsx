@@ -32,6 +32,7 @@ import {
   MAXCHARS,
   VIEW_ABS,
   analyze,
+  bandWord,
   buildConclusion,
   buildDiagnostic,
   buildPlainText,
@@ -740,6 +741,31 @@ function Section3({ A }: { A: Analysis }) {
             {A.communityOwner != null ? (
               <CheckRow label="屋主自售" value={`${A.communityOwner.toLocaleString()} 間`}
                 verdict={`沒有透過仲介、自己刊登的戶數${A.ownerPct != null ? `，佔在售 ${A.ownerPct}%` : ""}`} />
+            ) : null}
+            {/* 591 社區頁自己算好的房型分佈 —— 「44 筆在售」是全房型混在一起，
+                2 房的買方根本不會看 3 房；同房型那個數字才是真正的競爭對手數量。 */}
+            {A.selfRoomType ? (
+              <CheckRow
+                label={<>本案房型（<b>{A.selfRoomType.label}</b>）在售</>}
+                value={`${A.selfRoomType.count.toLocaleString()} 間`}
+                tone={A.selfRoomType.count >= LISTING_ABS ? "bad" : "good"}
+                verdict={
+                  A.selfRoomType.count >= LISTING_ABS
+                    ? <>🔴 <b>這才是真正在跟本案搶客的數量</b>，已超過 {LISTING_ABS} 家門檻</>
+                    : <>✅ 同房型的競爭者未達 {LISTING_ABS} 家門檻</>
+                }
+              />
+            ) : null}
+            {A.selfRoomType && A.selfRoomType.low != null && A.selfRoomType.high != null ? (
+              <CheckRow
+                label="該房型的開價帶"
+                value={`${A.selfRoomType.low.toLocaleString()}～${A.selfRoomType.high.toLocaleString()} 萬`}
+                verdict={
+                  A.bandPct != null && A.self?.price != null
+                    ? <>本案 <b>{A.self.price.toLocaleString()} 萬</b>，落在{bandWord(A.bandPct)}</>
+                    : "本案開價缺漏，算不出位置"
+                }
+              />
             ) : null}
             <CheckRow label="你比對的真實在售戶數" value={`${A.realUnits} 戶`}
               verdict={A.dupRate > 0 ? `由 ${A.pastedCount} 筆刊登去重而來，重複率 ${A.dupRate}%` : `${A.pastedCount} 筆刊登，沒有重複`} />
