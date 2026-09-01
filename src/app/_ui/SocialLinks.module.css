@@ -1,0 +1,79 @@
+/* 📱 追蹤社群那一排的樣式。脈絡見 SocialLinks.tsx 的檔頭。
+
+   ⚠️ 跟 SiteNav 一樣**故意自己帶樣式**，不寫進 home.module.css ——
+   共用元件要能貼到任何一頁上，樣式綁在某一頁的 module 裡就搬不動了。 */
+
+.wrap {
+  margin-top: 44px;
+  text-align: center;
+}
+
+/* 顏色吃 `inherit`，不寫死。
+   現在放在首頁的「預約諮詢」區塊（深底白字），寫死白色沒問題；
+   但哪天搬到淺色區塊，寫死的白字會變成一片看不見的空白，而且不會報錯。 */
+.title {
+  margin: 0 0 15px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: inherit;
+  opacity: 0.72;
+}
+
+.row {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+/* 底色寫死白色，不用半透明。
+   四個品牌色差很多（FB 藍／IG 漸層／YT 紅／TikTok 黑），半透明底在深色區塊會讓
+   **TikTok 的黑底方塊整個糊掉**，等於少一顆。白色底四個都跳得出來。 */
+.btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.btn:hover,
+.btn:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
+}
+
+/* 鍵盤 Tab 過來要看得出焦點在哪一顆 —— 上面的 translateY 只是動一下，
+   對「用鍵盤操作」的人來說不夠明顯 */
+.btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none;
+  }
+  .btn:hover,
+  .btn:focus-visible {
+    transform: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .wrap {
+    margin-top: 34px;
+  }
+  .btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+  }
+}

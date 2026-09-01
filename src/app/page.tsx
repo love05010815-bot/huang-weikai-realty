@@ -10,6 +10,7 @@ import { HOME_FEATURED_COUNT } from "@/config/listings";
 import { getPublicListings } from "@/lib/listings";
 import styles from "./home.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
+import SocialLinks from "@/app/_ui/SocialLinks";
 // 卡片樣式跟 /listings 共用同一份，改一處兩邊都會變
 import lst from "./listings/listings.module.css";
 import FeaturedTitle from "./listings/FeaturedTitle";
@@ -155,7 +156,14 @@ const jsonLd = {
     "@type": "Offer",
     itemOffered: { "@type": "Service", name: service.title },
   })),
-  sameAs: [SOCIAL.line],
+  /**
+   * sameAs ＝ 「這些帳號跟這個網站是同一個人」。Google 靠它把社群累積的信任
+   * 併回官網，也是知識面板抓社群連結的來源。
+   *
+   * ⚠️ `filter(Boolean)` 不能拿掉 —— `SOCIAL` 沒填的欄位是空字串，
+   *    空字串進到 sameAs 會變成無效的結構化資料，Search Console 會報錯。
+   */
+  sameAs: [SOCIAL.line, SOCIAL.fb, SOCIAL.ig, SOCIAL.yt, SOCIAL.tiktok].filter(Boolean),
 };
 
 /**
@@ -459,6 +467,11 @@ export default async function HomePage() {
                 </a>
               </div>
             </div>
+            {/* 追蹤社群（FB／IG／YouTube／TikTok）。放在這裡而不是頁尾，理由有二：
+                一是這一段本來就是「怎麼找到瑋凱」的集散地，二是深底白字讓四個品牌色最跳。
+                ⚠️ 網址在 `src/config/owner.ts` 的 SOCIAL —— **四個都沒填就整區不出現**，
+                   包含「追蹤瑋凱」那行標題，所以現在看不到不是壞掉。 */}
+            <SocialLinks />
           </div>
         </section>
       </main>

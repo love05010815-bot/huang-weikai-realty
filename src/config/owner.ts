@@ -49,12 +49,30 @@ export const OWNER = {
   slogan: "台中海線房產專家．買賣租賃／稅費諮詢／市場分析一次到位。112、113、114年連續三年千萬經紀人。",
 } as const;
 
-/** 社群連結 —— 用不到的留空字串，畫面會自動不顯示 */
+/**
+ * 社群連結 —— **用不到的留空字串，那顆 icon 就整個不畫**（不會留下一個點了沒反應的死連結）。
+ *
+ * 讀這裡的有三個地方，改這一個檔三邊一起變：
+ *   1. 首頁「預約諮詢」區塊底部的「追蹤瑋凱」那一排（`src/app/_ui/SocialLinks.tsx`）
+ *   2. 名片頁 /card 的社群列
+ *   3. 首頁 JSON-LD 的 `sameAs` —— 等於告訴 Google「這些帳號跟官網是同一個人」，
+ *      社群累積的權重才併得回官網。填網址不只是多一顆按鈕，也是 SEO。
+ *
+ * ⚠️ 一定要填**完整網址、`https://` 開頭**。只填帳號（例如 `@weikai`）會被瀏覽器當成
+ *    本站的相對路徑，點下去跳到 weikaihouse.com/@weikai 然後 404 ——
+ *    **TypeScript 過、build 過、部署也成功**，只有客戶點下去才會發現。
+ *
+ *      fb      https://www.facebook.com/你的粉專
+ *      ig      https://www.instagram.com/你的帳號
+ *      yt      https://www.youtube.com/@你的頻道
+ *      tiktok  https://www.tiktok.com/@你的帳號
+ */
 export const SOCIAL = {
   line: "https://line.me/R/ti/p/@a8865",
-  fb: "",
-  yt: "",
-  ig: "",
+  fb: "https://www.facebook.com/108472157721504",
+  yt: "https://www.youtube.com/@swujnuty0325",
+  ig: "https://www.instagram.com/swujnuty0325/",
+  tiktok: "https://www.tiktok.com/@show_787865",
 } as const;
 
 /** LINE 加好友 QR 圖（放 public/card/ 底下）。null = 不顯示 QR 區 */

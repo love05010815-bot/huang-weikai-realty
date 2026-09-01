@@ -9,7 +9,7 @@ import type { CSSProperties } from "react";
 import { RCIS } from "./_cis";
 import { SOCIAL, ABIN } from "./_links";
 import { SITE_URL } from "@/config/owner";
-import { FacebookIcon, YoutubeIcon, LineIcon, InstagramIcon, PhoneIcon, MailIcon, PinIcon, CalendarIcon } from "./_icons";
+import { FacebookIcon, YoutubeIcon, LineIcon, InstagramIcon, TiktokIcon, PhoneIcon, MailIcon, PinIcon, CalendarIcon } from "./_icons";
 
 const OG_IMAGE = `${SITE_URL}${ABIN.photoUrl}`;
 
@@ -159,6 +159,10 @@ export default function CardPage() {
               </SocialBtn>
               <SocialBtn href={SOCIAL.ig} label="Instagram">
                 <InstagramIcon size={26} />
+              </SocialBtn>
+              {/* 2026-09-01 補上 TikTok —— 首頁加了社群列，名片頁少一個平台會很奇怪 */}
+              <SocialBtn href={SOCIAL.tiktok} label="TikTok">
+                <TiktokIcon size={26} />
               </SocialBtn>
             </div>
           </div>
