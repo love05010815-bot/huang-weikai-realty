@@ -35,6 +35,8 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       // 跟「精選好案」是兩套資料：這裡管的是 /map 上掛在各建案底下的物件
       { href: "/admin/map-listings", label: "建案地圖物件", icon: "map" },
       { href: "/admin/videos", label: "影音", icon: "video" },
+      // 貼上 591 同社區在賣的物件，產出可以傳給屋主的競品分析。純前端、不進資料庫。
+      { href: "/admin/compare", label: "競品分析", icon: "radar" },
       { href: "/admin/line", label: "LINE 機器人", icon: "mobile" },
       { href: "/admin/inbox", label: "留言收件匣", icon: "chat" },
     ],
