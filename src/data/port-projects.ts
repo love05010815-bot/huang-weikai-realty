@@ -1815,6 +1815,17 @@ export const PROJECTS: Project[] = [
     layout: "透天住宅", floors: "地上 4 層", siteAreaPing: 383,
     sources: ["owner"],
   },
+
+  /* ── 北勢靜宜追加 3 案（2026-09-02，系統擁有者標座標時發現漏的）──
+     ⚠️ **他只給了案名，其他欄位一個都沒給。**
+     `builder` 一律「待確認」—— 尤其「富宇聚」**沒有照案名填富宇建設**，
+     檔頭第 3 條明寫不准用建案名猜建商（踩過聯虹／聯悅那次）。
+     `completion: "待確認"` 是這裡新增的值（畫面對非年份的值本來就直接顯示）。
+     `status` 三個值裡沒有「不知道」可選，**先放 completed**（本區 80 案有 58 案是成屋），
+     ⚠️ **這是預設值不是查證結果** —— 猜錯的話該案不會出現在「預售中」篩選裡。 */
+  { id: "fuyu-ju", name: "富宇聚", builder: "待確認", area: "北勢靜宜", status: "completed", completion: "待確認", sources: ["owner"] },
+  { id: "shanshui-fengjin-2", name: "山水豐晉2", builder: "待確認", area: "北勢靜宜", status: "completed", completion: "待確認", sources: ["owner"] },
+  { id: "shushang-jing", name: "述上景", builder: "待確認", area: "北勢靜宜", status: "completed", completion: "待確認", sources: ["owner"] },
 ];
 
 /* ─────────────── 座標 ─────────────── */
@@ -2025,6 +2036,76 @@ export const COORDS: Record<string, Coord> = {
   "cunmao-puyue": { lat: 24.2484, lng: 120.56052, precision: "exact" }, // 村懋璞悅
   "hezong-xiaoshidai6": { lat: 24.25052, lng: 120.56428, precision: "exact" }, // 小時代6
   "kaijun-deguangxingzhan": { lat: 24.24885, lng: 120.56724, precision: "exact" }, // 德光星綻
+
+  /* ── 北勢靜宜商圈，第一批 56 案（2026-09-02，系統擁有者用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、區域都是北勢靜宜、precision 全 exact、
+     本批不重複、也沒有覆蓋到既有座標。
+
+     ⚠️ **「國雄北歐莊園－森林區」24.23466/120.57467 落在北勢靜宜色塊外 14 公尺**（北界一帶）。
+        **不是點錯，也不要為了好看去改** —— 色塊那幾條邊當初是用 10 公尺容差拉直的，
+        14 公尺就在容差裡；而且系統擁有者拍板過「照實畫，圖釘露在色塊外是正確畫面不是 bug」。
+        （同樣寫「中山路紅竹巷」的宏亞里想國－大樓區在 158 公尺外、在色塊內。）
+
+     🔵 兩對靠很近的鄰居，量過都是合理的相鄰案，不是重複標：
+        沐山林 ↔ 樾山丘 23 公尺、昶立品悅2 ↔ 幸福美墅 26 公尺。
+
+     ⚠️ 標完這批，北勢靜宜 83 案裡仍有 27 案沒座標（80－56 ＝ 24，再加今天追加的 3 案）。 */
+  "guoxiong-beiou-senlin": { lat: 24.23466, lng: 120.57467, precision: "exact" }, // 國雄北歐莊園－森林區
+  "dazhuang-shiliuyun-2": { lat: 24.23433, lng: 120.57397, precision: "exact" }, // 大樁十六韻2
+  "hongya-lixiangguo": { lat: 24.23331, lng: 120.57515, precision: "exact" }, // 宏亞里想國－大樓區
+  "ruquan-ruyi": { lat: 24.23174, lng: 120.57522, precision: "exact" }, // 如泉如意
+  "zhifu-yihaozan": { lat: 24.23079, lng: 120.57206, precision: "exact" }, // 致富一號讚
+  "zheyu-win-plus": { lat: 24.23023, lng: 120.57251, precision: "exact" }, // 哲宇W·IN+
+  "panyu-yunju": { lat: 24.2284, lng: 120.57168, precision: "exact" }, // 磐鈺雲居
+  "yang-tiane": { lat: 24.22702, lng: 120.57279, precision: "exact" }, // 漾天鵝
+  "bochang-zhenpin": { lat: 24.2276, lng: 120.57343, precision: "exact" }, // 博昌臻品
+  "baoyu-lishe": { lat: 24.22431, lng: 120.57521, precision: "exact" }, // 寶宇麗舍
+  "shanshui-fengjin": { lat: 24.22349, lng: 120.57654, precision: "exact" }, // 山水豐晉
+  "wulu-yingshan": { lat: 24.22293, lng: 120.57607, precision: "exact" }, // 吾廬映山
+  "baoyu-liyue": { lat: 24.22201, lng: 120.57677, precision: "exact" }, // 寶宇麗悅
+  "renwen-yangzhen": { lat: 24.22325, lng: 120.57477, precision: "exact" }, // 人文養真
+  "wushi-yizhang": { lat: 24.22293, lng: 120.57455, precision: "exact" }, // 悟實壹章
+  "wushi-erzhang": { lat: 24.22188, lng: 120.57437, precision: "exact" }, // 悟實貳章
+  "rimu-jingran": { lat: 24.22121, lng: 120.57559, precision: "exact" }, // 日沐井然
+  "dasheng-sendi": { lat: 24.22122, lng: 120.57692, precision: "exact" }, // 大昇森邸
+  "mu-shanlin": { lat: 24.22075, lng: 120.57661, precision: "exact" }, // 沐山林
+  "yue-shanqiu": { lat: 24.22063, lng: 120.57643, precision: "exact" }, // 樾山丘
+  "fuyu-dijing": { lat: 24.21779, lng: 120.57937, precision: "exact" }, // 富宇帝景
+  "fuyu-jing": { lat: 24.21776, lng: 120.57809, precision: "exact" }, // 富宇境
+  "xinsheng-ruobai": { lat: 24.21716, lng: 120.5779, precision: "exact" }, // 昕晟若白
+  "yongjin-qinghe": { lat: 24.21531, lng: 120.57849, precision: "exact" }, // 永晉青禾
+  "zhifu-dadao": { lat: 24.21311, lng: 120.58063, precision: "exact" }, // 致富大道
+  "jizhen-huangxi": { lat: 24.21286, lng: 120.57857, precision: "exact" }, // 吉鎮皇璽
+  "zhongke-yusifang": { lat: 24.2124, lng: 120.57839, precision: "exact" }, // 中科豫四方
+  "shuheyuan-2c": { lat: 24.21202, lng: 120.57811, precision: "exact" }, // 樹合院2期C
+  "hezhen-di": { lat: 24.21262, lng: 120.57606, precision: "exact" }, // 和臻邸
+  "jingyi-chunjing": { lat: 24.21317, lng: 120.57516, precision: "exact" }, // 敬益淳境
+  "yongyifa-chujian": { lat: 24.2135, lng: 120.57475, precision: "exact" }, // 永益發初見
+  "fubao-zhifu-lianmeng": { lat: 24.21421, lng: 120.57674, precision: "exact" }, // 福寶致富聯盟
+  "lubaoshi": { lat: 24.21526, lng: 120.57581, precision: "exact" }, // 綠寶石
+  "yourui-xishu": { lat: 24.21649, lng: 120.57651, precision: "exact" }, // 佑睿囍墅
+  "lifeng-yipin": { lat: 24.21731, lng: 120.57568, precision: "exact" }, // 麗豐藝品
+  "fulin-bw": { lat: 24.21763, lng: 120.57482, precision: "exact" }, // 富霖B&W
+  "facai-shu": { lat: 24.21876, lng: 120.57446, precision: "exact" }, // 發財墅
+  "chengfeng-cangfeng": { lat: 24.21991, lng: 120.57493, precision: "exact" }, // 澄峰藏峰
+  "shiliu-juri": { lat: 24.22024, lng: 120.57499, precision: "exact" }, // 十六鉅日
+  "fuyu-heyue": { lat: 24.22072, lng: 120.57399, precision: "exact" }, // 富宇禾悅
+  "fuyu-hemu": { lat: 24.22038, lng: 120.57341, precision: "exact" }, // 富宇禾沐
+  "zhuyin-chuncui": { lat: 24.2191, lng: 120.57217, precision: "exact" }, // 住寅純萃
+  "fuyu-yazhu": { lat: 24.22032, lng: 120.57397, precision: "exact" }, // 富宇雅築
+  "xinsheng-xincheng": { lat: 24.22068, lng: 120.57259, precision: "exact" }, // 昕晟心城
+  "changli-pinyue-2": { lat: 24.22051, lng: 120.57235, precision: "exact" }, // 昶立品悅2
+  "xingfu-meishu": { lat: 24.22042, lng: 120.57211, precision: "exact" }, // 幸福美墅
+  "huaipu-yangzhen": { lat: 24.21921, lng: 120.57279, precision: "exact" }, // 懷璞養真
+  "dingyi-fuzhu": { lat: 24.21771, lng: 120.57352, precision: "exact" }, // 鼎一賦築
+  "guoyang-ju": { lat: 24.21735, lng: 120.57366, precision: "exact" }, // 過洋居
+  "fusheng-meide": { lat: 24.21872, lng: 120.57068, precision: "exact" }, // 富盛美德
+  "liudajia": { lat: 24.21535, lng: 120.5718, precision: "exact" }, // 六大家
+  "jiachuan-yushu-5": { lat: 24.21601, lng: 120.56956, precision: "exact" }, // 家川御墅5
+  "jiutang-jingyang-tiane": { lat: 24.2156, lng: 120.56942, precision: "exact" }, // 久樘晶漾天鵝
+  "rian-cheng-2": { lat: 24.21544, lng: 120.5685, precision: "exact" }, // 日安埕2
+  "huiguo-lujing": { lat: 24.21864, lng: 120.56836, precision: "exact" }, // 惠國麓境
+  "ancheng-wangyue": { lat: 24.21873, lng: 120.56751, precision: "exact" }, // 安城望玥
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
