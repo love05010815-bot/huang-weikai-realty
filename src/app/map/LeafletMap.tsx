@@ -104,9 +104,16 @@ const PIN_GROUPS: ReadonlyArray<{ id: string; name: string; areas: readonly Proj
   //  兩者不同名是 OK 的 —— 它們永遠不會同時出現在畫面上。）
   { id: "shalu", name: "沙鹿車站商圈", areas: ["沙鹿車站"] },
   { id: "luliao", name: "鹿寮萬家福商圈", areas: ["鹿寮萬家福"] },
-  // 北勢靜宜目前 0 案 —— MIN_CLUSTER 會直接略過這組，畫面上不會多出東西。
-  // 之後補了案子，膠囊自己會出現，不用回來改。
   { id: "beishi", name: "北勢靜宜商圈", areas: ["北勢靜宜"] },
+  // ⚠️ 2026-09-02 補。當天新光田一口氣進了 125 案、123 個座標，**這裡卻沒有它** ——
+  //    下面 buildClusters 的保底規則是「沒被認領的一律退回畫成圖釘」，所以 zoom 12 的
+  //    初始畫面上，其他四區各收成一顆膠囊，新光田卻是 123 根圖釘疊在 2 公里見方裡。
+  //    **沒有報錯、其他區看起來還很正常** —— 又是這頁的老失敗模式。
+  //    🔴 **`ProjectArea` 每加一個值，這裡就要跟著加一組。** 0 案的區加了也沒事
+  //    （MIN_CLUSTER 會略過），所以下面連兩個市區也先放進來，之後補案子不用回來改。
+  { id: "xinguangtian", name: "新光田特區", areas: ["新光田"] },
+  { id: "wuqi-downtown", name: "梧棲市區", areas: ["梧棲市區"] },
+  { id: "qingshui-downtown", name: "清水市區", areas: ["清水市區"] },
 ];
 
 /** 一顆膠囊至少要代表這麼多案。只剩一案還畫成 150px 的膠囊，不如直接畫那根圖釘 */
