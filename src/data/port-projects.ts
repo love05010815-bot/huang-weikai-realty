@@ -1673,7 +1673,7 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
   {
-    id: "zheyu-win-plus", name: "哲宇W·IN", builder: "哲宇建設體系", area: "北勢靜宜",
+    id: "zheyu-win-plus", name: "哲宇W·IN+", builder: "哲宇建設體系", area: "北勢靜宜",
     status: "completed", statusNote: "成屋／近年案", completion: "成屋",
     sources: ["owner"],
   },
