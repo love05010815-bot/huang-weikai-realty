@@ -12,7 +12,7 @@
  */
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import { CIS } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
@@ -150,25 +150,15 @@ export default function VideosManager({
   const [progress, setProgress] = useState(0);
   const [uploadNote, setUploadNote] = useState<{ ok: boolean; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const formRef = useRef<HTMLDivElement>(null);
-
   /**
-   * ⚠️ **點「編輯」之後把表單捲進畫面。少了這段，按鈕看起來就是壞的。**
+   * ⚠️ 編輯表單是**就地取代那一列**（見下面 `if (editing === row.id)`），跟物件後台
+   *    `ListingsManager.tsx` 同一種寫法；只有「新增」表單開在最上面。
    *
-   * 編輯表單是**取代頁面最上面那顆「新增影片」按鈕**（見下面 `editing === null ?`），
-   * 影片清單則永遠在它下面。所以點最後一個分類（房屋開箱）某一列的「編輯」時，
-   * 表單確實開了、state 也對、什麼錯都沒有，**但它在畫面外上方好幾百 px，畫面
-   * 一動也不動** —— 2026-09-01 系統擁有者回報「影音編輯按下去沒反應」就是這個。
-   * 分類從兩類拆成三類（`8bcfbe6`）之後頁面變長，這個問題才變明顯。
-   *
-   * ⚠️ 刻意用 `smooth` —— 他要看到畫面在動，才知道按鈕有吃到點擊。
-   * ⚠️ 表單上的 `scrollMarginTop` 是給手機版讓位：899px 以下 adminShell 的
-   *    topbar 是 sticky、min-height 56px，不讓位表單頂端會被它蓋掉。
+   * 2026-09-01 之前表單一律開在頁面最上面、清單在下面、點了不捲動 —— 點最後一個
+   * 分類（房屋開箱）某列的「編輯」時，表單開在視窗上方 1500px 以上，畫面一動也不動，
+   * 系統擁有者回報「按下去沒反應」。先用 scrollIntoView 擋了一版（`e6ec1e4`），
+   * 2026-09-02 改成就地展開：不用捲、兩個後台行為一致。**不要再把編輯表單搬回最上面。**
    */
-  useEffect(() => {
-    if (editing === null) return;
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [editing]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -290,6 +280,264 @@ export default function VideosManager({
   // 自己上傳的檔案不是 YouTube，不要拿去解析（解不出來，而且會誤報警告）。
   const previewId = form.source === "youtube" ? parseYoutubeId(form.url) : null;
 
+  /**
+   * 表單本體。同一份 JSX 會出現在兩個位置（頂端「新增」／清單裡「就地編輯」），
+   * 一次只會渲染其中一個，所以裡面的 id（vid-title…）跟 fileRef 不會撞。
+   * 寫成 component 要把 form／busy／uploading／fileRef… 十幾個東西全傳進去，
+   * 這裡直接閉包比較不容易漏。
+   */
+  function renderForm() {
+    return (
+      <>
+        {/* ⚠️ 這行不是裝飾。表單就地取代那一列之後，原本那列的標題就不見了 ——
+            沒有這行，畫面上沒有一個字告訴你「正在改哪一支」。改錯一支不會報錯，
+            存下去才發現。 */}
+        <div className={styles.subtitle} style={{ color: CIS.text, margin: "0 0 12px", fontSize: 15 }}>
+          {editing === "new"
+            ? "新增影片"
+            : `正在編輯：${initial.find((r) => r.id === editing)?.title ?? "這支影片"}`}
+        </div>
+
+        <div className={styles.formGrid}>
+          <div className={styles.field}>
+            <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-category">
+              分類
+            </label>
+            <select
+              id="vid-category"
+              className={styles.select}
+              style={inputStyle}
+              value={form.category}
+              onChange={(e) => set("category", e.target.value as VideoCategory)}
+            >
+              {VIDEO_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {CATEGORY_META[c].label}
+                </option>
+              ))}
+            </select>
+            <div className={styles.hint} style={{ color: CIS.textMute }}>
+              前台側欄的「影片類別」照這個分，選錯就會被歸到另一類。
+            </div>
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-status">
+              狀態
+            </label>
+            <select
+              id="vid-status"
+              className={styles.select}
+              style={inputStyle}
+              value={form.status}
+              onChange={(e) => set("status", e.target.value as VideoStatus)}
+            >
+              <option value="active">上架中</option>
+              <option value="hidden">隱藏</option>
+            </select>
+            <div className={styles.hint} style={{ color: CIS.textMute }}>
+              隱藏＝留著資料但客戶看不到，之後想放回來不用重打。
+            </div>
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-date">
+              影片日期
+            </label>
+            <input
+              id="vid-date"
+              type="date"
+              className={styles.input}
+              style={inputStyle}
+              value={form.publishedAt}
+              onChange={(e) => set("publishedAt", e.target.value)}
+            />
+            <div className={styles.hint} style={{ color: CIS.textMute }}>
+              前台會顯示這個日期，側欄「最新影片」也照這個排。
+              補上舊片時記得改成當初拍的日期，不然它會變成「最新」。
+            </div>
+          </div>
+
+          <div className={`${styles.field} ${styles.fieldWide}`}>
+            <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-title">
+              標題
+            </label>
+            <input
+              id="vid-title"
+              className={styles.input}
+              style={inputStyle}
+              value={form.title}
+              onChange={(e) => set("title", e.target.value)}
+              placeholder="例：買房前一定要知道的三件事"
+            />
+          </div>
+
+          <div className={`${styles.field} ${styles.fieldWide}`}>
+            <span className={styles.label} style={{ color: CIS.textSub }}>
+              影片從哪裡來
+            </span>
+            <div className={styles.actions} style={{ marginTop: 4 }}>
+              {(
+                [
+                  ["youtube", "貼網址（YouTube／FB／IG）"],
+                  ["upload", "從電腦上傳檔案"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={styles.btn}
+                  style={
+                    form.source === value
+                      ? { borderColor: CIS.blueSoft, color: CIS.text, background: "rgba(238,130,138,.12)" }
+                      : { borderColor: CIS.cardBorder, color: CIS.textMute }
+                  }
+                  disabled={uploading}
+                  onClick={() => {
+                    // 換來源就把上一個來源填的東西清掉 ——
+                    // 留著的話會出現「選了上傳、但存進去的是 YouTube 網址」這種對不上的資料
+                    setForm((prev) => ({ ...prev, source: value, url: "", posterUrl: "", bytes: null }));
+                    setUploadNote(null);
+                    if (fileRef.current) fileRef.current.value = "";
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {form.source === "youtube" ? (
+            <div className={`${styles.field} ${styles.fieldWide}`}>
+              <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-url">
+                影片網址
+              </label>
+              <input
+                id="vid-url"
+                className={styles.input}
+                style={inputStyle}
+                value={form.url}
+                onChange={(e) => set("url", e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=..."
+              />
+              <div className={styles.hint} style={{ color: CIS.textMute }}>
+                {form.url.trim() === "" ? (
+                  "YouTube 的 watch、youtu.be、Shorts 三種網址都認得。FB／IG 的也可以貼。"
+                ) : previewId ? (
+                  <span style={{ color: "#4ade80" }}>
+                    ✓ 認出 YouTube 影片（{previewId}），前台可以直接播，縮圖自動有
+                  </span>
+                ) : (
+                  <span style={{ color: "#fbbf24" }}>
+                    ⚠️ 不是 YouTube 網址（或格式不對）。還是可以存，但前台嵌不進來 ——
+                    卡片會變成「點了開新分頁」，也沒有縮圖。
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className={`${styles.field} ${styles.fieldWide}`}>
+              <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-file">
+                影片檔（最大 {MAX_MB}MB）
+              </label>
+              <input
+                id="vid-file"
+                ref={fileRef}
+                type="file"
+                className={styles.input}
+                style={inputStyle}
+                accept={ALLOWED_VIDEO_TYPES.join(",")}
+                disabled={uploading}
+                onChange={(e) => void onPickFile(e.target.files?.[0])}
+              />
+              {uploading ? (
+                <div className={styles.hint} style={{ color: CIS.textSub }}>
+                  上傳中… {progress}%（檔案是直接傳到儲存空間的，這個分頁先別關）
+                </div>
+              ) : null}
+              {uploadNote ? (
+                <div className={styles.hint} style={{ color: uploadNote.ok ? "#4ade80" : "#fbbf24" }}>
+                  {uploadNote.ok ? "✓ " : "⚠️ "}
+                  {uploadNote.text}
+                </div>
+              ) : null}
+              {!uploading && !uploadNote && form.url ? (
+                <div className={styles.hint} style={{ color: "#4ade80" }}>
+                  ✓ 已經有影片檔了{form.bytes ? `（${formatBytes(form.bytes)}）` : ""}。
+                  要換一支就重新選檔案。
+                </div>
+              ) : null}
+              <div className={styles.hint} style={{ color: CIS.textMute }}>
+                <b>建議 MP4（H.264）、1080p 就夠。</b>
+                iPhone 直出的 .mov 常常是 HEVC，很多瀏覽器播不了 —— 傳之前先轉一下。
+                <br />
+                ⚠️ 自己上傳的影片會吃 Vercel 的儲存與流量額度。
+                <b>超過額度不會多收錢，但整個檔案儲存會停用 30 天，精選好案的照片會一起消失。</b>
+                影片多的話建議傳到 YouTube（可以設「不公開」，不會被搜尋到）再貼網址。
+              </div>
+            </div>
+          )}
+
+          <div className={`${styles.field} ${styles.fieldWide}`}>
+            <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-summary">
+              一句話說明（可留空）
+            </label>
+            <textarea
+              id="vid-summary"
+              className={styles.textarea}
+              style={inputStyle}
+              rows={2}
+              value={form.summary}
+              onChange={(e) => set("summary", e.target.value)}
+              placeholder="這支影片在講什麼、看完能帶走什麼"
+            />
+          </div>
+
+          {previewId || form.posterUrl ? (
+            <div className={`${styles.field} ${styles.fieldWide}`}>
+              <span className={styles.label} style={{ color: CIS.textSub }}>
+                {previewId ? "縮圖預覽" : "封面預覽（從影片第 1 秒截的）"}
+              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                className={styles.previewThumb}
+                src={previewId ? youtubeThumbnail(previewId) : form.posterUrl}
+                alt=""
+                width={320}
+                height={180}
+              />
+            </div>
+          ) : null}
+        </div>
+
+        <div className={styles.formActions}>
+          <button
+            type="button"
+            className={styles.btn}
+            style={{ borderColor: CIS.cardBorder, color: CIS.text }}
+            onClick={save}
+            disabled={busy === "save" || uploading}
+          >
+            <Icon name="save" size={15} />
+            {uploading ? "等上傳完成…" : busy === "save" ? "存檔中…" : "存檔"}
+          </button>
+          <button
+            type="button"
+            className={styles.btn}
+            style={{ borderColor: CIS.cardBorder, color: CIS.textMute }}
+            onClick={() => {
+              setEditing(null);
+              setMsg(null);
+            }}
+            disabled={busy === "save"}
+          >
+            取消
+          </button>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       {msg ? (
@@ -305,269 +553,23 @@ export default function VideosManager({
         </div>
       ) : null}
 
-      {editing === null ? (
-        <button
-          type="button"
-          className={styles.btn}
-          style={{ borderColor: CIS.cardBorder, color: CIS.text, marginBottom: 16 }}
-          onClick={openNew}
-        >
-          <Icon name="add" size={15} />
-          新增影片
-        </button>
-      ) : (
-        <div
-          ref={formRef}
-          className={styles.form}
-          style={{ background: CIS.card, borderColor: CIS.cardBorder, scrollMarginTop: 72 }}
-        >
-          {/* ⚠️ 這行不是裝飾。表單本身原本沒有任何標題，開起來第一個欄位就是「分類」——
-              從最底下捲上來之後，畫面上沒有一個字告訴你「正在改哪一支」，甚至分不出
-              這是新增還是編輯。改錯一支不會報錯，存下去才發現。 */}
-          <div className={styles.subtitle} style={{ color: CIS.text, margin: "0 0 12px", fontSize: 15 }}>
-            {editing === "new"
-              ? "新增影片"
-              : `正在編輯：${initial.find((r) => r.id === editing)?.title ?? "這支影片"}`}
-          </div>
+      {/* 「新增」按鈕永遠在，跟物件後台一樣；正在新增時只是灰掉。 */}
+      <button
+        type="button"
+        className={styles.btn}
+        style={{ borderColor: CIS.cardBorder, color: CIS.text, marginBottom: 16 }}
+        onClick={openNew}
+        disabled={editing === "new"}
+      >
+        <Icon name="add" size={15} />
+        新增影片
+      </button>
 
-          <div className={styles.formGrid}>
-            <div className={styles.field}>
-              <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-category">
-                分類
-              </label>
-              <select
-                id="vid-category"
-                className={styles.select}
-                style={inputStyle}
-                value={form.category}
-                onChange={(e) => set("category", e.target.value as VideoCategory)}
-              >
-                {VIDEO_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {CATEGORY_META[c].label}
-                  </option>
-                ))}
-              </select>
-              <div className={styles.hint} style={{ color: CIS.textMute }}>
-                前台側欄的「影片類別」照這個分，選錯就會被歸到另一類。
-              </div>
-            </div>
-
-            <div className={styles.field}>
-              <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-status">
-                狀態
-              </label>
-              <select
-                id="vid-status"
-                className={styles.select}
-                style={inputStyle}
-                value={form.status}
-                onChange={(e) => set("status", e.target.value as VideoStatus)}
-              >
-                <option value="active">上架中</option>
-                <option value="hidden">隱藏</option>
-              </select>
-              <div className={styles.hint} style={{ color: CIS.textMute }}>
-                隱藏＝留著資料但客戶看不到，之後想放回來不用重打。
-              </div>
-            </div>
-
-            <div className={styles.field}>
-              <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-date">
-                影片日期
-              </label>
-              <input
-                id="vid-date"
-                type="date"
-                className={styles.input}
-                style={inputStyle}
-                value={form.publishedAt}
-                onChange={(e) => set("publishedAt", e.target.value)}
-              />
-              <div className={styles.hint} style={{ color: CIS.textMute }}>
-                前台會顯示這個日期，側欄「最新影片」也照這個排。
-                補上舊片時記得改成當初拍的日期，不然它會變成「最新」。
-              </div>
-            </div>
-
-            <div className={`${styles.field} ${styles.fieldWide}`}>
-              <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-title">
-                標題
-              </label>
-              <input
-                id="vid-title"
-                className={styles.input}
-                style={inputStyle}
-                value={form.title}
-                onChange={(e) => set("title", e.target.value)}
-                placeholder="例：買房前一定要知道的三件事"
-              />
-            </div>
-
-            <div className={`${styles.field} ${styles.fieldWide}`}>
-              <span className={styles.label} style={{ color: CIS.textSub }}>
-                影片從哪裡來
-              </span>
-              <div className={styles.actions} style={{ marginTop: 4 }}>
-                {(
-                  [
-                    ["youtube", "貼網址（YouTube／FB／IG）"],
-                    ["upload", "從電腦上傳檔案"],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={styles.btn}
-                    style={
-                      form.source === value
-                        ? { borderColor: CIS.blueSoft, color: CIS.text, background: "rgba(238,130,138,.12)" }
-                        : { borderColor: CIS.cardBorder, color: CIS.textMute }
-                    }
-                    disabled={uploading}
-                    onClick={() => {
-                      // 換來源就把上一個來源填的東西清掉 ——
-                      // 留著的話會出現「選了上傳、但存進去的是 YouTube 網址」這種對不上的資料
-                      setForm((prev) => ({ ...prev, source: value, url: "", posterUrl: "", bytes: null }));
-                      setUploadNote(null);
-                      if (fileRef.current) fileRef.current.value = "";
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {form.source === "youtube" ? (
-              <div className={`${styles.field} ${styles.fieldWide}`}>
-                <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-url">
-                  影片網址
-                </label>
-                <input
-                  id="vid-url"
-                  className={styles.input}
-                  style={inputStyle}
-                  value={form.url}
-                  onChange={(e) => set("url", e.target.value)}
-                  placeholder="https://www.youtube.com/watch?v=..."
-                />
-                <div className={styles.hint} style={{ color: CIS.textMute }}>
-                  {form.url.trim() === "" ? (
-                    "YouTube 的 watch、youtu.be、Shorts 三種網址都認得。FB／IG 的也可以貼。"
-                  ) : previewId ? (
-                    <span style={{ color: "#4ade80" }}>
-                      ✓ 認出 YouTube 影片（{previewId}），前台可以直接播，縮圖自動有
-                    </span>
-                  ) : (
-                    <span style={{ color: "#fbbf24" }}>
-                      ⚠️ 不是 YouTube 網址（或格式不對）。還是可以存，但前台嵌不進來 ——
-                      卡片會變成「點了開新分頁」，也沒有縮圖。
-                    </span>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className={`${styles.field} ${styles.fieldWide}`}>
-                <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-file">
-                  影片檔（最大 {MAX_MB}MB）
-                </label>
-                <input
-                  id="vid-file"
-                  ref={fileRef}
-                  type="file"
-                  className={styles.input}
-                  style={inputStyle}
-                  accept={ALLOWED_VIDEO_TYPES.join(",")}
-                  disabled={uploading}
-                  onChange={(e) => void onPickFile(e.target.files?.[0])}
-                />
-                {uploading ? (
-                  <div className={styles.hint} style={{ color: CIS.textSub }}>
-                    上傳中… {progress}%（檔案是直接傳到儲存空間的，這個分頁先別關）
-                  </div>
-                ) : null}
-                {uploadNote ? (
-                  <div className={styles.hint} style={{ color: uploadNote.ok ? "#4ade80" : "#fbbf24" }}>
-                    {uploadNote.ok ? "✓ " : "⚠️ "}
-                    {uploadNote.text}
-                  </div>
-                ) : null}
-                {!uploading && !uploadNote && form.url ? (
-                  <div className={styles.hint} style={{ color: "#4ade80" }}>
-                    ✓ 已經有影片檔了{form.bytes ? `（${formatBytes(form.bytes)}）` : ""}。
-                    要換一支就重新選檔案。
-                  </div>
-                ) : null}
-                <div className={styles.hint} style={{ color: CIS.textMute }}>
-                  <b>建議 MP4（H.264）、1080p 就夠。</b>
-                  iPhone 直出的 .mov 常常是 HEVC，很多瀏覽器播不了 —— 傳之前先轉一下。
-                  <br />
-                  ⚠️ 自己上傳的影片會吃 Vercel 的儲存與流量額度。
-                  <b>超過額度不會多收錢，但整個檔案儲存會停用 30 天，精選好案的照片會一起消失。</b>
-                  影片多的話建議傳到 YouTube（可以設「不公開」，不會被搜尋到）再貼網址。
-                </div>
-              </div>
-            )}
-
-            <div className={`${styles.field} ${styles.fieldWide}`}>
-              <label className={styles.label} style={{ color: CIS.textSub }} htmlFor="vid-summary">
-                一句話說明（可留空）
-              </label>
-              <textarea
-                id="vid-summary"
-                className={styles.textarea}
-                style={inputStyle}
-                rows={2}
-                value={form.summary}
-                onChange={(e) => set("summary", e.target.value)}
-                placeholder="這支影片在講什麼、看完能帶走什麼"
-              />
-            </div>
-
-            {previewId || form.posterUrl ? (
-              <div className={`${styles.field} ${styles.fieldWide}`}>
-                <span className={styles.label} style={{ color: CIS.textSub }}>
-                  {previewId ? "縮圖預覽" : "封面預覽（從影片第 1 秒截的）"}
-                </span>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  className={styles.previewThumb}
-                  src={previewId ? youtubeThumbnail(previewId) : form.posterUrl}
-                  alt=""
-                  width={320}
-                  height={180}
-                />
-              </div>
-            ) : null}
-          </div>
-
-          <div className={styles.formActions}>
-            <button
-              type="button"
-              className={styles.btn}
-              style={{ borderColor: CIS.cardBorder, color: CIS.text }}
-              onClick={save}
-              disabled={busy === "save" || uploading}
-            >
-              <Icon name="save" size={15} />
-              {uploading ? "等上傳完成…" : busy === "save" ? "存檔中…" : "存檔"}
-            </button>
-            <button
-              type="button"
-              className={styles.btn}
-              style={{ borderColor: CIS.cardBorder, color: CIS.textMute }}
-              onClick={() => {
-                setEditing(null);
-                setMsg(null);
-              }}
-              disabled={busy === "save"}
-            >
-              取消
-            </button>
-          </div>
+      {editing === "new" ? (
+        <div className={styles.form} style={{ background: CIS.card, borderColor: CIS.blue, marginBottom: 16 }}>
+          {renderForm()}
         </div>
-      )}
+      ) : null}
 
       <div className={styles.list}>
         {initial.length === 0 ? (
@@ -586,6 +588,15 @@ export default function VideosManager({
               </div>
 
               {rows.map((row) => {
+                // 正在改的那一列，整列換成表單（跟物件後台一樣）。
+                if (editing === row.id) {
+                  return (
+                    <div key={row.id} className={styles.form} style={{ background: CIS.card, borderColor: CIS.blue }}>
+                      {renderForm()}
+                    </div>
+                  );
+                }
+
                 const hidden = row.status === "hidden";
                 return (
                   <div
