@@ -225,6 +225,26 @@ function spread(list: Array<{ p: Project; lat: number; lng: number }>) {
   });
 }
 
+/** 一根圖釘的 icon。重畫 effect 與換選取 effect 共用，兩邊才不會各畫各的 */
+function pinIcon(L: typeof import("leaflet"), p: Project, hasMine: boolean, on: boolean) {
+  const tone = TONE[p.status];
+  // 有星星的畫布是 34x38（見 PIN_VB），選中放大 1.28 倍
+  const size: [number, number] = on
+    ? [Math.round(PIN_VB.w * 1.28), Math.round(PIN_VB.h * 1.28)]
+    : [PIN_VB.w, PIN_VB.h];
+  return L.divIcon({
+    className: styles.lmPin,
+    html: buildingSvg(tone.bg, tone.ink, hasMine, on),
+    iconSize: size,
+    // ⚠️ 不是 size[0]/2 —— 畫布右上角多留了空間給星星，針尖不在正中央。
+    //    寫死一半的話圖釘會往右偏，等於指錯地址。
+    iconAnchor: [(size[0] * PIN_VB.tipX) / PIN_VB.w, size[1]],
+  });
+}
+
+/** 有星星的往上疊 —— 星星在右上角，很容易被右上方那顆圖釘蓋掉。選中的再往上 */
+const pinZ = (on: boolean, hasMine: boolean) => (on ? 1000 : hasMine ? 500 : 0);
+
 export default function LeafletMap({
   projects,
   area,
@@ -251,6 +271,15 @@ export default function LeafletMap({
   const mapRef = useRef<LeafletMapType | null>(null);
   const LRef = useRef<typeof import("leaflet") | null>(null);
   const markersRef = useRef<Map<string, Marker>>(new Map());
+  /**
+   * 選取狀態不走重畫。2026-09-02 量過：341 案時點一根圖釘，重畫那個 effect 會把 339 個
+   * divIcon 全部 remove 再 create（DOM 拆 339、建 339，桌機同步 44ms，手機好幾倍），
+   * 而畫面上真正變的只有兩根 —— 上一根縮回去、這一根放大。
+   * 所以重畫 effect 不再看 `selectedId`（它從 selectedRef 讀「畫的當下」該誰亮），
+   * 換選取由下面那個小 effect 用 `setIcon` 只動那兩根。
+   */
+  const selectedRef = useRef<string | null>(selectedId);
+  const projectByIdRef = useRef<Map<string, { p: Project; hasMine: boolean }>>(new Map());
 
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -532,27 +561,15 @@ export default function LeafletMap({
       markersRef.current.set(`__cluster_${c.id}__`, cluster);
     }
 
+    projectByIdRef.current.clear();
     for (const { p, lat, lng } of spread(loose)) {
-      const tone = TONE[p.status];
-      const on = p.id === selectedId;
-      // 有星星的畫布是 34x38（見 PIN_VB），選中放大 1.28 倍
-      const size: [number, number] = on
-        ? [Math.round(PIN_VB.w * 1.28), Math.round(PIN_VB.h * 1.28)]
-        : [PIN_VB.w, PIN_VB.h];
+      const on = p.id === selectedRef.current;
       const hasMine = (mine[p.id] ?? 0) > 0;
+      projectByIdRef.current.set(p.id, { p, hasMine });
       const marker = L.marker([lat, lng], {
         title: p.name,
-        // 有星星的往上疊 —— 星星在右上角，很容易被右上方那顆圖釘蓋掉，
-        // 而那顆星星正是這張地圖上最該被看見的東西。
-        zIndexOffset: on ? 1000 : hasMine ? 500 : 0,
-        icon: L.divIcon({
-          className: styles.lmPin,
-          html: buildingSvg(tone.bg, tone.ink, hasMine, on),
-          iconSize: size,
-          // ⚠️ 不是 size[0]/2 —— 畫布右上角多留了空間給星星，針尖不在正中央。
-          //    寫死一半的話圖釘會往右偏，等於指錯地址。
-          iconAnchor: [(size[0] * PIN_VB.tipX) / PIN_VB.w, size[1]],
-        }),
+        zIndexOffset: pinZ(on, hasMine),
+        icon: pinIcon(L, p, hasMine, on),
       })
         .addTo(map)
         .on("click", () => onSelect(p));
@@ -562,7 +579,25 @@ export default function LeafletMap({
     // 初始視野在「建立地圖」那一步就框好了（含商圈），這裡只管畫圖釘。
     // `projects` 與 `zoom` 不在相依裡是對的 —— 兩者都已經吃進 clusters／loose 了
     // （見上面的 useMemo），再列一次只會多重畫一輪。
-  }, [clusters, loose, selectedId, mine, onSelect, ready]);
+    // ⚠️ `selectedId` 刻意不在相依裡 —— 見 selectedRef 的註解。
+  }, [clusters, loose, mine, onSelect, ready]);
+
+  /* ── 換選取：只動上一根與這一根，不重畫 ── */
+  useEffect(() => {
+    const L = LRef.current;
+    const prev = selectedRef.current;
+    selectedRef.current = selectedId;
+    if (!L || prev === selectedId) return;
+    for (const [id, on] of [[prev, false], [selectedId, true]] as Array<[string | null, boolean]>) {
+      if (!id) continue;
+      const marker = markersRef.current.get(id);
+      const info = projectByIdRef.current.get(id);
+      // 膠囊模式下那根圖釘不存在（收在膠囊裡），沒東西可換是正常的
+      if (!marker || !info) continue;
+      marker.setIcon(pinIcon(L, info.p, info.hasMine, on));
+      marker.setZIndexOffset(pinZ(on, info.hasMine));
+    }
+  }, [selectedId]);
 
   /**
    * 換篩選臉就把視野移到那一塊。
