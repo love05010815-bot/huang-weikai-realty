@@ -2106,6 +2106,39 @@ export const COORDS: Record<string, Coord> = {
   "rian-cheng-2": { lat: 24.21544, lng: 120.5685, precision: "exact" }, // 日安埕2
   "huiguo-lujing": { lat: 24.21864, lng: 120.56836, precision: "exact" }, // 惠國麓境
   "ancheng-wangyue": { lat: 24.21873, lng: 120.56751, precision: "exact" }, // 安城望玥
+
+  /* ── 北勢靜宜商圈，最後 27 案（2026-09-02，系統擁有者用 /map?fix=1 親手點的）──
+     ✅ **標完這批，216 案全部有座標，清單裡不再有「未標位置」。**
+     核對過：id 全部存在、案名與註解相符、區域都是北勢靜宜、precision 全 exact、
+     本批不重複、沒有覆蓋既有座標、無孤兒座標，**27 筆全部落在北勢靜宜色塊內**。
+     🔵 山水豐晉2 ↔ 山水豐晉 相距 25 公尺 —— 一期二期本來就相鄰，不是重複標。 */
+  "zhucuo-bieshu": { lat: 24.21721, lng: 120.55795, precision: "exact" }, // 築厝別墅
+  "honggu-limei": { lat: 24.21751, lng: 120.55945, precision: "exact" }, // 宏固里美
+  "qinghong-xinyuan-2": { lat: 24.21755, lng: 120.56062, precision: "exact" }, // 清浤芯園2
+  "qingchuan-quan": { lat: 24.21613, lng: 120.56181, precision: "exact" }, // 青川泉
+  "qinghong-xinyuan": { lat: 24.21759, lng: 120.56314, precision: "exact" }, // 清浤芯園
+  "jiaji-ziyou-shidai": { lat: 24.21906, lng: 120.56462, precision: "exact" }, // 傢基自由時代華廈
+  "zhifu-shishang": { lat: 24.22411, lng: 120.56755, precision: "exact" }, // 致富時上
+  "wanji-qingshan": { lat: 24.22325, lng: 120.56813, precision: "exact" }, // 萬基青山
+  "xuyu-xiang": { lat: 24.22254, lng: 120.56791, precision: "exact" }, // 敘宇翔
+  "hongya-zhencheng": { lat: 24.22469, lng: 120.56427, precision: "exact" }, // 昇揚臻澄華廈
+  "yongren-fuzhi-2": { lat: 24.22525, lng: 120.56389, precision: "exact" }, // 永仁福至2
+  "viva-xibanya": { lat: 24.22492, lng: 120.56268, precision: "exact" }, // VIVA西班牙
+  "fuyu-yang": { lat: 24.22243, lng: 120.56121, precision: "exact" }, // 富宇漾
+  "haohao-yuanguan": { lat: 24.22146, lng: 120.56259, precision: "exact" }, // 好好園館
+  "zhengli-puyue-dunfeng": { lat: 24.22333, lng: 120.56042, precision: "exact" }, // 璞悅敦峰
+  "caiying-xinyuan": { lat: 24.22707, lng: 120.56615, precision: "exact" }, // 采縈昕苑
+  "zheyu-casa-plus": { lat: 24.22899, lng: 120.56534, precision: "exact" }, // 哲宇CASA+
+  "yuqing-youlin": { lat: 24.22256, lng: 120.56936, precision: "exact" }, // 餘慶有鄰
+  "caixiang-fuyu": { lat: 24.22306, lng: 120.56938, precision: "exact" }, // 采翔富鈺
+  "shanshui-fengjin-2": { lat: 24.2233, lng: 120.57641, precision: "exact" }, // 山水豐晉2
+  "ancheng-zhimei": { lat: 24.22643, lng: 120.56237, precision: "exact" }, // 安城至美
+  "shushang-jing": { lat: 24.2121, lng: 120.57768, precision: "exact" }, // 述上景
+  "haiming-kuanyu": { lat: 24.22108, lng: 120.57219, precision: "exact" }, // 海銘寬玉
+  "fuyu-ju": { lat: 24.22195, lng: 120.57718, precision: "exact" }, // 富宇聚
+  "yage-zhijing": { lat: 24.2213, lng: 120.57804, precision: "exact" }, // 亞哥織境
+  "futeng-youtianju": { lat: 24.22468, lng: 120.58183, precision: "exact" }, // 富騰有田居
+  "deyi-zhifu-2": { lat: 24.22821, lng: 120.56644, precision: "exact" }, // 德邑致富2－必勝特區
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
