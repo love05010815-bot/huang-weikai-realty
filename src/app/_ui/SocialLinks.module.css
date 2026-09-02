@@ -20,11 +20,25 @@
   opacity: 0.72;
 }
 
-.row {
+/* .row 與 .barList 都是 <ul>，要把瀏覽器預設的圓點、左邊縮排、上下 margin 清掉，
+   不然 icon 那一排會莫名往右偏 40px、上面多一截空白。 */
+.row,
+.barList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
+  align-items: center;
+}
+
+.row {
   justify-content: center;
   flex-wrap: wrap;
   gap: 14px;
+}
+
+.barList {
+  gap: 4px;
 }
 
 /* 底色寫死白色，不用半透明。
@@ -96,6 +110,13 @@
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 4px;
+}
+
+/* <li> 在 flex 容器裡會被 blockify，本身沒有尺寸問題；
+   但要讓裡面 44×44 的 <a> 決定高度，li 自己不能有 line-height 撐出多餘空間 */
+.row > li,
+.barList > li {
+  display: flex;
 }
 
 .barTitle {

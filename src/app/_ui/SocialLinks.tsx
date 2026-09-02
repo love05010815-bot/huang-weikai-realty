@@ -56,21 +56,28 @@ export default function SocialLinks({ variant = "tiles", title = "追蹤瑋凱" 
   const bar = variant === "bar";
   const size = bar ? 30 : 28;
 
-  const items = live.map(({ key, label, href, Icon }) => (
-    <a
-      key={key}
-      className={bar ? styles.barBtn : styles.btn}
-      href={href}
-      target="_blank"
-      /* noreferrer 一定要留：少了它，對方後台看得到客戶是從哪一頁點過去的，
-         而且 target="_blank" 沒有 noopener 會讓新開的分頁能操作我們這頁 */
-      rel="noopener noreferrer"
-      aria-label={`${OWNER.name}的 ${label}`}
-      title={label}
-    >
-      <Icon size={size} />
-    </a>
-  ));
+  /* 用 <ul>/<li> 不用一排 <a>：螢幕閱讀器會先唸「清單，4 個項目」再逐一唸連結，
+     使用者知道總共有幾個、現在在第幾個。純 <a> 排一排的話只會聽到四個連結名稱連著念。 */
+  const items = (
+    <ul className={bar ? styles.barList : styles.row}>
+      {live.map(({ key, label, href, Icon }) => (
+        <li key={key}>
+          <a
+            className={bar ? styles.barBtn : styles.btn}
+            href={href}
+            target="_blank"
+            /* noreferrer 一定要留：少了它，對方後台看得到客戶是從哪一頁點過去的，
+               而且 target="_blank" 沒有 noopener 會讓新開的分頁能操作我們這頁 */
+            rel="noopener noreferrer"
+            aria-label={`${OWNER.name}的 ${label}`}
+            title={label}
+          >
+            <Icon size={size} />
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
 
   if (bar) {
     return (
@@ -84,7 +91,7 @@ export default function SocialLinks({ variant = "tiles", title = "追蹤瑋凱" 
   return (
     <div className={styles.wrap}>
       {title && <p className={styles.title}>{title}</p>}
-      <div className={styles.row}>{items}</div>
+      {items}
     </div>
   );
 }

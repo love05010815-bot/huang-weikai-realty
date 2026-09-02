@@ -1,7 +1,11 @@
 /**
  * /card 名片用 icon — 社群用官方品牌 SVG(合規:官方色/形),聯絡用 Lucide 風線性 icon。
  * 不依賴外部載入,inline SVG 最快最專業。
+ *
+ * 2026-09-02 起首頁也用這一份（`_ui/SocialLinks.tsx`），**同一頁會出現兩顆 IG icon**
+ * （hero 頂端一排＋預約諮詢一排）—— 所以 IG 那顆的漸層 id 不能再寫死，見 InstagramIcon。
  */
+import { useId } from "react";
 // ---- 社群品牌 icon(官方色,圓形底)----
 export function FacebookIcon({ size = 24 }: { size?: number }) {
   return (
@@ -37,10 +41,16 @@ export function LineIcon({ size = 24 }: { size?: number }) {
 }
 
 export function InstagramIcon({ size = 24 }: { size?: number }) {
+  /* ⚠️ 漸層的 id 一定要每顆不一樣。原本寫死 `id="ig-grad"`，首頁上下各放一顆之後
+     整頁就有兩個同名 id（HTML 不合法）。瀏覽器多半會拿第一顆的漸層來畫，所以**畫面看起來
+     正常、也不會報錯**，但只要第一顆被藏起來（display:none）或被移走，第二顆就會整塊變黑
+     —— Safari 對 display:none 裡的漸層一直有這個毛病。
+     useId 在 SSR 與 client 會給出同一個值（`_R_x_` 這種），hydration 不會對不上。 */
+  const gradId = `ig-grad-${useId()}`;
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
       <defs>
-        <linearGradient id="ig-grad" x1="0" y1="1" x2="1" y2="0">
+        <linearGradient id={gradId} x1="0" y1="1" x2="1" y2="0">
           <stop offset="0" stopColor="#FEDA75" />
           <stop offset="0.25" stopColor="#FA7E1E" />
           <stop offset="0.5" stopColor="#D62976" />
@@ -48,7 +58,7 @@ export function InstagramIcon({ size = 24 }: { size?: number }) {
           <stop offset="1" stopColor="#4F5BD5" />
         </linearGradient>
       </defs>
-      <rect width="24" height="24" rx="6" fill="url(#ig-grad)" />
+      <rect width="24" height="24" rx="6" fill={`url(#${gradId})`} />
       <rect x="5" y="5" width="14" height="14" rx="4.2" fill="none" stroke="#fff" strokeWidth="1.8" />
       <circle cx="12" cy="12" r="3.2" fill="none" stroke="#fff" strokeWidth="1.8" />
       <circle cx="16.4" cy="7.6" r="1.1" fill="#fff" />
