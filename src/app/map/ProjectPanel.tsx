@@ -227,6 +227,7 @@ export default function ProjectPanel({
 function statusClass(s: ProjectStatus) {
   if (s === "presale") return styles.badgePresale;
   if (s === "newly") return styles.badgeNewly;
+  if (s === "unknown") return styles.badgeUnknown;
   return styles.badgeDone;
 }
 

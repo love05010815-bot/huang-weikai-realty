@@ -154,6 +154,7 @@ const TONE: Record<ProjectStatus, { bg: string; ink: string }> = {
   presale: { bg: "#D9466F", ink: "#fff" },
   newly: { bg: "#1E6FA8", ink: "#fff" },
   completed: { bg: "#2F7A34", ink: "#fff" },
+  unknown: { bg: "#7A756E", ink: "#fff" },
 };
 
 /**

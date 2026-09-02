@@ -37,6 +37,7 @@ const STATUS_FILL: Record<ProjectStatus, { fill: string; ink: string; stroke: st
   presale: { fill: "#F3A9BF", ink: "#5E1F33", stroke: "#D98BA4" },
   newly: { fill: "#9FC7E8", ink: "#123A5C", stroke: "#7FAACF" },
   completed: { fill: "#A9D6A5", ink: "#1F4A22", stroke: "#8ABF86" },
+  unknown: { fill: "#D9D4CC", ink: "#4A453F", stroke: "#BDB6AC" },
 };
 
 /**

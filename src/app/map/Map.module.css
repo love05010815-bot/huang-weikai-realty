@@ -920,6 +920,7 @@
 }
 
 .badgePresale,
+.badgeUnknown,
 .badgeDone {
   flex: none;
   font-size: 11.5px;
@@ -939,6 +940,14 @@
   background: #e2f0e1;
   color: #265c29;
   border: 1px solid #b9d9b7;
+}
+
+/* 待確認：中性灰。**不是一個銷售階段，是「還沒查到」** ——
+   刻意不給彩度，才不會被誤讀成第四種狀態。 */
+.badgeUnknown {
+  background: #efece7;
+  color: #5a5550;
+  border: 1px solid #d8d2c8;
 }
 
 /* 新成屋：介於預售與成屋之間，用藍色跟兩邊都區隔開 */

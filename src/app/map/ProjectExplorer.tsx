@@ -120,6 +120,8 @@ const TONE_SWATCH: Record<ProjectStatus, string> = {
   presale: "#D9466F",
   newly: "#1E6FA8",
   completed: "#2F7A34",
+  // 待確認：中性灰，跟三個真階段的紅／藍／綠一眼分得開
+  unknown: "#7A756E",
 };
 
 /** 明確對照，不要用 `badge${status}` 組字串 —— CSS Modules 的類名是雜湊過的，
@@ -128,6 +130,7 @@ const BADGE_CLASS: Record<ProjectStatus, string> = {
   presale: styles.badgePresale,
   newly: styles.badgeNewly,
   completed: styles.badgeDone,
+  unknown: styles.badgeUnknown,
 };
 
 export default function ProjectExplorer({

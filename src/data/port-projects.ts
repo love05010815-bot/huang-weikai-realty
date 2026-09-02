@@ -53,12 +53,20 @@ export const DISTRICT = {
  * 銷售階段。系統擁有者的表裡還有「成屋／新成屋」「預售／交屋期」這種跨階段寫法，
  * 那些原文放在 `statusNote`，這裡只取主要階段供篩選用。
  */
-export type ProjectStatus = "presale" | "newly" | "completed";
+export type ProjectStatus = "presale" | "newly" | "completed" | "unknown";
 
 export const STATUS_LABEL: Record<ProjectStatus, string> = {
   presale: "預售中",
   newly: "新成屋",
   completed: "成屋",
+  /**
+   * 2026-09-02 新增。系統擁有者給「新光田特區歷年建案母名單」時**只給了案名**，
+   * 107 案的銷售階段一個都沒有 —— 而這個欄位沒有「不知道」可選，
+   * 隨便填一個等於在每一張卡片、每一顆圖釘上宣告那 107 案的銷售階段。
+   *
+   * ⚠️ **這是「還沒查到」不是一個真的銷售階段。** 拿到真階段就改掉，不要留著。
+   */
+  unknown: "待確認",
 };
 
 /**
@@ -67,7 +75,8 @@ export const STATUS_LABEL: Record<ProjectStatus, string> = {
  *
  * 2026-08-27 陸續補進商圈的建案：沙鹿車站 28 案、鹿寮萬家福 64 案，全部由系統擁有者整理。
  * 2026-09-01 再補北勢靜宜 80 案（同樣是他整理的）。
- * **梧棲市區、清水市區、新光田目前仍是 0 案**，那是刻意留的空位；
+ * 2026-09-02 再補新光田特區 107 案（他給的「歷年建案母名單」，只有案名）。
+ * **五塊生活圈色塊現在全部有建案了。剩梧棲市區、清水市區兩個 0 案**，那是刻意留的空位；
  * 要補的時候把該案的 `area` 設成對應的值即可，篩選臉與統計都會自己跟上。
  *
  * 原本有個「市鎮中心」值，2026-08-27 系統擁有者拍板不要這一塊，掛著它的 3 案
@@ -303,7 +312,10 @@ export const BEISHI_PROVIDENCE_AMENITIES: AmenityGroup[] = [
 /**
  * area → 那一區的機能。**沒列到的區＝還沒有資料，整段不顯示。**
  *
- * ⚠️ **新光田與兩個市區的機能刻意空著。**
+ * ⚠️ **新光田與兩個市區的機能空著。**
+ * ⚠️ **新光田 2026-09-02 起有 107 案了，卻還是沒有機能** —— 那 107 案的詳情面板
+ *    不會有「周邊機能」區塊。**不要拿北勢靜宜那份借過去**：那份量過是北勢靜宜的
+ *    （靜宜大學、弘光、六福公園都在北勢靜宜色塊內），借過去就是對 107 案講錯生活圈。
  *    ⚠️ 2026-09-02 起**北勢靜宜有機能了**（`BEISHI_PROVIDENCE_AMENITIES`，他親自給的）。
  *    **不要拿別區的借過去湊**：
  *     *    `DISTRICT_AMENITIES` 是重劃區的（清水第二市場、頂漁寮公園、梧棲童綜合醫院），
@@ -1823,9 +1835,136 @@ export const PROJECTS: Project[] = [
      `completion: "待確認"` 是這裡新增的值（畫面對非年份的值本來就直接顯示）。
      `status` 三個值裡沒有「不知道」可選，**先放 completed**（本區 80 案有 58 案是成屋），
      ⚠️ **這是預設值不是查證結果** —— 猜錯的話該案不會出現在「預售中」篩選裡。 */
-  { id: "fuyu-ju", name: "富宇聚", builder: "待確認", area: "北勢靜宜", status: "completed", completion: "待確認", sources: ["owner"] },
-  { id: "shanshui-fengjin-2", name: "山水豐晉2", builder: "待確認", area: "北勢靜宜", status: "completed", completion: "待確認", sources: ["owner"] },
-  { id: "shushang-jing", name: "述上景", builder: "待確認", area: "北勢靜宜", status: "completed", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-ju", name: "富宇聚", builder: "待確認", area: "北勢靜宜", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shanshui-fengjin-2", name: "山水豐晉2", builder: "待確認", area: "北勢靜宜", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shushang-jing", name: "述上景", builder: "待確認", area: "北勢靜宜", status: "unknown", completion: "待確認", sources: ["owner"] },
+
+  /* ─────────── 新光田特區 107 案（2026-09-02 系統擁有者提供「歷年建案母名單」）───────────
+     新光田是最後一塊「有色塊、有篩選臉、卻 0 案」的區。這批補完，五塊生活圈全部有建案。
+
+     🔴 **他這次只給了案名，其他欄位一個都沒有。** 所以：
+        ・`builder` 全部「待確認」—— **一個都不准照案名猜**（檔頭第 3 條，踩過聯虹／聯悅）。
+          這批裡富宇、德光、安城、永築、富霖、綠光計畫…等前綴看起來很好猜，**還是不要猜**。
+        ・`completion` 全部「待確認」。
+        ・`status` 全部 `unknown` —— **`unknown` 就是 2026-09-02 為了這批新增的**。
+          在此之前只有預售／新成屋／成屋三個值，107 案隨便填一個
+          等於在每張卡片、每顆圖釘上宣告它們的銷售階段。
+
+     ⚠️ **這 107 案沒有座標**，地圖上沒有圖釘、清單裡標「未標位置」。
+
+     ⚠️ **新光田沒有周邊機能**（`AMENITIES_BY_AREA` 裡沒有這一區）——
+        他 2026-09-02 給的那份機能經量測後歸在北勢靜宜，**不要拿來借用**。
+
+     🔵 **好幾個建商在北勢靜宜也有案**（樹合院／樹合院2期C、昶立品悅／昶立品悅2、
+        悟實參章／壹章貳章、餘慶開元／有鄰、敬益璞真／淳境、萬基築印／青山…）。
+        那是相鄰商圈的同一批在地建商，**不是歸錯區** —— 但他若說某案該搬，整組一起看。 */
+  { id: "jiutang-tianebao-2", name: "久樘天鵝堡2", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "hongya-qinggeng", name: "宏亞晴耕", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "km-villa", name: "KM Villa", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "hongshu-lin", name: "鴻墅林", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "hongshu-lin-2", name: "鴻墅林2", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "deren-tianhe-b", name: "德人天河B", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "chuancheng", name: "椽城", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "deren-tianhe-a", name: "德人天河A", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "wanda-qinghe", name: "萬大青禾", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "meishu-shang", name: "美墅賞", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "chengjiang-chengbao", name: "誠將城堡", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "luyi-zhendi-2", name: "綠裔蓁邸2", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "luyi-zhendi", name: "綠裔蓁邸", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "quanmei-fuli", name: "泉美富里", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "lvguang-2-riguangshu", name: "綠光計畫2日光墅", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "lvguang-yuehongshan", name: "綠光計畫閱鴻山", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "lvguang-6-qingjing", name: "綠光計畫6青境", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "lvguang-8-hongshanzhencang", name: "綠光計畫8鴻山臻藏", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "lvguang-7-fengcai", name: "綠光計畫7豐采", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "lvguang-5-buqingyun", name: "綠光計畫5步青雲", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "lvguang-3-shuiyifang", name: "綠光計畫3水一芳", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zaiyu-tianebao", name: "再遇天鵝堡／藍天鵝", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "tianfu-yangzhen", name: "天府養真", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "futeng-fuyuanjing", name: "富騰富苑景", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "lvhuo-house", name: "綠活HOUSE", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "wangzhan-qingsongshu", name: "旺展青松墅", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "xinye-weiqiu-senlin", name: "新業微丘森鄰", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "liangju-shangding", name: "良聚上鼎", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shengyang-zhenmei", name: "昇揚臻美", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "lixiang-dayuan", name: "理想大苑", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yuqing-kaiyuan", name: "餘慶開元", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "dengfeng-baocheng", name: "登峰寶城", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "ancheng-chengmei", name: "安城誠美", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shuheyuan", name: "樹合院", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jinpai", name: "金牌", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yuxi-guojicun", name: "御璽國際村", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "changli-pinyue", name: "昶立品悅", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhuyin-dajingxi", name: "住寅大晶囍", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yongzhu-shangcheng", name: "永築上承", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "qiaoli-me-town", name: "喬立ME TOWN", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-chuntian", name: "富宇春天", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "lizhi-kaisa", name: "麗緻凱撒", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yunjiang-shangshangqian", name: "允將上上謙", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yongzhu-chengjing", name: "永築承境", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "heyang-fuzhu", name: "合揚馥筑", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "heya-linju", name: "賀雅麟居", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "wanda-wushu", name: "萬大吾墅", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "qiaohan-taihe", name: "喬翰泰和", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "heyuan-15", name: "荷園15", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-daqi", name: "富宇大器", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-damei", name: "富宇大美", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jialai-hegang", name: "家來賀崗", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-damei-2-hengmei", name: "富宇大美2恆美", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-tianheng", name: "富宇天恆", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "baochen-yisentian", name: "保辰一森恬", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "chengshi-mushang", name: "澄石慕上", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "quanmei-yumingxiu", name: "泉美御明秀", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-mingxiu", name: "富宇明秀", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-hongguan", name: "富宇宏觀", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "kunyue-muguangshu", name: "坤悅沐光墅", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "kunyue-muguangdi", name: "坤悅沐光邸", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shijieyijing-siji", name: "世界一景四季區", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shijieyijing-lichi", name: "世界一景麗池區", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "hongyi-shu", name: "鴻藝墅", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "baolai-shoufu", name: "寶萊首賦", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jingyi-puzhen", name: "敬益璞真", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "deguang-xingjing", name: "德光興境", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-kaiyue", name: "富宇凱悅", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-kaiyue-3", name: "富宇凱悅3", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhonggang-dibao", name: "中港帝堡", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "dachi-zhijian", name: "大尺之間", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "baogeli-zhuangyuan", name: "寶格麗莊園", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "deguang-xingfu", name: "德光興富", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "green-h", name: "Green H", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-dadi", name: "富宇大地", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhuyue-yongyue", name: "築玥詠月", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fulin-leju", name: "富霖樂居", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "puyi-henghao", name: "璞邑恆好", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "ancheng-qinmei", name: "安城沁美", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fulin-zanmei", name: "富霖讚美", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jujiang-rongjing-2", name: "巨匠榮景2", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "caiying-longchi-2", name: "采楹龍馳2", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "donghai-guanzhi", name: "東海觀止", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "caiying-longchi", name: "采楹龍馳", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jialibao", name: "佳麗堡", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "xiangshang-lu", name: "向上鹿", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shengmei-xiangshang", name: "勝美向上", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jieyi-hengzhan", name: "倢俋恆綻", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "wushi-sanzhang", name: "悟實參章", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "deguang-yuanhao", name: "德光願好", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "deguang-yuanwang", name: "德光願旺", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yuguo-tianquan", name: "裕國天泉溫泉會館", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "guanglin-yiyuan", name: "廣林怡園", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-tequ", name: "馥域特區", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "tairan-ju", name: "泰然居", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhenshangmei-7", name: "臻上美7", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhuyue-yingyue", name: "築玥映月", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "wangzhan-meilirensheng", name: "旺展美麗人生", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yuguo-tianmu", name: "裕國天沐", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yongzhu-jipin", name: "永築集品", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "baiyu-lishu-3", name: "百昱麗墅3", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yao-xingfu", name: "曜幸福", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "xingfu-youcheng", name: "幸福有城", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "xingfu-youcheng-2", name: "幸福有城2", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "wanji-zhuyin", name: "萬基築印", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "puyi-hengle", name: "璞邑恆樂", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhenshangmei-6", name: "臻上美6", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
 ];
 
 /* ─────────────── 座標 ─────────────── */
