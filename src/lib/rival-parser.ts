@@ -347,9 +347,13 @@ function parseOne(rawBlock: string): RivalRow {
     parking,
     parkingInPrice: /已含售金內|含車位|含於總價/.test(parkingRaw) || areaInclParking,
     parkingRaw,
+    // ⚠️ 數字後面不准接「萬」。瀏覽人數空白時 \s* 會吃掉換行、抓到下一行的開價
+    //    （698 萬元 → 瀏覽 698 → 判成「高於同社區」），整個判讀翻掉。
+    //    ⚠️ 光寫 (?!\s*萬) 不夠：regex 會回溯，698 不行就退成 69（後面是 8 不是萬）。
+    //    要再加 (?![\d,]) 逼它抓完整的數字。
     views: firstNum(full, [
-      /瀏覽人數[：:]\s*([\d,]+)/,
-      /瀏覽[人次數]{0,2}[：:]\s*([\d,]+)/,
+      /瀏覽人數[：:]\s*([\d,]+)(?![\d,])(?!\s*萬)/,
+      /瀏覽[人次數]{0,2}[：:]\s*([\d,]+)(?![\d,])(?!\s*萬)/,
       /瀏覽\s*([\d,]+)\s*次/,
     ]),
     // 同樣的黏成一行問題：先試「往前看下一個標籤」，再退回換行版
@@ -438,6 +442,40 @@ export function computeUnit(r: RivalRow): RivalRow {
     r.warn.push(`我算的單價 ${r.unit} 跟 591 顯示的 ${r.unit591} 對不上，開價或坪數可能抓錯`);
   }
   return r;
+}
+
+/* ---------------- 組裝：本案 + 競品，先擋掉使用者手滑 ---------------- */
+
+/**
+ * 🔴 同一個 591 編號只能算一則。
+ *   ① 本案不小心也貼進競品框 → 後面的去重會把自己跟自己合併，瀏覽數翻倍、變成「2 家刊登」
+ *   ② 同一則在競品裡貼了兩次（不相鄰，splitRecords 接不回去）→ 一樣會被當成兩家在刊
+ * 這兩種是手滑，不是市場資訊，直接丟掉並回報，讓畫面告訴使用者。
+ * 放在這裡而不是畫面層，是為了讓 check:rival 測得到。
+ */
+export function assembleRows(mine: RivalRow[], rivals: RivalRow[]): { rows: RivalRow[]; dropped: string[] } {
+  const self = mine.slice(0, 1);
+  self.forEach((r) => (r.isSelf = true));
+
+  const dropped: string[] = [];
+  const seen = new Set(self.map((r) => r.id).filter(Boolean));
+  const kept: RivalRow[] = [];
+  for (const r of rivals) {
+    r.isSelf = false;
+    if (r.id && seen.has(r.id)) {
+      dropped.push(
+        self.some((s) => s.id === r.id)
+          ? `${r.id} 跟「我的物件」是同一則刊登，已從競品裡拿掉（不然會自己跟自己比、瀏覽數翻倍）`
+          : `${r.id} 在競品裡貼了兩次，只算一次`,
+      );
+      continue;
+    }
+    if (r.id) seen.add(r.id);
+    kept.push(r);
+  }
+  const rows = self.concat(kept);
+  detectDupes(rows);
+  return { rows, dropped };
 }
 
 /* ---------------- 去重 ---------------- */

@@ -40,6 +40,7 @@ export type HeatLevel = "high" | "mid" | "low" | "unknown";
 export type DiagnosisKey =
   | "nodata"
   | "needanswer"
+  | "norivals"
   | "exposure"
   | "price"
   | "inquiry"
@@ -371,6 +372,19 @@ export function diagnose(A: Analysis, ans: Answers): Diagnosis {
     };
   }
 
+  // 熱度是「相對於同社區其他在售戶」判的；一戶競品都沒有（或都缺瀏覽數）就判不出來。
+  // 硬判會印出「中位數（null 次）的 0%」，而且結論站不住腳。
+  if (A.heatLevel === "unknown" && !A.heatAbsPass) {
+    // 三種原因要分開講，不然「本案沒瀏覽數」會被講成「沒有競品」，使用者會去貼錯東西
+    const reason =
+      A.others.length === 0
+        ? { title: "還沒有可以比較的競品", body: "熱度是拿本案跟同社區其他在售戶比出來的。請至少貼 2～3 戶同社區、同房型的在售物件，才判得出本案是不是被冷落。" }
+        : A.selfViews == null
+          ? { title: "本案沒有瀏覽數", body: "591 頁面上沒抓到本案的「瀏覽人數」，熱度算不出來。請回到確認表，在本案那一列的「瀏覽」欄補上 591 顯示的數字。" }
+          : { title: "競品都沒有瀏覽數", body: "貼進來的競品一戶都沒抓到「瀏覽人數」，沒有東西可以跟本案比。請回到確認表補上，或換貼有顯示瀏覽人數的物件。" };
+    return { key: "norivals", tone: "wait", ...reason };
+  }
+
   if (!A.heatPass) {
     const why = A.absMeaningless
       ? `本案 ${A.selfViews} 次，只有其他在售戶中位數（${A.othersMedian} 次）的 ${Math.round((A.ratio ?? 0) * 100)}%，在 ${A.viewRanked} 戶中排第 ${A.viewRank} 高`
@@ -446,7 +460,7 @@ export interface Conclusion {
  */
 export function buildConclusion(A: Analysis, dx: Diagnosis): Conclusion | null {
   const s = A.self;
-  if (!s || s.unit == null || dx.key === "nodata" || dx.key === "needanswer") return null;
+  if (!s || s.unit == null || dx.key === "nodata" || dx.key === "needanswer" || dx.key === "norivals") return null;
   const name = s.community || "這個社區";
   const segs: { t: string; short?: string; req: boolean }[] = [];
 
@@ -725,7 +739,7 @@ export function buildPlainText(A: Analysis, dx: Diagnosis, C: Conclusion | null)
 
   /* 第四段 */
   L.push("━━ 第四段：判讀卡在哪 ━━");
-  if (dx.key === "needanswer" || dx.key === "nodata") L.push(dx.title);
+  if (dx.key === "needanswer" || dx.key === "nodata" || dx.key === "norivals") L.push(dx.title);
   else {
     L.push(`結論：${dx.title}`);
     if (dx.why) L.push(`依據：${dx.why}`);

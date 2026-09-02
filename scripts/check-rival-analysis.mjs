@@ -148,5 +148,38 @@ console.log("\n=== F 純文字版 ===");
   ok(txt.split("\n").length > 30, "行數合理", txt.split("\n").length, ">30");
 }
 
+
+console.log("");
+console.log("=== H 使用者手滑與缺欄位（優化批次補的） ===");
+{
+  const { assembleRows } = await import("../src/lib/rival-parser.ts");
+  const asm = (mineText, rivalText) => {
+    const mine = parseMany(mineText).map(computeUnit);
+    const rivals = parseMany(rivalText).map(computeUnit);
+    return assembleRows(mine, rivals);
+  };
+  // ① 本案也貼進競品框 → 要丟掉，不能自己跟自己合併
+  const a = asm(mk(SELF), mk(SELF));
+  ok(a.rows.length === 1 && a.dropped.length === 1, "本案貼進競品框→丟掉並回報", `${a.rows.length} 列/丟 ${a.dropped.length}`, "1 列/丟 1");
+  const A1 = analyze(buildUnits(a.rows), a.rows);
+  ok(A1.self?.listingCount === 1 && A1.self?.views === 27, "本案仍是 1 家、瀏覽 27", `${A1.self?.listingCount}家/${A1.self?.views}`, "1家/27");
+  // ② 同一則不相鄰貼兩次 → 只算一次
+  const b = asm(mk(SELF), [mk(六戶[0]), mk(六戶[1]), mk(六戶[0])].join("\n"));
+  ok(b.rows.length === 3 && b.dropped.length === 1, "同編號不相鄰重貼→只算一次", `${b.rows.length} 列/丟 ${b.dropped.length}`, "3 列/丟 1");
+  // ③ 瀏覽人數空白 → 不能抓到下一行的開價
+  const c = parseMany(mk(SELF).replace("瀏覽人數：27", "瀏覽人數："))[0];
+  ok(c.views === null, "瀏覽人數空白→null（不是開價 698）", c.views, "null");
+  // ④ 只貼本案 → 判讀要說「沒有競品」，不能印 null
+  const d = run(SELF, [], { call: "yes", view: "no", offer: "no" });
+  ok(d.dx.key === "norivals" && d.dx.title.includes("競品"), "沒競品→norivals", d.dx.title, "還沒有可以比較的競品");
+  ok(!/null|NaN|undefined/.test(d.dx.body), "沒有 null/NaN 外漏", "ok", "ok");
+  // ⑤ 本案缺瀏覽數、競品有 → 要說「本案沒有瀏覽數」
+  const mineNoViews = parseMany(mk(SELF).replace("瀏覽人數：27", "瀏覽人數：")).map(computeUnit);
+  const e = assembleRows(mineNoViews, parseMany(六戶.slice(0, 3).map(mk).join("\n")).map(computeUnit));
+  const E = analyze(buildUnits(e.rows), e.rows);
+  const dxE = diagnose(E, { call: "yes", view: "no", offer: "no" });
+  ok(dxE.key === "norivals" && dxE.title.includes("本案"), "本案缺瀏覽數→講對原因", dxE.title, "本案沒有瀏覽數");
+}
+
 console.log("\n" + (pass ? "✅ 分析引擎全部通過" : "❌ 有錯，不要接畫面"));
 process.exit(pass ? 0 : 1);

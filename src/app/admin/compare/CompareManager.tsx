@@ -21,6 +21,7 @@ import { useMemo, useState } from "react";
 import { OWNER } from "@/config/owner";
 import { Icon } from "@/app/admin/_ui/icons";
 import {
+  assembleRows,
   computeUnit,
   detectDupes,
   parseMany,
@@ -81,6 +82,8 @@ export default function CompareManager() {
   const [tick, setTick] = useState(0); // rows 就地修改後靠它強制重算
   const [showPlain, setShowPlain] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  /** 辨識時被我丟掉的東西（重複貼、本案貼到競品框），要讓使用者知道 */
+  const [dropped, setDropped] = useState<string[]>([]);
 
   const refresh = () => setTick((t) => t + 1);
 
@@ -90,14 +93,14 @@ export default function CompareManager() {
     if (mine.length > 1) {
       mine[0].warn.push(`「我的物件」框裡貼了 ${mine.length} 筆，我只取第一筆，其餘請剪到競品框`);
     }
-    const self = mine.slice(0, 1);
-    self.forEach((r) => (r.isSelf = true));
-    rivals.forEach((r) => (r.isSelf = false));
-    const next = self.concat(rivals);
-    detectDupes(next);
+    // 同編號去重與本案自撞的防護在函式庫裡（assembleRows），這裡只負責顯示
+    const { rows: next, dropped: notes } = assembleRows(mine, rivals);
     setRows(next);
+    setDropped(notes);
     setShowPlain(false);
     refresh();
+    // 結果在下面，不捲過去的話按了像沒反應（本機單檔版有這個，搬過來時漏了）
+    setTimeout(() => document.getElementById("cmp-result")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
 
   const answers: Answers = { call, view, offer };
@@ -157,8 +160,15 @@ export default function CompareManager() {
 
       {result ? (
         <>
+          <div id="cmp-result" />
+          {dropped.length ? (
+            <div className={`${styles.alert} ${styles.alertWarn} ${styles.noPrint}`}>
+              <b>有 {dropped.length} 筆我沒收進去：</b>
+              <ul>{dropped.map((t, i) => <li key={i}>{t}</li>)}</ul>
+            </div>
+          ) : null}
           <ConfirmTable rows={rows!} A={result.A} onChange={refresh} onReparse={runParse} onCopyDiag={() => copy(buildDiagnostic(rows!), "diag")} copied={copied === "diag"} />
-          <PrintHead A={result.A} />
+          {result.A.self ? <PrintHead A={result.A} /> : null}
           <Section1 A={result.A} />
           <Section2 A={result.A} />
           <Section3 A={result.A} />
@@ -875,7 +885,7 @@ function Section4({ dx }: { dx: ReturnType<typeof diagnose> }) {
   return (
     <section className={`${styles.card} ${styles.sec}`}>
       <h2 className={styles.sech}>第四段：判讀卡在哪</h2>
-      {dx.key === "needanswer" ? (
+      {dx.key === "needanswer" || dx.key === "norivals" ? (
         <div className={`${styles.alert} ${styles.alertWarn}`}><b>{dx.title}</b><br />{dx.body}</div>
       ) : (
         <>
