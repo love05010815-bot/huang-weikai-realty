@@ -1965,6 +1965,36 @@ export const PROJECTS: Project[] = [
   { id: "wanji-zhuyin", name: "萬基築印", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "puyi-hengle", name: "璞邑恆樂", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "zhenshangmei-6", name: "臻上美6", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+
+  /* ── 新光田追加 16 案（2026-09-02，系統擁有者標座標時補的）──
+     他一次講了 19 個，其中**裕國天沐、裕國天泉溫泉會館、馥域特區這 3 案上一批已經有了**，
+     沒有重複建立（重複的話清單會出現兩筆同名建案）。
+
+     ⚠️ **案名做了分隔符號的統一，內容一個字沒改：**
+        ・橘郡那四案他打了三種寫法（`橘郡-比利時區`、`橘郡 盧森堡區`、`橘郡波蘭B.C區`），
+          統一成全形「－」，跟站上既有的「國雄北歐莊園－森林區」「宏亞里想國－大樓區」對齊。
+        ・`再遇天鵝堡白天鵝` → `再遇天鵝堡／白天鵝`，跟它的姊妹案「再遇天鵝堡／藍天鵝」對齊
+          （那個「／」是他自己打的）。
+        🔴 **這是我替他統一的，不是他給的原文** —— 他說要照原樣就改回來。
+
+     ⚠️ builder／completion／status 一律待確認，跟上一批 107 案同樣處理。
+        **「佳瓚鹿瓚」沒有照案名填佳瓚建設**，雖然全站只有這一家「佳瓚」。 */
+  { id: "zaiyu-tianebao-bai", name: "再遇天鵝堡／白天鵝", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhonggang-nuowei", name: "中港挪威社區", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jujun-bilishi", name: "橘郡－比利時區", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jujun-lusenbao", name: "橘郡－盧森堡區", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jujun-jieke", name: "橘郡－捷克區", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jujun-bolan-bc", name: "橘郡－波蘭B.C區", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jujun-3", name: "橘郡3", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "riri-xiangshang-xinchengshi", name: "日日向上 薪城市", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jiazan-luzan", name: "佳瓚鹿瓚", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "donghai-liange", name: "東海戀歌", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "tianmu-yingcheng", name: "天母櫻城", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "baiyu-lishu", name: "百昱麗墅", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "baiyu-lishu-2", name: "百昱麗墅2", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "quanguo-zhenpin", name: "詮國臻品", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "qingkong-weilai", name: "青空蔚來", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "sakura-xiangshangzhiying", name: "櫻花向上之櫻", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
 ];
 
 /* ─────────────── 座標 ─────────────── */
@@ -2278,6 +2308,59 @@ export const COORDS: Record<string, Coord> = {
   "yage-zhijing": { lat: 24.2213, lng: 120.57804, precision: "exact" }, // 亞哥織境
   "futeng-youtianju": { lat: 24.22468, lng: 120.58183, precision: "exact" }, // 富騰有田居
   "deyi-zhifu-2": { lat: 24.22821, lng: 120.56644, precision: "exact" }, // 德邑致富2－必勝特區
+
+  /* ── 新光田特區，第一批 41 案（2026-09-02，系統擁有者用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、區域都是新光田、precision 全 exact、
+     本批不重複、沒有覆蓋既有座標、30 公尺內沒有任何鄰居。
+
+     ⚠️ **「宏亞晴耕」24.21159/120.57813 的點在新光田色塊外 28 公尺、在北勢靜宜色塊內 28 公尺。**
+        **不是點錯，也不要改。** 量過才發現：**北勢靜宜與新光田這兩塊色塊在那一帶是重疊的**
+        （北勢靜宜有 6/46 個頂點落在新光田裡，新光田有 9/48 個落在北勢靜宜裡），
+        接縫是一條帶不是一條線。同緯度更北的「新業微丘森鄰」24.21164 反而在新光田內 ——
+        差別在經度，邊界在那裡本來就是彎的。
+        🔵 **通則：一個點落在別區色塊裡，先量它離兩邊邊界多遠再說。** 卡在接縫上是正常的，
+        建案屬於哪一區看的是 `area` 欄位，不是它壓在哪一塊多邊形上。 */
+  "hongya-qinggeng": { lat: 24.21159, lng: 120.57813, precision: "exact" }, // 宏亞晴耕
+  "jiutang-tianebao-2": { lat: 24.21066, lng: 120.5806, precision: "exact" }, // 久樘天鵝堡2
+  "zaiyu-tianebao": { lat: 24.21005, lng: 120.58093, precision: "exact" }, // 再遇天鵝堡／藍天鵝
+  "km-villa": { lat: 24.21118, lng: 120.57522, precision: "exact" }, // KM Villa
+  "dachi-zhijian": { lat: 24.20782, lng: 120.55976, precision: "exact" }, // 大尺之間
+  "zhonggang-dibao": { lat: 24.20637, lng: 120.5617, precision: "exact" }, // 中港帝堡
+  "yunjiang-shangshangqian": { lat: 24.20572, lng: 120.56667, precision: "exact" }, // 允將上上謙
+  "lizhi-kaisa": { lat: 24.20521, lng: 120.56609, precision: "exact" }, // 麗緻凱撒
+  "qiaoli-me-town": { lat: 24.20586, lng: 120.5674, precision: "exact" }, // 喬立ME TOWN
+  "fuyu-chuntian": { lat: 24.20646, lng: 120.56479, precision: "exact" }, // 富宇春天
+  "jialibao": { lat: 24.20103, lng: 120.56314, precision: "exact" }, // 佳麗堡
+  "shijieyijing-siji": { lat: 24.20161, lng: 120.57018, precision: "exact" }, // 世界一景四季區
+  "shijieyijing-lichi": { lat: 24.20236, lng: 120.56947, precision: "exact" }, // 世界一景麗池區
+  "xingfu-youcheng": { lat: 24.19183, lng: 120.56236, precision: "exact" }, // 幸福有城
+  "xingfu-youcheng-2": { lat: 24.19224, lng: 120.5615, precision: "exact" }, // 幸福有城2
+  "puyi-hengle": { lat: 24.19211, lng: 120.56417, precision: "exact" }, // 璞邑恆樂
+  "wanji-zhuyin": { lat: 24.1922, lng: 120.56359, precision: "exact" }, // 萬基築印
+  "zhenshangmei-7": { lat: 24.19304, lng: 120.5624, precision: "exact" }, // 臻上美7
+  "tairan-ju": { lat: 24.19353, lng: 120.56168, precision: "exact" }, // 泰然居
+  "zhenshangmei-6": { lat: 24.19216, lng: 120.56275, precision: "exact" }, // 臻上美6
+  "zhuyue-yingyue": { lat: 24.19411, lng: 120.56087, precision: "exact" }, // 築玥映月
+  "wangzhan-meilirensheng": { lat: 24.195, lng: 120.55993, precision: "exact" }, // 旺展美麗人生
+  "yongzhu-jipin": { lat: 24.1958, lng: 120.56022, precision: "exact" }, // 永築集品
+  "fuyu-dadi": { lat: 24.20325, lng: 120.55872, precision: "exact" }, // 富宇大地
+  "puyi-henghao": { lat: 24.20218, lng: 120.56026, precision: "exact" }, // 璞邑恆好
+  "ancheng-qinmei": { lat: 24.20204, lng: 120.55978, precision: "exact" }, // 安城沁美
+  "zhuyue-yongyue": { lat: 24.20184, lng: 120.55939, precision: "exact" }, // 築玥詠月
+  "fulin-leju": { lat: 24.20157, lng: 120.55932, precision: "exact" }, // 富霖樂居
+  "xinye-weiqiu-senlin": { lat: 24.21164, lng: 120.56971, precision: "exact" }, // 新業微丘森鄰
+  "shengyang-zhenmei": { lat: 24.21109, lng: 120.56901, precision: "exact" }, // 昇揚臻美
+  "liangju-shangding": { lat: 24.21237, lng: 120.5698, precision: "exact" }, // 良聚上鼎
+  "wanda-qinghe": { lat: 24.21205, lng: 120.57282, precision: "exact" }, // 萬大青禾
+  "meishu-shang": { lat: 24.21028, lng: 120.57288, precision: "exact" }, // 美墅賞
+  "heya-linju": { lat: 24.20827, lng: 120.57045, precision: "exact" }, // 賀雅麟居
+  "wanda-wushu": { lat: 24.20867, lng: 120.56963, precision: "exact" }, // 萬大吾墅
+  "heyang-fuzhu": { lat: 24.20796, lng: 120.57016, precision: "exact" }, // 合揚馥筑
+  "chengshi-mushang": { lat: 24.20772, lng: 120.56913, precision: "exact" }, // 澄石慕上
+  "tianfu-yangzhen": { lat: 24.20791, lng: 120.57623, precision: "exact" }, // 天府養真
+  "jujiang-rongjing-2": { lat: 24.20067, lng: 120.55827, precision: "exact" }, // 巨匠榮景2
+  "yongzhu-shangcheng": { lat: 24.20866, lng: 120.56776, precision: "exact" }, // 永築上承
+  "yongzhu-chengjing": { lat: 24.20633, lng: 120.57116, precision: "exact" }, // 永築承境
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
