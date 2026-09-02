@@ -1115,7 +1115,7 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
   {
-    id: "jiazan-dazan", name: "佳瓚大讚", builder: "佳瓚建設體系", area: "鹿寮萬家福",
+    id: "jiazan-dazan", name: "佳瓚大讚", builder: "佳瓚建設", area: "鹿寮萬家福",
     status: "presale", completion: "2027",
     statusNote: "預售，預計 2027 年", street: "中山路", streets: "沙鹿區 中山路 495 巷一帶",
     sources: ["owner"],
@@ -1383,7 +1383,7 @@ export const PROJECTS: Project[] = [
     id: "qinghong-xinyuan", name: "清浤芯園", builder: "清浤建設體系", area: "北勢靜宜",
     status: "completed", completion: "成屋", units: 14,
     street: "自由路", streets: "沙鹿區 自由路 210 號",
-    layout: "透天", floors: "地上 3～4 層", siteAreaPing: 484,
+    layout: "透天", floors: "地上 3／4 層", siteAreaPing: 484,
     sources: ["owner"],
   },
   {
@@ -1673,7 +1673,7 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
   {
-    id: "zheyu-win-plus", name: "哲宇W IN+", builder: "哲宇建設體系", area: "北勢靜宜",
+    id: "zheyu-win-plus", name: "哲宇W·IN", builder: "哲宇建設體系", area: "北勢靜宜",
     status: "completed", statusNote: "成屋／近年案", completion: "成屋",
     sources: ["owner"],
   },
