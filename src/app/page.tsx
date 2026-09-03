@@ -215,10 +215,10 @@ export default async function HomePage() {
         </div>
       </header>
 
-      {/* 桌機右側固定的社群直排（1220px 以上一直在，負責捲動時也看得到）。
-          ⚠️ 一定要放在 <header> 外面 —— header 的 backdrop-filter 會把 position:fixed 的
-             子元素關在 header 裡。原本想塞進 header 那一排，量過塞不下（見 SiteNav.tsx）。 */}
-      <SocialLinks variant="float" />
+      {/* 🚫 首頁不放右側固定的社群直排（子頁有）。2026-09-03 系統擁有者看過線上後指定：
+          「首頁的側邊條不出現，出現在子頁就好」—— 首頁 hero 右上已經有藥丸，
+          右緣再一條直排跟形象照擠在同一側。要放回來就 <SocialLinks variant="float" />，
+          放在 <header> 外面（header 的 backdrop-filter 會把 fixed 子元素關在 header 裡）。 */}
       <main id="top">
         {/* ---------------- HERO ---------------- */}
         <section className={styles.hero} aria-label={`${OWNER.name}個人形象介紹`}>
@@ -226,7 +226,7 @@ export default async function HomePage() {
               ⚠️ **不能改放按鈕下面**：860px 以下 `.heroPhotoWrap` 是 `order: -1`，
                  形象照（260×320）排在所有文字前面，按鈕已經在手機第一屏以外了。
                  這種錯法桌機看起來完全正常，只有手機看不到，而且不會有任何錯誤訊息。
-              所有寬度都顯示；桌機另有右側固定直排（下面的 variant="float"）負責捲動時也看得到。 */}
+              所有寬度都顯示。首頁沒有右側直排（系統擁有者指定只給子頁），捲走就捲走。 */}
           <SocialLinks variant="bar" />
           <div className={styles.heroInner}>
             <div>
@@ -478,7 +478,7 @@ export default async function HomePage() {
               </div>
             </div>
             {/* 2026-09-03 這裡原本還有一排社群底磚，系統擁有者拍板拿掉 ——
-                上面 hero 頂端的藥丸＋桌機捲動後的右側直排已經夠了，
+                上面 hero 頂端的藥丸已經夠了，
                 同一頁第三排是雜訊。要放回來就 <SocialLinks variant="tiles" />。 */}
           </div>
         </section>
