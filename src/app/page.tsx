@@ -50,13 +50,13 @@ export const metadata: Metadata = {
       "112、113、114年連續三年年度千萬經紀人。深耕台中海線沙鹿、梧棲、清水、龍井，提供買賣租賃、資金配置規劃、稅費諮詢、市場分析、裝潢資源媒合一站式服務。",
     url: "/",
     siteName: `${OWNER.name}｜台中海線房仲`,
-    images: [{ url: "/profile.jpg", width: 1029, height: 1543, alt: `${OWNER.name}形象照` }],
+    images: [{ url: "/profile-2026-09.jpg", width: 1029, height: 1543, alt: `${OWNER.name}形象照` }],
   },
   twitter: {
     card: "summary_large_image",
     title: `台中海線房仲${OWNER.name}｜買賣租賃・稅費諮詢・市場分析`,
     description: "112、113、114年連續三年年度千萬經紀人。深耕台中海線沙鹿、梧棲、清水、龍井。",
-    images: ["/profile.jpg"],
+    images: ["/profile-2026-09.jpg"],
   },
 };
 
@@ -141,7 +141,7 @@ const jsonLd = {
   "@context": "https://schema.org",
   "@type": "RealEstateAgent",
   name: OWNER.name,
-  image: `${SITE_URL}/profile.jpg`,
+  image: `${SITE_URL}/profile-2026-09.jpg`,
   url: SITE_URL,
   telephone: "+886-909-787-865",
   areaServed: AREAS.map((area) => ({ "@type": "Place", name: `台中市${area.name}` })),
@@ -273,7 +273,7 @@ export default async function HomePage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 className={styles.heroPhoto}
-                src="/profile.jpg"
+                src="/profile-2026-09.jpg"
                 alt={`${OWNER.name}－${OWNER.company}梧棲新市鎮旗艦店副店長形象照`}
                 width={320}
                 height={400}

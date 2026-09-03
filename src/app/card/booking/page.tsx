@@ -25,13 +25,13 @@ export const metadata: Metadata = {
     description: `買賣租賃、資金配置規劃、稅費諮詢、市場分析、裝潢資源媒合，線上選時段直接預約${OWNER.name}。`,
     url: "/card/booking",
     siteName: `${OWNER.name}｜台中海線房仲`,
-    images: [{ url: "/profile.jpg", alt: `${OWNER.name}形象照` }],
+    images: [{ url: "/profile-2026-09.jpg", alt: `${OWNER.name}形象照` }],
   },
   twitter: {
     card: "summary_large_image",
     title: `線上預約諮詢｜台中海線房仲${OWNER.name}`,
     description: `買賣租賃、資金配置規劃、稅費諮詢、市場分析、裝潢資源媒合，線上選時段直接預約。`,
-    images: ["/profile.jpg"],
+    images: ["/profile-2026-09.jpg"],
   },
 };
 

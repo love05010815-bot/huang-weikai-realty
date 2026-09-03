@@ -138,13 +138,13 @@ export const metadata: Metadata = {
     description: `${stats.total} 個建案，可依區域、預售／成屋與建商篩選。`,
     url: "/map",
     siteName: `${OWNER.name}｜台中海線房仲`,
-    images: [{ url: "/profile.jpg", width: 1029, height: 1543, alt: `${OWNER.name}形象照` }],
+    images: [{ url: "/profile-2026-09.jpg", width: 1029, height: 1543, alt: `${OWNER.name}形象照` }],
   },
   twitter: {
     card: "summary_large_image",
     title: `台中海線建案地圖｜梧棲・清水・沙鹿 ${stats.total} 個建案`,
     description: `${stats.total} 個建案，可依預售／成屋與建商篩選。`,
-    images: ["/profile.jpg"],
+    images: ["/profile-2026-09.jpg"],
   },
 };
 
