@@ -13,6 +13,7 @@ import { OWNER, SITE_URL } from "@/config/owner";
 import { getPublicListings } from "@/lib/listings";
 import styles from "../home.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
+import SocialLinks from "@/app/_ui/SocialLinks";
 import lst from "./listings.module.css";
 import FeaturedTitle from "./FeaturedTitle";
 import PhotoCarousel from "./PhotoCarousel";
@@ -80,9 +81,16 @@ export default async function ListingsPage() {
         </div>
       </header>
 
+      {/* 桌機右側固定的社群直排（1220px 以上；以下由內容頂端的 bar 接手）。
+          ⚠️ 一定要放在 <header> 外面 —— header 的 backdrop-filter 會把 position:fixed 的
+             子元素關在 header 裡。原本想塞進 header 那一排，量過塞不下（見 SiteNav.tsx）。 */}
+      <SocialLinks variant="float" />
       <main>
         <section className={styles.section}>
           <div className={`${styles.container} ${styles.center}`}>
+            {/* 社群連結（1219px 以下顯示；1220 以上由右側固定直排接手）。
+                放在第一個 section 最上面，手機一打開就看得到 —— 跟首頁 hero 同一個位置邏輯 */}
+            <SocialLinks variant="bar" />
             <span className={styles.eyebrow}>LISTINGS</span>
             <FeaturedTitle as="h1" className={styles.sectionTitle} />
             <p className={styles.sectionDesc}>

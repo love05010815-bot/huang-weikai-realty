@@ -1,16 +1,197 @@
-/* 📱 追蹤社群那一排的樣式。脈絡見 SocialLinks.tsx 的檔頭。
+/* 📱 社群連結的樣式（nav／bar／tiles 三種）。脈絡見 SocialLinks.tsx 的檔頭。
 
    ⚠️ 跟 SiteNav 一樣**故意自己帶樣式**，不寫進 home.module.css ——
-   共用元件要能貼到任何一頁上，樣式綁在某一頁的 module 裡就搬不動了。 */
+   共用元件要能貼到任何一頁上，樣式綁在某一頁的 module 裡就搬不動了。
 
+   ============================================================
+   🔴 斷點 1220：右側固定直排（.float）與內容頂端那條（.bar）互斥
+   ============================================================
+
+   1220px 以上：.float 顯示（釘在視窗右側中間，往下捲也一直看得到）、.bar 隱藏。
+   1219px 以下：.float 隱藏、.bar 顯示。
+
+   為什麼是 1220（不是 1200）：內容容器 1080px，**視窗寬要先扣掉 15px 的捲軸**。
+   1200 時可用寬 1185，兩側各剩 52.5px；直排本體 48px（icon 34＋左右 padding 6×2＋邊框）
+   ＋ 離右邊 14px ＝ 62px，會壓到容器 9.5px。1220 時兩側各 62.5px，剛好放得進去。
+   （1280 實測：直排在 x=1203～1251，容器右緣 1173，中間空 30px。）
+
+   ⚠️ 這個數字在這個檔裡出現兩次（.float 的 min-width 與 .bar 的 max-width），
+      兩處一定要同時改，不然中間那段寬度會變成「兩排都在」或「兩排都不在」，
+      而且不會報錯。
+
+   🚫 原本想放進 header 那一排，量過塞不下（1163 > 1080，見 SiteNav.tsx），不要再試。 */
+
+/* ============================================================
+   variant="float" —— 桌機右側固定的直排
+   ============================================================ */
+.float {
+  display: none;
+  position: fixed;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  /* 低於 header（100）與浮動 LINE 鈕（200）：它是輔助入口，不該壓在主要東西上面 */
+  z-index: 90;
+  padding: 6px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 24px rgba(18, 42, 56, 0.14);
+  backdrop-filter: blur(8px);
+}
+
+@media (min-width: 1220px) {
+  .float {
+    display: block;
+  }
+}
+
+.floatList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.floatList > li {
+  display: flex;
+}
+
+/* icon 22px，padding 撐到 34×34。桌機是滑鼠為主，不用像 bar 那樣撐到 44 */
+.floatBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 9px;
+  text-decoration: none;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.floatBtn:hover,
+.floatBtn:focus-visible {
+  transform: translateX(-2px);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.floatBtn:focus-visible {
+  outline: 2px solid var(--accent, #dab38a);
+  outline-offset: 1px;
+}
+
+/* ============================================================
+   variant="bar" —— 每一頁內容最上面那一條
+   ============================================================ */
+.bar {
+  max-width: 1080px;
+  margin: 0 auto 26px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* 1220 以上右側直排接手，這條收掉。數字要跟上面 .float 的一致，見檔頭。
+   例外：帶 .barPersistent 的（/map）沒有右側直排可以接手，所以一直顯示。 */
+@media (min-width: 1220px) {
+  .bar:not(.barPersistent) {
+    display: none;
+  }
+}
+
+.barTitle {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--muted, #7a6f68);
+  margin-right: 8px;
+}
+
+/* 標題長短兩句：861px 以上顯示長句（有空間說理由），860px 以下換短句。
+
+   ⚠️ 實測（2026-09-03，375px）：短句 9 個字 126px ＋ 右邊距 8 ＋ 間距 4 ＋ 四顆 icon 188
+   ＝ 326px。**首頁** hero 左右各留 20px、可用 335px → 放得下一行；
+   **子頁**的 .container 左右各留 28px、可用只有 319px → 折成兩行（標題在上、icon 在下，
+   都置中，不算破版但跟首頁不一致）。所以 480px 以下把標題縮到 12px、字距收窄、
+   右邊距 6：126 → 約 117，總寬 315 ≤ 319，子頁 375 也是一行。
+   360px 的 Android 子頁只有 304px，仍會折成兩行 —— 刻意不再縮 icon 的 44px 可點範圍去湊。 */
+.barTitleShort {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .barTitle {
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    margin-right: 6px;
+  }
+}
+
+.barList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.barList > li {
+  display: flex;
+}
+
+/* icon 本身 30px，靠 padding 把可點範圍撐到 44px —— 手指的最小目標尺寸。
+   只把 icon 做大會讓那一排在窄螢幕上太笨重。 */
+.barBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: transform 0.18s ease, background-color 0.18s ease;
+}
+
+.barBtn:hover,
+.barBtn:focus-visible {
+  transform: translateY(-2px);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.barBtn:focus-visible {
+  outline: 2px solid var(--accent, #dab38a);
+  outline-offset: 1px;
+}
+
+/* 860px 是首頁 hero 從兩欄變一欄、整段改置中的斷點（見 home.module.css）。
+   那一排跟著置中，標題換短句。 */
+@media (max-width: 860px) {
+  .bar {
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  .barTitleLong {
+    display: none;
+  }
+  .barTitleShort {
+    display: inline;
+  }
+}
+
+/* ============================================================
+   variant="tiles" —— 底磚版
+   ============================================================ */
 .wrap {
   margin-top: 44px;
   text-align: center;
 }
 
-/* 顏色吃 `inherit`，不寫死。
-   現在放在首頁的「預約諮詢」區塊（深底白字），寫死白色沒問題；
-   但哪天搬到淺色區塊，寫死的白字會變成一片看不見的空白，而且不會報錯。 */
+/* 顏色吃 inherit，不寫死。
+   放在深色區塊是白字、放在 /card 淺色卡片上是深字，同一條規則兩邊都對。 */
 .title {
   margin: 0 0 15px;
   font-size: 13px;
@@ -20,30 +201,24 @@
   opacity: 0.72;
 }
 
-/* .row 與 .barList 都是 <ul>，要把瀏覽器預設的圓點、左邊縮排、上下 margin 清掉，
-   不然 icon 那一排會莫名往右偏 40px、上面多一截空白。 */
-.row,
-.barList {
+.row {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   align-items: center;
-}
-
-.row {
   justify-content: center;
   flex-wrap: wrap;
   gap: 14px;
 }
 
-.barList {
-  gap: 4px;
+.row > li {
+  display: flex;
 }
 
-/* 底色寫死白色，不用半透明。
+/* tone="dark"（預設）：白磚。
    四個品牌色差很多（FB 藍／IG 漸層／YT 紅／TikTok 黑），半透明底在深色區塊會讓
-   **TikTok 的黑底方塊整個糊掉**，等於少一顆。白色底四個都跳得出來。 */
+   TikTok 的黑底方塊整個糊掉，等於少一顆。白色底四個都跳得出來。 */
 .btn {
   width: 52px;
   height: 52px;
@@ -71,10 +246,55 @@
   outline-offset: 3px;
 }
 
+/* tone="light"：/card 名片頁。數值照抄名片頁原本自己那套 SocialBtn（50×50、圓角 14、
+   米色底 #F5F1EA、邊框 #DCE4E9、間距 16），換元件不換長相，客戶看不出差別。 */
+.tilesLight {
+  margin-top: 10px;
+}
+
+.tilesLight .title {
+  margin: 0 0 13px;
+  font-size: 12.5px;
+  letter-spacing: 1px;
+  opacity: 1;
+  color: #5c6a73;
+  font-weight: 500;
+}
+
+.tilesLight .row {
+  gap: 16px;
+}
+
+.tilesLight .btn {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  background: #f5f1ea;
+  border: 1px solid #dce4e9;
+  box-shadow: none;
+}
+
+.tilesLight .btn:hover,
+.tilesLight .btn:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(18, 42, 56, 0.12);
+}
+
+.tilesLight .btn:focus-visible {
+  outline: 2px solid #01354d;
+  outline-offset: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .floatBtn,
+  .barBtn,
   .btn {
     transition: none;
   }
+  .floatBtn:hover,
+  .floatBtn:focus-visible,
+  .barBtn:hover,
+  .barBtn:focus-visible,
   .btn:hover,
   .btn:focus-visible {
     transform: none;
@@ -89,91 +309,5 @@
     width: 48px;
     height: 48px;
     border-radius: 14px;
-  }
-}
-
-/* ============================================================
-   variant="bar" —— 首頁 hero 最上面那一條
-
-   目的只有一個：**手機跟桌機一打開就看得到，不用捲。**
-   所以它放在 `.heroInner` 前面（860px 以下形象照是 order:-1，排在所有文字前面，
-   放按鈕下面手機第一屏會看不到）。
-
-   ⚠️ 這裡**故意不用底磚**。hero 的底是 `--soft` → 白的淺色漸層，
-      白色底磚放上去只剩影子看得見，四顆會糊成一團。品牌色直接放最乾淨。
-   ============================================================ */
-.bar {
-  max-width: 1080px;
-  margin: 0 auto 26px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-/* <li> 在 flex 容器裡會被 blockify，本身沒有尺寸問題；
-   但要讓裡面 44×44 的 <a> 決定高度，li 自己不能有 line-height 撐出多餘空間 */
-.row > li,
-.barList > li {
-  display: flex;
-}
-
-.barTitle {
-  font-size: 12.5px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--muted, #7a6f68);
-  margin-right: 8px;
-}
-
-/* icon 本身 30px，靠 padding 把可點範圍撐到 44px —— 手指的最小目標尺寸。
-   只把 icon 做大會讓那一排在窄螢幕上太笨重。 */
-.barBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 7px;
-  border-radius: 12px;
-  text-decoration: none;
-  transition: transform 0.18s ease, background-color 0.18s ease;
-}
-
-.barBtn:hover,
-.barBtn:focus-visible {
-  transform: translateY(-2px);
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.barBtn:focus-visible {
-  outline: 2px solid var(--accent, #dab38a);
-  outline-offset: 1px;
-}
-
-/* 860px 是 hero 從兩欄變一欄、整段改置中的斷點（見 home.module.css）。
-   那一排跟著置中，不然會孤零零貼在右邊。 */
-@media (max-width: 860px) {
-  .bar {
-    justify-content: center;
-    margin-bottom: 20px;
-  }
-}
-
-/* ⚠️ 這裡本來寫「380px 以下把「追蹤瑋凱」收掉」，**是我自己算錯、已經拿掉了**。
-   實際量過：四顆 44px ＋ 三個 4px 間距 ＋ 標題約 52px ＋ 8px 右邊距 ≈ 252px，
-   而 375px 手機扣掉 hero 左右各 20px 還有 335px —— **根本放得下**。
-   收掉的話 iPhone 375／Android 360 這些最常見的尺寸全都看不到那四個字，
-   等於把「叫人去追蹤」的那句話刪掉，換來的空間根本沒人需要。
-
-   真的窄到放不下時（320px 以下）交給 `.bar` 的 `flex-wrap: wrap` ——
-   標題自己掉到上面一行、icon 仍然置中，不會破版。 */
-
-@media (prefers-reduced-motion: reduce) {
-  .barBtn {
-    transition: none;
-  }
-  .barBtn:hover,
-  .barBtn:focus-visible {
-    transform: none;
   }
 }

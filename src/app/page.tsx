@@ -215,13 +215,18 @@ export default async function HomePage() {
         </div>
       </header>
 
+      {/* 桌機右側固定的社群直排（1220px 以上；以下由內容頂端的 bar 接手）。
+          ⚠️ 一定要放在 <header> 外面 —— header 的 backdrop-filter 會把 position:fixed 的
+             子元素關在 header 裡。原本想塞進 header 那一排，量過塞不下（見 SiteNav.tsx）。 */}
+      <SocialLinks variant="float" />
       <main id="top">
         {/* ---------------- HERO ---------------- */}
         <section className={styles.hero} aria-label={`${OWNER.name}個人形象介紹`}>
           {/* 社群連結放在 hero 最上面 —— 2026-09-01 系統擁有者要求「手機或網頁一點開就看得到」。
               ⚠️ **不能改放按鈕下面**：860px 以下 `.heroPhotoWrap` 是 `order: -1`，
                  形象照（260×320）排在所有文字前面，按鈕已經在手機第一屏以外了。
-                 這種錯法桌機看起來完全正常，只有手機看不到，而且不會有任何錯誤訊息。 */}
+                 這種錯法桌機看起來完全正常，只有手機看不到，而且不會有任何錯誤訊息。
+              1220px 以上這條會自動隱藏，改由右側固定直排（下面的 variant="float"）接手。 */}
           <SocialLinks variant="bar" />
           <div className={styles.heroInner}>
             <div>
@@ -472,11 +477,9 @@ export default async function HomePage() {
                 </a>
               </div>
             </div>
-            {/* 追蹤社群（FB／IG／YouTube／TikTok）。放在這裡而不是頁尾，理由有二：
-                一是這一段本來就是「怎麼找到瑋凱」的集散地，二是深底白字讓四個品牌色最跳。
-                ⚠️ 網址在 `src/config/owner.ts` 的 SOCIAL —— **四個都沒填就整區不出現**，
-                   包含「追蹤瑋凱」那行標題，所以現在看不到不是壞掉。 */}
-            <SocialLinks />
+            {/* 2026-09-03 這裡原本還有一排社群底磚，系統擁有者拍板拿掉 ——
+                上面 hero 頂端（1219px 以下）／右側直排（1220px 以上）已經各有一排，
+                同一頁第三排是雜訊。要放回來就 <SocialLinks variant="tiles" />。 */}
           </div>
         </section>
       </main>

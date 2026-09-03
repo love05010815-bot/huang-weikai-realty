@@ -9,7 +9,8 @@ import type { CSSProperties } from "react";
 import { RCIS } from "./_cis";
 import { SOCIAL, ABIN } from "./_links";
 import { SITE_URL } from "@/config/owner";
-import { FacebookIcon, YoutubeIcon, LineIcon, InstagramIcon, TiktokIcon, PhoneIcon, MailIcon, PinIcon, CalendarIcon } from "./_icons";
+import { LineIcon, PhoneIcon, MailIcon, PinIcon, CalendarIcon } from "./_icons";
+import SocialLinks from "@/app/_ui/SocialLinks";
 
 const OG_IMAGE = `${SITE_URL}${ABIN.photoUrl}`;
 
@@ -73,33 +74,9 @@ function ContactRow({ icon, label, href }: { icon: React.ReactNode; label: strin
   );
 }
 
-function SocialBtn({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
-  // 網址還沒填就整顆不要畫 —— href="" 的 <a> 點下去是「重新整理本頁」，
-  // 客戶會以為連結壞掉。owner.ts 的註解一直說會自動隱藏，但這裡以前沒做。
-  if (!href) return null;
-
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={label}
-      title={label}
-      style={{
-        width: 50,
-        height: 50,
-        borderRadius: 14,
-        background: RCIS.bgSoft,
-        border: `1px solid ${RCIS.border}`,
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {children}
-    </a>
-  );
-}
+/* 社群那排 2026-09-03 改用全站共用的 <SocialLinks variant="tiles" tone="light">，
+   這裡原本自己寫的 SocialBtn 刪掉了 —— 兩套寫法的話以後多一個平台要改兩個地方，
+   漏一個不會報錯。長相（50×50、米色底、間距 16）搬進元件的 tone="light" 了，客戶看不出差別。 */
 
 export default function CardPage() {
   return (
@@ -147,24 +124,9 @@ export default function CardPage() {
             <ContactRow icon={<PinIcon size={18} />} label={ABIN.address} />
           </div>
 
-          {/* 社群 */}
+          {/* 社群。網址在 src/config/owner.ts 的 SOCIAL，四個都空的話整區不出現 */}
           <div style={{ padding: "6px 26px 30px", borderTop: `1px solid ${RCIS.line}` }}>
-            <div style={{ fontSize: 12.5, color: RCIS.muted, margin: "16px 0 13px", textAlign: "center", letterSpacing: 1 }}>追蹤瑋凱</div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 16 }}>
-              <SocialBtn href={SOCIAL.fb} label="Facebook">
-                <FacebookIcon size={26} />
-              </SocialBtn>
-              <SocialBtn href={SOCIAL.yt} label="YouTube">
-                <YoutubeIcon size={26} />
-              </SocialBtn>
-              <SocialBtn href={SOCIAL.ig} label="Instagram">
-                <InstagramIcon size={26} />
-              </SocialBtn>
-              {/* 2026-09-01 補上 TikTok —— 首頁加了社群列，名片頁少一個平台會很奇怪 */}
-              <SocialBtn href={SOCIAL.tiktok} label="TikTok">
-                <TiktokIcon size={26} />
-              </SocialBtn>
-            </div>
+            <SocialLinks variant="tiles" tone="light" />
           </div>
         </div>
         <div style={{ textAlign: "center", fontSize: 12, color: RCIS.muted, marginTop: 18 }}>© {ABIN.name} ‧ 太平洋房屋</div>
