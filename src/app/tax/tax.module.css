@@ -566,3 +566,210 @@
     font-size: 14px;
   }
 }
+
+/* ---------- 青安 3.0：一題一卡 ----------
+   跟其他分頁「一張表單」不同，這頁做成 7 張題卡、每題點選項。
+   會來算青安的多半是第一次買房的年輕人、多半在手機上看，
+   點比填快，而且每個選項底下都寫得下「為什麼這樣問」。 */
+
+/* 上路日期與適用基準。放最上面，因為「7/31 前送件走 2.0」這件事會直接改變答案 */
+.notice {
+  margin: 0 0 18px;
+  padding: 13px 16px;
+  background: var(--accent-soft);
+  border: 1px solid var(--line-warm);
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--ink);
+}
+
+.notice strong {
+  color: var(--primary);
+}
+
+.quizIntro {
+  margin: 0 0 20px;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--muted);
+}
+
+.quizIntro strong {
+  color: var(--ink);
+}
+
+.quiz {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.q {
+  box-sizing: border-box;
+  border: 1px solid var(--line-warm);
+  border-radius: 12px;
+  padding: 18px 18px 16px;
+  background: #fff;
+}
+
+.qHead {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.qNum {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qText {
+  min-width: 0;
+}
+
+.qTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.qDesc {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+/* 題目內容跟標題對齊（跳過圓形編號的寬度＋間距） */
+.qBody {
+  padding-left: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.qGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.opts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 選項整塊可點，右邊一顆圓圈打勾。手機上比原生 radio 好按得多 */
+.opt {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.opt:hover {
+  border-color: var(--accent);
+}
+
+.optOn {
+  border-color: var(--primary);
+  background: var(--accent-soft);
+}
+
+.optBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.optTitle {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.optDesc {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.optMark {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 900;
+  color: #fff;
+}
+
+.optOn .optMark {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+/* 不符資格的原因清單，放在 .alert 裡 */
+.blockers {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.blockers li {
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--ink);
+}
+
+.blockers li + li {
+  margin-top: 6px;
+}
+
+/* 結果卡裡第二張表的標題要跟上一張表拉開 */
+.sectionGap {
+  margin-top: 22px;
+}
+
+@media (max-width: 640px) {
+  .q {
+    padding: 16px 14px 14px;
+  }
+
+  /* 手機上題目內容不再縮排，不然選項只剩 260px 寬 */
+  .qBody {
+    padding-left: 0;
+  }
+
+  .qGrid {
+    grid-template-columns: 1fr;
+  }
+}

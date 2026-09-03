@@ -119,21 +119,28 @@ const TOOLS = [
     title: "房地合一稅試算",
     desc: "賣房前先算清楚要繳多少稅。填入取得與出售的日期與價格，馬上算出持有期間、適用稅率與應納稅額，還會把每一步怎麼來的攤開給你看。",
     source: "所得稅法第 14 條之 4 與財政部規定",
-    href: "/tax",
+    href: "/tax#land-tax",
   },
   {
     icon: "🏦",
     title: "房貸月付金試算",
     desc: "先抓出每個月要還多少。填入貸款金額、利率、年限與寬限期，算出月付金與總利息，買房的預算才抓得準。",
     source: "本息平均攤還公式",
-    href: "/tax",
+    href: "/tax#loan",
   },
   {
     icon: "🔑",
     title: "租金補貼試算",
     desc: "租屋族先算算看能領多少。填入所在縣市、行政區與家庭狀況，就算出每月可領補貼，海線各行政區金額不一樣，選錯區會差很多。",
     source: "內政部 300 億元中央擴大租金補貼分級表",
-    href: "/tax",
+    href: "/tax#rent",
+  },
+  {
+    icon: "🏡",
+    title: "新青安 3.0 資格檢測",
+    desc: "115 年 8 月上路的新制多了年齡、所得、總價三道門檻。點 7 題，30 秒看你能不能辦、能貸多少、月付大概多少，連補貼退場後的月付也一起算。",
+    source: "財政部青安 3.0 方案與國庫署問答集",
+    href: "/tax#youth-loan",
   },
 ];
 
@@ -388,7 +395,7 @@ export default async function HomePage() {
             <span className={styles.eyebrow}>TOOLS</span>
             <h2 className={styles.sectionTitle}>稅費試算</h2>
             <p className={styles.sectionDesc}>
-              買賣房子最怕算漏了。這兩個試算就在站上，不用跳到別的網站，算完還看得到每一步怎麼來的。
+              買賣房子最怕算漏了。這些試算都在站上，不用跳到別的網站，算完還看得到每一步怎麼來的。
             </p>
           </div>
           <div className={styles.container}>

@@ -3,8 +3,9 @@
 /**
  * 稅費試算的互動介面。
  *
- * 算法完全不寫在這裡 —— 房地合一在 src/lib/land-tax.ts、房貸在 src/lib/loan.ts，
- * 兩個都是純函式，可以單獨拿去驗算。這個檔只負責「收輸入、顯示結果」。
+ * 算法完全不寫在這裡 —— 房地合一在 src/lib/land-tax.ts、房貸在 src/lib/loan.ts、
+ * 租金補貼在 src/lib/rent-subsidy.ts、青安 3.0 在 src/lib/youth-loan.ts，
+ * 全部是純函式，可以單獨拿去驗算。這個檔只負責「收輸入、顯示結果」。
  * 稅率要改請改 land-tax.ts，那裡有官方出處。
  *
  * 金額一律用「萬」當輸入單位 —— 台灣人談房子就是講萬，
@@ -17,10 +18,20 @@ import Link from "next/link";
 import { calcLandTax, type Residency, type TaxResult } from "@/lib/land-tax";
 import { calcLoan, type LoanResult } from "@/lib/loan";
 import RentSubsidyForm from "./RentSubsidyForm";
+import YouthLoanForm from "./YouthLoanForm";
 import styles from "./tax.module.css";
 import home from "../home.module.css";
 
-type Tab = "landTax" | "loan" | "rent";
+type Tab = "landTax" | "loan" | "rent" | "youth";
+
+/** 首頁工具卡用錨點直接開對應分頁（例：/tax#youth-loan）。只在掛載時讀一次；
+    切分頁刻意不回寫網址 —— 改 hash 會讓瀏覽器跳捲動位置。 */
+const TAB_BY_HASH: Record<string, Tab> = {
+  "land-tax": "landTax",
+  loan: "loan",
+  rent: "rent",
+  "youth-loan": "youth",
+};
 
 const YUAN_PER_WAN = 10_000;
 
@@ -50,6 +61,12 @@ function todayISO(): string {
 
 export default function TaxCalculator() {
   const [tab, setTab] = useState<Tab>("landTax");
+
+  useEffect(() => {
+    const wanted = TAB_BY_HASH[window.location.hash.replace(/^#/, "")];
+    if (wanted) setTab(wanted);
+  }, []);
+
   return (
     <>
       <div className={styles.tabs} role="tablist" aria-label="選擇試算工具">
@@ -80,11 +97,21 @@ export default function TaxCalculator() {
         >
           🔑 租金補貼
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "youth"}
+          className={tab === "youth" ? `${styles.tab} ${styles.tabOn}` : styles.tab}
+          onClick={() => setTab("youth")}
+        >
+          🏡 新青安 3.0
+        </button>
       </div>
 
       {tab === "landTax" && <LandTaxForm />}
       {tab === "loan" && <LoanForm />}
       {tab === "rent" && <RentSubsidyForm />}
+      {tab === "youth" && <YouthLoanForm />}
     </>
   );
 }

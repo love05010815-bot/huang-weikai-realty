@@ -35,8 +35,9 @@ export type LoanResult = {
 
 export class LoanInputError extends Error {}
 
-/** 本息平均攤還的月付金。利率 0 的時候公式會除以 0，要另外處理 */
-function annuity(principal: number, monthlyRate: number, periods: number): number {
+/** 本息平均攤還的月付金。利率 0 的時候公式會除以 0，要另外處理。
+ *  匯出給 youth-loan.ts（青安 3.0 利率分段）共用，公式只放這一份。 */
+export function annuity(principal: number, monthlyRate: number, periods: number): number {
   if (periods <= 0) return 0;
   if (monthlyRate === 0) return principal / periods;
   return (principal * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -periods));

@@ -4,8 +4,9 @@
  * 2026-08-23 系統擁有者拍板：不再連到外部網站，改成自己站上算完。
  * 原本首頁連財政部與內政部的兩張卡已經改成導引到這一頁。
  *
- * 算法在 src/lib/land-tax.ts（房地合一）與 src/lib/loan.ts（房貸），
- * 都是純函式、有官方出處註記。畫面在 TaxCalculator.tsx。
+ * 算法在 src/lib/land-tax.ts（房地合一）、src/lib/loan.ts（房貸）、
+ * src/lib/rent-subsidy.ts（租金補貼）與 src/lib/youth-loan.ts（青安 3.0），
+ * 都是純函式、有官方出處註記。畫面在 TaxCalculator.tsx（青安那頁在 YouthLoanForm.tsx）。
  *
  * ⚠️ 稅率或法規變動時，改 land-tax.ts，這頁不用動。
  *    改完記得同步下面「資料來源」的日期。
@@ -19,12 +20,12 @@ import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
 import tax from "./tax.module.css";
 
-const TITLE = `稅費與租金補貼試算｜台中海線房仲${OWNER.name}｜買賣租屋前先算清楚`;
+const TITLE = `稅費、新青安 3.0 與租金補貼試算｜台中海線房仲${OWNER.name}｜買賣租屋前先算清楚`;
 const DESCRIPTION =
-  "房地合一稅、房貸月付金、租金補貼一站算清楚：房地合一稅 2.0 依所得稅法第 14 條之 4，含自住優惠與非自願因素判斷；300 億元中央擴大租金補貼依內政部官方分級表，逐縣市、逐行政區試算每月可領金額。";
+  "房地合一稅、新青安 3.0 資格、房貸月付金、租金補貼一站算清楚：房地合一稅 2.0 依所得稅法第 14 條之 4，含自住優惠與非自願因素判斷；新青安 3.0 依財政部 115 年 8 月上路的方案，點 7 題看能不能辦、能貸多少、月付多少；300 億元中央擴大租金補貼依內政部官方分級表，逐縣市、逐行政區試算每月可領金額。";
 
 /** 法規最後核對日。改稅率時記得一起更新，不然客戶不知道這頁多舊 */
-const RULES_CHECKED_AT = "2026 年 8 月";
+const RULES_CHECKED_AT = "2026 年 9 月";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -36,6 +37,10 @@ export const metadata: Metadata = {
     "賣房要繳多少稅",
     "自住優惠 400萬",
     "房貸試算",
+    "新青安3.0",
+    "青安3.0 資格",
+    "青安貸款試算",
+    "青年安心成家購屋優惠貸款",
     "租金補貼試算",
     "300億元中央擴大租金補貼",
     "台中海線房仲",
@@ -99,6 +104,8 @@ export default function TaxPage() {
             <div className={tax.disclaimer}>
               <strong>⚠️ 試算結果僅供參考，不是核定結果。</strong>
               房地合一稅的<strong>實際稅額以國稅局核定為準</strong>；房貸的利率、成數與寬限期，以銀行實際審核結果為準。
+              青安 3.0 的試算只比對官方公布的資格門檻、額度上限與利息補貼，
+              <strong>實際能不能核貸、核多少成數，以承辦公股銀行審核為準</strong>，基準利率會隨郵儲利率浮動。
               試算只涵蓋<strong>個人買賣</strong>的一般情況，
               <strong>公司名下的房地、預售屋轉售、股份交易、重購退稅、繼承併計持有期間</strong>
               等情形沒有納入，這些請找會計師或直接問我。
@@ -134,6 +141,23 @@ export default function TaxPage() {
                   rel="noopener noreferrer"
                 >
                   財政部稅務入口網 問答 1813 ↗
+                </a>
+                <br />
+                ・青安 3.0 資格門檻、額度、利息補貼退場 ——{" "}
+                <a
+                  href="https://www.nta.gov.tw/singlehtml/109"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  財政部國庫署 青安 3.0 問答集 ↗
+                </a>
+                、
+                <a
+                  href="https://www.mof.gov.tw/singlehtml/384fb3077bb349ea973e7fc6f13b6974?cntId=482aa9c142b34abc83750cb64c15cb11"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  財政部 115-07-16 新聞稿 ↗
                 </a>
                 <br />
                 ・租金補貼分級表、資格與加碼規則 ——{" "}

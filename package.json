@@ -11,7 +11,8 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "deploy": "node scripts/deploy.js",
-    "check:rival": "node --experimental-strip-types scripts/check-rival-parser.mjs && node --experimental-strip-types scripts/check-rival-analysis.mjs"
+    "check:rival": "node --experimental-strip-types scripts/check-rival-parser.mjs && node --experimental-strip-types scripts/check-rival-analysis.mjs",
+    "check:youth": "node --experimental-strip-types scripts/check-youth-loan.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",

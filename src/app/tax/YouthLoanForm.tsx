@@ -1,0 +1,490 @@
+"use client";
+
+/**
+ * 青安 3.0 資格檢測器 —— 「能不能辦、能貸多少、月付大概多少」三件事一次答。
+ *
+ * 算法在 src/lib/youth-loan.ts（純函式，門檻數字與官方出處都在那個檔頭），
+ * 這裡只收輸入、顯示結果。門檻要改請改那邊，改完跑 npm run check:youth。
+ *
+ * 版型刻意做成「一題一卡、點選項」而不是一張表單：會來算青安的多半是第一次
+ * 買房的年輕人、多半在手機上看，點 7 題比填一整張表快，而且每個選項底下都
+ * 寫了「為什麼這樣問」。金額仍用「萬」當單位，跟其他分頁一致。
+ *
+ * 地區預設「臺中市及其他縣市」—— 這個站的客戶九成在台中海線，不預設等於
+ * 每個人都要多點一下；台北新北的客戶看到選項自己會改。
+ */
+
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import {
+  AGE_PLUS_TERM_CAP,
+  calcYouthLoan,
+  FIRST_RATE,
+  LOAN_CAP,
+  MAX_AGE_EXCLUSIVE,
+  MAX_GRACE_YEARS,
+  MAX_YEARS,
+  maxYearsForAge,
+  MIN_AGE,
+  PRICE_CAP,
+  PROGRAM,
+  RULES_CHECKED_AT,
+  type Household,
+  type Region,
+  type ScheduleRow,
+  type YouthLoanResult,
+} from "@/lib/youth-loan";
+import styles from "./tax.module.css";
+import home from "../home.module.css";
+
+const YUAN_PER_WAN = 10_000;
+
+function parseWan(v: string): number | null {
+  if (v.trim() === "") return null;
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.round(n * YUAN_PER_WAN);
+}
+
+function money(n: number): string {
+  return n.toLocaleString("zh-TW");
+}
+
+/** 大數字換算成「約 X 萬」，房仲跟客戶對話用的單位 */
+function inWan(n: number): string {
+  const w = n / YUAN_PER_WAN;
+  const rounded = Math.abs(w) >= 100 ? Math.round(w) : Math.round(w * 10) / 10;
+  return rounded.toLocaleString("zh-TW");
+}
+
+const REGION_ITEMS: { value: Region; title: string; desc: string }[] = (["other", "newTaipeiHsinchu", "taipei"] as Region[]).map(
+  (r) => ({
+    value: r,
+    title: PRICE_CAP[r].label,
+    desc: `總價上限 ${inWan(PRICE_CAP[r].cap)} 萬`,
+  })
+);
+
+const HOUSEHOLD_ITEMS: { value: Household; title: string; desc: string }[] = [
+  { value: "general", title: "一般", desc: `額度最高 ${inWan(LOAN_CAP.general.cap)} 萬` },
+  {
+    value: "newlywed",
+    title: "新婚：申請日前 2 年內完成結婚登記",
+    desc: `額度最高 ${inWan(LOAN_CAP.newlywed.cap)} 萬。加碼的部分在婚姻關係消滅那天起停止利息補貼`,
+  },
+  {
+    value: "children",
+    title: "育有未成年子女，或本人／配偶懷孕中",
+    desc: `額度最高 ${inWan(LOAN_CAP.children.cap)} 萬。離婚或單親者，未成年子女要與借款人同戶籍且有監護權；懷孕用孕婦健康手冊證明`,
+  },
+];
+
+export default function YouthLoanForm() {
+  const [age, setAge] = useState("");
+  const [incomeOverCap, setIncomeOverCap] = useState<boolean | null>(null);
+  const [familyOwnsHome, setFamilyOwnsHome] = useState<boolean | null>(null);
+  const [usedBefore, setUsedBefore] = useState<boolean | null>(null);
+  const [region, setRegion] = useState<Region>("other");
+  const [priceWan, setPriceWan] = useState("");
+  const [household, setHousehold] = useState<Household | null>(null);
+  const [years, setYears] = useState("30");
+  const [graceYears, setGraceYears] = useState("0");
+  const [amountWan, setAmountWan] = useState("");
+
+  const ageNum = age.trim() === "" || !Number.isFinite(Number(age)) ? null : Number(age);
+  const price = parseWan(priceWan);
+  const wantAmount = parseWan(amountWan);
+
+  // 年齡一填就先講最長能貸幾年 —— 這是 3.0 最常被問的一題
+  let ageHint = "";
+  if (ageNum !== null) {
+    if (ageNum < MIN_AGE) ageHint = `要滿 ${MIN_AGE} 歲才能當借款人`;
+    else if (ageNum >= MAX_AGE_EXCLUSIVE) ageHint = `已滿 ${MAX_AGE_EXCLUSIVE} 歲，不符 3.0 的年齡門檻`;
+    else if (ageNum <= AGE_PLUS_TERM_CAP - MAX_YEARS) ageHint = `最長可貸 ${MAX_YEARS} 年，不受「年齡＋年限 ≤ 80」影響`;
+    else ageHint = `最長可貸 ${maxYearsForAge(ageNum)} 年（80 － ${Math.floor(ageNum)}）`;
+  }
+
+  const missing: string[] = [];
+  if (ageNum === null) missing.push("年齡");
+  if (incomeOverCap === null) missing.push("本人年所得");
+  if (familyOwnsHome === null) missing.push("名下有沒有房");
+  if (usedBefore === null) missing.push("辦過青安沒有");
+  if (price === null || price === 0) missing.push("房屋總價");
+  if (household === null) missing.push("婚育狀況");
+
+  const outcome = useMemo(() => {
+    if (
+      ageNum === null ||
+      incomeOverCap === null ||
+      familyOwnsHome === null ||
+      usedBefore === null ||
+      price === null ||
+      price === 0 ||
+      household === null
+    ) {
+      return null;
+    }
+    try {
+      const data = calcYouthLoan({
+        age: ageNum,
+        incomeOverCap,
+        familyOwnsHome,
+        usedBefore,
+        region,
+        price,
+        household,
+        years: Number(years),
+        graceYears: Number(graceYears),
+        amount: wantAmount || null,
+      });
+      return { ok: true as const, data };
+    } catch (e) {
+      return { ok: false as const, message: e instanceof Error ? e.message : "輸入有誤" };
+    }
+  }, [ageNum, incomeOverCap, familyOwnsHome, usedBefore, region, price, household, years, graceYears, wantAmount]);
+
+  return (
+    <>
+      <div className={styles.notice}>
+        <strong>青安 3.0 已於 {PROGRAM.applyFrom}上路</strong>，申辦到 {PROGRAM.applyUntil}（撥款最晚 {PROGRAM.disburseUntil}）。
+        以「向銀行送件日」為準：7 月 31 日前已送件的仍走 2.0，符合新婚或育兒加碼的可在撥貸前撤案重送。
+      </div>
+
+      <div className={styles.form}>
+        <p className={styles.quizIntro}>
+          新制多了<strong>年齡、所得、總價</strong>三道門檻。點完 7 題，馬上看你能不能辦、能貸多少、月付大概多少。
+        </p>
+
+        <div className={styles.quiz}>
+          <Question
+            n={1}
+            title="你的年齡？"
+            desc={`以向銀行送件那天的足歲為準。3.0 新增：申貸時要未滿 ${MAX_AGE_EXCLUSIVE} 歲，而且「年齡＋貸款年限」加起來不能超過 ${AGE_PLUS_TERM_CAP}。`}
+          >
+            <div className={styles.qGrid}>
+              <NumInput label="足歲" unit="歲" value={age} onChange={setAge} placeholder="35" min={0} max={99} />
+            </div>
+            <span className={styles.echo}>{ageHint}</span>
+          </Question>
+
+          <Question
+            n={2}
+            title="你「本人」的年所得？"
+            desc="只看借款人本人，配偶不併計。銀行透過 MyData 或國稅局的「各類所得資料清單」查核；自營商可用資金流程或營業資料佐證。"
+          >
+            <Options
+              name="本人年所得"
+              value={incomeOverCap}
+              onChange={setIncomeOverCap}
+              items={[
+                { value: false, title: "200 萬以下" },
+                { value: true, title: "超過 200 萬", desc: "不符 3.0 的排富門檻" },
+              ]}
+            />
+          </Question>
+
+          <Question
+            n={3}
+            title="你們全家名下有房子嗎？"
+            desc="本人、配偶、未成年子女的「全國財產稅總歸戶財產查詢清單」都要查無建物。這條 2.0 就有，不是新的。"
+          >
+            <Options
+              name="名下有無自有住宅"
+              value={familyOwnsHome}
+              onChange={setFamilyOwnsHome}
+              items={[
+                { value: false, title: "都沒有", desc: "只有停車位或靈骨塔位的，銀行查核後可視為沒有房子" },
+                { value: true, title: "有", desc: "全家任一人名下有建物就不符" },
+              ]}
+            />
+          </Question>
+
+          <Question n={4} title="你以前辦過青安貸款嗎？" desc="一生只能辦一次，而且跨版本只算一次。">
+            <Options
+              name="是否辦過青安"
+              value={usedBefore}
+              onChange={setUsedBefore}
+              items={[
+                { value: false, title: "沒辦過" },
+                {
+                  value: true,
+                  title: "辦過",
+                  desc: "112 年 8 月 1 日之後領過新青安（2.0），或在農業金融機構領過農安貸款，都不能再辦 3.0",
+                },
+              ]}
+            />
+          </Question>
+
+          <Question
+            n={5}
+            title="房子在哪裡、總價多少？"
+            desc="3.0 新增的總價門檻分三級。鑑價與買賣總價取高的那個不能超過上限；鑑價比成交價高的話，請填鑑價。"
+          >
+            <Options name="房屋所在地" value={region} onChange={setRegion} items={REGION_ITEMS} />
+            <div className={styles.qGrid}>
+              <NumInput label="房屋總價" unit="萬" value={priceWan} onChange={setPriceWan} placeholder="1200" min={0} />
+            </div>
+            <span className={styles.echo}>{price !== null && price > 0 ? `= ${money(price)} 元` : ""}</span>
+          </Question>
+
+          <Question
+            n={6}
+            title="你的婚育狀況？"
+            desc="3.0 加碼：新婚與育兒家庭的額度比一般高，但成數一樣最高 8 成，房子總價還是會卡住能貸多少。"
+          >
+            <Options name="婚育狀況" value={household} onChange={setHousehold} items={HOUSEHOLD_ITEMS} />
+          </Question>
+
+          <Question
+            n={7}
+            title="想貸幾年、要不要寬限期？"
+            desc={`最長 ${MAX_YEARS} 年、寬限期最長 ${MAX_GRACE_YEARS} 年；41 歲起會被「年齡＋年限 ≤ ${AGE_PLUS_TERM_CAP}」壓縮。想貸的金額留空，就直接用可貸上限來算。`}
+          >
+            <div className={styles.qGrid}>
+              <NumInput label="貸款年限" unit="年" value={years} onChange={setYears} min={1} max={MAX_YEARS} />
+              <NumInput label="寬限期（沒有填 0）" unit="年" value={graceYears} onChange={setGraceYears} min={0} max={MAX_GRACE_YEARS} />
+              <NumInput label="想貸多少（選填）" unit="萬" value={amountWan} onChange={setAmountWan} placeholder="留空＝上限" min={0} />
+            </div>
+          </Question>
+        </div>
+      </div>
+
+      {outcome === null && (
+        <div className={styles.alert}>
+          <p className={styles.alertTitle}>把 7 題點完，結果會自己跑出來</p>
+          <p className={styles.alertBody}>
+            還差：<strong>{missing.join("、")}</strong>。年限、寬限期已經先帶了常見值，可以照自己的打算改。
+          </p>
+        </div>
+      )}
+
+      {outcome && !outcome.ok && (
+        <div className={styles.alert}>
+          <p className={styles.alertTitle}>這樣算不出來</p>
+          <p className={styles.alertBody}>{outcome.message}</p>
+        </div>
+      )}
+
+      {outcome && outcome.ok && !outcome.data.eligible && <Ineligible result={outcome.data} />}
+
+      {outcome && outcome.ok && outcome.data.eligible && <YouthResultCard result={outcome.data} />}
+    </>
+  );
+}
+
+function Ineligible({ result }: { result: YouthLoanResult }) {
+  return (
+    <div className={styles.alert}>
+      <p className={styles.alertTitle}>這樣不符合青安 3.0 的資格</p>
+      <ul className={styles.blockers}>
+        {result.blockers.map((b) => (
+          <li key={b}>{b}</li>
+        ))}
+      </ul>
+      <p className={styles.alertBody}>
+        青安辦不了不代表買不了房：一般房貸沒有這幾道門檻，差別在利率與成數要看各銀行。
+        把你的情況講給我聽，我幫你看還有哪些走法。
+      </p>
+      <div className={styles.cta}>
+        <Link className={`${home.btn} ${home.btnPrimary}`} href="/card/booking">
+          預約諮詢，我幫你看別的方案
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function spanLabel(row: ScheduleRow): string {
+  return row.fromYear === row.toYear ? `第 ${row.fromYear} 年` : `第 ${row.fromYear}～${row.toYear} 年`;
+}
+
+function YouthResultCard({ result }: { result: YouthLoanResult }) {
+  const usingLess = result.amount !== result.maxAmount;
+  return (
+    <>
+      <div className={styles.result}>
+        <div className={styles.resultHead}>
+          <div className={styles.resultLabel}>符合青安 3.0 資格・估計可貸上限</div>
+          <div className={styles.resultBig}>
+            {inWan(result.maxAmount)}
+            <span className={styles.resultUnit}>萬</span>
+          </div>
+          <div className={styles.resultSub}>
+            {usingLess ? `以你想貸的 ${inWan(result.amount)} 萬計：` : ""}
+            前 3 年利率 {FIRST_RATE}%，每月約 {money(Math.round(result.firstMonthly))} 元
+            {result.graceYears > 0 ? "（寬限期內只繳利息）" : ""}
+          </div>
+          <div className={styles.resultFacts}>
+            <span className={styles.fact}>最長可貸 {result.maxYears} 年</span>
+            <span className={styles.fact}>
+              用 {result.years} 年{result.graceYears > 0 ? `・寬限 ${result.graceYears} 年` : ""}試算
+            </span>
+            <span className={styles.fact}>總利息約 {inWan(result.totalInterest)} 萬</span>
+          </div>
+        </div>
+
+        <div className={styles.resultBody}>
+          {/* 輸入被自動修正的，結果卡上面要講 —— 使用者填 40 年、看到的卻是 35 年，會以為算錯 */}
+          {result.warnings.length > 0 && (
+            <div className={styles.resultWarn}>
+              {result.warnings.map((w) => (
+                <p key={w}>⚠️ {w}</p>
+              ))}
+            </div>
+          )}
+
+          <p className={styles.stepsTitle}>可貸多少怎麼算</p>
+          <table className={styles.steps}>
+            <tbody>
+              {result.steps.map((s) => (
+                <tr key={s.label} className={s.label.startsWith("＝") ? styles.stepTotal : undefined}>
+                  <td className={styles.stepLabel}>
+                    {s.label}
+                    {s.note && <span className={styles.stepNote}>{s.note}</span>}
+                  </td>
+                  <td className={styles.stepAmount}>{money(s.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <p className={`${styles.stepsTitle} ${styles.sectionGap}`}>月付金怎麼變（補貼「3＋3」逐年退場）</p>
+          <table className={styles.steps}>
+            <tbody>
+              {result.schedule.map((row) => (
+                <tr key={row.fromYear}>
+                  <td className={styles.stepLabel}>
+                    {spanLabel(row)}
+                    <span className={styles.stepNote}>
+                      利率 {row.annualRate}%
+                      {row.subsidyTicks > 0 ? `・補貼 ${row.subsidyTicks} 碼` : "・補貼退場，回到合約利率"}
+                      {row.interestOnly ? "・寬限期只繳利息" : ""}
+                    </span>
+                  </td>
+                  <td className={styles.stepAmount}>
+                    {money(Math.round(row.monthly))}
+                    <span className={styles.stepNote}>元／月</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <ul className={styles.notes}>
+            {result.notes.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
+
+          {/* 客戶常常只截「結果」這一塊丟給別人看，所以免責要跟結果黏在一起 */}
+          <p className={styles.inlineNote}>
+            ⚠️ 本試算<strong>僅供參考</strong>，能不能核貸、成數與利率<strong>以承辦公股銀行審核為準</strong>；
+            基準利率會隨郵儲利率浮動。規則最後核對於 {RULES_CHECKED_AT}。
+          </p>
+        </div>
+      </div>
+
+      <div className={styles.cta}>
+        <p className={styles.ctaText}>算完想確認銀行實際能核多少，或想找總價在門檻內的好案？</p>
+        <Link className={`${home.btn} ${home.btnPrimary}`} href="/card/booking">
+          預約諮詢
+        </Link>
+      </div>
+    </>
+  );
+}
+
+/* ══════════════════ 題卡與選項 ══════════════════ */
+
+function Question({ n, title, desc, children }: { n: number; title: string; desc?: string; children: React.ReactNode }) {
+  return (
+    <section className={styles.q} aria-label={`第 ${n} 題 ${title}`}>
+      <div className={styles.qHead}>
+        <span className={styles.qNum} aria-hidden>
+          {n}
+        </span>
+        <div className={styles.qText}>
+          <h3 className={styles.qTitle}>{title}</h3>
+          {desc && <p className={styles.qDesc}>{desc}</p>}
+        </div>
+      </div>
+      <div className={styles.qBody}>{children}</div>
+    </section>
+  );
+}
+
+function Options<T extends string | boolean>({
+  name,
+  value,
+  onChange,
+  items,
+}: {
+  name: string;
+  value: T | null;
+  onChange: (v: T) => void;
+  items: { value: T; title: string; desc?: string }[];
+}) {
+  return (
+    <div className={styles.opts} role="radiogroup" aria-label={name}>
+      {items.map((it) => {
+        const on = value === it.value;
+        return (
+          <button
+            key={String(it.value)}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            className={on ? `${styles.opt} ${styles.optOn}` : styles.opt}
+            onClick={() => onChange(it.value)}
+          >
+            <span className={styles.optBody}>
+              <span className={styles.optTitle}>{it.title}</span>
+              {it.desc && <span className={styles.optDesc}>{it.desc}</span>}
+            </span>
+            <span className={styles.optMark} aria-hidden>
+              {on ? "✓" : ""}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function NumInput({
+  label,
+  unit,
+  value,
+  onChange,
+  placeholder,
+  min,
+  max,
+}: {
+  label: string;
+  unit: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  min?: number;
+  max?: number;
+}) {
+  return (
+    <label className={styles.field}>
+      <span className={styles.labelHint}>{label}</span>
+      <div className={styles.amountWrap}>
+        <input
+          className={styles.input}
+          type="number"
+          inputMode="numeric"
+          step="1"
+          min={min}
+          max={max}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <span className={styles.unit}>{unit}</span>
+      </div>
+    </label>
+  );
+}
