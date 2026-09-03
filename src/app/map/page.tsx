@@ -244,12 +244,12 @@ export default async function MapPage() {
 
       {/* 🚫 這頁不放右側固定的社群直排（其他五頁有）。
           /map 的容器接近滿版：1280px 視窗實測內容到 x=1237，直排要佔 x=1203～1251，
-          會壓到地圖與建案清單的右緣。改讓下面 hero 那條帶 persistent，桌機也一直顯示。 */}
+          會壓到地圖與建案清單的右緣。頂端那顆藥丸所有寬度都顯示，這頁不需要直排接手。 */}
       <section className={styles.hero}>
         <div className={styles.container}>
-          {/* 社群連結。這頁沒有右側直排（容器接近滿版會被壓到），所以 persistent：
-              不分寬度一直顯示。放在 hero 最上面，手機一打開就看得到 */}
-          <SocialLinks variant="bar" persistent />
+          {/* 社群藥丸（所有寬度都顯示）。這頁沒有右側直排（容器接近滿版會被壓到）。
+              放在 hero 最上面，手機一打開就看得到 */}
+          <SocialLinks variant="bar" align="center" />
           <span className={styles.eyebrow}>台中海線・區域研究</span>
           {/* ⚠️ 標題講的是「整個生活圈」，不是重劃區 —— 2026-08-26 起地圖範圍已擴大到
               沙鹿的商圈，2026-08-27 系統擁有者指定把這塊的名稱改過來。

@@ -71,16 +71,17 @@ export default async function VideosPage() {
         </div>
       </header>
 
-      {/* 桌機右側固定的社群直排（1220px 以上；以下由內容頂端的 bar 接手）。
+      {/* 桌機右側固定的社群直排（1220px 以上一直在，負責捲動時也看得到）。
           ⚠️ 一定要放在 <header> 外面 —— header 的 backdrop-filter 會把 position:fixed 的
              子元素關在 header 裡。原本想塞進 header 那一排，量過塞不下（見 SiteNav.tsx）。 */}
       <SocialLinks variant="float" />
       <main>
         <section className={styles.section}>
           <div className={`${styles.container} ${styles.center}`}>
-            {/* 社群連結（1219px 以下顯示；1220 以上由右側固定直排接手）。
-                放在第一個 section 最上面，手機一打開就看得到 —— 跟首頁 hero 同一個位置邏輯 */}
-            <SocialLinks variant="bar" />
+            {/* 社群藥丸（所有寬度都顯示；桌機另有右側固定直排負責捲動時也看得到）。
+                放在第一個 section 最上面，手機一打開就看得到 —— 跟首頁 hero 同一個位置邏輯。
+                這頁標題置中，藥丸跟著置中。 */}
+            <SocialLinks variant="bar" align="center" />
             <span className={styles.eyebrow}>VIDEOS</span>
             <h1 className={styles.sectionTitle}>影音專區</h1>
             <p className={styles.sectionDesc}>

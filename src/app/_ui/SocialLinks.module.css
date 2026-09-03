@@ -1,25 +1,24 @@
-/* 📱 社群連結的樣式（nav／bar／tiles 三種）。脈絡見 SocialLinks.tsx 的檔頭。
+/* 📱 社群連結的樣式（float／bar／tiles 三種）。脈絡見 SocialLinks.tsx 的檔頭。
 
    ⚠️ 跟 SiteNav 一樣**故意自己帶樣式**，不寫進 home.module.css ——
    共用元件要能貼到任何一頁上，樣式綁在某一頁的 module 裡就搬不動了。
 
    ============================================================
-   🔴 斷點 1220：右側固定直排（.float）與內容頂端那條（.bar）互斥
+   兩個元件怎麼分工（2026-09-03 第二版）
    ============================================================
 
-   1220px 以上：.float 顯示（釘在視窗右側中間，往下捲也一直看得到）、.bar 隱藏。
-   1219px 以下：.float 隱藏、.bar 顯示。
+   .bar（藥丸）  每頁內容頂端，**所有寬度都顯示**。文案只有它有。
+   .float（直排）1220px 以上一直在，負責「往下捲也看得到」。剛打開時跟藥丸同時在畫面上
+                 （藥丸在頂端、直排在右緣中間，不重疊）。曾試過「藥丸捲出視窗才浮出來」，
+                 IntersectionObserver 在這個 session 的瀏覽器窗格裡驗不到，驗不到就不上。
 
-   為什麼是 1220（不是 1200）：內容容器 1080px，**視窗寬要先扣掉 15px 的捲軸**。
-   1200 時可用寬 1185，兩側各剩 52.5px；直排本體 48px（icon 34＋左右 padding 6×2＋邊框）
-   ＋ 離右邊 14px ＝ 62px，會壓到容器 9.5px。1220 時兩側各 62.5px，剛好放得進去。
-   （1280 實測：直排在 x=1203～1251，容器右緣 1173，中間空 30px。）
+   第一版是「1220 以上藥丸收掉、直排接手」—— 結果桌機整頁沒有文案、子頁只剩四顆 22px 的
+   小 icon，系統擁有者回報「不明顯」「文案找不到」。**不要再把藥丸在桌機收掉。**
 
-   ⚠️ 這個數字在這個檔裡出現兩次（.float 的 min-width 與 .bar 的 max-width），
-      兩處一定要同時改，不然中間那段寬度會變成「兩排都在」或「兩排都不在」，
-      而且不會報錯。
-
-   🚫 原本想放進 header 那一排，量過塞不下（1163 > 1080，見 SiteNav.tsx），不要再試。 */
+   為什麼直排是 1220 起：內容容器 1080px，視窗要先扣 15px 捲軸。1200 時兩側只剩 52.5px，
+   直排要 48＋離右邊 14＝62px，會壓到容器；1220 時 62.5px 剛好。
+   （1280 實測：直排在 x=1203～1251，容器右緣 1173，中間空 30px。/map 容器接近滿版，
+   那頁不放直排。）*/
 
 /* ============================================================
    variant="float" —— 桌機右側固定的直排
@@ -60,7 +59,7 @@
   display: flex;
 }
 
-/* icon 22px，padding 撐到 34×34。桌機是滑鼠為主，不用像 bar 那樣撐到 44 */
+/* icon 22px，padding 撐到 34×34。桌機是滑鼠為主，不用像藥丸那樣撐到 48 */
 .floatBtn {
   display: inline-flex;
   align-items: center;
@@ -83,52 +82,48 @@
 }
 
 /* ============================================================
-   variant="bar" —— 每一頁內容最上面那一條
+   variant="bar" —— 每一頁內容頂端的白底藥丸
    ============================================================ */
-.bar {
+
+/* 外層決定靠哪邊：首頁 hero 靠右（配右邊的形象照），子頁置中（標題都置中）。
+   860px 以下（hero 變一欄、整段置中的斷點）一律置中。 */
+.barOuter {
   max-width: 1080px;
-  margin: 0 auto 26px;
+  margin: 0 auto 28px;
   display: flex;
-  align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 4px;
 }
 
-/* 1220 以上右側直排接手，這條收掉。數字要跟上面 .float 的一致，見檔頭。
-   例外：帶 .barPersistent 的（/map）沒有右側直排可以接手，所以一直顯示。 */
-@media (min-width: 1220px) {
-  .bar:not(.barPersistent) {
-    display: none;
-  }
+.barCenter {
+  justify-content: center;
+}
+
+/* 藥丸本體。白底＋陰影是為了在淺色漸層（首頁 hero）跟純白區塊（子頁）上都看得出是一塊東西；
+   第一版光禿禿的 30px icon 配 12.5px 灰字，系統擁有者說「不明顯」。 */
+.bar {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 14px;
+  padding: 8px 10px 8px 20px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid rgba(18, 42, 56, 0.1);
+  box-shadow: 0 10px 28px rgba(18, 42, 56, 0.12);
 }
 
 .barTitle {
-  font-size: 12.5px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--muted, #7a6f68);
-  margin-right: 8px;
+  font-size: 15.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--ink, #122a38);
+  white-space: nowrap;
 }
 
-/* 標題長短兩句：861px 以上顯示長句（有空間說理由），860px 以下換短句。
-
-   ⚠️ 實測（2026-09-03，375px）：短句 9 個字 126px ＋ 右邊距 8 ＋ 間距 4 ＋ 四顆 icon 188
-   ＝ 326px。**首頁** hero 左右各留 20px、可用 335px → 放得下一行；
-   **子頁**的 .container 左右各留 28px、可用只有 319px → 折成兩行（標題在上、icon 在下，
-   都置中，不算破版但跟首頁不一致）。所以 480px 以下把標題縮到 12px、字距收窄、
-   右邊距 6：126 → 約 117，總寬 315 ≤ 319，子頁 375 也是一行。
-   360px 的 Android 子頁只有 304px，仍會折成兩行 —— 刻意不再縮 icon 的 44px 可點範圍去湊。 */
+/* 標題長短兩句：861px 以上顯示長句（有空間說理由），860px 以下換短句 */
 .barTitleShort {
   display: none;
-}
-
-@media (max-width: 480px) {
-  .barTitle {
-    font-size: 12px;
-    letter-spacing: 0.04em;
-    margin-right: 6px;
-  }
 }
 
 .barList {
@@ -137,20 +132,19 @@
   padding: 0;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .barList > li {
   display: flex;
 }
 
-/* icon 本身 30px，靠 padding 把可點範圍撐到 44px —— 手指的最小目標尺寸。
-   只把 icon 做大會讓那一排在窄螢幕上太笨重。 */
+/* icon 36px，padding 撐到 48×48 —— 比手指的最小目標 44 再大一點，這排就是要明顯 */
 .barBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 7px;
+  padding: 6px;
   border-radius: 12px;
   text-decoration: none;
   transition: transform 0.18s ease, background-color 0.18s ease;
@@ -159,7 +153,7 @@
 .barBtn:hover,
 .barBtn:focus-visible {
   transform: translateY(-2px);
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(18, 42, 56, 0.06);
 }
 
 .barBtn:focus-visible {
@@ -167,18 +161,35 @@
   outline-offset: 1px;
 }
 
-/* 860px 是首頁 hero 從兩欄變一欄、整段改置中的斷點（見 home.module.css）。
-   那一排跟著置中，標題換短句。 */
 @media (max-width: 860px) {
-  .bar {
+  .barOuter {
     justify-content: center;
-    margin-bottom: 20px;
+    margin-bottom: 22px;
   }
   .barTitleLong {
     display: none;
   }
   .barTitleShort {
     display: inline;
+  }
+}
+
+/* 手機：藥丸變成兩行的小卡片（文案一行、四顆 icon 一行，都置中）。
+   量過 375px 子頁只有 319px 可用，一行塞不下 20＋文案＋14＋192＋10；
+   硬擠只能縮 icon 的可點範圍，不如直接兩行，看起來像一張刻意的小卡。 */
+@media (max-width: 480px) {
+  .barOuter {
+    margin-bottom: 18px;
+  }
+  .bar {
+    width: 100%;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 12px 10px;
+    border-radius: 20px;
+  }
+  .barTitle {
+    font-size: 14px;
   }
 }
 
