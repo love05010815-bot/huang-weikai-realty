@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     siteName: "太平洋房屋 ‧ 黃瑋凱",
     type: "profile",
     locale: "zh_TW",
-    images: [{ url: OG_IMAGE, width: 460, height: 460, alt: ABIN.name }],
+    images: [{ url: OG_IMAGE, width: 800, height: 800, alt: ABIN.name }],
   },
   twitter: {
     card: "summary",
