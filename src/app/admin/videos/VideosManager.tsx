@@ -30,6 +30,7 @@ import {
 } from "@/lib/videos";
 import {
   deleteVideoAction,
+  discardUploadedBlobsAction,
   saveVideoAction,
   setVideoPinnedAction,
   setVideoStatusAction,
@@ -151,6 +152,32 @@ export default function VideosManager({
   const [uploadNote, setUploadNote] = useState<{ ok: boolean; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   /**
+   * 這次表單裡「已經傳上 Blob、但還沒存進資料庫」的檔案網址。
+   *
+   * 🔴 上傳是兩段式：檔案先直傳 Blob，使用者再填標題按存檔。中間按取消、換成貼
+   *    YouTube、或重選一支，前一支就變成孤兒 —— 資料庫沒它、後台看不到它、永遠佔著
+   *    跟精選好案照片共用的 Blob 額度。所以每一條「離開而不存」的路都要把這裡清掉。
+   *
+   * ⚠️ 只放這次 session 傳上去的。`openEdit` 帶進來的既有網址**不放** ——
+   *    那是已經存檔的，編輯到一半按取消絕不能把原本那支刪了。
+   * 用 ref 不用 state：它不影響畫面，而且要在 async 流程裡讀到最新值。
+   */
+  const pendingBlobs = useRef<Set<string>>(new Set());
+
+  /** 把 pending 裡的檔從 Blob 刪掉（可保留剛存檔成功的那幾個），然後清空 */
+  async function discardPending(keep: string[] = []) {
+    const keepSet = new Set(keep.filter(Boolean));
+    const urls = [...pendingBlobs.current].filter((u) => !keepSet.has(u));
+    pendingBlobs.current.clear();
+    if (urls.length === 0) return;
+    // 刪不掉不擋使用者：這只是清垃圾，失敗頂多佔空間，不該讓取消／存檔卡住
+    try {
+      await discardUploadedBlobsAction(urls);
+    } catch {
+      /* 吞掉 */
+    }
+  }
+  /**
    * ⚠️ 編輯表單是**就地取代那一列**（見下面 `if (editing === row.id)`），跟物件後台
    *    `ListingsManager.tsx` 同一種寫法；只有「新增」表單開在最上面。
    *
@@ -186,6 +213,10 @@ export default function VideosManager({
     setUploading(true);
     setProgress(0);
     try {
+      // 這次表單裡已經傳過一支了、現在又選了另一支 —— 前一支不會被存，先丟掉。
+      // 放在截封面之前：就算新的這支截不出來被擋，前一支也不該留著。
+      await discardPending();
+
       // 先截封面。截不出來代表瀏覽器解不了這個檔 —— 那客戶多半也播不了，
       // 這時候擋下來比傳上去之後才發現好。
       const poster = await capturePoster(file);
@@ -212,6 +243,10 @@ export default function VideosManager({
         clientPayload: "poster",
       });
 
+      // 兩個都傳成功了才算 pending —— 存檔時會從這裡扣掉真的存進去的那兩個
+      pendingBlobs.current.add(videoBlob.url);
+      pendingBlobs.current.add(posterBlob.url);
+
       setForm((prev) => ({
         ...prev,
         source: "upload",
@@ -231,6 +266,8 @@ export default function VideosManager({
   }
 
   function openNew() {
+    // 從另一張還沒存的表單直接切過來 —— 那邊傳上去的檔不會再被存了
+    void discardPending();
     setForm({ ...emptyForm, publishedAt: todayTaipei() });
     setEditing("new");
     setMsg(null);
@@ -239,6 +276,9 @@ export default function VideosManager({
   }
 
   function openEdit(row: VideoRecord) {
+    // 同上：切到別列去編輯，等於放棄手上這張表單。
+    // ⚠️ row 自己的 url／posterUrl 是已存檔的，**不**加進 pending。
+    void discardPending();
     setForm({
       category: row.category,
       title: row.title,
@@ -273,7 +313,11 @@ export default function VideosManager({
   async function save() {
     const id = editing === "new" ? null : editing;
     const ok = await run("save", () => saveVideoAction(id, form), "存好了，前台已經變了");
-    if (ok) setEditing(null);
+    if (ok) {
+      // 真的存進去的那兩個留著，其餘 pending（例如重選檔之前傳的那支）丟掉
+      await discardPending([form.url, form.posterUrl]);
+      setEditing(null);
+    }
   }
 
   // 貼上網址當下就告訴你認不認得出來 —— 存完才發現嵌不進去太晚了。
@@ -396,6 +440,8 @@ export default function VideosManager({
                   onClick={() => {
                     // 換來源就把上一個來源填的東西清掉 ——
                     // 留著的話會出現「選了上傳、但存進去的是 YouTube 網址」這種對不上的資料
+                    // 從「上傳」切走：剛傳上去的檔不會被存了，一併從 Blob 刪掉
+                    void discardPending();
                     setForm((prev) => ({ ...prev, source: value, url: "", posterUrl: "", bytes: null }));
                     setUploadNote(null);
                     if (fileRef.current) fileRef.current.value = "";
@@ -526,6 +572,8 @@ export default function VideosManager({
             className={styles.btn}
             style={{ borderColor: CIS.cardBorder, color: CIS.textMute }}
             onClick={() => {
+              // 取消＝這次傳上去的檔不會被存，丟掉，不然它會永遠留在 Blob 上
+              void discardPending();
               setEditing(null);
               setMsg(null);
             }}

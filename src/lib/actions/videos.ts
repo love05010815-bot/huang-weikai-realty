@@ -12,6 +12,7 @@ import { isCurrentUserAdmin } from "@/lib/admin-check";
 import {
   createVideo,
   deleteVideo,
+  discardVideoBlobs,
   setVideoPinned,
   setVideoStatus,
   updateVideo,
@@ -50,6 +51,22 @@ export async function saveVideoAction(
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
   revalidateAll();
+  return { ok: true };
+}
+
+/**
+ * 使用者放棄了「已經傳上 Blob、但還沒存檔」的檔案（按取消／換來源／重選檔）。
+ * 前端只會送這次表單裡自己傳上去的網址；既有已存檔的影片絕對不會經過這裡。
+ * 不 revalidate —— 對外頁面沒有任何東西指著這些檔。
+ */
+export async function discardUploadedBlobsAction(urls: string[]): Promise<Result> {
+  if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
+  if (!Array.isArray(urls) || urls.length === 0) return { ok: true };
+  try {
+    await discardVideoBlobs(urls.filter((u): u is string => typeof u === "string"));
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
   return { ok: true };
 }
 

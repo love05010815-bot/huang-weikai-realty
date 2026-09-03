@@ -541,6 +541,16 @@ export async function createVideo(input: VideoInput): Promise<string> {
 
 export async function updateVideo(id: string, input: VideoInput): Promise<void> {
   const videoId = youtubeIdFor(input);
+
+  // 先記住原本的檔在哪 —— 換了一支新影片（或從上傳改成貼 YouTube）之後，
+  // 舊檔在資料庫裡就沒有任何一列指著它了，不在這裡刪就永遠沒人會刪。
+  const before = await ensureThenRun(() =>
+    db.$queryRawUnsafe<{ url: string; poster_url: string | null }[]>(
+      `SELECT url, poster_url FROM site_video WHERE id = ?`,
+      id,
+    ),
+  );
+
   await ensureThenRun(() =>
     db.$executeRawUnsafe(
       `UPDATE site_video SET category = ?, title = ?, url = ?, source = ?, video_id = ?,
@@ -559,6 +569,17 @@ export async function updateVideo(id: string, input: VideoInput): Promise<void> 
       id,
     ),
   );
+
+  // UPDATE 成功之後才刪舊檔（順序反了、UPDATE 失敗，就變成資料庫還指著一個已經不存在的檔）。
+  // 只刪「被換掉」的：沒改檔案就重新存檔時，新舊網址相同，一個都不會動到。
+  const old = before[0];
+  if (old) {
+    const keep = new Set([input.url, input.posterUrl].filter(Boolean));
+    await deleteOwnBlobs(
+      [old.url, old.poster_url].filter((u) => u && !keep.has(u)),
+      "已被新檔取代",
+    );
+  }
 }
 
 export async function setVideoStatus(id: string, status: VideoStatus): Promise<void> {
@@ -606,16 +627,42 @@ export async function deleteVideo(id: string): Promise<void> {
   const row = rows[0];
   if (!row || row.source !== "upload") return;
 
-  const targets = [row.url, row.poster_url].filter(
-    (u): u is string => typeof u === "string" && u.includes(".blob.vercel-storage.com"),
-  );
-  if (targets.length === 0) return;
+  await deleteOwnBlobs([row.url, row.poster_url], "資料庫那一列已經刪了");
+}
 
+/** 只認我們自己 Blob 上的網址；YouTube 網址、repo 裡的舊檔一律不碰 */
+function isOwnBlobUrl(u: unknown): u is string {
+  return typeof u === "string" && u.includes(".blob.vercel-storage.com");
+}
+
+/**
+ * 從 Blob 刪掉幾個檔。所有「刪影片檔」的地方都走這裡，不要各自 import del。
+ *
+ * 刪失敗只記 log 不丟錯 —— 呼叫端都是「資料庫那邊已經做完了」的情境，
+ * 檔案沒清掉只是佔空間，但把錯丟回去會讓使用者以為存檔／刪除沒成功。
+ */
+async function deleteOwnBlobs(urls: (string | null | undefined)[], context: string): Promise<void> {
+  const targets = urls.filter(isOwnBlobUrl);
+  if (targets.length === 0) return;
   try {
     const { del } = await import("@vercel/blob");
     await del(targets);
   } catch (error) {
-    console.error("[videos] 影片檔從 Blob 刪不掉（資料庫那一列已經刪了）:", error);
+    console.error(`[videos] 影片檔從 Blob 刪不掉（${context}）:`, error);
   }
+}
+
+/**
+ * 丟掉「傳上去了、但最後沒存進資料庫」的檔。
+ *
+ * 🔴 這條路存在的理由：上傳是「檔案先直傳 Blob → 使用者再填標題存檔」兩段式。
+ *    中間他按取消、換成貼 YouTube 網址、或重選另一支檔，**前一支已經躺在 Blob 上了**，
+ *    資料庫沒有它、後台看不到它、沒有任何畫面會再提到它 —— 永遠佔著空間。
+ *    Blob 是跟精選好案的照片共用額度的，這種孤兒累積起來倒的是整個 Blob。
+ *
+ * 只收我們自己 Blob 的網址（`isOwnBlobUrl`），別的一律略過，所以就算前端亂傳也刪不到別的東西。
+ */
+export async function discardVideoBlobs(urls: string[]): Promise<void> {
+  await deleteOwnBlobs(urls, "使用者放棄了這次上傳");
 }
 
