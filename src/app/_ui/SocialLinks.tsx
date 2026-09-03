@@ -115,7 +115,7 @@ export default function SocialLinks({ variant = "tiles", tone = "dark", title, p
 
   if (variant === "bar") {
     return (
-      <div className={`${styles.bar} ${persistent ? styles.barPersistent : ""}`}>
+      <div className={[styles.bar, persistent && styles.barPersistent].filter(Boolean).join(" ")}>
         {/* 長短兩句都渲染、靠 CSS 切換 —— 這是 server component，拿不到視窗寬度 */}
         <span className={`${styles.barTitle} ${styles.barTitleLong}`}>{title ?? BAR_TITLE_LONG}</span>
         <span className={`${styles.barTitle} ${styles.barTitleShort}`}>{title ?? BAR_TITLE_SHORT}</span>
