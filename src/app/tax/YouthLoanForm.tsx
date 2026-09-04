@@ -8,7 +8,7 @@
  *
  * 版型刻意做成「一題一卡、點選項」而不是一張表單：會來算青安的多半是第一次
  * 買房的年輕人、多半在手機上看，點比填快，而且每個選項底下都寫了「為什麼這樣問」。
- * 金額仍用「萬」當單位，跟其他分頁一致。
+ * 金額仍用「萬」當輸入單位，跟其他分頁一致。
  *
  * 2026-09-04 系統擁有者實測後回報「點完數字結果沒有跳出來」—— 兩個原因一起修：
  *   ① 四題選擇題原本沒有預設值，只填年齡和總價不會出結果，而「還差哪幾題」的提示
@@ -18,6 +18,11 @@
  *   ② 結果卡在 7 張題卡下面，桌機一個畫面裝不下、手機更遠。現在只要結果在畫面下方
  *      看不到，底下就浮一條摘要（符合／不符、可貸多少、月付多少），點了捲過去。
  *      這是專案鐵律「會改變狀態的操作一定要有看得見的回應」（見 learning_silent_failure_pattern）。
+ *
+ * 同日第二輪：不符資格時先給一塊紅色的「✗ 不符合資格」橫幅，底下接一份逐條 ✓／✗ 的
+ * 「資格門檻快篩」（年齡、年齡＋年限、所得、總價、無自有住宅、一生一次、額度、其他條件），
+ * 符合的那幾列也照樣列出來 —— 客戶要的是「我到底卡在哪一條」，不是一段話。
+ * 符合資格時同一份清單放在結果卡裡，全部打勾。
  *
  * 地區預設「臺中市及其他縣市」—— 這個站的客戶九成在台中海線。
  */
@@ -38,6 +43,8 @@ import {
   PROGRAM,
   RULES_CHECKED_AT,
   SUBSIDY_TOTAL_PCT,
+  type Check,
+  type CheckStatus,
   type Household,
   type Region,
   type ScheduleRow,
@@ -64,6 +71,11 @@ function inWan(n: number): string {
   const w = n / YUAN_PER_WAN;
   const rounded = Math.abs(w) >= 100 ? Math.round(w) : Math.round(w * 10) / 10;
   return rounded.toLocaleString("zh-TW");
+}
+
+/** 快篩列的標籤去掉括號補充，給橫幅與底部摘要列用（「年齡（未滿 50 歲）」→「年齡」） */
+function shortLabel(c: Check): string {
+  return c.label.replace(/（.*$/, "");
 }
 
 const REGION_ITEMS: { value: Region; title: string; desc: string }[] = (["other", "newTaipeiHsinchu", "taipei"] as Region[]).map(
@@ -309,11 +321,16 @@ export default function YouthLoanForm() {
       </div>
 
       {showBar && outcome && outcome.ok && (
-        <button type="button" className={styles.stickyBar} onClick={jumpToResult} aria-label="捲到檢測結果">
+        <button
+          type="button"
+          className={outcome.data.eligible ? styles.stickyBar : `${styles.stickyBar} ${styles.stickyBarFail}`}
+          onClick={jumpToResult}
+          aria-label="捲到檢測結果"
+        >
           <span className={styles.stickyText}>
             {outcome.data.eligible
               ? `✅ 符合青安 3.0・可貸上限 ${inWan(outcome.data.maxAmount)} 萬・前 3 年月付約 ${money(Math.round(outcome.data.firstMonthly))} 元`
-              : `❌ 不符青安 3.0 資格（${outcome.data.blockers.length} 個原因）`}
+              : `✗ 不符合青安 3.0 資格：${outcome.data.checks.filter((c) => c.status === "fail").map(shortLabel).join("、")}`}
           </span>
           <span className={styles.stickyGo}>看結果 ↓</span>
         </button>
@@ -322,30 +339,70 @@ export default function YouthLoanForm() {
   );
 }
 
-function Ineligible({ result, recap }: { result: YouthLoanResult; recap: string }) {
+/* ══════════════════ 結果 ══════════════════ */
+
+const CHECK_GLYPH: Record<CheckStatus, string> = { ok: "✓", fail: "✗", fix: "!" };
+const CHECK_TEXT: Record<CheckStatus, string> = { ok: "符合", fail: "不符", fix: "要調整" };
+
+/** 資格門檻快篩：一道門檻一列，符合的也列出來，客戶要看的是「卡在哪一條」 */
+function Checklist({ checks }: { checks: Check[] }) {
+  const iconClass = (s: CheckStatus) =>
+    s === "ok" ? styles.checkOk : s === "fail" ? styles.checkFail : styles.checkFix;
   return (
-    <div className={styles.alert}>
-      <p className={styles.alertTitle}>這樣不符合青安 3.0 的資格</p>
-      {recap && (
-        <p className={styles.recap}>
-          你的回答：<strong>{recap}</strong>
-        </p>
-      )}
-      <ul className={styles.blockers}>
-        {result.blockers.map((b) => (
-          <li key={b}>{b}</li>
+    <div className={styles.checks}>
+      <p className={styles.stepsTitle}>資格門檻快篩</p>
+      <ul className={styles.checkList}>
+        {checks.map((c) => (
+          <li key={c.key} className={styles.checkRow}>
+            <span className={`${styles.checkIcon} ${iconClass(c.status)}`} role="img" aria-label={CHECK_TEXT[c.status]}>
+              {CHECK_GLYPH[c.status]}
+            </span>
+            <span className={styles.checkText}>
+              <strong className={c.status === "fail" ? styles.checkLabelFail : undefined}>{c.label}</strong>：{c.detail}
+            </span>
+          </li>
         ))}
       </ul>
-      <p className={styles.alertBody}>
-        青安辦不了不代表買不了房：一般房貸沒有這幾道門檻，差別在利率與成數要看各銀行。
-        把你的情況講給我聽，我幫你看還有哪些走法。
-      </p>
+    </div>
+  );
+}
+
+function Ineligible({ result, recap }: { result: YouthLoanResult; recap: string }) {
+  const fails = result.checks.filter((c) => c.status === "fail");
+  return (
+    <>
+      <div className={styles.result}>
+        {/* 先給一塊明顯的紅色橫幅，再列是哪幾條沒過 */}
+        <div className={styles.failHead}>
+          <div className={styles.resultLabel}>青安 3.0 資格檢測</div>
+          <div className={styles.failBig}>✗ 不符合資格</div>
+          <div className={styles.resultSub}>
+            有 {fails.length} 項沒過：{fails.map(shortLabel).join("、")}
+          </div>
+        </div>
+
+        <div className={styles.resultBody}>
+          {recap && (
+            <p className={styles.recap}>
+              你的回答：<strong>{recap}</strong>
+            </p>
+          )}
+
+          <Checklist checks={result.checks} />
+
+          <p className={styles.inlineNote}>
+            青安辦不了不代表買不了房：一般房貸沒有這幾道門檻，差別在利率與成數要看各銀行。
+            把你的情況講給我聽，我幫你看還有哪些走法。
+          </p>
+        </div>
+      </div>
+
       <div className={styles.cta}>
         <Link className={`${home.btn} ${home.btnPrimary}`} href="/card/booking">
           預約諮詢，我幫你看別的方案
         </Link>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -359,7 +416,7 @@ function YouthResultCard({ result, recap }: { result: YouthLoanResult; recap: st
     <>
       <div className={styles.result}>
         <div className={styles.resultHead}>
-          <div className={styles.resultLabel}>符合青安 3.0 資格・估計可貸上限</div>
+          <div className={styles.resultLabel}>✓ 符合青安 3.0 資格・估計可貸上限</div>
           <div className={styles.resultBig}>
             {inWan(result.maxAmount)}
             <span className={styles.resultUnit}>萬</span>
@@ -386,7 +443,9 @@ function YouthResultCard({ result, recap }: { result: YouthLoanResult; recap: st
             </p>
           )}
 
-          {/* 輸入被自動修正的，結果卡上面要講 —— 使用者填 40 年、看到的卻是 35 年，會以為算錯 */}
+          <Checklist checks={result.checks} />
+
+          {/* 輸入被自動修正的（寬限期太長），結果卡上面要講 —— 使用者填的跟算的不一樣會以為算錯 */}
           {result.warnings.length > 0 && (
             <div className={styles.resultWarn}>
               {result.warnings.map((w) => (

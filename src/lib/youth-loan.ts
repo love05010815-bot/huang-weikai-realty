@@ -145,10 +145,18 @@ export type ScheduleRow = {
 
 export type Step = { label: string; amount: number; note?: string };
 
+/** ok＝符合；fail＝不符資格；fix＝不影響資格但要調整（年限太長、想貸超過上限） */
+export type CheckStatus = "ok" | "fail" | "fix";
+
+/** 資格快篩的一列。畫面照這個清單畫 ✓／✗，一道門檻一列 */
+export type Check = { key: string; label: string; status: CheckStatus; detail: string };
+
 export type YouthLoanResult = {
   eligible: boolean;
-  /** 不符資格的原因，符合時為空陣列 */
+  /** 不符資格的原因（＝ checks 裡 fail 的那幾列），符合時為空陣列 */
   blockers: string[];
+  /** 逐條門檻快篩，含符合的 */
+  checks: Check[];
   /** 以年齡算出的最長年限（40 與 80－年齡取低） */
   maxYears: number;
   /** 可貸上限（元）＝ 額度上限與總價 8 成取低 */
@@ -255,49 +263,78 @@ export function calcYouthLoan(input: YouthLoanInput): YouthLoanResult {
   if (!PRICE_CAP[region]) throw new YouthLoanInputError("地區不對");
   if (!LOAN_CAP[household]) throw new YouthLoanInputError("家庭狀況不對");
 
-  /* ── 資格 ── */
-  const blockers: string[] = [];
+  /* ── 資格快篩：一道門檻一列，畫面照這個清單畫 ✓／✗ ── */
+  const checks: Check[] = [];
   const wholeAge = Math.floor(age);
+  const maxYears = maxYearsForAge(wholeAge);
+  const askedYears = Math.floor(input.years);
+
+  const ageLabel = `年齡（未滿 ${MAX_AGE_EXCLUSIVE} 歲）`;
   if (wholeAge < MIN_AGE) {
-    blockers.push(`借款人要成年（滿 ${MIN_AGE} 歲）才能申辦。`);
+    checks.push({ key: "age", label: ageLabel, status: "fail", detail: `${wholeAge} 歲 — 要成年（滿 ${MIN_AGE} 歲）才能當借款人` });
   } else if (wholeAge >= MAX_AGE_EXCLUSIVE) {
-    blockers.push(
-      `3.0 規定申貸時要未滿 ${MAX_AGE_EXCLUSIVE} 歲，以向銀行送件那天為準（送件後才滿 ${MAX_AGE_EXCLUSIVE} 歲沒關係）。`
-    );
+    checks.push({
+      key: "age",
+      label: ageLabel,
+      status: "fail",
+      detail: `${wholeAge} 歲 — ${MAX_AGE_EXCLUSIVE} 歲（含）以上不符青安 3.0 資格，以向銀行送件那天的年齡為準`,
+    });
+  } else {
+    checks.push({
+      key: "age",
+      label: ageLabel,
+      status: "ok",
+      detail: `${wholeAge} 歲 — 未滿 ${MAX_AGE_EXCLUSIVE} 歲，符合（送件後才滿 ${MAX_AGE_EXCLUSIVE} 歲沒關係）`,
+    });
   }
-  if (incomeOverCap) {
-    blockers.push(
-      "借款人本人年所得總額超過 200 萬元，不能申辦。這是只看本人、不併計配偶；銀行會用 MyData 或國稅局所得清單查核。"
-    );
-  }
-  if (familyOwnsHome) {
-    blockers.push(
-      "本人、配偶或未成年子女名下有建物就不符。銀行查的是「全國財產稅總歸戶財產查詢清單」，三個人都要查無建物。"
-    );
-  }
-  if (usedBefore) {
-    blockers.push(
-      "一生只能辦一次：112 年 8 月 1 日之後領過新青安（2.0）或農業金融機構的農安貸款，就不能再辦 3.0。"
-    );
-  }
+  checks.push({
+    key: "term",
+    label: `年齡＋年限 ≤ ${AGE_PLUS_TERM_CAP}`,
+    status: askedYears > maxYears ? "fix" : "ok",
+    detail:
+      askedYears > maxYears
+        ? `你 ${wholeAge} 歲，最長可貸 ${maxYears} 年 — 選 ${askedYears} 年會超標，須縮短至 ${maxYears} 年以內（下面已改用 ${maxYears} 年算）`
+        : `你 ${wholeAge} 歲，最長可貸 ${maxYears} 年 — 選 ${askedYears} 年沒問題`,
+  });
+  checks.push({
+    key: "income",
+    label: "本人年所得（200 萬以下）",
+    status: incomeOverCap ? "fail" : "ok",
+    detail: incomeOverCap
+      ? "超過 200 萬 — 不符排富門檻（只看本人、配偶不併計；銀行用 MyData 或國稅局所得清單查核）"
+      : "200 萬以下 — 在門檻內（只看本人、配偶不併計）",
+  });
   const priceRule = PRICE_CAP[region];
-  if (price > priceRule.cap) {
-    blockers.push(
-      `房屋總價 ${wanLabel(price)} 萬超過${priceRule.label}的上限 ${wanLabel(priceRule.cap)} 萬（鑑價與買賣總價取高的那個不能超過）。`
-    );
-  }
-  const eligible = blockers.length === 0;
+  checks.push({
+    key: "price",
+    label: "房屋總價（分區上限）",
+    status: price > priceRule.cap ? "fail" : "ok",
+    detail:
+      price > priceRule.cap
+        ? `${wanLabel(price)} 萬／上限 ${wanLabel(priceRule.cap)} 萬（${priceRule.label}）— 超過天花板，不符；鑑價與買賣總價取高的那個都不能超過`
+        : `${wanLabel(price)} 萬／上限 ${wanLabel(priceRule.cap)} 萬（${priceRule.label}）— 在天花板內（鑑價金額也要一起過關）`,
+  });
+  checks.push({
+    key: "home",
+    label: "全家無自有住宅",
+    status: familyOwnsHome ? "fail" : "ok",
+    detail: familyOwnsHome
+      ? "本人、配偶或未成年子女名下有建物 — 不符（銀行查「全國財產稅總歸戶財產查詢清單」，三個人都要查無建物）"
+      : "本人、配偶及未成年子女名下都沒有建物 — 符合（只有停車位或靈骨塔位可視為無）",
+  });
+  checks.push({
+    key: "once",
+    label: "一生限貸一次",
+    status: usedBefore ? "fail" : "ok",
+    detail: usedBefore
+      ? "112 年 8 月 1 日之後領過新青安（2.0）或農安貸款 — 一生只能辦一次，不符"
+      : "沒領過新青安或農安貸款 — 符合",
+  });
 
   /* ── 年限 ── */
   const warnings: string[] = [];
-  const maxYears = maxYearsForAge(wholeAge);
-  let years = Math.floor(input.years);
-  if (years > maxYears) {
-    warnings.push(
-      `你 ${wholeAge} 歲，年齡＋年限不能超過 ${AGE_PLUS_TERM_CAP}（且最長 ${MAX_YEARS} 年），最長只能貸 ${maxYears} 年，已改成 ${maxYears} 年來算。`
-    );
-    years = maxYears;
-  }
+  let years = askedYears;
+  if (years > maxYears) years = maxYears; // 快篩的「年齡＋年限」那列已經講了，這裡直接改
   let graceYears = Math.floor(input.graceYears);
   if (graceYears > MAX_GRACE_YEARS) {
     warnings.push(`寬限期最長 ${MAX_GRACE_YEARS} 年，已改成 ${MAX_GRACE_YEARS} 年來算。`);
@@ -314,10 +351,27 @@ export function calcYouthLoan(input: YouthLoanInput): YouthLoanResult {
   const maxAmount = Math.min(ltvAmount, capRule.cap);
   const binding: "ltv" | "cap" = ltvAmount <= capRule.cap ? "ltv" : "cap";
   let amount = input.amount ?? maxAmount;
-  if (amount > maxAmount) {
-    warnings.push(`想貸的 ${wanLabel(amount)} 萬超過可貸上限 ${wanLabel(maxAmount)} 萬，已改用上限來算。`);
-    amount = maxAmount;
-  }
+  const overAsked = amount > maxAmount;
+  if (overAsked) amount = maxAmount;
+  const amountBasis = `身分上限 ${wanLabel(capRule.cap)} 萬、總價 8 成約 ${wanLabel(ltvAmount)} 萬，取低`;
+  checks.push({
+    key: "amount",
+    label: "額度",
+    status: overAsked ? "fix" : "ok",
+    detail: overAsked
+      ? `想貸 ${wanLabel(input.amount as number)} 萬超過可貸上限 ${wanLabel(maxAmount)} 萬 — 已改用上限算月付（${amountBasis}）`
+      : input.amount !== null
+        ? `想貸 ${wanLabel(amount)} 萬 — 在可貸上限 ${wanLabel(maxAmount)} 萬內（${amountBasis}）`
+        : `可貸上限約 ${wanLabel(maxAmount)} 萬 — ${amountBasis}`,
+  });
+  checks.push({
+    key: "other",
+    label: "其他必要條件",
+    status: "ok",
+    detail: `簽自用住宅切結書（不能出租）；房子登記在借款人本人名下、登記日在申請日前 6 個月內；向八家公股銀行送件，撥款最晚 ${PROGRAM.disburseUntil}。`,
+  });
+  const blockers = checks.filter((c) => c.status === "fail").map((c) => `${c.label}：${c.detail}`);
+  const eligible = blockers.length === 0;
 
   /* ── 月付金 ── */
   const { rows: schedule, subsidySaved } = buildSchedule(amount, years, graceYears);
@@ -350,6 +404,7 @@ export function calcYouthLoan(input: YouthLoanInput): YouthLoanResult {
   return {
     eligible,
     blockers,
+    checks,
     maxYears,
     maxAmount,
     binding,

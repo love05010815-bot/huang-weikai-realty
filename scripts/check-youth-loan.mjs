@@ -61,6 +61,24 @@ ok(run({ region: "taipei", price: 萬(3501) }).eligible === false, "北市 3501 
   ok(r.blockers.length === 3, "三個原因都列出", r.blockers.length, 3);
 }
 
+console.log("=== C2 資格快篩清單 ===");
+{
+  const keys = run({}).checks.map((c) => c.key).join(",");
+  ok(keys === "age,term,income,price,home,once,amount,other", "八列順序", keys, "age,term,income,price,home,once,amount,other");
+  ok(run({}).checks.every((c) => c.status === "ok"), "全符合時八列都 ok", run({}).checks.map((c) => c.status).join(","), "全 ok");
+  // 圖二的情境：51 歲、選 40 年
+  const r = run({ age: 51, years: 40, household: "children", price: 萬(997) });
+  const st = Object.fromEntries(r.checks.map((c) => [c.key, c.status]));
+  ok(st.age === "fail" && st.term === "fix", "51 歲：年齡 fail、年限 fix", `${st.age}/${st.term}`, "fail/fix");
+  const term = r.checks.find((c) => c.key === "term");
+  ok(term.detail.includes("最長可貸 29 年") && term.detail.includes("選 40 年會超標"), "年限那列講 29 年、40 年超標", term.detail.slice(0, 30), "…");
+  ok(r.blockers.length === 1 && r.eligible === false, "只有年齡算不符", r.blockers.length, 1);
+  ok(r.checks.find((c) => c.key === "price").detail.includes("997 萬／上限 2,000 萬"), "總價列寫 997／2,000", r.checks.find((c) => c.key === "price").detail.slice(0, 20), "…");
+  const two = run({ age: 55, incomeOverCap: true, usedBefore: true, price: 萬(2100) });
+  ok(two.blockers.length === 4, "年齡＋所得＋辦過＋總價 = 4 個不符", two.blockers.length, 4);
+  ok(two.checks.find((c) => c.key === "home").status === "ok", "沒房那列仍是 ok", two.checks.find((c) => c.key === "home").status, "ok");
+}
+
 console.log("=== D 可貸上限（額度 vs 8 成）===");
 {
   const r = run({});
@@ -149,7 +167,9 @@ console.log("=== E2 六年補貼受益 ===");
 console.log("=== F 自動修正與錯誤 ===");
 {
   const r = run({ age: 45, years: 40 });
-  ok(r.years === 35 && r.warnings.length === 1, "45 歲要貸 40 年→改 35 年並警告", `${r.years}/${r.warnings.length}`, "35/1");
+  const term = r.checks.find((c) => c.key === "term");
+  ok(r.years === 35 && term.status === "fix", "45 歲要貸 40 年→改 35 年、快篩標要調整", `${r.years}/${term.status}`, "35/fix");
+  ok(r.eligible === true, "年限太長不算不符資格", r.eligible, true);
 }
 {
   const r = run({ graceYears: 6 });
@@ -157,7 +177,8 @@ console.log("=== F 自動修正與錯誤 ===");
 }
 {
   const r = run({ amount: 萬(900) });
-  ok(r.amount === 萬(800) && r.warnings.some((w) => w.includes("可貸上限")), "想貸 900 萬→改 800 萬", r.amount / 1e4, 800);
+  const row = r.checks.find((c) => c.key === "amount");
+  ok(r.amount === 萬(800) && row.status === "fix" && row.detail.includes("超過可貸上限"), "想貸 900 萬→改 800 萬、快篩標要調整", r.amount / 1e4, 800);
 }
 {
   const r = run({ amount: 萬(500) });

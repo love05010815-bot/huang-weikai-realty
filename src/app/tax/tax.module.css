@@ -861,3 +861,91 @@
     font-size: 12.5px;
   }
 }
+
+/* ---------- 青安 3.0：不符合橫幅與門檻快篩（2026-09-04 第二輪） ----------
+   系統擁有者指定：不符資格先給一塊明顯的「不符合」，再逐條列是哪一項沒過。
+   紅色在這個專案是「錯誤／不符」的語意色（見 home.module.css 的 toolDisclaimer 註解），
+   不是品牌色，所以只用在這塊橫幅、✗ 圖示與底部摘要列。 */
+
+.failHead {
+  background: #b42318;
+  color: #fff;
+  padding: clamp(20px, 3.4vw, 28px);
+  text-align: center;
+}
+
+.failBig {
+  font-size: clamp(28px, 6vw, 40px);
+  font-weight: 900;
+  line-height: 1.25;
+  margin: 6px 0 4px;
+  letter-spacing: 0.02em;
+}
+
+.stickyBarFail {
+  background: #b42318;
+}
+
+.checks {
+  margin: 0 0 22px;
+}
+
+.checkList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.checkRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.checkRow:last-child {
+  border-bottom: 0;
+}
+
+.checkIcon {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 900;
+  color: #fff;
+}
+
+.checkOk {
+  background: #1e7f4f;
+}
+
+.checkFail {
+  background: #b42318;
+}
+
+/* 不影響資格、但要調整（年限太長、想貸超過上限）：琥珀色驚嘆號 */
+.checkFix {
+  background: #c77700;
+}
+
+.checkText {
+  min-width: 0;
+}
+
+.checkText strong {
+  color: var(--ink);
+}
+
+.checkText .checkLabelFail {
+  color: #b42318;
+}
