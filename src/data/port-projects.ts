@@ -2376,9 +2376,7 @@ export const COORDS: Record<string, Coord> = {
         綠光計畫閱鴻山 ↔ 綠光計畫8鴻山臻藏 23m、椽城 ↔ 德人天河B 27m。
      ⚠️ 標完這批，新光田只剩「碧益觀雲」「時代一景」2 案沒座標。 */
   "sakura-xiangshangzhiying": { lat: 24.20171, lng: 120.56274, precision: "exact" }, // 櫻花向上之櫻
-  "lvguang-yuehongshan": { lat: 24.21326, lng: 120.56105, precision: "exact" }, // 綠光計畫閱鴻山
-  // ⚠️ 2026-09-04 他說「地點改在保成五街 88 號」。OSM 定不到門牌，保成五街街心 24.21279/120.56433 離這個點 337 m。
-  //    沒有拿街心蓋掉他親手點的座標（那會變成假的 exact），已請他到 /map?fix=1 重點一次；點完換掉上面那行。
+  "lvguang-yuehongshan": { lat: 24.21328, lng: 120.56397, precision: "exact" }, // 綠光計畫閱鴻山（2026-09-04 他說地點在保成五街 88 號後重點；原 24.21326/120.56105 往東 296 m）
   "lvguang-7-fengcai": { lat: 24.21343, lng: 120.56185, precision: "exact" }, // 綠光計畫7豐采
   "lvguang-6-qingjing": { lat: 24.21322, lng: 120.56245, precision: "exact" }, // 綠光計畫6青境
   "lvguang-2-riguangshu": { lat: 24.21393, lng: 120.56288, precision: "exact" }, // 綠光計畫2日光墅
@@ -2459,6 +2457,10 @@ export const COORDS: Record<string, Coord> = {
   "shuheyuan": { lat: 24.2114, lng: 120.56221, precision: "exact" }, // 樹合院
   "hongyi-shu": { lat: 24.20972, lng: 120.5692, precision: "exact" }, // 鴻藝墅
   "green-h": { lat: 24.20977, lng: 120.55623, precision: "exact" }, // Green H
+
+  /* ── 新光田最後 2 案（2026-09-04）—— ✅ 標完這兩筆，341 案全部有座標，清單裡不再有「未標位置」。 */
+  "shidai-yijing": { lat: 24.19968, lng: 120.56601, precision: "exact" }, // 時代一景
+  "biyi-guanyun": { lat: 24.19608, lng: 120.56384, precision: "exact" }, // 碧益觀雲
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
