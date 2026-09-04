@@ -1,0 +1,123 @@
+/* /admin/post591 的樣式。
+ *
+ * 🔴 **這裡不准硬寫色碼。** 變數沿用 compare/theme.ts 的 `--cmp-*`（同一份 CIS 色票），
+ *    page.tsx 在最外層用 inline style 傳下來。第一版 compare 把淺色寫死結果字看不到，別重蹈。
+ *    （唯一例外 #fff：反白文字，不是色票的一員。）
+ */
+
+.page { max-width: 1100px; padding: 24px 18px 56px; }
+.head { margin-bottom: 18px; }
+.h1 { display: flex; align-items: center; gap: 8px; font-size: 26px; font-weight: 700; margin: 0 0 6px; }
+.lede { color: var(--cmp-mute); font-size: 14px; margin: 0; line-height: 1.7; }
+.lede b { color: var(--cmp-sub); }
+
+.wrap { display: block; color: var(--cmp-text); }
+
+.card {
+  background: var(--cmp-card);
+  border: 1px solid var(--cmp-border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.warnCard { border-color: var(--cmp-warn-bd); background: var(--cmp-warn-bg); }
+.warnCard .h2, .warnCard li { color: var(--cmp-warn-fg); }
+.handoffCard { border-color: var(--cmp-accent); }
+
+.h2 { font-size: 16px; margin: 0 0 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hint { color: var(--cmp-mute); font-size: 13px; margin: 0 0 10px; line-height: 1.7; }
+.hint b { color: var(--cmp-highlight); }
+.hint code { color: var(--cmp-sub); font-size: 12px; }
+.hintInline { color: var(--cmp-mute); font-size: 13px; }
+.ul { margin: 4px 0 0; padding-left: 20px; font-size: 13px; line-height: 1.7; }
+.lbl { display: block; font-size: 13px; color: var(--cmp-sub); margin: 12px 0 6px; }
+
+/* 🔴 文字框：底色一定要比卡片暗、文字一定要明確指定 */
+.ta {
+  width: 100%;
+  min-height: 160px;
+  border: 1px solid var(--cmp-border);
+  border-radius: 10px;
+  padding: 12px;
+  font-family: Consolas, "Noto Sans TC", "Microsoft JhengHei", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+  background: var(--cmp-input);
+  color: var(--cmp-text);
+}
+.ta::placeholder { color: var(--cmp-mute); opacity: 0.75; }
+.ta:focus { outline: 2px solid var(--cmp-accent); outline-offset: -1px; background: var(--cmp-input-focus); }
+.taDesc { min-height: 320px; }
+.taHandoff { min-height: 220px; margin-top: 10px; }
+
+.runbar { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+.run {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--cmp-accent-deep); color: #fff; border: none; border-radius: 10px;
+  padding: 11px 28px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.run:hover { filter: brightness(1.12); }
+.run:disabled { background: var(--cmp-neutral-bg); color: var(--cmp-mute); cursor: not-allowed; }
+.ghost {
+  background: transparent; color: var(--cmp-accent); border: 1px solid var(--cmp-border);
+  border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; font-family: inherit;
+}
+.ghost:hover { background: var(--cmp-hover); }
+.btnrow { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+
+/* 第①頁四連點 */
+.steps { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 6px 0 10px; }
+.stepWrap { display: inline-flex; align-items: center; gap: 4px; }
+.arrow { color: var(--cmp-mute); padding: 0 4px; }
+.step {
+  border: 1px solid var(--cmp-accent); color: var(--cmp-accent);
+  border-radius: 8px; padding: 6px 14px; font-weight: 700; font-size: 15px;
+  background: var(--cmp-accent-bg);
+}
+
+/* 確認表 */
+.rows { display: flex; flex-direction: column; gap: 4px; }
+.grp {
+  margin: 14px 0 4px; padding-bottom: 4px;
+  border-bottom: 1px solid var(--cmp-divider);
+  color: var(--cmp-highlight); font-weight: 700; font-size: 13px;
+}
+.row {
+  display: grid; grid-template-columns: 150px minmax(120px, 1fr) minmax(160px, 1.2fr) 80px;
+  gap: 8px; align-items: center; padding: 4px 6px; border-radius: 8px;
+}
+.row.need { background: var(--cmp-bad-bg); }
+.row.need .lab { color: var(--cmp-bad-fg); }
+.row.pick .lab { color: var(--cmp-ok-fg); }
+.lab { font-size: 13px; color: var(--cmp-sub); }
+.req { color: var(--cmp-bad-fg); font-style: normal; }
+.input {
+  width: 100%; border: 1px solid var(--cmp-border); border-radius: 8px; padding: 6px 10px;
+  font-size: 14px; background: var(--cmp-input); color: var(--cmp-text); font-family: inherit;
+}
+.input:read-only { color: var(--cmp-mute); }
+.input:focus { outline: 2px solid var(--cmp-accent); outline-offset: -1px; }
+.note { font-size: 12px; color: var(--cmp-mute); line-height: 1.4; }
+.cp {
+  border: 1px solid var(--cmp-border); background: transparent; color: var(--cmp-accent);
+  border-radius: 8px; padding: 6px 10px; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap;
+}
+.cp:hover { background: var(--cmp-hover); }
+.legendNeed { background: var(--cmp-bad-bg); color: var(--cmp-bad-fg); padding: 1px 6px; border-radius: 4px; }
+.legendPick { color: var(--cmp-ok-fg); padding: 1px 6px; }
+
+.titleRow { display: grid; grid-template-columns: 1fr 80px; gap: 8px; align-items: center; }
+.okText { color: var(--cmp-ok-fg); font-size: 13px; margin: 6px 0 0; }
+.badText { color: var(--cmp-bad-fg); font-size: 13px; margin: 6px 0 0; }
+
+.riskBox {
+  margin-top: 12px; padding: 10px 14px; border-radius: 10px;
+  background: var(--cmp-warn-bg); border: 1px solid var(--cmp-warn-bd); color: var(--cmp-warn-fg);
+  font-size: 13px; line-height: 1.7;
+}
+
+@media (max-width: 720px) {
+  .row { grid-template-columns: 1fr 1fr; }
+  .note { grid-column: 1 / -1; }
+}
