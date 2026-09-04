@@ -773,3 +773,91 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- 青安 3.0：結果的「看得見的回應」（2026-09-04） ----------
+   系統擁有者實測「點完數字結果沒有跳出來」—— 結果卡在 7 張題卡下面，畫面裝不下。
+   結果在畫面下方看不到時，底下浮一條摘要，點了捲過去。 */
+
+/* 結果區的外框，scrollIntoView 時要避開固定 header */
+.resultAnchor {
+  scroll-margin-top: 90px;
+}
+
+/* 四題有預設值，結果卡上把回答再列一次讓人核對 */
+.recap {
+  margin: 0 0 16px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.recap strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* 六年補貼受益。跟 .deadline 同一種強調框，另開一個名字是因為語意不同 */
+.benefit {
+  margin: 14px 0 0;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--ink);
+  background: var(--accent-soft);
+  border-radius: 10px;
+  padding: 13px 16px;
+}
+
+.benefit strong {
+  color: var(--primary);
+}
+
+.stickyBar {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 40;
+  box-sizing: border-box;
+  width: calc(100% - 32px);
+  max-width: 720px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--line-warm);
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  box-shadow: var(--shadow);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.stickyText {
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.stickyGo {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 900;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  padding: 6px 12px;
+}
+
+@media (max-width: 640px) {
+  .stickyBar {
+    bottom: 10px;
+    padding: 10px 14px;
+  }
+
+  .stickyText {
+    font-size: 12.5px;
+  }
+}

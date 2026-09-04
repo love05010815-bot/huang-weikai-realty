@@ -7,14 +7,22 @@
  * 這裡只收輸入、顯示結果。門檻要改請改那邊，改完跑 npm run check:youth。
  *
  * 版型刻意做成「一題一卡、點選項」而不是一張表單：會來算青安的多半是第一次
- * 買房的年輕人、多半在手機上看，點 7 題比填一整張表快，而且每個選項底下都
- * 寫了「為什麼這樣問」。金額仍用「萬」當單位，跟其他分頁一致。
+ * 買房的年輕人、多半在手機上看，點比填快，而且每個選項底下都寫了「為什麼這樣問」。
+ * 金額仍用「萬」當單位，跟其他分頁一致。
  *
- * 地區預設「臺中市及其他縣市」—— 這個站的客戶九成在台中海線，不預設等於
- * 每個人都要多點一下；台北新北的客戶看到選項自己會改。
+ * 2026-09-04 系統擁有者實測後回報「點完數字結果沒有跳出來」—— 兩個原因一起修：
+ *   ① 四題選擇題原本沒有預設值，只填年齡和總價不會出結果，而「還差哪幾題」的提示
+ *      在 7 張題卡的最下面，畫面上看不到。現在四題先帶最常見的答案（所得 200 萬以下、
+ *      全家沒房、沒辦過、一般家庭），填完年齡和總價就出結果；結果卡上會把你的回答
+ *      再列一次，讓人核對預設值對不對。
+ *   ② 結果卡在 7 張題卡下面，桌機一個畫面裝不下、手機更遠。現在只要結果在畫面下方
+ *      看不到，底下就浮一條摘要（符合／不符、可貸多少、月付多少），點了捲過去。
+ *      這是專案鐵律「會改變狀態的操作一定要有看得見的回應」（見 learning_silent_failure_pattern）。
+ *
+ * 地區預設「臺中市及其他縣市」—— 這個站的客戶九成在台中海線。
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AGE_PLUS_TERM_CAP,
@@ -29,6 +37,7 @@ import {
   PRICE_CAP,
   PROGRAM,
   RULES_CHECKED_AT,
+  SUBSIDY_TOTAL_PCT,
   type Household,
   type Region,
   type ScheduleRow,
@@ -79,14 +88,21 @@ const HOUSEHOLD_ITEMS: { value: Household; title: string; desc: string }[] = [
   },
 ];
 
+const HOUSEHOLD_SHORT: Record<Household, string> = {
+  general: "一般家庭",
+  newlywed: "新婚 2 年內",
+  children: "育有未成年子女",
+};
+
 export default function YouthLoanForm() {
   const [age, setAge] = useState("");
-  const [incomeOverCap, setIncomeOverCap] = useState<boolean | null>(null);
-  const [familyOwnsHome, setFamilyOwnsHome] = useState<boolean | null>(null);
-  const [usedBefore, setUsedBefore] = useState<boolean | null>(null);
+  // 四題選擇題先帶最常見的答案，填完年齡和總價就出結果（理由見檔頭）
+  const [incomeOverCap, setIncomeOverCap] = useState(false);
+  const [familyOwnsHome, setFamilyOwnsHome] = useState(false);
+  const [usedBefore, setUsedBefore] = useState(false);
   const [region, setRegion] = useState<Region>("other");
   const [priceWan, setPriceWan] = useState("");
-  const [household, setHousehold] = useState<Household | null>(null);
+  const [household, setHousehold] = useState<Household>("general");
   const [years, setYears] = useState("30");
   const [graceYears, setGraceYears] = useState("0");
   const [amountWan, setAmountWan] = useState("");
@@ -106,24 +122,10 @@ export default function YouthLoanForm() {
 
   const missing: string[] = [];
   if (ageNum === null) missing.push("年齡");
-  if (incomeOverCap === null) missing.push("本人年所得");
-  if (familyOwnsHome === null) missing.push("名下有沒有房");
-  if (usedBefore === null) missing.push("辦過青安沒有");
   if (price === null || price === 0) missing.push("房屋總價");
-  if (household === null) missing.push("婚育狀況");
 
   const outcome = useMemo(() => {
-    if (
-      ageNum === null ||
-      incomeOverCap === null ||
-      familyOwnsHome === null ||
-      usedBefore === null ||
-      price === null ||
-      price === 0 ||
-      household === null
-    ) {
-      return null;
-    }
+    if (ageNum === null || price === null || price === 0) return null;
     try {
       const data = calcYouthLoan({
         age: ageNum,
@@ -143,6 +145,38 @@ export default function YouthLoanForm() {
     }
   }, [ageNum, incomeOverCap, familyOwnsHome, usedBefore, region, price, household, years, graceYears, wantAmount]);
 
+  // 結果卡上把回答再列一次 —— 四題有預設值，要讓人一眼核對「這是不是我的情況」
+  const recap =
+    ageNum !== null && price !== null
+      ? [
+          `${Math.floor(ageNum)} 歲`,
+          incomeOverCap ? "本人年所得超過 200 萬" : "本人年所得 200 萬以下",
+          familyOwnsHome ? "全家名下有房" : "全家名下沒房",
+          usedBefore ? "辦過青安" : "沒辦過青安",
+          `${PRICE_CAP[region].label}・總價 ${inWan(price)} 萬`,
+          HOUSEHOLD_SHORT[household],
+        ].join("・")
+      : "";
+
+  /* ── 結果在畫面下方看不到時，底下浮一條摘要（理由見檔頭 ②） ── */
+  const resultRef = useRef<HTMLDivElement>(null);
+  const [resultPos, setResultPos] = useState<"below" | "visible" | "above">("below");
+  useEffect(() => {
+    const el = resultRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        setResultPos(entry.isIntersecting ? "visible" : entry.boundingClientRect.top < 0 ? "above" : "below");
+      },
+      // 上緣扣掉固定 header 的高度，被 header 蓋住不算看得到
+      { rootMargin: "-80px 0px 0px 0px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  const showBar = outcome !== null && outcome.ok && resultPos === "below";
+  const jumpToResult = () => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
   return (
     <>
       <div className={styles.notice}>
@@ -152,7 +186,8 @@ export default function YouthLoanForm() {
 
       <div className={styles.form}>
         <p className={styles.quizIntro}>
-          新制多了<strong>年齡、所得、總價</strong>三道門檻。點完 7 題，馬上看你能不能辦、能貸多少、月付大概多少。
+          新制多了<strong>年齡、所得、總價</strong>三道門檻。填好<strong>年齡</strong>和<strong>房屋總價</strong>，
+          結果就會跑出來；其他題已先帶最常見的答案，不是你的情況就點一下改。
         </p>
 
         <div className={styles.quiz}>
@@ -249,33 +284,53 @@ export default function YouthLoanForm() {
         </div>
       </div>
 
-      {outcome === null && (
-        <div className={styles.alert}>
-          <p className={styles.alertTitle}>把 7 題點完，結果會自己跑出來</p>
-          <p className={styles.alertBody}>
-            還差：<strong>{missing.join("、")}</strong>。年限、寬限期已經先帶了常見值，可以照自己的打算改。
-          </p>
-        </div>
+      {/* 結果區。外面包一層給 IntersectionObserver 盯著，判斷「結果在畫面外」 */}
+      <div ref={resultRef} className={styles.resultAnchor}>
+        {outcome === null && (
+          <div className={styles.alert}>
+            <p className={styles.alertTitle}>填好年齡和房屋總價，結果會自己跑出來</p>
+            <p className={styles.alertBody}>
+              還差：<strong>{missing.join("、")}</strong>。其他題已先帶最常見的答案（所得 200 萬以下、全家沒房、沒辦過、一般家庭），
+              年限 30 年、沒有寬限期，都可以照自己的情況改。
+            </p>
+          </div>
+        )}
+
+        {outcome && !outcome.ok && (
+          <div className={styles.alert}>
+            <p className={styles.alertTitle}>這樣算不出來</p>
+            <p className={styles.alertBody}>{outcome.message}</p>
+          </div>
+        )}
+
+        {outcome && outcome.ok && !outcome.data.eligible && <Ineligible result={outcome.data} recap={recap} />}
+
+        {outcome && outcome.ok && outcome.data.eligible && <YouthResultCard result={outcome.data} recap={recap} />}
+      </div>
+
+      {showBar && outcome && outcome.ok && (
+        <button type="button" className={styles.stickyBar} onClick={jumpToResult} aria-label="捲到檢測結果">
+          <span className={styles.stickyText}>
+            {outcome.data.eligible
+              ? `✅ 符合青安 3.0・可貸上限 ${inWan(outcome.data.maxAmount)} 萬・前 3 年月付約 ${money(Math.round(outcome.data.firstMonthly))} 元`
+              : `❌ 不符青安 3.0 資格（${outcome.data.blockers.length} 個原因）`}
+          </span>
+          <span className={styles.stickyGo}>看結果 ↓</span>
+        </button>
       )}
-
-      {outcome && !outcome.ok && (
-        <div className={styles.alert}>
-          <p className={styles.alertTitle}>這樣算不出來</p>
-          <p className={styles.alertBody}>{outcome.message}</p>
-        </div>
-      )}
-
-      {outcome && outcome.ok && !outcome.data.eligible && <Ineligible result={outcome.data} />}
-
-      {outcome && outcome.ok && outcome.data.eligible && <YouthResultCard result={outcome.data} />}
     </>
   );
 }
 
-function Ineligible({ result }: { result: YouthLoanResult }) {
+function Ineligible({ result, recap }: { result: YouthLoanResult; recap: string }) {
   return (
     <div className={styles.alert}>
       <p className={styles.alertTitle}>這樣不符合青安 3.0 的資格</p>
+      {recap && (
+        <p className={styles.recap}>
+          你的回答：<strong>{recap}</strong>
+        </p>
+      )}
       <ul className={styles.blockers}>
         {result.blockers.map((b) => (
           <li key={b}>{b}</li>
@@ -298,7 +353,7 @@ function spanLabel(row: ScheduleRow): string {
   return row.fromYear === row.toYear ? `第 ${row.fromYear} 年` : `第 ${row.fromYear}～${row.toYear} 年`;
 }
 
-function YouthResultCard({ result }: { result: YouthLoanResult }) {
+function YouthResultCard({ result, recap }: { result: YouthLoanResult; recap: string }) {
   const usingLess = result.amount !== result.maxAmount;
   return (
     <>
@@ -319,11 +374,18 @@ function YouthResultCard({ result }: { result: YouthLoanResult }) {
             <span className={styles.fact}>
               用 {result.years} 年{result.graceYears > 0 ? `・寬限 ${result.graceYears} 年` : ""}試算
             </span>
+            <span className={styles.fact}>補貼 6 年約省 {inWan(result.subsidySaved)} 萬利息</span>
             <span className={styles.fact}>總利息約 {inWan(result.totalInterest)} 萬</span>
           </div>
         </div>
 
         <div className={styles.resultBody}>
+          {recap && (
+            <p className={styles.recap}>
+              你的回答：<strong>{recap}</strong>
+            </p>
+          )}
+
           {/* 輸入被自動修正的，結果卡上面要講 —— 使用者填 40 年、看到的卻是 35 年，會以為算錯 */}
           {result.warnings.length > 0 && (
             <div className={styles.resultWarn}>
@@ -369,6 +431,11 @@ function YouthResultCard({ result }: { result: YouthLoanResult }) {
               ))}
             </tbody>
           </table>
+
+          <p className={styles.benefit}>
+            💰 利息補貼 6 年合計約省 <strong>{money(Math.round(result.subsidySaved))} 元</strong>（約 {inWan(result.subsidySaved)} 萬）。
+            官方懶人包用「貸款金額 × {SUBSIDY_TOTAL_PCT}%」粗估是 {inWan(result.subsidySavedRough)} 萬；這裡逐月照餘額算，本金逐月在減少，所以略少一點。
+          </p>
 
           <ul className={styles.notes}>
             {result.notes.map((n) => (

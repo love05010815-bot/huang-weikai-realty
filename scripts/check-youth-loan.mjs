@@ -116,6 +116,36 @@ console.log("=== E 月付分段 ===");
   ok(r.schedule[r.schedule.length - 1].toYear === 20, "20 年最後一段到第 20 年", r.schedule[r.schedule.length - 1].toYear, 20);
 }
 
+console.log("=== E2 六年補貼受益 ===");
+{
+  // 逐月模擬當對照：每個月「月初餘額 × 補貼月利率」加總
+  const simSaved = (r) => {
+    let bal = r.amount, saved = 0;
+    for (const s of r.schedule) {
+      const rr = s.annualRate / 100 / 12, sub = (YL.CONTRACT_RATE - s.annualRate) / 100 / 12;
+      for (let m = 0; m < (s.toYear - s.fromYear + 1) * 12; m++) {
+        saved += bal * sub;
+        bal = s.interestOnly ? bal : bal * (1 + rr) - s.monthly;
+      }
+    }
+    return saved;
+  };
+  ok(YL.SUBSIDY_TOTAL_PCT === 2.25, "六年補貼加總 2.25%", YL.SUBSIDY_TOTAL_PCT, 2.25);
+  const a = run({ price: 萬(1500) }); // 貸 1000 萬 40 年
+  ok(a.subsidySavedRough === 225000, "粗估 1000 萬 × 2.25% = 22.5 萬", a.subsidySavedRough, 225000);
+  ok(near(a.subsidySaved, simSaved(a), 1), "逐段公式＝逐月模擬（40 年）", Math.round(a.subsidySaved), Math.round(simSaved(a)));
+  ok(a.subsidySaved < a.subsidySavedRough && a.subsidySaved > 200000, "精算略少於粗估、仍 > 20 萬", Math.round(a.subsidySaved), "20~22.5 萬");
+  const b = run({ price: 萬(1500), graceYears: 5 });
+  ok(near(b.subsidySaved, simSaved(b), 1), "逐段公式＝逐月模擬（寬限 5 年）", Math.round(b.subsidySaved), Math.round(simSaved(b)));
+  ok(b.subsidySaved > a.subsidySaved, "寬限期本金不減，省得比較多", Math.round(b.subsidySaved), "> " + Math.round(a.subsidySaved));
+  const c = run({ price: 萬(1500), years: 20 });
+  ok(near(c.subsidySaved, simSaved(c), 1), "逐段公式＝逐月模擬（20 年）", Math.round(c.subsidySaved), Math.round(simSaved(c)));
+  const d = run({ price: 萬(2000), household: "children" }); // 1500 萬
+  ok(d.subsidySavedRough === 337500, "粗估 1500 萬 → 33.75 萬（懶人包同數）", d.subsidySavedRough, 337500);
+  const e = run({ price: 萬(1500), household: "newlywed" }); // 1200 萬
+  ok(e.subsidySavedRough === 270000, "粗估 1200 萬 → 27 萬（懶人包同數）", e.subsidySavedRough, 270000);
+}
+
 console.log("=== F 自動修正與錯誤 ===");
 {
   const r = run({ age: 45, years: 40 });

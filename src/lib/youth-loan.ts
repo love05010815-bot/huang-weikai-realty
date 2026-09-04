@@ -79,6 +79,9 @@ export const CONTRACT_RATE = Math.round((POSTAL_BASE_RATE + SPREAD) * 1000) / 10
  */
 export const SUBSIDY_BY_YEAR = [0.5, 0.5, 0.5, 0.375, 0.25, 0.125] as const;
 
+/** 六年補貼加總（%）＝ 2.25。官方懶人包的「6 年受益」就是貸款金額 × 這個數 */
+export const SUBSIDY_TOTAL_PCT = SUBSIDY_BY_YEAR.reduce((a, b) => a + b, 0);
+
 /** 撥貸後第 N 年（1 起算）的實際年利率（%） */
 export function rateForYear(year: number): number {
   const subsidy = year >= 1 && year <= SUBSIDY_BY_YEAR.length ? SUBSIDY_BY_YEAR[year - 1] : 0;
@@ -161,6 +164,10 @@ export type YouthLoanResult = {
   schedule: ScheduleRow[];
   totalInterest: number;
   totalPayment: number;
+  /** 六年利息補貼合計少繳的利息（元）：逐段用月初餘額 × 補貼利率算，本金會減少所以比粗估略少 */
+  subsidySaved: number;
+  /** 官方懶人包的粗估：貸款金額 × 2.25%（元） */
+  subsidySavedRough: number;
   steps: Step[];
   /** 輸入被自動修正的說明（年限超過上限之類） */
   warnings: string[];
@@ -178,12 +185,13 @@ export function maxYearsForAge(age: number): number {
  * 逐段算月付金。利率每年可能不同（3＋3 退場），寬限期內只繳息。
  * 每一段用「當時的剩餘本金、剩餘期數」重算年金，跟銀行利率調整時的做法一樣。
  */
-function buildSchedule(amount: number, years: number, graceYears: number): ScheduleRow[] {
+function buildSchedule(amount: number, years: number, graceYears: number): { rows: ScheduleRow[]; subsidySaved: number } {
   const total = Math.round(years * 12);
   const graceMonths = Math.round(graceYears * 12);
   const rows: ScheduleRow[] = [];
   let balance = amount;
   let month = 0;
+  let subsidySaved = 0;
 
   while (month < total) {
     const year = Math.floor(month / 12) + 1;
@@ -196,13 +204,24 @@ function buildSchedule(amount: number, years: number, graceYears: number): Sched
     const k = end - month;
 
     let monthly: number;
+    // 這一段每個月「月初餘額」的加總；乘上補貼利率就是這段少繳的利息
+    let sumBalances: number;
     if (interestOnly) {
       monthly = balance * r;
+      sumBalances = balance * k;
     } else {
       monthly = annuity(balance, r, total - month);
       const growth = Math.pow(1 + r, k);
-      balance = r === 0 ? balance - monthly * k : balance * growth - (monthly * (growth - 1)) / r;
+      if (r === 0) {
+        sumBalances = balance * k - (monthly * k * (k - 1)) / 2;
+        balance = balance - monthly * k;
+      } else {
+        const s = (growth - 1) / r; // Σ (1+r)^m，m = 0..k-1
+        sumBalances = balance * s - (monthly / r) * (s - k);
+        balance = balance * growth - (monthly * (growth - 1)) / r;
+      }
     }
+    subsidySaved += sumBalances * ((CONTRACT_RATE - annualRate) / 100 / 12);
 
     const subsidyTicks = Math.round(((CONTRACT_RATE - annualRate) / 0.25) * 2) / 2;
     const last = rows[rows.length - 1];
@@ -219,7 +238,7 @@ function buildSchedule(amount: number, years: number, graceYears: number): Sched
     }
     month = end;
   }
-  return rows;
+  return { rows, subsidySaved };
 }
 
 export function calcYouthLoan(input: YouthLoanInput): YouthLoanResult {
@@ -301,7 +320,8 @@ export function calcYouthLoan(input: YouthLoanInput): YouthLoanResult {
   }
 
   /* ── 月付金 ── */
-  const schedule = buildSchedule(amount, years, graceYears);
+  const { rows: schedule, subsidySaved } = buildSchedule(amount, years, graceYears);
+  const subsidySavedRough = (amount * SUBSIDY_TOTAL_PCT) / 100;
   const totalPayment = schedule.reduce((sum, row) => sum + row.monthly * (row.toYear - row.fromYear + 1) * 12, 0);
   const totalInterest = totalPayment - amount;
 
@@ -340,6 +360,8 @@ export function calcYouthLoan(input: YouthLoanInput): YouthLoanResult {
     schedule,
     totalInterest,
     totalPayment,
+    subsidySaved,
+    subsidySavedRough,
     steps,
     warnings,
     notes,
