@@ -1461,8 +1461,8 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
   {
-    id: "rian-cheng-2", name: "日安埕2", builder: "待確認", area: "北勢靜宜",
-    status: "completed", completion: "成屋",
+    id: "rian-cheng-2", name: "日安埕2", builder: "佳璽建設", area: "北勢靜宜",
+    status: "completed", completion: "約 2015",
     sources: ["owner"],
   },
   {
@@ -1516,7 +1516,7 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
   {
-    id: "hezhen-di", name: "和臻邸", builder: "待確認", area: "北勢靜宜",
+    id: "hezhen-di", name: "和臻邸", builder: "龍寶建設", area: "北勢靜宜",
     status: "presale", statusNote: "預售／新案", completion: "預售中",
     sources: ["owner"],
   },
@@ -1604,8 +1604,8 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
   {
-    id: "zhifu-dadao", name: "致富大道", builder: "待確認", area: "北勢靜宜",
-    status: "completed", completion: "成屋",
+    id: "zhifu-dadao", name: "致富大道", builder: "僑邑建設", area: "北勢靜宜",
+    status: "completed", completion: "約 2018",
     sources: ["owner"],
   },
   {
@@ -1637,8 +1637,8 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
   {
-    id: "wulu-yingshan", name: "吾廬映山", builder: "待確認", area: "北勢靜宜",
-    status: "completed", completion: "成屋",
+    id: "wulu-yingshan", name: "吾廬映山", builder: "臻品建設", area: "北勢靜宜",
+    status: "completed", completion: "約 2015",
     sources: ["owner"],
   },
   {
@@ -1671,7 +1671,7 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
   {
-    id: "mu-shanlin", name: "沐山林", builder: "待確認", area: "北勢靜宜",
+    id: "mu-shanlin", name: "沐山林", builder: "禮鏞建設", area: "北勢靜宜",
     status: "presale", statusNote: "預售／新案", completion: "預售中",
     sources: ["owner"],
   },
@@ -1686,8 +1686,8 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
   {
-    id: "rimu-jingran", name: "日沐井然", builder: "待確認", area: "北勢靜宜",
-    status: "completed", statusNote: "成屋／近年案", completion: "成屋",
+    id: "rimu-jingran", name: "日沐井然", builder: "臻品建設", area: "北勢靜宜",
+    status: "completed", completion: "約 2016",
     sources: ["owner"],
   },
   {
@@ -1698,7 +1698,7 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
   {
-    id: "ruquan-ruyi", name: "如泉如意", builder: "待確認", area: "北勢靜宜",
+    id: "ruquan-ruyi", name: "如泉如意", builder: "如泉不動產", area: "北勢靜宜",
     status: "presale", statusNote: "預售／新案", completion: "預售中",
     sources: ["owner"],
   },
@@ -1723,8 +1723,8 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
   {
-    id: "zhifu-yihaozan", name: "致富一號讚", builder: "待確認", area: "北勢靜宜",
-    status: "completed", completion: "成屋",
+    id: "zhifu-yihaozan", name: "致富一號讚", builder: "慶霖建設", area: "北勢靜宜",
+    status: "completed", completion: "約 2016",
     sources: ["owner"],
   },
   {
@@ -1749,8 +1749,8 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
   {
-    id: "zhifu-shishang", name: "致富時上", builder: "待確認", area: "北勢靜宜",
-    status: "presale", statusNote: "預售／新案", completion: "預售中",
+    id: "zhifu-shishang", name: "致富時上", builder: "德邑建設", area: "北勢靜宜", // 2026-09-04 他打「6su06」＝注音沒切回來的「6 年」，讀成約 2020；不對他會說
+    status: "completed", completion: "約 2020",
     sources: ["owner"],
   },
   {
@@ -1781,8 +1781,8 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
   {
-    id: "qingchuan-quan", name: "青川泉", builder: "待確認", area: "北勢靜宜",
-    status: "completed", completion: "成屋", units: 4,
+    id: "qingchuan-quan", name: "青川泉", builder: "建晟金興業", area: "北勢靜宜",
+    status: "completed", completion: "約 2023", units: 4,
     street: "南昌路", streets: "沙鹿區 南昌路 61 巷一帶",
     layout: "透天", siteAreaPing: 124,
     sources: ["owner"],
@@ -1793,8 +1793,8 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
   {
-    id: "xingfu-meishu", name: "幸福美墅", builder: "待確認", area: "北勢靜宜",
-    status: "completed", completion: "成屋",
+    id: "xingfu-meishu", name: "幸福美墅", builder: "榮久營造", area: "北勢靜宜",
+    status: "completed", completion: "約 2007",
     layout: "透天",
     sources: ["owner"],
   },
