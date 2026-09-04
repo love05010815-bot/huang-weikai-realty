@@ -1872,13 +1872,13 @@ export const PROJECTS: Project[] = [
   { id: "luyi-zhendi-2", name: "綠裔蓁邸2", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "luyi-zhendi", name: "綠裔蓁邸", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "quanmei-fuli", name: "泉美富里", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "lvguang-2-riguangshu", name: "綠光計畫2日光墅", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "lvguang-yuehongshan", name: "綠光計畫閱鴻山", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "lvguang-6-qingjing", name: "綠光計畫6青境", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "lvguang-8-hongshanzhencang", name: "綠光計畫8鴻山臻藏", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "lvguang-7-fengcai", name: "綠光計畫7豐采", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "lvguang-5-buqingyun", name: "綠光計畫5步青雲", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "lvguang-3-shuiyifang", name: "綠光計畫3水一芳", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "lvguang-2-riguangshu", name: "綠光計畫2日光墅", builder: "鴻山建設", area: "新光田", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "lvguang-yuehongshan", name: "綠光計畫閱鴻山", builder: "鴻山建設", area: "新光田", status: "completed", completion: "約 2016", street: "保成五街", streets: "沙鹿區 保成五街 88 號", sources: ["owner"] },
+  { id: "lvguang-6-qingjing", name: "綠光計畫6青境", builder: "宇澤建設", area: "新光田", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "lvguang-8-hongshanzhencang", name: "綠光計畫8鴻山臻藏", builder: "鴻山建設", area: "新光田", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "lvguang-7-fengcai", name: "綠光計畫7豐采", builder: "鴻山建設", area: "新光田", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "lvguang-5-buqingyun", name: "綠光計畫5步青雲", builder: "鴻山建設", area: "新光田", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "lvguang-3-shuiyifang", name: "綠光計畫3水一芳", builder: "宇澤建設", area: "新光田", status: "completed", completion: "約 2019", sources: ["owner"] },
   { id: "zaiyu-tianebao", name: "再遇天鵝堡／藍天鵝", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "tianfu-yangzhen", name: "天府養真", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "futeng-fuyuanjing", name: "富騰富苑景", builder: "富騰建設體系", area: "新光田", status: "completed", completion: "約 2023", sources: ["owner"] },
@@ -1897,7 +1897,7 @@ export const PROJECTS: Project[] = [
   { id: "changli-pinyue", name: "昶立品悅", builder: "昶立建設體系", area: "新光田", status: "completed", completion: "約 2016", sources: ["owner"] },
   { id: "zhuyin-dajingxi", name: "住寅大晶囍", builder: "住寅建設體系", area: "新光田", status: "newly", completion: "約 2025", sources: ["owner"] },
   { id: "yongzhu-shangcheng", name: "永築上承", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "qiaoli-me-town", name: "喬立ME TOWN", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "qiaoli-me-town", name: "喬立ME TOWN", builder: "喬立建設", area: "新光田", status: "completed", completion: "約 2020", sources: ["owner"] },
   { id: "fuyu-chuntian", name: "富宇春天", builder: "富宇建設", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "lizhi-kaisa", name: "麗緻凱撒", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "yunjiang-shangshangqian", name: "允將上上謙", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
@@ -1919,8 +1919,8 @@ export const PROJECTS: Project[] = [
   { id: "fuyu-hongguan", name: "富宇宏觀", builder: "富宇建設", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "kunyue-muguangshu", name: "坤悅沐光墅", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "kunyue-muguangdi", name: "坤悅沐光邸", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "shijieyijing-siji", name: "世界一景四季區", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "shijieyijing-lichi", name: "世界一景麗池區", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shijieyijing-siji", name: "世界一景四季區", builder: "德邑建設", area: "新光田", status: "completed", completion: "約 2012", sources: ["owner"] },
+  { id: "shijieyijing-lichi", name: "世界一景麗池區", builder: "德邑建設", area: "新光田", status: "completed", completion: "約 2012", sources: ["owner"] },
   { id: "hongyi-shu", name: "鴻藝墅", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "baolai-shoufu", name: "寶萊首賦", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "jingyi-puzhen", name: "敬益璞真", builder: "敬益建設體系", area: "新光田", status: "completed", completion: "約 2023", sources: ["owner"] },
@@ -2377,6 +2377,8 @@ export const COORDS: Record<string, Coord> = {
      ⚠️ 標完這批，新光田只剩「碧益觀雲」「時代一景」2 案沒座標。 */
   "sakura-xiangshangzhiying": { lat: 24.20171, lng: 120.56274, precision: "exact" }, // 櫻花向上之櫻
   "lvguang-yuehongshan": { lat: 24.21326, lng: 120.56105, precision: "exact" }, // 綠光計畫閱鴻山
+  // ⚠️ 2026-09-04 他說「地點改在保成五街 88 號」。OSM 定不到門牌，保成五街街心 24.21279/120.56433 離這個點 337 m。
+  //    沒有拿街心蓋掉他親手點的座標（那會變成假的 exact），已請他到 /map?fix=1 重點一次；點完換掉上面那行。
   "lvguang-7-fengcai": { lat: 24.21343, lng: 120.56185, precision: "exact" }, // 綠光計畫7豐采
   "lvguang-6-qingjing": { lat: 24.21322, lng: 120.56245, precision: "exact" }, // 綠光計畫6青境
   "lvguang-2-riguangshu": { lat: 24.21393, lng: 120.56288, precision: "exact" }, // 綠光計畫2日光墅
