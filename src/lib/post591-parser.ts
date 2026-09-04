@@ -210,7 +210,15 @@ export function parseHouseol(raw: string): Listing {
   d.parkNo = oneText(body, "車位\\s*/\\s*編號", /([^\n]{1,24})/);
   d.usage = oneText(body, "類別\\s*/\\s*謄本用途", /([^\n]{1,24})/);
   d.kind = oneText(body, "類型\\s*/\\s*現況", /([^\n]{1,24})/);
-  d.community = oneText(body, "社區", /([^\n]{1,24})/);
+
+  /*
+    社區欄位。⚠️ 標題也常以「社區」開頭（「社區最便宜全新美兩房平車」），從頭找會把標題當社區名。
+    型錄的欄位順序固定是 …類型/現況 → 社區 → 管理費…，所以只在「類型」之後找，
+    而且「社區」要在行首（值可能黏在同一行或在下一行，pick 兩種都接）。
+  */
+  const kindAt = body.indexOf("類型");
+  const scope = kindAt > -1 ? body.slice(kindAt) : body;
+  d.community = oneText(scope, "(?:^|\\n)社區", /([^\n]{1,24})/);
 
   /* 標籤用非貪婪 —— 貪婪的話「管理費|車位管理費2342元/月繳」會回溯到只抓一個「2」 */
   const mf = pick(body, "管理費[^\\n]*?", /([\d,]+)\s*元\s*\/\s*(月繳|季繳|半年繳|年繳)/);
@@ -253,12 +261,17 @@ export function parseHouseol(raw: string): Listing {
   return d;
 }
 
-/** 特色文字逐行拆開，去掉 ✨ ① ▪ • 這類開頭符號與空行 */
+/**
+ * 特色文字逐行拆開，去掉 ✨ ① ▪ • 這類開頭符號與空行。
+ * ⚠️ 型錄「環境特色」下面緊接著「地圖 街景 更多照片 成交行情」那排連結，複製時沒帶括號就會混進來，
+ *    2026-09-04 就這樣進了一則廣告的 ✨ 第六行。那排是按鈕文字，不是特色，整行丟掉。
+ */
 export function splitFeatureLines(text: string): string[] {
   return text
     .split("\n")
     .map((L) => L.replace(/^[\s✨★☆▪•●◆◇①-⑳\-–—]+/, "").trim())
-    .filter((L) => L.length > 0);
+    .filter((L) => L.length > 0)
+    .filter((L) => !/^(?:\[?地圖\]?|街景|更多照片|成交行情)(?:[\s\[\]()（）]|$)/.test(L) && !/^地圖\s+街景/.test(L));
 }
 
 /* ───────── LINE 文字 ───────── */

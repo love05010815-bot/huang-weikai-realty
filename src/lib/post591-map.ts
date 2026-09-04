@@ -153,14 +153,16 @@ export function derive(d: Listing, nowYear: number = new Date().getFullYear()): 
 
   const p = (d.parkType || "").replace(/[\s/／]/g, "");
   const hasPark = !!(d.parkPing || (p && !/^無$|^無車位/.test(p)));
+  /*
+    591 電梯大樓表單「車位面積」旁的型式下拉，2026-09-04 實際只有四個選項：
+    平面式停車位／機械式停車位／平面式+機械式／其他（不是坡道／升降那套）。
+    型錄寫「坡道/平面」「升降/機械」，看的是後半那個字。
+  */
   let parkSel = "";
   if (!hasPark) parkSel = "";
-  else if (/坡道.*平面|平面.*坡道/.test(p)) parkSel = "坡道平面";
-  else if (/坡道.*機械|機械.*坡道/.test(p)) parkSel = "坡道機械";
-  else if (/升降.*平面/.test(p)) parkSel = "升降平面";
-  else if (/升降.*機械/.test(p)) parkSel = "升降機械";
-  else if (/塔式/.test(p)) parkSel = "塔式車位";
-  else if (/平面/.test(p)) parkSel = "坡道平面";
+  else if (/平面/.test(p) && /機械/.test(p)) parkSel = "平面式+機械式";
+  else if (/平面/.test(p)) parkSel = "平面式停車位";
+  else if (/機械|塔式|升降/.test(p)) parkSel = "機械式停車位";
   else parkSel = "其他";
 
   const life: string[] = [];
