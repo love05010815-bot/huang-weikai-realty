@@ -170,8 +170,9 @@
 }
 
 .search {
-  flex: 1 1 220px;
-  min-width: 180px;
+  display: block;
+  width: 100%;
+  min-width: 0;
 }
 
 .searchInput {
@@ -363,8 +364,12 @@
 }
 
 .detailList {
-  margin: 0 0 16px;
-  font-size: 14px;
+  margin: 0 0 18px;
+  font-size: 14.5px;
+  /* 右欄現在有整個主欄的寬度，資料列排成兩欄；坐落／周邊機能那種長的自己會撐到整列 */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 4px 28px;
 }
 
 .detailList > div {
@@ -809,18 +814,219 @@
   color: var(--muted);
 }
 
-.filterBar {
+/* ═══════════ 建案地圖版面（2026-09-04 重排）═══════════
+   左：工具（搜尋＋區域臉）＋建案清單；右：地圖在上、詳情＋在售物件在下。
+   三個格子用 grid-area 擺位，手機只換一份 grid-template-areas，DOM 順序不動。 */
+.explorer {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "tools main"
+    "list main";
+  gap: 14px 18px;
+  margin-bottom: 18px;
+}
+
+.tools {
+  grid-area: tools;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mainCol {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* 清單：自己捲，黏在視窗裡跟著右欄走。align-self:start 是 sticky 的前提 ——
+   格子被撐滿的話 sticky 沒有可以移動的空間。top 要留過 sticky header 的高度。 */
+.sideList {
+  grid-area: list;
+  align-self: start;
+  position: sticky;
+  top: 84px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.sideHead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--primary);
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+
+.sideMine {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b4a12;
+  background: var(--accent-soft);
+  border: 1px solid var(--line-warm);
+  border-radius: 999px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+.sideGroup {
+  padding: 6px 8px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.sideGroup:last-child {
+  border-bottom: 0;
+}
+
+.sideGroupHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 6px 6px 6px;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.sideGroupHead em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.sideRows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.sideRow,
+.sideRowOn {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto 14px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  font-family: inherit;
+  color: var(--ink);
+  cursor: pointer;
+}
+.sideRow:hover {
+  background: #f6f4ef;
+  border-color: var(--line);
+}
+.sideRowOn {
+  background: var(--accent-soft);
+  border-color: var(--line-warm);
+}
+
+.sideNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #f1f4f6;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.sideRowOn .sideNum {
+  background: var(--primary);
+  color: #fff;
+}
+
+.sideText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.sideText b {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sideText em {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sideMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sideMeta i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+.sideMeta u {
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 800;
+  color: #6b4a12;
+  background: var(--accent-soft);
+  border: 1px solid var(--line-warm);
+  border-radius: 999px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+.sideMeta s {
+  text-decoration: none;
+  font-size: 11px;
+  color: #b42318;
+  white-space: nowrap;
+}
+
+.sideArrow {
+  color: var(--muted);
+  font-size: 14px;
+}
+.sideRowOn .sideArrow {
+  color: var(--primary);
 }
 
 .chips {
-  display: inline-flex;
-  gap: 8px;
-  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .chip,
@@ -828,9 +1034,9 @@
   border: 1px solid var(--line);
   background: #fff;
   color: var(--muted);
-  padding: 8px 18px;
+  padding: 7px 12px;
   border-radius: 999px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
@@ -1182,14 +1388,6 @@
 
    ⚠️ 兩欄等高**不是靠寫死高度**（試過，差 51px —— 左欄除了地圖還有底下那條
       圖例，圖例會依欄寬換行，高度是浮動的）。做法看 .detailPane 的註解。 */
-.split {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-  gap: 18px;
-  /* 不要寫 align-items: start —— 右欄要 stretch 才吃得到列高 */
-  margin-bottom: 18px;
-}
-
 .lmWrap {
   min-width: 0;
   border: 1px solid var(--line);
@@ -1222,18 +1420,11 @@
   border: 1px solid var(--line-warm);
   border-radius: var(--radius);
   background: #fcfaf6;
-  padding: 20px 22px;
+  padding: 24px 26px;
   box-sizing: border-box;
-  /* 「右欄永遠跟左欄一樣高」的做法（別改成寫死高度，左欄高度是浮動的）：
-       height: 0      → 這一欄對列高的貢獻是 0，列高完全由左邊地圖那欄決定
-       min-height:100% → 再撐滿那個列高
-     少了 height:0，選到有 8 張照片的建案時右欄會長到 1300px，把左邊地圖那欄
-     一起拉長，地圖下面就多出一大塊白的。實測：左欄 651px、右欄 651px、
-     內容 1321px 在框內捲。 */
-  height: 0;
-  min-height: 100%;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  /* 2026-09-04 起詳情在地圖正下方，不再跟地圖並排 —— 原本那套「height:0 + min-height:100%
+     讓右欄跟左欄一樣高」的做法已經不需要，內容有多長就多長，不要再鎖高度在框內捲。 */
+  min-height: 240px;
 }
 
 .detailEmpty {
@@ -1242,7 +1433,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  min-height: 190px;
   text-align: center;
   color: var(--muted);
   font-size: 14.5px;
@@ -1441,150 +1632,9 @@
 /* ═══════════ 建案索引（收合式） ═══════════
    2026-08-26：預設收合。清單本身沒有刪 —— 39 個建案名是這頁的 SEO 主體，
    收在 <details> 裡 Google 仍讀得到。 */
-.indexBlock {
-  margin-bottom: 10px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: #fff;
-  padding: 12px 16px;
-}
-
-.indexSummary {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  font-size: 15px;
-  font-weight: 800;
-  color: var(--primary);
-  cursor: pointer;
-  /* 兩行一起寫才收得掉預設的三角形（Safari 走 ::-webkit-details-marker） */
-  list-style: none;
-}
-
-.indexSummary::-webkit-details-marker {
-  display: none;
-}
-
-.indexSummary::before {
-  content: "▸";
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.indexBlock[open] .indexSummary::before {
-  content: "▾";
-}
-
-.indexBlock[open] .indexSummary {
-  margin-bottom: 12px;
-}
-
-.indexSummary em {
-  font-style: normal;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.indexBlock[open] .indexSummary em {
-  display: none;
-}
-
-.indexMine {
-  font-size: 12px;
-  font-weight: 700;
-  color: #6b4a12;
-  background: var(--accent-soft);
-  border: 1px solid var(--line-warm);
-  border-radius: 999px;
-  padding: 2px 10px;
-}
-
-.indexList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 8px;
-}
-
-.indexItem,
-.indexItemOn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  text-align: left;
-  padding: 9px 12px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #fff;
-  font-family: inherit;
-  font-size: 13px;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.indexItem:hover {
-  border-color: var(--line-warm);
-  background: var(--soft);
-}
-
-.indexItemOn {
-  border-color: var(--primary);
-  background: var(--accent-soft);
-}
-
-.indexItem i,
-.indexItemOn i {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex: none;
-}
-
-.indexItem b,
-.indexItemOn b {
-  font-size: 14.5px;
-  font-weight: 800;
-  color: var(--ink);
-  white-space: nowrap;
-}
-
-.indexItem em,
-.indexItemOn em {
-  font-style: normal;
-  white-space: nowrap;
-}
-
-.indexItem u,
-.indexItemOn u {
-  text-decoration: none;
-  font-weight: 700;
-  color: #6b4a12;
-  background: var(--accent-soft);
-  border-radius: 999px;
-  padding: 1px 8px;
-  white-space: nowrap;
-}
-
-.indexItem s,
-.indexItemOn s {
-  text-decoration: none;
-  color: #8a6d1f;
-  font-size: 12px;
-}
-
-.indexItem span,
-.indexItemOn span {
-  white-space: nowrap;
-}
-
 .lmMap {
   width: 100%;
-  height: clamp(420px, 62vh, 640px);
+  height: clamp(520px, 68vh, 760px);
   background: #e8ecef;
   z-index: 0; /* 別蓋到 sticky header */
 }
@@ -1759,18 +1809,26 @@
 }
 
 @media (max-width: 900px) {
-  /* 兩欄在手機上塞不下，回到上下堆疊：地圖在上、建案資訊在下 */
-  .split {
+  /* 手機：單欄，工具在最上面、地圖＋詳情在中間、清單在最下面（清單自己捲）。
+     DOM 順序不動，只換 grid-template-areas。 */
+  .explorer {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "tools"
+      "main"
+      "list";
     gap: 14px;
   }
 
+  .sideList {
+    position: static;
+    max-height: 460px;
+  }
+
   .detailPane {
-    /* 手機不鎖高度 —— 鎖了就變成小框裡再捲一次，很難用 */
-    height: auto;
+    padding: 18px 16px;
     min-height: 0;
-    max-height: none;
-    overflow: visible;
   }
 
   /* 手機上橫條要放棄，改回「照片在上、文字在下」。
@@ -1796,7 +1854,7 @@
   }
 
   .lmMap {
-    height: clamp(340px, 52vh, 460px);
+    height: clamp(380px, 56vh, 520px);
   }
 
   .lmSide {
@@ -1857,12 +1915,6 @@
 
   .statRow li:last-child {
     grid-column: 1 / -1;
-  }
-
-  .filterBar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
   }
 
   .chips {

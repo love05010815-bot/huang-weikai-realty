@@ -588,9 +588,21 @@ export default function LeafletMap({
     const prev = selectedRef.current;
     selectedRef.current = selectedId;
     if (!L || prev === selectedId) return;
+    // 2026-09-04 側欄清單變成主要入口：從清單點建案時，地圖要自己移過去 ——
+    // 圖釘在畫面外或還收在膠囊裡（zoom < CLUSTER_ZOOM）時 setView 到它；
+    // 本來就在畫面內（多半是直接點圖釘）就不動，免得每點一下地圖就跳。
+    // animate:false 的理由跟初始視野同一個（見「建立地圖」那段註解）。
+    const map = mapRef.current;
+    const c = selectedId ? COORDS[selectedId] : undefined;
+    if (map && c) {
+      const ll = L.latLng(c.lat, c.lng);
+      const z = map.getZoom();
+      if (z < CLUSTER_ZOOM || !map.getBounds().pad(-0.15).contains(ll)) {
+        map.setView(ll, Math.max(z, 15), { animate: false });
+      }
+    }
     for (const [id, on] of [[prev, false], [selectedId, true]] as Array<[string | null, boolean]>) {
-      if (!id) continue;
-      const marker = markersRef.current.get(id);
+      if (!id) continue;      const marker = markersRef.current.get(id);
       const info = projectByIdRef.current.get(id);
       // 膠囊模式下那根圖釘不存在（收在膠囊裡），沒東西可換是正常的
       if (!marker || !info) continue;

@@ -25,7 +25,7 @@
  *    只有「物件介紹」與「預約諮詢」兩顆。`/listings` 那邊仍然兩顆外連都放。
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ZONES } from "@/data/port-zones";
 import {
@@ -222,14 +222,43 @@ export default function ProjectExplorer({
 
   const onSelect = useCallback((p: Project) => setSelectedId(p.id), []);
 
+  /**
+   * 左側清單依區域分組（2026-09-04 系統擁有者拿另一家的互動地圖當範本：
+   * 左邊長條清單、右上地圖、右下物件資訊）。順序照 AREA_FILTERS，0 案的區不出現。
+   * 組內順序就是 `rows` 的順序（建商→系列→戶數），編號只是視覺上的序號，不是 id。
+   */
+  const groups = useMemo(
+    () =>
+      AREA_FILTERS.map((f) => ({ ...f, items: rows.filter((p) => p.area === f.value) })).filter(
+        (g) => g.items.length > 0
+      ),
+    [rows]
+  );
+
+  /**
+   * 從清單點建案：手機上清單在最下面、詳情在地圖下面 —— 點了之後詳情在畫面外，
+   * 看起來就像「按鈕沒反應」（這頁被回報過三次的老毛病）。≤900px 時捲到詳情。
+   * 桌機兩欄並排，詳情就在右邊，不用捲。地圖自己會移到那根圖釘（見 LeafletMap 的換選取 effect）。
+   */
+  const detailRef = useRef<HTMLElement>(null);
+  const pickFromList = useCallback((p: Project) => {
+    setSelectedId(p.id);
+    if (typeof window !== "undefined" && window.innerWidth <= 900) {
+      // 等 React 把詳情畫出來再捲，不然捲到的是舊的空狀態
+      window.setTimeout(() => detailRef.current?.scrollIntoView({ block: "start", behavior: "smooth" }), 0);
+    }
+  }, []);
+
   return (
     <div className={styles.explorer}>
       {/* 概況統計列（39個建案／19家建商／…）2026-08-27 系統擁有者指定拿掉。
           `stats` 本身沒有刪 —— 下面的篩選膠囊還在用它顯示各階段案數。 */}
 
-      {/* ── 篩選 ── */}
-      <div className={styles.filterBar}>
-
+      {/* ── 左側工具：搜尋＋區域臉（桌機在左欄最上面、手機在最上面）──
+          2026-09-04 版面重排：左側長條清單、右上地圖、右下詳情＋在售物件。
+          `.explorer` 是格線，三個格子用 grid-area 擺位（tools／list／main），
+          手機只是換一份 grid-template-areas，DOM 順序不動。 */}
+      <div className={styles.tools}>
         <label className={styles.search}>
           <span className={styles.srOnly}>搜尋建案或建商</span>
           <input
@@ -240,7 +269,6 @@ export default function ProjectExplorer({
             className={styles.searchInput}
           />
         </label>
-      </div>
 
       {/* ── 篩選：一排，依區域（2026-08-27 系統擁有者指定，原本上面還有一排銷售階段）──
 
@@ -271,12 +299,61 @@ export default function ProjectExplorer({
           </button>
         ))}
       </div>
+      </div>
 
-      {/* ── 地圖（左）＋建案資訊（右）──
-          2026-08-26 系統擁有者拍板：原本是地圖全寬、詳情接在下方，
-          改成左右並排，而且右邊**點了才顯示**。
-          手機仍然上下堆疊 —— 兩欄在 900px 以下塞不下。 */}
-      <div className={styles.split}>
+      {/* ── 左側建案清單（桌機在左欄、手機在最下面）──
+          2026-08-26 曾拍板「不要一進來就攤開清單、收進 <details>」；2026-09-04 系統擁有者
+          拿另一家的互動地圖當範本改成長條側欄，清單重新變成常駐可見。
+          ⚠️ 這份清單也是這頁在 Google 上幾乎全部的關鍵字面（「梧棲重劃區建案」「遠雄之星」…），
+             常駐可見比收合更好，**不要再收回 <details> 或改成點了才渲染**。 */}
+      <aside className={styles.sideList} aria-label="建案清單">
+        <div className={styles.sideHead}>
+          <span>{`建案清單 ${rows.length}／${stats.total}`}</span>
+          {mineTotal > 0 && <span className={styles.sideMine}>{`我有 ${mineTotal} 件在售`}</span>}
+        </div>
+        {rows.length === 0 ? (
+          <p className={styles.empty}>沒有符合的建案。換個關鍵字或篩選試試。</p>
+        ) : (
+          groups.map((g) => (
+            <section key={g.value} className={styles.sideGroup}>
+              <h3 className={styles.sideGroupHead}>
+                <span>{g.label}</span>
+                <em>{g.items.length}</em>
+              </h3>
+              <ol className={styles.sideRows}>
+                {g.items.map((p, i) => (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      className={p.id === selectedId ? styles.sideRowOn : styles.sideRow}
+                      onClick={() => pickFromList(p)}
+                      aria-pressed={p.id === selectedId}
+                    >
+                      <span className={styles.sideNum}>{String(i + 1).padStart(2, "0")}</span>
+                      <span className={styles.sideText}>
+                        <b>{p.name}</b>
+                        <em>{p.builder}</em>
+                      </span>
+                      <span className={styles.sideMeta}>
+                        {(mine[p.id] ?? 0) > 0 && <u>{`在售 ${mine[p.id]}`}</u>}
+                        {!COORDS[p.id] && <s>未標位置</s>}
+                        <i style={{ background: TONE_SWATCH[p.status] }} aria-hidden="true" />
+                      </span>
+                      <span className={styles.sideArrow} aria-hidden="true">→</span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          ))
+        )}
+      </aside>
+
+      {/* ── 右欄：地圖在上、選中的建案＋在售物件在下 ──
+          2026-08-26 曾拍板「地圖左、詳情右、點了才顯示」；2026-09-04 系統擁有者改成
+          「地圖與物件資訊顯示可以大一點」的上下堆疊，詳情永遠在地圖正下方 —— 桌機手機都一樣，
+          所以文案可以放心寫「下方」。 */}
+      <div className={styles.mainCol}>
         <div className={styles.lmWrap}>
           <LeafletMap
             projects={rows}
@@ -336,7 +413,7 @@ export default function ProjectExplorer({
         </div>
 
         {/* ── 選中的建案（桌機在右欄、手機在地圖下方）── */}
-        <section className={styles.detailPane} aria-live="polite">
+        <section ref={detailRef} className={styles.detailPane} aria-live="polite">
           {selected ? (
             <>
               <header className={styles.detailHead}>
@@ -522,53 +599,11 @@ export default function ProjectExplorer({
             </>
           ) : (
             <p className={styles.detailEmpty}>
-              👆 點地圖上的大樓圖示，這裡就會顯示建案資訊與我在那個建案的在售物件。
+              點清單裡的建案、或地圖上的大樓圖示，這裡就會顯示建案資訊與我在那個建案的在售物件。
             </p>
           )}
         </section>
       </div>
-
-      {/* ── 建案索引 ──
-          2026-08-26 系統擁有者拍板：不要一進來就攤開 39 個建案，改成點地圖才顯示。
-
-          ⚠️ 但這份清單**不能直接刪掉**。這 39 個建案名是這頁在 Google 上
-             幾乎全部的關鍵字面（「梧棲重劃區建案」「遠雄之星」…都靠它），
-             刪掉等於自己把搜尋流量關掉。
-
-          折衷：收進 <details>，預設收合、畫面上只剩一行，但**文字仍然在 HTML 裡**，
-          Google 讀得到（收合內容的權重可能略低於直接可見，但遠優於不存在）。
-          要改回預設展開就加 open。 */}
-      <details className={styles.indexBlock}>
-        <summary className={styles.indexSummary}>
-          {`建案一覽（${rows.length}／${stats.total}）`}
-          {mineTotal > 0 && <span className={styles.indexMine}>{`我有 ${mineTotal} 件在售`}</span>}
-          <em>展開看全部</em>
-        </summary>
-        {rows.length === 0 ? (
-          <p className={styles.empty}>沒有符合的建案。換個關鍵字或篩選試試。</p>
-        ) : (
-          <ul className={styles.indexList}>
-            {rows.map((p) => (
-              <li key={p.id}>
-                <button
-                  type="button"
-                  className={p.id === selectedId ? styles.indexItemOn : styles.indexItem}
-                  onClick={() => setSelectedId(p.id)}
-                  aria-pressed={p.id === selectedId}
-                >
-                  <i style={{ background: TONE_SWATCH[p.status] }} aria-hidden="true" />
-                  <b>{p.name}</b>
-                  <em>{p.builder}</em>
-                  {p.units != null && <span>{`${fmt(p.units)} 戶`}</span>}
-                  <span>{AREA_LABEL[p.area]}</span>
-                  {(mine[p.id] ?? 0) > 0 && <u>{`在售 ${mine[p.id]}`}</u>}
-                  {!COORDS[p.id] && <s>未標位置</s>}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </details>
     </div>
   );
 }
