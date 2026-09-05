@@ -19,7 +19,7 @@
 
 import { useMemo, useState } from "react";
 import { Icon } from "@/app/admin/_ui/icons";
-import { parseListing, type Listing } from "@/lib/post591-parser";
+import { parseListing, photoLinkReport, type Listing } from "@/lib/post591-parser";
 import {
   buildDescription,
   buildHandoff,
@@ -46,10 +46,8 @@ export default function Post591Manager() {
 
   const derived = useMemo(() => (listing ? derive(listing) : null), [listing]);
   /** ⑤ 那格貼的若是型錄「更多照片」連結（picstr=網址,網址…），就拆成照片網址交給外掛；貼資料夾路徑就只是備註 */
-  const extraPhotos = useMemo(() => {
-    const m = photoFolder.match(/picstr=([^&)\s\]]+)/);
-    return m ? m[1].split(",").map((s) => s.trim()).filter((s) => /^https?:\/\//.test(s)) : [];
-  }, [photoFolder]);
+  const photoReport = useMemo(() => photoLinkReport(photoFolder), [photoFolder]);
+  const extraPhotos = photoReport.photos;
 
   function run() {
     const d = parseListing(text);
@@ -265,7 +263,12 @@ export default function Post591Manager() {
                   onChange={(e) => setPhotoFolder(e.target.value)}
                   placeholder="貼「更多照片」連結，或例如 D:\Agent-os\591-poster\領袖天下"
                 />
-                {extraPhotos.length > 0 && <p className={styles.okText}>抓到 {extraPhotos.length} 張照片網址，按「上架到 591」會一起上傳。</p>}
+                {photoReport.links > 0 && (
+                  <p className={extraPhotos.length ? styles.okText : styles.badText}>
+                    貼了 {photoReport.links} 條連結（{photoReport.perLink.map((n, i) => `第 ${i + 1} 條 ${n} 張`).join("、")}），共抓到 {extraPhotos.length} 張照片網址
+                    {extraPhotos.length ? "，按「上架到 591」會一起上傳。" : "。要的是「更多照片」那個連結（網址裡有 picstr=）。"}
+                  </p>
+                )}
               </>
             )}
           </section>

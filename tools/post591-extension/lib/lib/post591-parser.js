@@ -159,9 +159,8 @@ export function parseHouseol(raw) {
     /* 環境特色：抓到下一個已知區塊為止，逐行去掉 ✨①② 這類開頭符號 */
     const fm = body.match(/環境特色[\s:：]*\n?([\s\S]*?)(?=\n\s*(?:\[地圖\]|經紀人員|\*\s*$)|$)/);
     d.features = splitFeatureLines(fm ? fm[1] : "");
-    /* 照片網址就藏在「更多照片」連結的 picstr 參數裡 */
-    const ps = raw.match(/picstr=([^&)\s\]]+)/);
-    d.photos = ps ? ps[1].split(",").map((s) => s.trim()).filter((s) => /^https?:\/\//.test(s)) : [];
+    /* 照片網址就藏在「更多照片」連結的 picstr 參數裡（型錄可能有不只一條這種連結） */
+    d.photos = extractPhotoUrls(raw);
     if (!d.total)
         d.warnings.push("樓別/樓高沒抓到，出售總樓層要自己填");
     if (!d.price)
@@ -179,6 +178,37 @@ export function parseHouseol(raw) {
  * ⚠️ 型錄「環境特色」下面緊接著「地圖 街景 更多照片 成交行情」那排連結，複製時沒帶括號就會混進來，
  *    2026-09-04 就這樣進了一則廣告的 ✨ 第六行。那排是按鈕文字，不是特色，整行丟掉。
  */
+/**
+ * 從任何文字（整頁型錄、或使用者貼進來的一串連結）撈出所有 `picstr=` 裡的照片網址。
+ * 2026-09-05 踩到：型錄可能有兩條「更多照片」連結（各帶一組 picstr），使用者把兩條連結直接接在一起貼，
+ * 只認第一個 picstr 就少了三張。所以：每個 picstr 都吃、逗號分開、去重、保持順序；值若是 URL 編碼過的先解碼。
+ */
+export function extractPhotoUrls(text) {
+    const out = [];
+    for (const m of text.matchAll(/picstr=([^&)\s\]]+)/g)) {
+        let v = m[1];
+        if (/%[0-9A-Fa-f]{2}/.test(v)) {
+            try {
+                v = decodeURIComponent(v);
+            }
+            catch {
+                /* 解不開就用原字串 */
+            }
+        }
+        for (const u of v.split(",")) {
+            const s = u.trim();
+            if (/^https?:\/\//.test(s) && !out.includes(s))
+                out.push(s);
+        }
+    }
+    return out;
+}
+/** 使用者貼了幾條連結、每條各抓到幾張 —— 給介面顯示，讓「貼了兩條只吃到一條」自己看得出來 */
+export function photoLinkReport(text) {
+    // 只在「頂層連結」的開頭切；picstr 裡的照片網址前面一定是 = 或 ,，不算一條連結
+    const links = text.split(/(?<![=,])(?=https?:\/\/)/).filter((s) => /^https?:\/\//.test(s));
+    return { links: links.length, perLink: links.map((l) => extractPhotoUrls(l).length), photos: extractPhotoUrls(text) };
+}
 export function splitFeatureLines(text) {
     return text
         .split("\n")

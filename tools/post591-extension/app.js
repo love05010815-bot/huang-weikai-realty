@@ -8,7 +8,7 @@
  * 個人資料（姓名／手機／LINE／版型尾段）存在 chrome.storage.local，只在使用者自己的 Chrome 裡。
  * 版型預設是黃瑋凱那份把個人字眼換成 {{name}} {{phone}} {{line}} 的版本，每個人可以自己改。
  */
-import { parseListing } from "@/lib/post591-parser";
+import { parseListing, photoLinkReport } from "@/lib/post591-parser";
 import { derive, buildRows, titleCheck, post591Risks, buildPayload } from "@/lib/post591-map";
 import { DESC_HEAD, DESC_TAIL, POST591_DEFAULTS } from "@/config/post591-template";
 
@@ -178,13 +178,18 @@ function refreshRisks() {
   box.innerHTML = risks.length ? `<b>⚠ 法規敏感字（只標不刪，留不留你決定）</b><ul>${risks.map((r) => `<li><b>${esc(r.word)}</b>：${esc(r.why)}</li>`).join("")}</ul>` : "";
 }
 function extraPhotos() {
-  const m = $("photo-link").value.match(/picstr=([^&)\s\]]+)/);
-  return m ? m[1].split(",").map((s) => s.trim()).filter((s) => /^https?:\/\//.test(s)) : [];
+  return photoLinkReport($("photo-link").value).photos;
 }
 function refreshPhotoLink() {
-  const n = extraPhotos().length;
+  const r = photoLinkReport($("photo-link").value);
+  const n = r.photos.length;
   const v = $("photo-link").value.trim();
-  flash($("photo-link-msg"), n ? `抓到 ${n} 張照片網址，會一起上傳。` : v ? "這個連結裡沒有照片網址（要的是「更多照片」那個連結）" : "", n ? "ok" : v ? "bad" : "");
+  const per = r.perLink.map((k, i) => `第 ${i + 1} 條 ${k} 張`).join("、");
+  flash(
+    $("photo-link-msg"),
+    r.links ? `貼了 ${r.links} 條連結（${per}），共抓到 ${n} 張照片網址${n ? "，會一起上傳。" : "。要的是「更多照片」那個連結（網址裡有 picstr=）。"}` : v ? "這裡面沒有連結" : "",
+    n ? "ok" : v ? "bad" : "",
+  );
 }
 
 /* ───────── 上架 ───────── */

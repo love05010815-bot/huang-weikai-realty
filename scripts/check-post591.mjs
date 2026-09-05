@@ -6,7 +6,7 @@
 // 專案內部用 @/ 別名，node 不讀 tsconfig，所以先掛上 resolver 再動態載入（同 check-rival-analysis）
 import { register } from "node:module";
 register("./alias-hooks.mjs", import.meta.url);
-const { detectSource, parseListing, splitFeatureLines } = await import("../src/lib/post591-parser.ts");
+const { detectSource, extractPhotoUrls, parseListing, photoLinkReport, splitFeatureLines } = await import("../src/lib/post591-parser.ts");
 const { buildDescription, buildPayload, buildRows, derive, encodePayload, photoCommand, post591Risks, splitAddress, titleCheck } =
   await import("../src/lib/post591-map.ts");
 
@@ -314,6 +314,21 @@ ZZ0000003
   ok(enc.length < 12000, "網址長度合理", enc.length, "<12000");
 }
 
+/* ───── G. 照片連結：兩條連結直接接在一起、其中一條沒有 picstr、另一條 URL 編碼過（2026-09-05 少三張那次） ───── */
+{
+  console.log("G. 照片連結");
+  const a = "https://es.houseol.com.tw/Ecatalog.aspx?UID=SP1&UAID=H2&No=AA0000001&AID=H2";
+  const b = "https://es.houseol.com.tw/EInfos.aspx?type=3&picstr=https://hq.houseol.com.tw/p/1.jpg,https://hq.houseol.com.tw/p/2.jpg,https://hq.houseol.com.tw/p/3.jpg,https://hq.houseol.com.tw/p/4.jpg,https://hq.houseol.com.tw/p/5.jpg,https://hq.houseol.com.tw/p/6.jpg&x=1";
+  const c = "https://es.houseol.com.tw/EInfos.aspx?type=1&picstr=" + encodeURIComponent("https://hq.houseol.com.tw/p/7.jpg,https://hq.houseol.com.tw/p/8.jpg,https://hq.houseol.com.tw/p/6.jpg");
+  const r = photoLinkReport(a + b + c);
+  eq("三條連結都認得", r.links, 3);
+  eq("每條各幾張", r.perLink.join("/"), "0/6/3");
+  eq("合計去重後 8 張", r.photos.length, 8);
+  eq("順序保留、第一張是 1.jpg", r.photos[0], "https://hq.houseol.com.tw/p/1.jpg");
+  eq("單一連結照舊", extractPhotoUrls(b).length, 6);
+  eq("沒有 picstr 就是空的", extractPhotoUrls(a).length, 0);
+  eq("用逗號或換行分開貼也行", photoLinkReport(b + String.fromCharCode(10) + c).photos.length, 8);
+}
 console.log("");
 console.log(pass ? "✅ 591 刊登助手：辨識器與對應規則全部一致" : "❌ 有差異，不要往下做");
 process.exit(pass ? 0 : 1);
