@@ -271,7 +271,7 @@ export function splitFeatureLines(text: string): string[] {
     .split("\n")
     .map((L) => L.replace(/^[\s✨★☆▪•●◆◇①-⑳\-–—]+/, "").trim())
     .filter((L) => L.length > 0)
-    .filter((L) => !/^(?:\[?地圖\]?|街景|更多照片|成交行情)(?:[\s\[\]()（）]|$)/.test(L) && !/^地圖\s+街景/.test(L));
+    .filter((L) => !/^\[?(?:地圖|街景|更多照片|成交行情)\]?(?:[\s\[\]()（）]|$)/.test(L) && !/^地圖\s+街景/.test(L));
 }
 
 /* ───────── LINE 文字 ───────── */

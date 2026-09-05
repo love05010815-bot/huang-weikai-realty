@@ -4,7 +4,11 @@
  * /admin/post591 —— 591 刊登助手的操作介面。
  *
  * 流程：貼上 → 解析 → 第①頁四連點 → 確認表（每格可改、可複製）→ 標題／描述（可改）
- *       → 照片下載指令 → 「複製交接摘要」貼給 Claude。
+ *       → 「🚀 上架到 591」把資料包交給 Chrome 外掛（tools/post591-extension）填進 591；
+ *       備用：「複製交接摘要」貼給 Claude。
+ *
+ * 🔴 資料包用 window.postMessage 交給外掛的 bridge.js，不放在 591 的網址後面 ——
+ *    2026-09-05 實測 4KB 的 #片段會讓 591 第①頁點擊卡死。
  *
  * 🔴 **確認表可以改，改了交接摘要就跟著變。** 辨識器不可能 100% 對，差別在「它猜錯了你知不知道」：
  *    紅底 = 資料裡沒有、要你補；綠字 = 591 是選項用點的。
@@ -17,13 +21,11 @@ import { useMemo, useState } from "react";
 import { Icon } from "@/app/admin/_ui/icons";
 import { parseListing, type Listing } from "@/lib/post591-parser";
 import {
-  POST591_LAUNCH_URL,
   buildDescription,
   buildHandoff,
   buildPayload,
   buildRows,
   derive,
-  encodePayload,
   photoCommand,
   post591Risks,
   titleCheck,
@@ -40,6 +42,7 @@ export default function Post591Manager() {
   const [desc, setDesc] = useState("");
   const [photoFolder, setPhotoFolder] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
+  const [launchMsg, setLaunchMsg] = useState("");
 
   const derived = useMemo(() => (listing ? derive(listing) : null), [listing]);
 
@@ -66,6 +69,36 @@ export default function Post591Manager() {
 
   function setRow(i: number, value: string) {
     setRows((prev) => prev.map((r, j) => (j === i ? { ...r, value } : r)));
+  }
+
+  /** 把資料包交給 Chrome 外掛（bridge.js 在這頁監聽 postMessage），由它開 591 分頁填表。 */
+  async function launch() {
+    if (!listing || !derived) return;
+    const payload = buildPayload(listing, derived, rows, title, desc);
+    if (!document.documentElement.getAttribute("data-p591-ext")) {
+      setLaunchMsg("沒偵測到「591 刊登助手」外掛：先照下面的裝法裝好（裝好後把這頁重新整理一次），再按一次。");
+      return;
+    }
+    setLaunchMsg("已交給外掛，正在開 591 分頁…");
+    const ok = await new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => {
+        window.removeEventListener("message", onMsg);
+        resolve(false);
+      }, 4000);
+      function onMsg(ev: MessageEvent) {
+        if (ev.source !== window || !ev.data || ev.data.type !== "p591:ack") return;
+        clearTimeout(timer);
+        window.removeEventListener("message", onMsg);
+        resolve(!!ev.data.ok);
+      }
+      window.addEventListener("message", onMsg);
+      window.postMessage({ type: "p591:launch", payload }, window.location.origin);
+    });
+    setLaunchMsg(
+      ok
+        ? "591 分頁已開好，外掛正在填。到那個分頁從上往下核對，再自己按「保存資料，下一步」。"
+        : "外掛沒回應。到 chrome://extensions 按那張卡片的 ↻ 重新載入，回來重新整理這頁再按一次。",
+    );
   }
 
   const tc = titleCheck(title);
@@ -235,19 +268,18 @@ export default function Post591Manager() {
               填完你自己核對，再按 591 的「保存資料，下一步」和「立即支付」——那兩顆永遠是你按。
             </p>
             <div className={styles.btnrow}>
-              <button
-                className={styles.run}
-                onClick={() => {
-                  const payload = buildPayload(listing, derived, rows, title, desc);
-                  window.open(`${POST591_LAUNCH_URL}#p591=${encodePayload(payload)}`, "_blank", "noopener");
-                }}
-              >
+              <button className={styles.run} onClick={launch}>
                 🚀 上架到 591
               </button>
               {rows.some((r) => r.need) && (
                 <span className={styles.badText}>還有 {rows.filter((r) => r.need).length} 格紅底沒補（外掛會把它們列在面板上）</span>
               )}
             </div>
+            {launchMsg && (
+              <p className={styles.hint} style={{ marginTop: 8 }}>
+                <b>{launchMsg}</b>
+              </p>
+            )}
             <p className={styles.hint} style={{ marginTop: 10 }}>
               沒裝外掛？裝法在 <code>booking-system\tools\post591-extension\README.md</code>（chrome://extensions → 開發人員模式 → 載入未封裝項目 → 選那個資料夾）。
               裝不了或想交給 Claude 填，就用下面的交接摘要。

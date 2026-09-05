@@ -1,25 +1,28 @@
 /**
  * 591 刊登助手 —— 在 591 刊登頁裡跑的填表程式。
  *
- * 進場方式：官網後台按「🚀 上架到 591」會開
- *   https://user.591.com.tw/post/first#p591=<base64 的物件資料>
- * 這支程式在第 ① 頁讀網址 # 後面的資料、存進 sessionStorage、幫你點完四連點；
- * 到第 ② 頁再把每一格、文案、照片填進去，右下角面板列出還缺什麼。
+ * 進場方式：官網後台按「🚀 上架到 591」→ bridge.js 把資料包交給 background.js → 開 591 分頁
+ *   → 這支程式向 background 要資料（p591:get）→ 填表 → 填完清掉（p591:clear）。
+ *   認得的物件組合會直接開第②頁（網址帶 kind/shape/purpose）；不認得的開第①頁，這裡幫他四連點。
  *
- * 🔴 **永遠不按「保存資料，下一步」與「立即支付」**，那兩顆是你自己按的。
- * 🔴 不抓 591 任何資料、不送任何東西到別的地方；資料只在 # 片段（不會傳到 591 伺服器）與 sessionStorage。
+ * 🔴 **永遠不按「保存資料，下一步」與「立即支付」**，那兩顆是他自己按的。
+ * 🔴 不抓 591 任何資料、不送任何東西到別的地方。
  *
- * 591 表單是 Vue 3 + Ant Design Vue（2026-09 實測）：
+ * 591 表單是 Vue 3 + Ant Design Vue（2026-09-05 實測）：
+ *   - 第②頁一進來會先跳「請選擇你想要刊登物件的所屬縣市」彈窗（li.light 是縣市名）
+ *   - 地址用「建議填寫完整地址…」那格 + 「匯入地址」鈕最穩：會自動選好 縣市／鄉鎮／街道 並填「號」，但**不填「樓」**
+ *   - 標籤文字常帶尾巴（「格局（現況）(說明)」「建築完工時間(說明)」「土地坪數土地持分坪數」），所以 labelEl 用「開頭符合」退路
  *   - 文字欄 .ant-input／數字欄 .ant-input-number-input：設 value 後要發 input＋change 事件 Vue 才會收到
- *   - 單選／勾選：要點 <label class="ant-radio-wrapper|ant-checkbox-wrapper">，點 input 不會生效
- *   - 下拉 .ant-select：點 .ant-select-selector 打開，選項在 body 底下的 .ant-select-dropdown，
- *     鄉鎮那種長清單是虛擬捲動（.rc-virtual-list-holder），沒捲到就不會渲染
- *   - 現況特色描述是 ProseMirror（div.ProseMirror[contenteditable]）
- *   - 照片：第一個 input[type=file][multiple]
+ *   - 單選／勾選：要點 <label class="ant-radio-wrapper|ant-checkbox-wrapper">
+ *   - 下拉 .ant-select：點 .ant-select-selector 打開；選項清單在 body 底下，要用 input[role=combobox] 的
+ *     aria-controls 找到「自己那份」清單（頁面上同時會有好幾個看得見的下拉殘影，抓最後一個會抓錯）
+ *   - 現況特色描述是 ProseMirror；照片是第一個 input[type=file][multiple]
+ *
+ * ⚠️ Chrome 對「放到背景超過 5 分鐘」的分頁會把計時器凍住（每分鐘才動一次），這支程式就會像卡住。
+ *   後台開的是新分頁、會在最前面；填的時候不要切走，切走了就點回來等它跑完。
  */
 (() => {
   "use strict";
-  const KEY = "p591:payload";
   const path = location.pathname;
 
   /* ───────── 小工具 ───────── */
@@ -35,15 +38,16 @@
       await sleep(step);
     }
   }
-  function decodePayload(hash) {
-    const m = /[#&]p591=([^&]+)/.exec(hash || "");
-    if (!m) return null;
-    try {
-      return JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(m[1])))));
-    } catch {
-      return null;
-    }
-  }
+  const msg = (type, extra) =>
+    new Promise((resolve) => {
+      try {
+        chrome.runtime.sendMessage({ type, ...(extra || {}) }, (r) =>
+          resolve(chrome.runtime.lastError ? { ok: false, error: chrome.runtime.lastError.message } : r || { ok: false, error: "no response" }),
+        );
+      } catch (e) {
+        resolve({ ok: false, error: String(e) });
+      }
+    });
 
   /* ───────── 面板 ───────── */
   let panel, list, missBox;
@@ -57,22 +61,18 @@
     missBox = panel.querySelector(".miss");
     panel.querySelector("#p591-close").onclick = () => panel.remove();
   }
-  function log(msg, cls = "") {
+  function log(m, cls = "") {
     ensurePanel();
     const li = document.createElement("li");
     if (cls) li.className = cls;
-    li.textContent = msg;
+    li.textContent = m;
     list.appendChild(li);
     list.scrollTop = list.scrollHeight;
   }
   function showMissing(items) {
     ensurePanel();
-    if (!items.length) {
-      missBox.hidden = true;
-      return;
-    }
-    missBox.hidden = false;
-    missBox.innerHTML = `<b>還要你自己補：</b>${items.map((s) => `<div>• ${s}</div>`).join("")}`;
+    missBox.hidden = !items.length;
+    if (items.length) missBox.innerHTML = `<b>還要你自己補：</b>${items.map((s) => `<div>• ${s}</div>`).join("")}`;
   }
 
   /* ───────── 表單操作 ───────── */
@@ -85,14 +85,10 @@
     el.dispatchEvent(new Event("change", { bubbles: true }));
     el.dispatchEvent(new Event("blur", { bubbles: true }));
   }
-  /** 找到「文字完全等於 label」的標籤元素（label / span / div，內容短的） */
+  /** 找到「文字等於 label」的標籤元素；找不到就退而求「開頭是 label、很短」的（591 的標籤常帶 (說明) 尾巴） */
   function labelEl(text) {
-    const cands = document.querySelectorAll("label, .ant-form-item-label > label, span, div");
-    for (const e of cands) {
-      if (e.children.length > 2) continue;
-      const t = txt(e);
-      if (t === text) return e;
-    }
+    const cands = document.querySelectorAll("label, span, div");
+    for (const e of cands) if (e.children.length <= 2 && txt(e) === text) return e;
     for (const e of cands) {
       if (e.children.length > 2) continue;
       const t = txt(e);
@@ -116,15 +112,23 @@
   const NUM = ".ant-input-number-input";
   const TXT = "input.ant-input";
   const SEL = ".ant-select";
-
+  const setNumAfter = (label, values) => {
+    const els = after(label, NUM, values.length);
+    values.forEach((v, i) => els[i] && setNative(els[i], v == null ? "" : v));
+    return els.length;
+  };
+  const setTxtAfter = (label, value) => {
+    const el = after(label, TXT, 1)[0];
+    if (el) setNative(el, value == null ? "" : value);
+    return !!el;
+  };
   function clickLabel(text, want = true) {
     const labels = [...document.querySelectorAll("label.ant-radio-wrapper, label.ant-checkbox-wrapper")];
     const L = labels.find((l) => txt(l) === text) || labels.find((l) => txt(l).startsWith(text));
     if (!L) return false;
     const isRadio = L.classList.contains("ant-radio-wrapper");
     const checked = isRadio ? L.classList.contains("ant-radio-wrapper-checked") : L.classList.contains("ant-checkbox-wrapper-checked");
-    if (checked === want) return true;
-    L.click();
+    if (checked !== want) L.click();
     return true;
   }
   /** 在某個 label 後面的單選群裡點文字為 text 的那顆 */
@@ -137,31 +141,46 @@
     if (!R.classList.contains("ant-radio-wrapper-checked")) R.click();
     return true;
   }
-  function visibleDropdowns() {
-    return [...document.querySelectorAll(".ant-select-dropdown")].filter((d) => !d.classList.contains("ant-select-dropdown-hidden") && visible(d));
-  }
-  /** Ant Select：打開 → 找選項（虛擬清單就捲）→ 點 */
-  async function pickSelect(sel, text) {
+  const visibleDropdowns = () => [...document.querySelectorAll(".ant-select-dropdown")].filter((d) => !d.classList.contains("ant-select-dropdown-hidden") && visible(d));
+  /** Ant Select：打開 → 找到自己那份清單（aria-controls）→ 找選項（虛擬清單就捲）→ 點。texts 可給多個候選字 */
+  async function pickSelect(sel, texts) {
     if (!sel) return false;
+    const wants = (Array.isArray(texts) ? texts : [texts]).filter(Boolean);
+    const current = () => txt(sel.querySelector(".ant-select-selection-item"));
+    if (wants.includes(current())) return true;
     const selector = sel.querySelector(".ant-select-selector") || sel;
-    const current = txt(sel.querySelector(".ant-select-selection-item"));
-    if (current === text) return true;
+    const combo = sel.querySelector("input[role=combobox]");
+    const listId = combo && combo.getAttribute("aria-controls");
+    const ownDropdown = () => {
+      if (listId) {
+        const el = document.getElementById(listId);
+        const d = el && el.closest(".ant-select-dropdown");
+        return d && visible(d) ? d : null;
+      }
+      return visibleDropdowns().at(-1) || null;
+    };
     selector.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-    let dd = await waitFor(() => visibleDropdowns().at(-1), 3000);
+    let dd = await waitFor(ownDropdown, 3000);
     if (!dd) {
       selector.click();
-      dd = await waitFor(() => visibleDropdowns().at(-1), 3000);
+      dd = await waitFor(ownDropdown, 3000);
     }
     if (!dd) return false;
     const holder = dd.querySelector(".rc-virtual-list-holder");
+    const name = (o) => o.getAttribute("title") || txt(o);
     for (let i = 0; i < 40; i++) {
       const opts = [...dd.querySelectorAll(".ant-select-item-option")];
-      const hit = opts.find((o) => (o.getAttribute("title") || txt(o)) === text) || opts.find((o) => txt(o).includes(text));
+      let hit = null;
+      for (const w of wants) {
+        hit = opts.find((o) => name(o) === w) || opts.find((o) => name(o).includes(w));
+        if (hit) break;
+      }
       if (hit) {
+        const picked = name(hit);
         hit.scrollIntoView({ block: "nearest" });
         hit.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
         hit.click();
-        const ok = await waitFor(() => txt(sel.querySelector(".ant-select-selection-item")) === text, 2000);
+        const ok = await waitFor(() => current() === picked, 3000);
         if (!ok) document.body.click();
         return !!ok;
       }
@@ -174,28 +193,8 @@
     document.body.click();
     return false;
   }
-  /** 街道那種自訂面板：打開後在可見的浮層裡找文字剛好等於 text 的節點點下去 */
-  async function pickInPopup(sel, text) {
-    if (!sel) return false;
-    const selector = sel.querySelector(".ant-select-selector") || sel;
-    if (txt(sel.querySelector(".ant-select-selection-item")) === text) return true;
-    selector.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-    selector.click();
-    const hit = await waitFor(() => {
-      const nodes = [...document.querySelectorAll("li, .ant-select-item-option, span, div")].filter((n) => n.children.length === 0 && txt(n) === text && visible(n));
-      return nodes.find((n) => !sel.contains(n)) || null;
-    }, 4000);
-    if (!hit) {
-      document.body.click();
-      return false;
-    }
-    hit.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-    hit.click();
-    await sleep(300);
-    return txt(sel.querySelector(".ant-select-selection-item")) === text;
-  }
   function setProseMirror(text) {
-    const pm = document.querySelector("div.ProseMirror[contenteditable='true']");
+    const pm = document.querySelector("div.ProseMirror[contenteditable=true]");
     if (!pm) return false;
     pm.focus();
     document.execCommand("selectAll", false, null);
@@ -208,18 +207,16 @@
     }
     return true;
   }
-  function fetchViaBackground(url) {
-    return new Promise((resolve) => chrome.runtime.sendMessage({ type: "p591:fetch", url }, (r) => resolve(r || { ok: false, error: "no response" })));
-  }
   async function uploadPhotos(urls, onStep) {
     const input = document.querySelector("input[type=file][multiple]");
     if (!input) return { done: 0, failed: urls.length };
-    let done = 0, failed = 0;
+    let done = 0,
+      failed = 0;
     for (let i = 0; i < urls.length; i += 5) {
       const chunk = urls.slice(i, i + 5);
       const dt = new DataTransfer();
       for (const [j, u] of chunk.entries()) {
-        const r = await fetchViaBackground(u);
+        const r = await msg("p591:fetch", { url: u });
         if (!r.ok) {
           failed++;
           continue;
@@ -242,14 +239,18 @@
     return { done, failed };
   }
 
-  /* ───────── 第 ① 頁：四連點 ───────── */
+  /* ───────── 第 ① 頁：四連點（只有不認得的組合才會走到這裡） ───────── */
   async function runFirst(p) {
     log("第①頁：開始四連點");
     async function clickItem(text) {
       const li = await waitFor(() => [...document.querySelectorAll("li")].find((l) => txt(l) === text && visible(l)), 6000);
       if (!li) {
-        log(`找不到「${text}」`, "bad");
+        log(`找不到「${text}」，請自己點`, "bad");
         return false;
+      }
+      if (li.classList.contains("active")) {
+        log(`「${text}」已經是選中的`, "ok");
+        return true;
       }
       li.click();
       await sleep(600);
@@ -259,14 +260,26 @@
     if (!(await clickItem("出售"))) return;
     if (!(await clickItem(p.first.legal))) return;
     if (!(await clickItem(p.first.status))) return;
-    await clickItem(p.first.type); // 這一下會跳到第 ② 頁，sessionStorage 已經存好
+    await clickItem(p.first.type); // 這一下 591 會整頁跳到第②頁，這支程式會在那頁重新跑（資料還在 background）
   }
 
   /* ───────── 第 ② 頁：填表 ───────── */
   async function runSecond(p) {
     const missing = [];
-    const ok = await waitFor(() => labelEl("出售總樓層"), 15000);
-    if (!ok) {
+    const a = p.addr || {};
+
+    /* 0. 一進來的「所屬縣市」彈窗 */
+    const cityModal = await waitFor(() => [...document.querySelectorAll(".ant-modal")].find((m) => /所屬縣市/.test(txt(m)) && visible(m)), 4000);
+    if (cityModal) {
+      const want = a.city || "台中市";
+      const item = [...cityModal.querySelectorAll("li, span, div")].find((e) => e.children.length === 0 && txt(e) === want);
+      if (item) {
+        item.click();
+        log(`縣市彈窗：選了 ${want}`, "ok");
+      } else log(`縣市彈窗裡找不到「${want}」，請自己點`, "bad");
+    }
+    const ready = await waitFor(() => labelEl("出售總樓層") && (labelEl("門牌地址") || labelEl("出售地址")), 20000);
+    if (!ready) {
       log("等不到表單，重新整理一次再試", "bad");
       return;
     }
@@ -274,83 +287,79 @@
 
     /* 1. 地址 */
     try {
-      const a = p.addr || {};
-      const quick = labelEl("填寫地址") && after("填寫地址", TXT, 1)[0];
+      const quick = [...document.querySelectorAll("input")].find((i) => /完整地址/.test(i.placeholder || ""));
       const full = [a.city, a.town, a.road, a.lane ? `${a.lane}巷` : "", a.alley ? `${a.alley}弄` : "", a.no ? `${a.no}${a.sub ? `之${a.sub}` : ""}號` : ""].join("");
+      let imported = false;
       if (quick && a.town && a.road) {
         setNative(quick, full);
-        const btn = [...document.querySelectorAll("button")].find((b) => txt(b) === "匯入地址");
+        const btn = await waitFor(() => [...document.querySelectorAll("button")].find((b) => txt(b) === "匯入地址" && visible(b)), 5000);
         if (btn) {
           btn.click();
-          const yes = await waitFor(() => [...document.querySelectorAll(".ant-modal button, .ant-modal-confirm-btns button")].find((b) => /確\s*定/.test(txt(b)) && visible(b)), 3000);
+          const yes = await waitFor(() => [...document.querySelectorAll(".ant-modal button")].find((b) => /確\s*定/.test(txt(b)) && visible(b)), 1500);
           if (yes) yes.click();
-          await waitFor(() => txt((after("門牌地址", SEL, 2)[1] || {})) === a.town, 6000);
-          log(`地址匯入：${full}`, "ok");
+          imported = !!(await waitFor(() => [...document.querySelectorAll(".ant-select .ant-select-selection-item")].some((e) => txt(e) === a.town), 8000));
+          log(imported ? `地址匯入：${full}` : "地址匯入沒成功，改一格一格選", imported ? "ok" : "warn");
         }
-      } else {
-        const addrLabel = labelEl("門牌地址") || labelEl("出售地址");
-        const sels = after(addrLabel, SEL, 3);
-        if (a.city && !(await pickSelect(sels[0], a.city))) log("縣市沒選到，請自己選", "bad");
-        await sleep(600);
-        if (a.town && !(await pickSelect(after(addrLabel, SEL, 3)[1], a.town))) log("鄉鎮沒選到，請自己選", "bad");
-        await sleep(600);
-        if (a.road && !(await pickInPopup(after(addrLabel, SEL, 3)[2], a.road))) log("街道沒選到，請自己選", "bad");
-        log("地址三格處理完", "ok");
       }
-      const addrLabel2 = labelEl("門牌地址") || labelEl("出售地址");
-      const texts = after(addrLabel2, TXT, 5); // 巷 號 之 樓 樓之
-      const nums = after(addrLabel2, NUM, 1); // 弄
-      if (texts[0]) setNative(texts[0], a.lane || "");
-      if (nums[0]) setNative(nums[0], a.alley || "");
-      if (texts[1]) setNative(texts[1], a.no || "");
-      if (texts[2]) setNative(texts[2], a.sub || "");
+      const addrLabel = labelEl("門牌地址") || labelEl("出售地址");
+      if (!imported) {
+        const sels = after(addrLabel, SEL, 2);
+        if (a.city && !(await pickSelect(sels[0], a.city))) log("縣市沒選到，請自己選", "bad");
+        await sleep(500);
+        if (a.town && !(await pickSelect(after(addrLabel, SEL, 2)[1], a.town))) log("鄉鎮沒選到，請自己選", "bad");
+        const street = [...document.querySelectorAll("input")].find((i) => /街道/.test(i.placeholder || ""));
+        if (street && a.road) {
+          setNative(street, a.road);
+          const opt = await waitFor(
+            () => [...document.querySelectorAll(".ant-select-dropdown .ant-select-item-option, .ant-dropdown li, .ant-dropdown-menu-item")].find((o) => visible(o) && txt(o).includes(a.road)),
+            4000,
+          );
+          if (opt) opt.click();
+          else log(`街道「${a.road}」沒選到，請自己選`, "bad");
+        }
+      }
+      // 巷 號 之 樓 樓之 是五個 placeholder 為 選填／必填 的文字框（匯入只會填「號」，樓要自己填）
+      const boxes = after(addrLabel, TXT, 14).filter((i) => /^(選填|必填)$/.test(i.placeholder || ""));
+      const [lane, no, sub, floor, floorSub] = boxes;
+      if (lane && a.lane && !lane.value) setNative(lane, a.lane);
+      if (no && a.no && no.value !== String(a.no)) setNative(no, a.no);
+      if (sub && a.sub && !sub.value) setNative(sub, a.sub);
+      const alley = after(addrLabel, NUM, 1)[0];
+      if (alley && a.alley) setNative(alley, a.alley);
       if (!a.no) missing.push("門牌「號」（資料裡沒有）");
-      if (a.hide) clickLabel("隱藏門號", true);
       const f = p.floor || {};
-      if (texts[3]) setNative(texts[3], f.sell === "" || f.sell == null ? "" : f.sell);
-      if (texts[4]) setNative(texts[4], f.sub || "");
-      if (f.sell === "" || f.sell == null) missing.push("出售樓層");
+      if (floor && f.sell != null && f.sell !== "") setNative(floor, f.sell);
+      if (floorSub && f.sub) setNative(floorSub, f.sub);
+      if (f.sell == null || f.sell === "") missing.push("出售樓層");
+      if (a.hide) clickLabel("隱藏門號", true);
     } catch (e) {
       log(`地址區出錯：${e.message}`, "bad");
     }
 
     /* 2. 基礎資料 */
-    const setNumAfter = (label, values) => {
-      const els = after(label, NUM, values.length);
-      values.forEach((v, i) => els[i] && setNative(els[i], v == null ? "" : v));
-      return els.length;
-    };
-    const setTxtAfter = (label, value) => {
-      const el = after(label, TXT, 1)[0];
-      if (el) setNative(el, value == null ? "" : value);
-      return !!el;
-    };
     try {
       if (p.floor && p.floor.total != null) setNumAfter("出售總樓層", [p.floor.total]);
       else missing.push("出售總樓層");
       setTxtAfter("社區名稱", p.community || "");
       if (/電梯大樓|華廈/.test(p.first.type) && !p.community) missing.push("社區名稱");
       const L = p.layout || {};
-      setNumAfter("格局", [L.room, L.hall, L.bath, ""]);
+      setNumAfter("格局", [L.room, L.hall, L.bath, ""]); // 標籤實際是「格局（現況）(說明)」，靠開頭符合
       clickRadioAfter("建築完工時間", "成屋");
       const D = p.done || {};
       setNumAfter("建築完工時間", [D.y, D.m, D.d]);
       if (D.y == null) missing.push("完工 民國年");
-      if (p.facing) {
-        const s = after("朝向", SEL, 1)[0];
-        if (!(await pickSelect(s, p.facing))) log(`朝向「${p.facing}」沒選到`, "warn");
-      }
+      if (p.facing && !(await pickSelect(after("朝向", SEL, 1)[0], p.facing))) log(`朝向「${p.facing}」沒選到`, "warn");
       const A = p.area || {};
       setNumAfter("權狀坪數", [A.reg]);
       clickRadioAfter("權狀坪數", A.inclPark ? "含車位面積" : "不含車位面積");
       if (A.inclPark) {
         await sleep(500);
-        const row = await waitFor(() => labelEl("車位面積"), 3000);
-        if (row) {
+        if (await waitFor(() => labelEl("車位面積"), 3000)) {
           setNumAfter("車位面積", [A.park]);
           if (A.parkType) {
-            const s = after("車位面積", SEL, 1)[0];
-            if (!(await pickSelect(s, A.parkType))) log(`車位型式「${A.parkType}」沒選到`, "warn");
+            // 591 的選項：平面式停車位／機械式停車位／平面式+機械式／其他
+            const cands = [A.parkType, /平面.*機械|機械.*平面/.test(A.parkType) ? "平面式+機械式" : "", /平面/.test(A.parkType) ? "平面式停車位" : "", /機械/.test(A.parkType) ? "機械式停車位" : ""];
+            if (!(await pickSelect(after("車位面積", SEL, 1)[0], cands))) missing.push(`車位型式（想選「${A.parkType}」，沒選到）`);
           }
         }
       }
@@ -405,7 +414,7 @@
     try {
       const C = p.contact || {};
       const name = after("聯絡人", TXT, 1)[0];
-      if (name && C.name) setNative(name, C.name);
+      if (name && C.name && name.value !== C.name) setNative(name, C.name);
       if (C.contract) clickRadioAfter("委託書", C.contract);
       clickRadioAfter("服務費", C.serviceFee === false ? "不須服務費" : "收取服務費");
       clickLabel("我已閲讀並確認經紀業資料無誤", true) || clickLabel("我已閱讀並確認經紀業資料無誤", true);
@@ -429,20 +438,15 @@
 
   /* ───────── 進場 ───────── */
   async function main() {
-    const fromHash = decodePayload(location.hash);
-    if (fromHash) {
-      sessionStorage.setItem(KEY, JSON.stringify(fromHash));
-      history.replaceState(null, "", location.pathname + location.search); // 把資料從網址拿掉
-    }
-    const raw = sessionStorage.getItem(KEY);
-    if (!raw) return; // 不是從後台來的，什麼都不做
-    const p = JSON.parse(raw);
-    if (!p || p.v !== 1) return;
+    const r = await msg("p591:get");
+    const p = r && r.ok ? r.payload : null;
+    if (!p || p.v !== 1) return; // 不是從後台來的，什麼都不做
     ensurePanel();
+    if (document.hidden) log("這個分頁在背景，Chrome 會把它放慢；請點回這個分頁等它填完", "warn");
     if (/\/post\/first/.test(path)) await runFirst(p);
     else if (/\/post\/two\//.test(path)) {
       await runSecond(p);
-      sessionStorage.removeItem(KEY); // 填過就清掉，重新整理不會再自動填一次
+      await msg("p591:clear"); // 填過就清掉，重新整理不會再自動填一次
     }
   }
   main().catch((e) => log(`程式出錯：${e.message}`, "bad"));

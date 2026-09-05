@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "591 刊登助手（凱心成家）",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "從官網後台按「上架到 591」，自動把物件資料、文案、照片填進 591 刊登表單。保存與付款仍由你自己按。",
-  "permissions": [],
+  "permissions": ["storage"],
   "host_permissions": ["https://*.houseol.com.tw/*", "https://*.591.com.tw/*"],
   "background": { "service_worker": "background.js" },
   "content_scripts": [
@@ -11,6 +11,11 @@
       "matches": ["https://user.591.com.tw/post/*"],
       "js": ["content.js"],
       "css": ["panel.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://huang-weikai-realty.vercel.app/admin/post591*", "http://localhost:3000/admin/post591*"],
+      "js": ["bridge.js"],
       "run_at": "document_idle"
     }
   ]
