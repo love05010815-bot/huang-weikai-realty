@@ -81,6 +81,8 @@ export const STATUS_LABEL: Record<ProjectStatus, string> = {
  *
  * 原本有個「市鎮中心」值，2026-08-27 系統擁有者拍板不要這一塊，掛著它的 3 案
  * （佳泰琢閱、協勝港心、長虹天籟）**由他指定全部歸梧棲**，該值已整個拿掉。
+ * ⚠️ 2026-09-04 他把**佳泰琢閱改成清水**（同批還有聯悅馥 梧棲 → 清水）——
+ *    上面那句「三案全部歸梧棲」對佳泰琢閱已經不成立，協勝港心與長虹天籟仍是梧棲。
  */
 export type ProjectArea =
   | "梧棲"
@@ -431,7 +433,7 @@ export const PROJECTS: Project[] = [
 
   // ───── 佳泰建設 ─────
   {
-    id: "jiatai-zhuoyue", name: "佳泰琢閱", builder: "佳泰建設", area: "梧棲",
+    id: "jiatai-zhuoyue", name: "佳泰琢閱", builder: "佳泰建設", area: "清水",
     status: "presale", completion: "興建中", units: 467, sources: ["owner", "housefeel"],
   },
 
@@ -553,7 +555,15 @@ export const PROJECTS: Project[] = [
     id: "lianyue-ju", name: "聯悅聚", aliases: ["聯悦聚"], builder: "聯悅建設", area: "清水",
     status: "completed", completion: "2021", units: 389, sources: ["owner", "housefeel"],
   },
-  { id: "lianyue-fu", name: "聯悅馥", aliases: ["聯悦馥"], builder: "聯悅建設", area: "梧棲", status: "completed", completion: "2024", units: 494, sources: ["owner"] },
+  { id: "lianyue-fu", name: "聯悅馥", aliases: ["聯悦馥"], builder: "聯悅建設", area: "清水", status: "completed", completion: "2024", units: 494, sources: ["owner"] },
+
+  /* ── 梧棲追加（2026-09-04，系統擁有者：「梧棲重劃區補和樂龍融」）──
+     ⚠️ **他只給了案名**，建商／階段／完工全待確認，**而且沒有座標** ——
+        這一筆讓「341 案全部有座標」的狀態中斷，清單上會出現 1 筆「未標位置」。
+        要他到 /map?fix=1 點一下。
+     ⚠️ 「和樂龍融」是他打的完整案名，**沒有拆成建商「和樂」＋案名「龍融」** ——
+        檔頭第 3 條：不准用建案名猜建商。 */
+  { id: "hele-longrong", name: "和樂龍融", builder: "待確認", area: "梧棲", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "lianyue-zhen", name: "聯悅臻", aliases: ["聯悦臻"], builder: "聯悅建設", area: "梧棲", status: "newly", completion: "約 2025", units: 883, sources: ["owner"] },
   {
     id: "lianyue-xin", name: "聯悅馨", aliases: ["聯悦馨"], builder: "聯悅建設", area: "梧棲",
