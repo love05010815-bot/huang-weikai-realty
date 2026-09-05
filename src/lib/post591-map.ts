@@ -259,10 +259,12 @@ export function buildRows(d: Listing, o: Derived): Row[] {
     need: d.fee == null && d.source === "freeform",
     note: d.fee == null && d.source === "freeform" ? "文字沒寫，要問" : "",
   });
-  if (d.fee != null) {
-    f("管理費", d.fee, { note: "元" });
-    f("　└ 繳費週期", d.feeCycle, { pick: true });
-  }
+  /* 金額那一列永遠顯示 —— 資料沒寫時才更需要有地方讓人填 */
+  f("管理費", d.fee, {
+    note: d.fee != null ? "元／月" : "有管理費的話填每月金額（元）",
+    need: d.fee == null && d.source === "freeform",
+  });
+  if (d.fee != null) f("　└ 繳費週期", d.feeCycle, { pick: true });
   f("帶租約", "否", { pick: true });
   f("裝潢程度", "？", { pick: true, need: true, note: "591 預設「簡易裝潢」，這格一定要你自己看過屋況再選" });
 
@@ -330,6 +332,106 @@ export function post591Risks(...texts: string[]): CopyRisk[] {
   }
   return hits;
 }
+
+/* ───────── 給 Chrome 外掛的資料包 ───────── */
+
+/**
+ * 後台「🚀 上架到 591」按下去，會把這包資料放在 591 刊登頁網址的 # 後面，
+ * 由 tools/post591-extension 的 content.js 讀出來填表。欄位名對應 content.js，改一邊要改另一邊。
+ * `edits` 是確認表上被使用者改過的值（label → value），優先於解析結果。
+ */
+export interface Post591Payload {
+  v: 1;
+  first: { legal: string; status: string; type: string };
+  addr: AddressParts & { hide: boolean };
+  floor: { sell: number | ""; sub: string; total: number | null };
+  community: string;
+  layout: { room: number | null; hall: number | null; bath: number | null };
+  done: { y: number | null; m: number | null; d: number | null };
+  facing: string;
+  area: { reg: number | null; inclPark: boolean; park: number | null; parkType: string; main: number | null; att: number | null; pub: number | null; land: number | null };
+  price: { total: number | null; inclPark: boolean; down: number | null };
+  fee: { has: boolean | null; amount: number | null; cycle: string };
+  lease: boolean;
+  deco: string;
+  life: string[];
+  title: string;
+  desc: string;
+  contact: { name: string; contract: string; serviceFee: boolean };
+  photos: string[];
+}
+
+const numOrNull = (v: string | undefined, fallback: number | null): number | null => {
+  if (v === undefined) return fallback;
+  if (v.trim() === "") return null;
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+const strOr = (v: string | undefined, fallback: string): string => (v === undefined ? fallback : v.trim());
+
+export function buildPayload(d: Listing, o: Derived, rows: Row[], title: string, desc: string): Post591Payload {
+  const e = new Map<string, string>();
+  for (const r of rows) if (!r.group) e.set(r.label.replace(/^\s*└\s*/, "").trim(), r.value);
+  const deco = strOr(e.get("裝潢程度"), "");
+  const feeHasRaw = strOr(e.get("管理費有無"), d.fee != null ? "有" : d.source === "houseol" ? "無" : "？");
+  const sellRaw = strOr(e.get("出售樓層"), o.sellFloor === "" ? "" : String(o.sellFloor));
+  return {
+    v: 1,
+    first: { legal: o.legal, status: o.status, type: o.type },
+    addr: {
+      city: strOr(e.get("縣市"), o.parts.city),
+      town: strOr(e.get("鄉鎮"), o.parts.town),
+      road: strOr(e.get("街道"), o.parts.road),
+      lane: strOr(e.get("巷"), o.parts.lane),
+      alley: strOr(e.get("弄"), o.parts.alley),
+      no: strOr(e.get("號"), o.parts.no),
+      sub: strOr(e.get("之"), o.parts.sub),
+      hide: true,
+    },
+    floor: {
+      sell: sellRaw === "" ? "" : Number(sellRaw),
+      sub: strOr(e.get("樓 之"), d.floorSub),
+      total: numOrNull(e.get("出售總樓層"), d.total),
+    },
+    community: strOr(e.get("社區名稱"), d.community),
+    layout: { room: numOrNull(e.get("格局 房"), d.room), hall: numOrNull(e.get("格局 廳"), d.hall), bath: numOrNull(e.get("格局 衛"), d.bath) },
+    done: { y: numOrNull(e.get("完工 民國年"), o.rocY), m: numOrNull(e.get("完工 月"), d.m), d: numOrNull(e.get("完工 日"), d.dd) },
+    facing: strOr(e.get("朝向"), o.facing),
+    area: {
+      reg: numOrNull(e.get("權狀坪數"), d.regPing),
+      inclPark: o.hasPark,
+      park: numOrNull(e.get("車位面積"), d.parkPing),
+      parkType: strOr(e.get("車位型式"), o.parkSel),
+      main: numOrNull(e.get("主建物"), d.mainPing),
+      att: numOrNull(e.get("附屬建物"), d.attPing),
+      pub: numOrNull(e.get("共有部分"), d.pubPing),
+      land: numOrNull(e.get("土地坪數"), d.landPing),
+    },
+    price: { total: numOrNull(e.get("售價"), d.price), inclPark: o.hasPark, down: numOrNull(e.get("自備款"), o.down) },
+    fee: {
+      has: feeHasRaw === "有" ? true : feeHasRaw === "無" ? false : null,
+      amount: numOrNull(e.get("管理費"), d.fee),
+      cycle: strOr(e.get("繳費週期"), d.feeCycle),
+    },
+    lease: false,
+    deco: deco === "？" ? "" : deco,
+    life: (e.get("勾選這些") || o.life.join("、")).split(/[、,，]/).map((s) => s.trim()).filter((s) => /^近/.test(s)),
+    title,
+    desc,
+    contact: { name: strOr(e.get("聯絡人"), "黃瑋凱"), contract: strOr(e.get("委託書"), POST591_DEFAULTS.contract), serviceFee: true },
+    photos: d.photos,
+  };
+}
+
+/** 放進網址 # 後面：UTF-8 → base64。外掛用 decodeURIComponent(escape(atob(x))) 解回來。 */
+export function encodePayload(p: Post591Payload): string {
+  const json = JSON.stringify(p);
+  const utf8 = encodeURIComponent(json).replace(/%([0-9A-F]{2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
+  const b64 = typeof btoa === "function" ? btoa(utf8) : Buffer.from(utf8, "binary").toString("base64");
+  return encodeURIComponent(b64);
+}
+
+export const POST591_LAUNCH_URL = "https://user.591.com.tw/post/first";
 
 /* ───────── 照片／交接 ───────── */
 

@@ -17,10 +17,13 @@ import { useMemo, useState } from "react";
 import { Icon } from "@/app/admin/_ui/icons";
 import { parseListing, type Listing } from "@/lib/post591-parser";
 import {
+  POST591_LAUNCH_URL,
   buildDescription,
   buildHandoff,
+  buildPayload,
   buildRows,
   derive,
+  encodePayload,
   photoCommand,
   post591Risks,
   titleCheck,
@@ -225,20 +228,39 @@ export default function Post591Manager() {
           </section>
 
           <section className={`${styles.card} ${styles.handoffCard}`}>
-            <h2 className={styles.h2}>⑥ 貼給 Claude</h2>
+            <h2 className={styles.h2}>⑥ 上架到 591</h2>
             <p className={styles.hint}>
-              紅底的格子先補完，再按這顆。把複製到的整段貼進 Claude 對話視窗，說「幫我刊」，
-              它會用 Chrome 填到第③步「確認刊登方案」停下來，<b>「立即支付」你自己按</b>。
+              紅底的格子先補完，再按這顆。會開一個 591 刊登分頁，<b>你 Chrome 裡的「591 刊登助手」外掛</b>
+              會把四連點、每一格、文案、照片全部填好，右下角面板列出還缺什麼。
+              填完你自己核對，再按 591 的「保存資料，下一步」和「立即支付」——那兩顆永遠是你按。
             </p>
             <div className={styles.btnrow}>
-              <button className={styles.run} onClick={() => copy(handoff, "handoff")}>
-                {copied === "handoff" ? "已複製 ✓" : "複製交接摘要"}
+              <button
+                className={styles.run}
+                onClick={() => {
+                  const payload = buildPayload(listing, derived, rows, title, desc);
+                  window.open(`${POST591_LAUNCH_URL}#p591=${encodePayload(payload)}`, "_blank", "noopener");
+                }}
+              >
+                🚀 上架到 591
               </button>
               {rows.some((r) => r.need) && (
-                <span className={styles.badText}>還有 {rows.filter((r) => r.need).length} 格紅底沒補</span>
+                <span className={styles.badText}>還有 {rows.filter((r) => r.need).length} 格紅底沒補（外掛會把它們列在面板上）</span>
               )}
             </div>
-            <textarea className={`${styles.ta} ${styles.taHandoff}`} value={handoff} readOnly spellCheck={false} />
+            <p className={styles.hint} style={{ marginTop: 10 }}>
+              沒裝外掛？裝法在 <code>booking-system\tools\post591-extension\README.md</code>（chrome://extensions → 開發人員模式 → 載入未封裝項目 → 選那個資料夾）。
+              裝不了或想交給 Claude 填，就用下面的交接摘要。
+            </p>
+            <details>
+              <summary className={styles.hintInline}>備用：複製交接摘要給 Claude</summary>
+              <div className={styles.btnrow}>
+                <button className={styles.cp} onClick={() => copy(handoff, "handoff")}>
+                  {copied === "handoff" ? "已複製 ✓" : "複製交接摘要"}
+                </button>
+              </div>
+              <textarea className={`${styles.ta} ${styles.taHandoff}`} value={handoff} readOnly spellCheck={false} />
+            </details>
           </section>
         </div>
       )}

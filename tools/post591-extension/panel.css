@@ -1,0 +1,18 @@
+/* 591 頁面右下角的進度面板。用最保守的樣式，不跟 591 的 CSS 打架。 */
+#p591-panel {
+  position: fixed; right: 16px; bottom: 16px; z-index: 2147483000;
+  width: 340px; max-height: 60vh; overflow: auto;
+  background: #1f1b18; color: #f3ede6; border: 1px solid #f26666; border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.35); font: 13px/1.6 "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  padding: 12px 14px;
+}
+#p591-panel h4 { margin: 0 0 6px; font-size: 14px; color: #f5c0c4; display: flex; justify-content: space-between; align-items: center; }
+#p591-panel h4 button { background: transparent; border: 1px solid #665; color: #ccc; border-radius: 6px; padding: 2px 8px; cursor: pointer; font: inherit; }
+#p591-panel ul { margin: 0; padding-left: 18px; }
+#p591-panel li { margin: 2px 0; }
+#p591-panel .ok { color: #8fd694; }
+#p591-panel .bad { color: #ff8a80; }
+#p591-panel .warn { color: #ffd479; }
+#p591-panel .miss { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: rgba(255,138,128,.12); border: 1px solid rgba(255,138,128,.4); }
+#p591-panel .foot { margin-top: 8px; color: #bbb; font-size: 12px; }
+#p591-panel .foot b { color: #f5c0c4; }

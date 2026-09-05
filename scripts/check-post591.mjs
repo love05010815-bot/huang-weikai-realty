@@ -7,7 +7,7 @@
 import { register } from "node:module";
 register("./alias-hooks.mjs", import.meta.url);
 const { detectSource, parseListing, splitFeatureLines } = await import("../src/lib/post591-parser.ts");
-const { buildDescription, buildRows, derive, photoCommand, post591Risks, splitAddress, titleCheck } =
+const { buildDescription, buildPayload, buildRows, derive, encodePayload, photoCommand, post591Risks, splitAddress, titleCheck } =
   await import("../src/lib/post591-map.ts");
 
 let pass = true;
@@ -295,6 +295,23 @@ ZZ0000003
   const o = derive(d, 2026);
   eq("車位型式對 591 選項", o.parkSel, "平面式停車位");
   eq("民國年", o.rocY, 115);
+
+  /* F. 給外掛的資料包：確認表上改過的值要蓋掉解析結果，編碼要能解回來 */
+  console.log("F. 外掛資料包");
+  const rows = buildRows(d, o).map((r) => (r.label === "號" ? { ...r, value: "88" } : r.label === "裝潢程度" ? { ...r, value: "簡易裝潢" } : r.label === "　└ 管理費有無" ? { ...r, value: "有" } : r.label === "管理費" ? { ...r, value: "1500" } : r));
+  const p = buildPayload(d, o, rows, "測試標題六個字", buildDescription(d.features));
+  eq("第①頁", `${p.first.legal}/${p.first.status}/${p.first.type}`, "住家用/住宅/電梯大樓");
+  eq("號吃到確認表的改法", p.addr.no, "88");
+  eq("預設隱藏門號", p.addr.hide, true);
+  eq("裝潢吃到改法", p.deco, "簡易裝潢");
+  eq("管理費有＋金額", `${p.fee.has}/${p.fee.amount}`, "true/1500");
+  eq("樓層", `${p.floor.sell}/${p.floor.total}`, "3/15");
+  eq("車位型式", p.area.parkType, "平面式停車位");
+  eq("生活機能是陣列", Array.isArray(p.life) && p.life.length, 0);
+  const enc = encodePayload(p);
+  const back = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(enc)))));
+  eq("編碼解回來一致", back.addr.no + back.title, "88測試標題六個字");
+  ok(enc.length < 12000, "網址長度合理", enc.length, "<12000");
 }
 
 console.log("");
