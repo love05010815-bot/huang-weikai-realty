@@ -203,11 +203,70 @@ export function extractPhotoUrls(text) {
     }
     return out;
 }
-/** 使用者貼了幾條連結、每條各抓到幾張 —— 給介面顯示，讓「貼了兩條只吃到一條」自己看得出來 */
-export function photoLinkReport(text) {
-    // 只在「頂層連結」的開頭切；picstr 裡的照片網址前面一定是 = 或 ,，不算一條連結
-    const links = text.split(/(?<![=,])(?=https?:\/\/)/).filter((s) => /^https?:\/\//.test(s));
-    return { links: links.length, perLink: links.map((l) => extractPhotoUrls(l).length), photos: extractPhotoUrls(text) };
+/** 把貼進來的一串文字切成一條條頂層連結；picstr 裡的照片網址前面一定是 = 或 ,，不算一條連結 */
+export function splitLinks(text) {
+    return text
+        .split(/(?<![=,])(?=https?:\/\/)/)
+        .map((s) => s.trim())
+        .filter((s) => /^https?:\/\//.test(s));
+}
+/** 直接貼進來的照片檔網址（在型錄照片上按右鍵 → 複製圖片網址） */
+export function directImageUrls(text) {
+    return text.match(/https?:\/\/hq\.houseol\.com\.tw\/images\/pictures\/[^\s,"'<>)]+?\.(?:jpe?g|png)/gi) || [];
+}
+/**
+ * 愛屋型錄頁（Ecatalog.aspx）本身的網址沒有照片清單 —— 頁面上嵌的那幾張要把網頁抓回來才看得到。
+ * 這裡只判斷「這條是不是該去掃的型錄頁」；抓網頁由外掛 background 做（只抓使用者自己貼進來的那一頁）。
+ */
+export function isHouseolPage(url) {
+    return /^https?:\/\/[^/]*houseol\.com\.tw\/[^?#]*\.aspx/i.test(url) && !/picstr=/i.test(url);
+}
+/** 型錄頁網址裡的物件編號（No=AA6334850），拿來過濾頁面上的照片、排掉 logo */
+export function listingNoFromUrl(url) {
+    const m = url.match(/[?&]No=([A-Za-z]{1,3}\d{5,})/i);
+    return m ? m[1].toUpperCase() : null;
+}
+/**
+ * 從型錄頁的 HTML 撈出這一戶的照片：hq.houseol.com.tw/images/pictures/ 底下、檔名含物件編號的圖。
+ * 2026-09-05 實測：型錄頁嵌 3 張（H229AA6334850a/d/e.jpg）＋公司 logo（4817_3.jpg），「更多照片」另外 6 張（f 之後）。
+ */
+export function extractPhotosFromHtml(html, listingNo) {
+    const out = [];
+    for (const m of html.matchAll(/(?:https?:)?\/\/hq\.houseol\.com\.tw\/images\/pictures\/[^"'\s<>)]+?\.(?:jpe?g|png)/gi)) {
+        const u = m[0].startsWith("//") ? `https:${m[0]}` : m[0];
+        const file = u.slice(u.lastIndexOf("/") + 1).toUpperCase();
+        if (listingNo ? !file.includes(listingNo.toUpperCase()) : /_/.test(file))
+            continue; // logo 長得像 4817_3.jpg
+        if (!out.some((x) => x.toLowerCase() === u.toLowerCase()))
+            out.push(u);
+    }
+    return out;
+}
+/**
+ * 把貼進來的每條連結變成照片清單，照貼的順序、去重（大小寫不分）。
+ * `scanned` 是外掛把型錄頁抓回來後算出的照片（key = 那條連結）；還沒掃到的型錄頁先算 0 張。
+ */
+export function combinePhotos(text, scanned = {}) {
+    const out = [];
+    const push = (u) => {
+        if (!out.some((x) => x.toLowerCase() === u.toLowerCase()))
+            out.push(u);
+    };
+    for (const l of splitLinks(text)) {
+        if (isHouseolPage(l))
+            (scanned[l] || []).forEach(push);
+        else {
+            extractPhotoUrls(l).forEach(push);
+            directImageUrls(l).forEach(push);
+        }
+    }
+    return out;
+}
+/** 使用者貼了幾條連結、每條各抓到幾張、哪幾條是要去掃的型錄頁 —— 給介面顯示，讓「貼了兩條只吃到一條」自己看得出來 */
+export function photoLinkReport(text, scanned = {}) {
+    const links = splitLinks(text);
+    const perLink = links.map((l) => (isHouseolPage(l) ? (scanned[l] || []).length : combinePhotos(l).length));
+    return { links, perLink, pages: links.filter(isHouseolPage), photos: combinePhotos(text, scanned) };
 }
 export function splitFeatureLines(text) {
     return text

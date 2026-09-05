@@ -17,9 +17,9 @@
  *    只有重新按「解析」才會重建。
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/app/admin/_ui/icons";
-import { parseListing, photoLinkReport, type Listing } from "@/lib/post591-parser";
+import { extractPhotosFromHtml, listingNoFromUrl, parseListing, photoLinkReport, type Listing } from "@/lib/post591-parser";
 import {
   buildDescription,
   buildHandoff,
@@ -46,8 +46,32 @@ export default function Post591Manager() {
 
   const derived = useMemo(() => (listing ? derive(listing) : null), [listing]);
   /** ⑤ 那格貼的若是型錄「更多照片」連結（picstr=網址,網址…），就拆成照片網址交給外掛；貼資料夾路徑就只是備註 */
-  const photoReport = useMemo(() => photoLinkReport(photoFolder), [photoFolder]);
+  /** 型錄頁連結本身沒有照片清單：請外掛（bridge → background）把那一頁抓回來，這裡從 HTML 撈這一戶的照片 */
+  const [scanned, setScanned] = useState<Record<string, string[]>>({});
+  const scanningRef = useRef(new Set<string>());
+  const photoReport = useMemo(() => photoLinkReport(photoFolder, scanned), [photoFolder, scanned]);
   const extraPhotos = photoReport.photos;
+  const pendingPages = photoReport.pages.filter((p) => !(p in scanned) && !scanningRef.current.has(p));
+  const pendingKey = pendingPages.join("\n");
+  useEffect(() => {
+    if (!pendingKey || !document.documentElement.getAttribute("data-p591-ext")) return;
+    const timer = setTimeout(() => {
+      for (const url of pendingKey.split("\n")) {
+        if (scanningRef.current.has(url)) continue;
+        scanningRef.current.add(url);
+        const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const onMsg = (ev: MessageEvent) => {
+          if (ev.source !== window || !ev.data || ev.data.type !== "p591:scan-result" || ev.data.id !== id) return;
+          window.removeEventListener("message", onMsg);
+          scanningRef.current.delete(url);
+          setScanned((prev) => ({ ...prev, [url]: ev.data.ok ? extractPhotosFromHtml(String(ev.data.html || ""), listingNoFromUrl(url)) : [] }));
+        };
+        window.addEventListener("message", onMsg);
+        window.postMessage({ type: "p591:scan", id, url }, window.location.origin);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [pendingKey]);
 
   function run() {
     const d = parseListing(text);
@@ -254,19 +278,23 @@ export default function Post591Manager() {
             ) : (
               <>
                 <p className={styles.hint}>
-                  這份資料沒有照片網址。到型錄頁把「<b>更多照片</b>」那個連結複製過來貼在這裡（右鍵 → 複製連結網址），
-                  外掛就會把照片一起上傳；或填照片資料夾路徑，只會寫進交接摘要。
+                  這份資料沒有照片網址。把型錄頁的網址、和「<b>更多照片</b>」的連結（右鍵 → 複製連結網址）都貼在這裡，幾條都可以：
+                  型錄頁上顯示的照片會由外掛把那一頁抓回來找，更多照片的清單直接讀；或填照片資料夾路徑，只會寫進交接摘要。
                 </p>
                 <input
                   className={styles.input}
                   value={photoFolder}
                   onChange={(e) => setPhotoFolder(e.target.value)}
-                  placeholder="貼「更多照片」連結，或例如 D:\Agent-os\591-poster\領袖天下"
+                  placeholder="貼型錄頁網址、「更多照片」連結，或例如 D:\Agent-os\591-poster\領袖天下"
                 />
-                {photoReport.links > 0 && (
+                {photoReport.links.length > 0 && (
                   <p className={extraPhotos.length ? styles.okText : styles.badText}>
-                    貼了 {photoReport.links} 條連結（{photoReport.perLink.map((n, i) => `第 ${i + 1} 條 ${n} 張`).join("、")}），共抓到 {extraPhotos.length} 張照片網址
-                    {extraPhotos.length ? "，按「上架到 591」會一起上傳。" : "。要的是「更多照片」那個連結（網址裡有 picstr=）。"}
+                    貼了 {photoReport.links.length} 條連結（
+                    {photoReport.links
+                      .map((l, i) => `第 ${i + 1} 條 ${photoReport.pages.includes(l) && !(l in scanned) ? "掃描中…" : `${photoReport.perLink[i]} 張`}`)
+                      .join("、")}
+                    ），共抓到 {extraPhotos.length} 張照片網址
+                    {extraPhotos.length ? "，按「上架到 591」會一起上傳。" : pendingPages.length ? "" : "。要的是型錄頁或「更多照片」的連結。"}
                   </p>
                 )}
               </>

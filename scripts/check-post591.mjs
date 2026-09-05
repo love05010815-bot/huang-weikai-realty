@@ -6,7 +6,7 @@
 // 專案內部用 @/ 別名，node 不讀 tsconfig，所以先掛上 resolver 再動態載入（同 check-rival-analysis）
 import { register } from "node:module";
 register("./alias-hooks.mjs", import.meta.url);
-const { detectSource, extractPhotoUrls, parseListing, photoLinkReport, splitFeatureLines } = await import("../src/lib/post591-parser.ts");
+const { combinePhotos, detectSource, extractPhotoUrls, extractPhotosFromHtml, isHouseolPage, listingNoFromUrl, parseListing, photoLinkReport, splitFeatureLines } = await import("../src/lib/post591-parser.ts");
 const { buildDescription, buildPayload, buildRows, derive, encodePayload, photoCommand, post591Risks, splitAddress, titleCheck } =
   await import("../src/lib/post591-map.ts");
 
@@ -321,13 +321,22 @@ ZZ0000003
   const b = "https://es.houseol.com.tw/EInfos.aspx?type=3&picstr=https://hq.houseol.com.tw/p/1.jpg,https://hq.houseol.com.tw/p/2.jpg,https://hq.houseol.com.tw/p/3.jpg,https://hq.houseol.com.tw/p/4.jpg,https://hq.houseol.com.tw/p/5.jpg,https://hq.houseol.com.tw/p/6.jpg&x=1";
   const c = "https://es.houseol.com.tw/EInfos.aspx?type=1&picstr=" + encodeURIComponent("https://hq.houseol.com.tw/p/7.jpg,https://hq.houseol.com.tw/p/8.jpg,https://hq.houseol.com.tw/p/6.jpg");
   const r = photoLinkReport(a + b + c);
-  eq("三條連結都認得", r.links, 3);
+  eq("三條連結都認得", r.links.length, 3);
   eq("每條各幾張", r.perLink.join("/"), "0/6/3");
   eq("合計去重後 8 張", r.photos.length, 8);
   eq("順序保留、第一張是 1.jpg", r.photos[0], "https://hq.houseol.com.tw/p/1.jpg");
   eq("單一連結照舊", extractPhotoUrls(b).length, 6);
   eq("沒有 picstr 就是空的", extractPhotoUrls(a).length, 0);
   eq("用逗號或換行分開貼也行", photoLinkReport(b + String.fromCharCode(10) + c).photos.length, 8);
+  eq("型錄頁要去掃", isHouseolPage(a), true);
+  eq("更多照片連結不用掃", isHouseolPage(b), false);
+  eq("型錄頁網址裡的物件編號", listingNoFromUrl(a), "AA0000001");
+  const html = `<img src="https://hq.houseol.com.tw/images/pictures/4817_3.jpg"><img src="https://hq.houseol.com.tw/images/pictures/H2AA0000001a.jpg"><img src="//hq.houseol.com.tw/images/pictures/H2AA0000001d.jpg"><img src="https://hq.houseol.com.tw/images/pictures/H2AA0000001A.JPG">`;
+  eq("型錄頁照片排掉 logo、// 補 https、大小寫去重", extractPhotosFromHtml(html, "AA0000001").map((u) => u.slice(u.lastIndexOf("/") + 1)).join("|"), "H2AA0000001a.jpg|H2AA0000001d.jpg");
+  const all = combinePhotos(a + b, { [a]: extractPhotosFromHtml(html, "AA0000001") });
+  eq("型錄頁 2 張＋更多照片 6 張", all.length, 8);
+  eq("順序：型錄頁的先", all[0].endsWith("H2AA0000001a.jpg"), true);
+  eq("沒掃到的型錄頁先算 0 張、pages 會列出來", photoLinkReport(a + b).pages.length + "/" + photoLinkReport(a + b).perLink.join("/"), "1/0/6");
 }
 console.log("");
 console.log(pass ? "✅ 591 刊登助手：辨識器與對應規則全部一致" : "❌ 有差異，不要往下做");

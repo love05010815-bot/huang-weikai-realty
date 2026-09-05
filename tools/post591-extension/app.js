@@ -9,7 +9,7 @@
  * 2026-09-05 拍板：同事版**不帶任何固定文案**，描述只有「☆主推特色介紹:」＋型錄的 ✨ 特色行；
  * 想固定接一段（電話、LINE、店名）的人自己在「⚙ 我的資料」填，{{name}} {{phone}} {{line}} 會自動代入。
  */
-import { parseListing, photoLinkReport } from "@/lib/post591-parser";
+import { parseListing, photoLinkReport, extractPhotosFromHtml, listingNoFromUrl } from "@/lib/post591-parser";
 import { derive, buildRows, titleCheck, post591Risks, buildPayload } from "@/lib/post591-map";
 import { DESC_HEAD, DESC_TAIL, POST591_DEFAULTS } from "@/config/post591-template";
 
@@ -170,19 +170,47 @@ function refreshRisks() {
   box.hidden = !risks.length;
   box.innerHTML = risks.length ? `<b>⚠ 法規敏感字（只標不刪，留不留你決定）</b><ul>${risks.map((r) => `<li><b>${esc(r.word)}</b>：${esc(r.why)}</li>`).join("")}</ul>` : "";
 }
+/* 型錄頁連結：網址本身沒有照片清單，要請 background 把那一頁抓回來，再從 HTML 撈這一戶的照片 */
+const msgBg = (type, extra) =>
+  new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage({ type, ...(extra || {}) }, (r) => resolve(chrome.runtime.lastError ? { ok: false, error: chrome.runtime.lastError.message } : r || { ok: false, error: "no response" }));
+    } catch (e) {
+      resolve({ ok: false, error: String(e) });
+    }
+  });
+const scanned = {}; // 連結 → 該頁的照片網址（掃過就記住）
+const scanning = new Set();
+let scanTimer = null;
+async function scanPages(pages) {
+  for (const p of pages) {
+    if (p in scanned || scanning.has(p)) continue;
+    scanning.add(p);
+    const r = await msgBg("p591:scan", { url: p });
+    scanned[p] = r.ok ? extractPhotosFromHtml(r.html || "", listingNoFromUrl(p)) : [];
+    scanning.delete(p);
+  }
+  refreshPhotoLink();
+}
 function extraPhotos() {
-  return photoLinkReport($("photo-link").value).photos;
+  return photoLinkReport($("photo-link").value, scanned).photos;
 }
 function refreshPhotoLink() {
-  const r = photoLinkReport($("photo-link").value);
+  const text = $("photo-link").value;
+  const r = photoLinkReport(text, scanned);
+  const pending = r.pages.filter((p) => !(p in scanned));
+  if (pending.length && hasChrome) {
+    clearTimeout(scanTimer);
+    scanTimer = setTimeout(() => scanPages(pending), 400);
+  }
   const n = r.photos.length;
-  const v = $("photo-link").value.trim();
-  const per = r.perLink.map((k, i) => `第 ${i + 1} 條 ${k} 張`).join("、");
-  flash(
-    $("photo-link-msg"),
-    r.links ? `貼了 ${r.links} 條連結（${per}），共抓到 ${n} 張照片網址${n ? "，會一起上傳。" : "。要的是「更多照片」那個連結（網址裡有 picstr=）。"}` : v ? "這裡面沒有連結" : "",
-    n ? "ok" : v ? "bad" : "",
-  );
+  const v = text.trim();
+  const per = r.links.map((l, i) => `第 ${i + 1} 條 ${r.pages.includes(l) && !(l in scanned) ? (hasChrome ? "掃描中…" : "型錄頁") : `${r.perLink[i]} 張`}`).join("、");
+  let tail = "";
+  if (n) tail = "，會一起上傳。";
+  else if (pending.length && !hasChrome) tail = "。型錄頁的照片要從外掛圖示打開的頁面才能掃。";
+  else if (!pending.length) tail = "。要的是型錄頁或「更多照片」的連結。";
+  flash($("photo-link-msg"), r.links.length ? `貼了 ${r.links.length} 條連結（${per}），共抓到 ${n} 張照片網址${tail}` : v ? "這裡面沒有連結" : "", n ? "ok" : v ? "bad" : "");
 }
 
 /* ───────── 上架 ───────── */

@@ -5,6 +5,7 @@
  *      —— 資料包來源有兩個：app.html（同事版）或 weikaihouse.com 後台的 bridge.js（後台版）
  *   ③ 591 頁面的 content.js 來要資料就給它、填完就清掉
  *   ④ 幫 content.js 把愛屋圖檔主機（hq.houseol.com.tw）的照片抓回來 —— 591 頁面本身不能跨網域抓
+ *   ⑤ 使用者貼了型錄頁連結時，把那一頁抓回來給頁面端撈嵌在頁面上的照片（型錄頁的網址本身沒有照片清單）
  *
  * ⚠️ 這裡不會、也不准去 591 或愛屋抓「資料」—— 只抓使用者自己那一戶的照片檔。
  *
@@ -52,6 +53,17 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return reply(async () => {
       await chrome.storage.session.remove(KEY);
       return { ok: true };
+    });
+  }
+  if (msg.type === "p591:scan") {
+    // 只抓使用者自己貼進來的那一頁愛屋型錄（es.houseol.com.tw/*.aspx），回傳 HTML 讓頁面端撈這一戶的照片網址
+    return reply(async () => {
+      const u = new URL(String(msg.url || ""));
+      if (!(u.hostname === "houseol.com.tw" || u.hostname.endsWith(".houseol.com.tw"))) throw new Error("只掃愛屋型錄頁");
+      const res = await fetch(u.href, { credentials: "omit" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const html = await res.text();
+      return { ok: true, html: html.slice(0, 2000000) };
     });
   }
   if (msg.type === "p591:fetch") {
