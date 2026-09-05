@@ -17,6 +17,15 @@
 </script>
 </head>
 <body>
+<section id="file-warn" class="card warn" hidden style="border-width:2px">
+  <h2>⚠ 這一頁不能直接點檔案打開</h2>
+  <p>你現在是從資料夾裡雙擊 <code>app.html</code> 打開的，瀏覽器會把程式擋住，所以按鈕都沒反應。這一頁要<b>從 Chrome 工具列的「591 刊登助手」圖示</b>打開才會動。</p>
+  <p>還沒裝的話：Chrome 網址列輸入 <code>chrome://extensions</code> → 右上角開「開發人員模式」→ 左上角「載入未封裝項目」→ 選這個資料夾（裡面直接看得到 manifest.json 的那一層）→ 清單出現「591 刊登助手」→ 點網址列右邊的拼圖 🧩 → 點「591 刊登助手」。</p>
+</section>
+<script>
+  // 直接點檔案（file://）開的話，下面的模組程式會被瀏覽器擋掉；先把提示亮出來，別讓人對著沒反應的按鈕猜
+  if (location.protocol === "file:") document.getElementById("file-warn").hidden = false;
+</script>
 <header class="top">
   <div>
     <h1>591 刊登助手</h1>
