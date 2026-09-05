@@ -10,8 +10,8 @@
  *
  * ⚠️ 這支不碰 DOM、不碰 node，client 與測試腳本共用。
  */
-import { DESC_HEAD, DESC_TAIL, POST591_DEFAULTS } from "@/config/post591-template";
-import { findCopyRisks } from "@/lib/listing-copy-risk";
+import { DESC_HEAD, DESC_TAIL, POST591_DEFAULTS } from "../config/post591-template.js";
+import { findCopyRisks } from "./listing-copy-risk.js";
 /* ───────── 地址 ───────── */
 /**
  * 「台中市大肚區沙田路三段734巷56之2號」→ 縣市／鄉鎮／街道／巷／弄／號／之。

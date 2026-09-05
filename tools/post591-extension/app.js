@@ -9,9 +9,10 @@
  * 2026-09-05 拍板：同事版**不帶任何固定文案**，描述只有「☆主推特色介紹:」＋型錄的 ✨ 特色行；
  * 想固定接一段（電話、LINE、店名）的人自己在「⚙ 我的資料」填，{{name}} {{phone}} {{line}} 會自動代入。
  */
-import { parseListing, photoLinkReport, extractPhotosFromHtml, listingNoFromUrl } from "@/lib/post591-parser";
-import { derive, buildRows, titleCheck, post591Risks, buildPayload } from "@/lib/post591-map";
-import { DESC_HEAD, DESC_TAIL, POST591_DEFAULTS } from "@/config/post591-template";
+// 一律相對路徑：外掛頁面的 CSP 會擋 inline importmap（2026-09-05 同事機器上整頁沒反應就是這個）
+import { parseListing, photoLinkReport, extractPhotosFromHtml, listingNoFromUrl } from "./lib/lib/post591-parser.js";
+import { derive, buildRows, titleCheck, post591Risks, buildPayload } from "./lib/lib/post591-map.js";
+import { DESC_HEAD, DESC_TAIL, POST591_DEFAULTS } from "./lib/config/post591-template.js";
 
 const $ = (id) => document.getElementById(id);
 const hasChrome = typeof chrome !== "undefined" && !!(chrome.runtime && chrome.runtime.sendMessage);

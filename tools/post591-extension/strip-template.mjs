@@ -32,12 +32,24 @@ const PERSONAL = [
   ["591 名片預設會帶「黃先生」，要改", "用你在「⚙ 我的資料」填的姓名"],
   ["黃瑋凱", ""],
 ];
+/**
+ * 「@/…」路徑改成相對路徑。外掛頁面受 MV3 的 CSP（script-src 'self'）管，**inline 的 importmap 會被擋**，
+ * 2026-09-05 同事第一次裝就撞到：頁面完全沒反應。所以不能靠 importmap，編出來的檔案要直接寫相對路徑。
+ */
+const SPECIFIERS = [
+  ["from \"@/config/post591-template\"", "from \"../config/post591-template.js\""],
+  ["from \"@/lib/listing-copy-risk\"", "from \"./listing-copy-risk.js\""],
+  ["from \"@/lib/post591-parser\"", "from \"./post591-parser.js\""],
+  ["from \"@/lib/post591-map\"", "from \"./post591-map.js\""],
+];
 let touched = 0;
 for (const f of fs.readdirSync(path.join(lib, "lib"))) {
   const p = path.join(lib, "lib", f);
   let s = fs.readFileSync(p, "utf8");
   const before = s;
   for (const [from, to] of PERSONAL) s = s.split(from).join(to);
+  for (const [from, to] of SPECIFIERS) s = s.split(from).join(to);
+  if (/from "@\//.test(s)) throw new Error(`${f} 還有沒換掉的 @/ 路徑`);
   if (s !== before) {
     fs.writeFileSync(p, s, "utf8");
     touched++;
