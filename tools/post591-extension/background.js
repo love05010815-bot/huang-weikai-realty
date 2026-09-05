@@ -2,7 +2,7 @@
  * 背景程式做四件事：
  *   ① 點工具列圖示 → 開外掛自己的頁面 app.html（同事版入口：貼資料 → 解析 → 上架，不需要任何後台）
  *   ② 保管資料包（chrome.storage.session，關瀏覽器就沒了）並開 591 刊登分頁
- *      —— 資料包來源有兩個：app.html（同事版）或 weikaihouse.com 後台的 bridge.js（黃瑋凱自己用）
+ *      —— 資料包來源有兩個：app.html（同事版）或 weikaihouse.com 後台的 bridge.js（後台版）
  *   ③ 591 頁面的 content.js 來要資料就給它、填完就清掉
  *   ④ 幫 content.js 把愛屋圖檔主機（hq.houseol.com.tw）的照片抓回來 —— 591 頁面本身不能跨網域抓
  *

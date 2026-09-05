@@ -236,7 +236,7 @@ export function buildRows(d, o) {
     if (d.park)
         f("（參考）鄰近公園", d.park, { ref: true });
     grp("聯絡資料");
-    f("聯絡人", "黃瑋凱", { note: "591 名片預設會帶「黃先生」，要改" });
+    f("聯絡人", "", { note: "用你在「⚙ 我的資料」填的姓名" });
     f("委託書", POST591_DEFAULTS.contract, { pick: true, req: true, note: "專任約的話自己改" });
     f("服務費", "收取服務費", { pick: true, req: true });
     f("經紀人資料", "☑ 打勾", { pick: true, req: true });
@@ -354,7 +354,7 @@ export function buildPayload(d, o, rows, title, desc) {
         life: (e.get("勾選這些") || o.life.join("、")).split(/[、,，]/).map((s) => s.trim()).filter((s) => /^近/.test(s)),
         title,
         desc,
-        contact: { name: strOr(e.get("聯絡人"), "黃瑋凱"), contract: strOr(e.get("委託書"), POST591_DEFAULTS.contract), serviceFee: true },
+        contact: { name: strOr(e.get("聯絡人"), ""), contract: strOr(e.get("委託書"), POST591_DEFAULTS.contract), serviceFee: true },
         photos: d.photos,
     };
 }

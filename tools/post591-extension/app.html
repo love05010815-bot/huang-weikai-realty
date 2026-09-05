@@ -33,12 +33,13 @@
     <label>LINE ID（含 @）<input id="s-line" placeholder="例：@abc123" /></label>
     <label>委託書預設<select id="s-contract"><option>有簽訂</option><option>無簽訂</option></select></label>
   </div>
-  <label class="block">現況特色描述的固定版型（✨ 特色行之後接的整段；<code>{{name}}</code> <code>{{phone}}</code> <code>{{line}}</code> 會自動換成上面填的）
-    <textarea id="s-tail" rows="14" spellcheck="false"></textarea>
+  <label class="block">固定尾段（選填）：每一戶文案 ✨ 特色行之後想固定接的一段，例如你的電話、LINE、店名。留空就只有型錄的資訊。
+    <code>{{name}}</code> <code>{{phone}}</code> <code>{{line}}</code> 會自動換成上面填的。
+    <textarea id="s-tail" rows="8" spellcheck="false" placeholder="例：※歡迎來電預約看屋※{{phone}} 【{{name}}】　官方LINE:{{line}}"></textarea>
   </label>
   <div class="row-btns">
     <button id="s-save" class="primary" type="button">儲存</button>
-    <button id="s-reset" class="ghost" type="button">還原預設版型</button>
+    <button id="s-reset" class="ghost" type="button">清空固定尾段</button>
     <span id="s-msg" class="msg"></span>
   </div>
 </section>
@@ -76,7 +77,7 @@
     <h2>④ 廣告標題與現況特色描述</h2>
     <label class="block">廣告標題（6～30 字）<input id="title" /></label>
     <p id="title-msg" class="msg"></p>
-    <label class="block">現況特色描述（你的固定版型，只有 ✨ 那幾行是這戶的）<textarea id="desc" rows="14" spellcheck="false"></textarea></label>
+    <label class="block">現況特色描述（型錄的 ✨ 特色行；有填固定尾段才會接在後面，可以直接改字）<textarea id="desc" rows="10" spellcheck="false"></textarea></label>
     <p id="desc-msg" class="msg"></p>
     <div id="risks" class="risk" hidden></div>
   </section>

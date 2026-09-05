@@ -14,7 +14,7 @@
     "check:rival": "node --experimental-strip-types scripts/check-rival-parser.mjs && node --experimental-strip-types scripts/check-rival-analysis.mjs",
     "check:youth": "node --experimental-strip-types scripts/check-youth-loan.mjs",
     "check:post591": "node --experimental-strip-types scripts/check-post591.mjs",
-    "build:post591-ext": "tsc -p tools/post591-extension/tsconfig.lib.json"
+    "build:post591-ext": "tsc -p tools/post591-extension/tsconfig.lib.json && node tools/post591-extension/strip-template.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",

@@ -5,8 +5,9 @@
  * （src/lib/post591-parser.ts、post591-map.ts、config/post591-template.ts）用 tsc 編成 lib/ 底下的 ES module，
  * 由 app.html 的 importmap 把「@/…」對到 lib/。**規則改了要重新編：`npm run build:post591-ext`。**
  *
- * 個人資料（姓名／手機／LINE／版型尾段）存在 chrome.storage.local，只在使用者自己的 Chrome 裡。
- * 版型預設是黃瑋凱那份把個人字眼換成 {{name}} {{phone}} {{line}} 的版本，每個人可以自己改。
+ * 個人資料（姓名／手機／LINE／固定尾段）存在 chrome.storage.local，只在使用者自己的 Chrome 裡。
+ * 2026-09-05 拍板：同事版**不帶任何固定文案**，描述只有「☆主推特色介紹:」＋型錄的 ✨ 特色行；
+ * 想固定接一段（電話、LINE、店名）的人自己在「⚙ 我的資料」填，{{name}} {{phone}} {{line}} 會自動代入。
  */
 import { parseListing, photoLinkReport } from "@/lib/post591-parser";
 import { derive, buildRows, titleCheck, post591Risks, buildPayload } from "@/lib/post591-map";
@@ -17,17 +18,8 @@ const hasChrome = typeof chrome !== "undefined" && !!(chrome.runtime && chrome.r
 const SETTINGS_KEY = "p591:settings";
 
 /* ───────── 個人設定 ───────── */
-function defaultTail() {
-  return DESC_TAIL.replace(/0909-787-865/g, "{{phone}}")
-    .replace(/【黃瑋凱】[^\n]*/g, "【{{name}}】") // 「瑋你把關，凱心成家。」是他個人的口號，換成只留姓名
-    .replace(/@a8865/g, "{{line}}")
-    .replace(/小凱專營/g, "{{name}}專營")
-    .replace(/委託小凱/g, "委託{{name}}")
-    .split("\n")
-    .filter((l) => !/YouTube/.test(l)) // 他個人的影音頻道那行拿掉
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n");
-}
+/** 預設不帶固定文案（lib 裡的 DESC_TAIL 在同事版已被清成空字串，這裡再保險一次） */
+const defaultTail = () => "";
 const DEFAULT_SETTINGS = { name: "", phone: "", line: "", contract: POST591_DEFAULTS.contract, tail: defaultTail() };
 let settings = { ...DEFAULT_SETTINGS };
 
@@ -81,7 +73,8 @@ function fillTail(tail) {
 }
 function buildDesc(features) {
   const lines = features.map((l) => l.replace(/^✨\s*/, "")).filter(Boolean).map((l) => `✨${l}`);
-  return `${DESC_HEAD}\n\n${lines.join("\n")}\n\n${fillTail(settings.tail)}`;
+  const tail = fillTail((settings.tail || DESC_TAIL || "").trim());
+  return `${DESC_HEAD}\n\n${lines.join("\n")}${tail ? `\n\n${tail}` : ""}`;
 }
 function flash(el, text, cls) {
   el.textContent = text;
@@ -223,7 +216,7 @@ $("toggle-settings").onclick = () => ($("settings").hidden = !$("settings").hidd
 $("s-save").onclick = saveSettings;
 $("s-reset").onclick = () => {
   $("s-tail").value = defaultTail();
-  flash($("s-msg"), "已還原成預設版型，記得按儲存", "");
+  flash($("s-msg"), "已清空固定尾段（預設就是不帶固定文案），記得按儲存", "");
 };
 $("raw").addEventListener("input", () => ($("parse").disabled = !$("raw").value.trim()));
 $("parse").onclick = run;
