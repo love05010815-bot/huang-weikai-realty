@@ -564,7 +564,7 @@ export const PROJECTS: Project[] = [
         要他到 /map?fix=1 點一下。
      ⚠️ 「和樂龍融」是他打的完整案名，**沒有拆成建商「和樂」＋案名「龍融」** ——
         檔頭第 3 條：不准用建案名猜建商。 */
-  { id: "hele-longrong", name: "和樂龍融", builder: "待確認", area: "梧棲", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "hele-longrong", name: "和樂龍融", builder: "中龍鋼鐵", area: "梧棲", status: "completed", completion: "約 2019", sources: ["owner"] },
   { id: "lianyue-zhen", name: "聯悅臻", aliases: ["聯悦臻"], builder: "聯悅建設", area: "梧棲", status: "newly", completion: "約 2025", units: 883, sources: ["owner"] },
   {
     id: "lianyue-xin", name: "聯悅馨", aliases: ["聯悦馨"], builder: "聯悅建設", area: "梧棲",
@@ -1846,8 +1846,8 @@ export const PROJECTS: Project[] = [
      `completion: "待確認"` 是這裡新增的值（畫面對非年份的值本來就直接顯示）。
      `status` 三個值裡沒有「不知道」可選，**先放 completed**（本區 80 案有 58 案是成屋），
      ⚠️ **這是預設值不是查證結果** —— 猜錯的話該案不會出現在「預售中」篩選裡。 */
-  { id: "fuyu-ju", name: "富宇聚", builder: "富宇建設", area: "北勢靜宜", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "shanshui-fengjin-2", name: "山水豐晉2", builder: "君鼎建設", area: "北勢靜宜", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-ju", name: "富宇聚", builder: "富宇建設", area: "北勢靜宜", status: "completed", completion: "約 2017", sources: ["owner"] },
+  { id: "shanshui-fengjin-2", name: "山水豐晉2", builder: "君鼎建設", area: "北勢靜宜", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "shushang-jing", name: "述上景", builder: "睿元建設", area: "北勢靜宜", status: "completed", completion: "約 2021", sources: ["owner"] },
 
   /* ─────────── 新光田特區 107 案（2026-09-02 系統擁有者提供「歷年建案母名單」）───────────
@@ -1869,7 +1869,7 @@ export const PROJECTS: Project[] = [
      🔵 **好幾個建商在北勢靜宜也有案**（樹合院／樹合院2期C、昶立品悅／昶立品悅2、
         悟實參章／壹章貳章、餘慶開元／有鄰、敬益璞真／淳境、萬基築印／青山…）。
         那是相鄰商圈的同一批在地建商，**不是歸錯區** —— 但他若說某案該搬，整組一起看。 */
-  { id: "jiutang-tianebao-2", name: "久樘天鵝堡2", builder: "久樘開發", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jiutang-tianebao-2", name: "久樘天鵝堡2", builder: "久樘開發", area: "新光田", status: "completed", completion: "約 2012", sources: ["owner"] },
   { id: "hongya-qinggeng", name: "宏亞晴耕", builder: "臻揚建設", area: "新光田", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "km-villa", name: "KM Villa", builder: "津鼎建設", area: "新光田", status: "completed", completion: "約 2020", sources: ["owner"] },
   { id: "hongshu-lin", name: "鴻墅林", builder: "鴻豫建設", area: "新光田", status: "completed", completion: "約 2022", sources: ["owner"] },
@@ -1893,7 +1893,7 @@ export const PROJECTS: Project[] = [
   { id: "zaiyu-tianebao", name: "再遇天鵝堡／藍天鵝", builder: "旺庭建設", area: "新光田", status: "completed", completion: "約 2019", sources: ["owner"] },
   { id: "tianfu-yangzhen", name: "天府養真", builder: "天崴建設", area: "新光田", status: "newly", completion: "新成屋", sources: ["owner"] },
   { id: "futeng-fuyuanjing", name: "富騰富苑景", builder: "富騰建設體系", area: "新光田", status: "completed", completion: "約 2023", sources: ["owner"] },
-  { id: "lvhuo-house", name: "綠活HOUSE", builder: "大居建設", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "lvhuo-house", name: "綠活HOUSE", builder: "大居建設", area: "新光田", status: "completed", completion: "約 2012", sources: ["owner"] },
   { id: "wangzhan-qingsongshu", name: "旺展青松墅", builder: "旺展建設", area: "新光田", status: "completed", completion: "約 2021", sources: ["owner"] },
   { id: "xinye-weiqiu-senlin", name: "新業微丘森鄰", builder: "新業建設", area: "新光田", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "liangju-shangding", name: "良聚上鼎", builder: "良聚建設", area: "新光田", status: "completed", completion: "約 2017", sources: ["owner"] },
@@ -1909,25 +1909,25 @@ export const PROJECTS: Project[] = [
   { id: "zhuyin-dajingxi", name: "住寅大晶囍", builder: "住寅建設體系", area: "新光田", status: "newly", completion: "約 2025", sources: ["owner"] },
   { id: "yongzhu-shangcheng", name: "永築上承", builder: "永築建設", area: "新光田", status: "newly", completion: "約 2025", sources: ["owner"] },
   { id: "qiaoli-me-town", name: "喬立ME TOWN", builder: "喬立建設", area: "新光田", status: "completed", completion: "約 2020", sources: ["owner"] },
-  { id: "fuyu-chuntian", name: "富宇春天", builder: "富宇建設", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-chuntian", name: "富宇春天", builder: "富宇建設", area: "新光田", status: "completed", completion: "約 2008", sources: ["owner"] },
   { id: "lizhi-kaisa", name: "麗緻凱撒", builder: "豪隆建設", area: "新光田", status: "completed", completion: "約 2000", sources: ["owner"] },
   { id: "yunjiang-shangshangqian", name: "允將上上謙", builder: "大有地產開發", area: "新光田", status: "newly", completion: "約 2025", sources: ["owner"] },
   { id: "yongzhu-chengjing", name: "永築承境", builder: "永築建設", area: "新光田", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "heyang-fuzhu", name: "合揚馥筑", builder: "築慶建設", area: "新光田", status: "completed", completion: "約 2021", sources: ["owner"] },
   { id: "heya-linju", name: "賀雅麟居", builder: "賀雅建設", area: "新光田", status: "completed", completion: "約 2022", sources: ["owner"] },
-  { id: "wanda-wushu", name: "萬大吾墅", builder: "萬大建設", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "wanda-wushu", name: "萬大吾墅", builder: "萬大建設", area: "新光田", status: "newly", completion: "新成屋", sources: ["owner"] },
   { id: "qiaohan-taihe", name: "喬翰泰和", builder: "喬翰建設", area: "新光田", status: "completed", completion: "約 2015", sources: ["owner"] },
   { id: "heyuan-15", name: "荷園15", builder: "荷風建設", area: "新光田", status: "completed", completion: "約 2017", sources: ["owner"] },
-  { id: "fuyu-daqi", name: "富宇大器", builder: "富宇建設", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "fuyu-damei", name: "富宇大美", builder: "富宇建設", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-daqi", name: "富宇大器", builder: "富宇建設", area: "新光田", status: "completed", completion: "約 2014", sources: ["owner"] },
+  { id: "fuyu-damei", name: "富宇大美", builder: "富宇建設", area: "新光田", status: "completed", completion: "約 2019", sources: ["owner"] },
   { id: "jialai-hegang", name: "家來賀崗", builder: "家來建設", area: "新光田", status: "completed", completion: "約 2003", sources: ["owner"] },
-  { id: "fuyu-damei-2-hengmei", name: "富宇大美2恆美", builder: "富宇建設", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "fuyu-tianheng", name: "富宇天恆", builder: "富宇建設", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-damei-2-hengmei", name: "富宇大美2恆美", builder: "富宇建設", area: "新光田", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "fuyu-tianheng", name: "富宇天恆", builder: "富宇建設", area: "新光田", status: "completed", completion: "約 2015", sources: ["owner"] },
   { id: "baochen-yisentian", name: "保辰一森恬", builder: "禾嵩開發", area: "新光田", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "chengshi-mushang", name: "澄石慕上", builder: "必優德建設", area: "新光田", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "quanmei-yumingxiu", name: "泉美御明秀", builder: "泉美建設", area: "新光田", status: "newly", completion: "約 2025", sources: ["owner"] },
-  { id: "fuyu-mingxiu", name: "富宇明秀", builder: "富宇建設", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "fuyu-hongguan", name: "富宇宏觀", builder: "富宇建設", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-mingxiu", name: "富宇明秀", builder: "富宇建設", area: "新光田", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "fuyu-hongguan", name: "富宇宏觀", builder: "富宇建設", area: "新光田", status: "completed", completion: "約 2014", sources: ["owner"] },
   { id: "kunyue-muguangshu", name: "坤悅沐光墅", builder: "坤悅開發", area: "新光田", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "kunyue-muguangdi", name: "坤悅沐光邸", builder: "坤悅開發", area: "新光田", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "shijieyijing-siji", name: "世界一景四季區", builder: "德邑建設", area: "新光田", status: "completed", completion: "約 2012", sources: ["owner"] },
@@ -1936,14 +1936,14 @@ export const PROJECTS: Project[] = [
   { id: "baolai-shoufu", name: "寶萊首賦", builder: "寶萊建設", area: "新光田", status: "completed", completion: "約 2017", sources: ["owner"] },
   { id: "jingyi-puzhen", name: "敬益璞真", builder: "敬益建設體系", area: "新光田", status: "completed", completion: "約 2023", sources: ["owner"] },
   { id: "deguang-xingjing", name: "德光興境", builder: "德光建設", area: "新光田", status: "presale", completion: "預售中", sources: ["owner"] },
-  { id: "fuyu-kaiyue", name: "富宇凱悅", builder: "富宇建設", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "fuyu-kaiyue-3", name: "富宇凱悅3", builder: "富宇建設", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-kaiyue", name: "富宇凱悅", builder: "富宇建設", area: "新光田", status: "completed", completion: "約 2005", sources: ["owner"] },
+  { id: "fuyu-kaiyue-3", name: "富宇凱悅3", builder: "富宇建設", area: "新光田", status: "completed", completion: "約 2005", sources: ["owner"] },
   { id: "zhonggang-dibao", name: "中港帝堡", builder: "德邑建設", area: "新光田", status: "completed", completion: "約 2014", sources: ["owner"] },
   { id: "dachi-zhijian", name: "大尺之間", builder: "屏仕建設", area: "新光田", status: "newly", completion: "約 2024", sources: ["owner"] },
   { id: "baogeli-zhuangyuan", name: "寶格麗莊園", builder: "僑邑建設", area: "新光田", status: "completed", completion: "約 2015", sources: ["owner"] },
   { id: "deguang-xingfu", name: "德光興富", builder: "凱俊建設", area: "新光田", status: "newly", completion: "約 2025", sources: ["owner"] },
   { id: "green-h", name: "Green H", builder: "津誠建設", area: "新光田", status: "completed", completion: "約 2019", sources: ["owner"] },
-  { id: "fuyu-dadi", name: "富宇大地", builder: "富宇建設", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyu-dadi", name: "富宇大地", builder: "富宇建設", area: "新光田", status: "completed", completion: "約 2023", sources: ["owner"] },
   { id: "zhuyue-yongyue", name: "築玥詠月", builder: "萬懋建設", area: "新光田", status: "newly", completion: "約 2025", sources: ["owner"] }, // ⚠️ 同系列的築玥映月他給的是「萬基建設」（既有），這案是「萬懋建設」（新的）——**萬懋 vs 萬基只差一個字**，照他寫的分開存，要他確認
   { id: "fulin-leju", name: "富霖樂居", builder: "富霖建設體系", area: "新光田", status: "completed", completion: "約 2023", sources: ["owner"] },
   { id: "puyi-henghao", name: "璞邑恆好", builder: "璞邑建設", area: "新光田", status: "completed", completion: "約 2022", sources: ["owner"] },
@@ -1996,9 +1996,9 @@ export const PROJECTS: Project[] = [
   { id: "jujun-lusenbao", name: "橘郡－盧森堡區", builder: "德光建設", area: "新光田", status: "completed", completion: "約 2012", sources: ["owner"] },
   { id: "jujun-jieke", name: "橘郡－捷克區", builder: "德光建設", area: "新光田", status: "completed", completion: "約 2013", sources: ["owner"] },
   { id: "jujun-bolan-bc", name: "橘郡－波蘭B.C區", builder: "德光建設", area: "新光田", status: "completed", completion: "約 2013", sources: ["owner"] },
-  { id: "jujun-3", name: "橘郡3", builder: "德光建設", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jujun-3", name: "橘郡3", builder: "德光建設", area: "新光田", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "riri-xiangshang-xinchengshi", name: "日日向上", builder: "昇揚開發", area: "新光田", status: "completed", completion: "約 2019", sources: ["owner"] }, // 原名「日日向上 薪城市」，2026-09-04 他說去掉薪城市；id 不改（座標檔綁著）
-  { id: "jiazan-luzan", name: "佳瓚鹿瓚", builder: "佳瓚建設", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jiazan-luzan", name: "佳瓚鹿瓚", builder: "佳瓚建設", area: "新光田", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "donghai-liange", name: "東海戀歌", builder: "聚合發建設", area: "新光田", status: "completed", completion: "約 2012", sources: ["owner"] },
   { id: "tianmu-yingcheng", name: "天母櫻城", builder: "僑邑建設", area: "新光田", status: "completed", completion: "約 2009", sources: ["owner"] },
   { id: "baiyu-lishu", name: "百昱麗墅", builder: "百昱建設", area: "新光田", status: "completed", completion: "約 2020", sources: ["owner"] },

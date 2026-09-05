@@ -159,6 +159,21 @@ export default function ProjectExplorer({
     for (const p of PROJECTS) m[p.area] = (m[p.area] ?? 0) + 1;
     return m;
   }, []);
+  /**
+   * 圖例要列哪幾個階段。**只列全站真的有建案的**，用 `TONE_SWATCH` 的順序（預售→新成屋→成屋→待確認）。
+   *
+   * 為什麼不直接列 `Object.keys(TONE_SWATCH)`：`unknown`（待確認）是 2026-09-02 為了
+   * 「只有案名、沒有銷售階段」那批新增的，2026-09-05 系統擁有者把最後 18 案的階段補完之後
+   * **全站 0 案是 unknown** —— 再照 keys 列，圖例上就會有一顆灰點對不到任何圖釘。
+   *
+   * ⚠️ 用全站算、不是用篩選後的 `rows` 算 —— 用 rows 的話換一顆篩選臉圖例就會少一格、跳動。
+   * ⚠️ `unknown` 這個值**不要因為現在 0 案就刪掉**，下一批「只有案名」的資料進來就會再用到。
+   */
+  const legendStatuses = useMemo(() => {
+    const has = new Set(PROJECTS.map((p) => p.status));
+    return (Object.keys(TONE_SWATCH) as ProjectStatus[]).filter((k) => has.has(k));
+  }, []);
+
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = PROJECTS.filter((p) => {
@@ -364,7 +379,7 @@ export default function ProjectExplorer({
           />
           <div className={styles.lmBar}>
             <div className={styles.lmLegend}>
-              {(Object.keys(TONE_SWATCH) as ProjectStatus[]).map((k) => (
+              {legendStatuses.map((k) => (
                 <span key={k}>
                   <i style={{ background: TONE_SWATCH[k] }} />
                   {STATUS_LABEL[k]}
