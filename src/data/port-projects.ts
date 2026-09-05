@@ -82,7 +82,8 @@ export const STATUS_LABEL: Record<ProjectStatus, string> = {
  * 原本有個「市鎮中心」值，2026-08-27 系統擁有者拍板不要這一塊，掛著它的 3 案
  * （佳泰琢閱、協勝港心、長虹天籟）**由他指定全部歸梧棲**，該值已整個拿掉。
  * ⚠️ 2026-09-04 他把**佳泰琢閱改成清水**（同批還有聯悅馥 梧棲 → 清水）——
- *    上面那句「三案全部歸梧棲」對佳泰琢閱已經不成立，協勝港心與長虹天籟仍是梧棲。
+ *    上面那句「三案全部歸梧棲」對佳泰琢閱已經不成立；
+ *    **協勝港心與長虹天籟他同日確認仍是梧棲重劃區，不要跟著改。**
  */
 export type ProjectArea =
   | "梧棲"
@@ -1686,7 +1687,7 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
   {
-    id: "chengfeng-cangfeng", name: "澄峰藏峰", builder: "澄峰", area: "北勢靜宜", // 2026-09-04 他建商只寫「澄峰」，照原文存；全名待他補
+    id: "chengfeng-cangfeng", name: "澄峰藏峰", builder: "澄峰有限公司", area: "北勢靜宜",
     status: "completed", completion: "約 2020",
     sources: ["owner"],
   },
@@ -1759,7 +1760,7 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
   {
-    id: "zhifu-shishang", name: "致富時上", builder: "德邑建設", area: "北勢靜宜", // 2026-09-04 他打「6su06」＝注音沒切回來的「6 年」，讀成約 2020；不對他會說
+    id: "zhifu-shishang", name: "致富時上", builder: "德邑建設", area: "北勢靜宜",
     status: "completed", completion: "約 2020",
     sources: ["owner"],
   },
@@ -1966,7 +1967,7 @@ export const PROJECTS: Project[] = [
   { id: "zhenshangmei-7", name: "臻上美7", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "zhuyue-yingyue", name: "築玥映月", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "wangzhan-meilirensheng", name: "旺展美麗人生", builder: "旺展建設", area: "新光田", status: "completed", completion: "約 2019", sources: ["owner"] },
-  { id: "yuguo-tianmu", name: "裕國天沐", builder: "裕國建設體系", area: "新光田", status: "completed", completion: "約 2013～14", sources: ["owner"] },
+  { id: "yuguo-tianmu", name: "裕國天沐", builder: "裕國建設體系", area: "新光田", status: "completed", completion: "約 2013～14", sources: ["owner"] }, // ⚠️ 「裕國建設體系」與「裕國冷凍冷藏企業」（世紀富裕國1、2）**2026-09-04 他確認是不同家**，不要合併
   { id: "yongzhu-jipin", name: "永築集品", builder: "永築建設", area: "新光田", status: "completed", completion: "約 2023", sources: ["owner"] },
   { id: "baiyu-lishu-3", name: "百昱麗墅3", builder: "百昱建設", area: "新光田", status: "completed", completion: "約 2020", sources: ["owner"] },
   { id: "yao-xingfu", name: "曜幸福", builder: "待確認", area: "新光田", status: "unknown", completion: "待確認", sources: ["owner"] },
@@ -2471,6 +2472,15 @@ export const COORDS: Record<string, Coord> = {
   /* ── 新光田最後 2 案（2026-09-04）—— ✅ 標完這兩筆，341 案全部有座標，清單裡不再有「未標位置」。 */
   "shidai-yijing": { lat: 24.19968, lng: 120.56601, precision: "exact" }, // 時代一景
   "biyi-guanyun": { lat: 24.19608, lng: 120.56384, precision: "exact" }, // 碧益觀雲
+
+  /* ── 梧棲追加（2026-09-04）──
+     🔴 **這個點落在「梧棲市區」色塊裡，離重劃區色塊邊界 945 公尺。**
+        他說的是「梧棲重劃區補和樂龍融」，所以 `area` 照他講的存成梧棲（重劃區），
+        座標也照他點的存 —— **但兩者對不起來，已請他確認是不是該歸「梧棲市區」。**
+        ⚠️ 這跟國雄北歐莊園（14 m）、宏亞晴耕（28 m）那種邊界誤差不同：**945 公尺是另一塊區域**，
+        不要拿「照實畫、圖釘露在色塊外不是 bug」那條來套。
+        最近的既有建案是佳瓚大賀 898 m（梧棲）。 */
+  "hele-longrong": { lat: 24.25266, lng: 120.53491, precision: "exact" }, // 和樂龍融
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
