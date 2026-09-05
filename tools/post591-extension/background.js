@@ -15,7 +15,7 @@
  */
 const KEY = "p591:payload";
 const KIND = { 住宅: 9 };
-const SHAPE = { 電梯大樓: 2, 透天厝: 3 };
+const SHAPE = { 電梯大樓: 2, 透天厝: 3, 華廈: 5 }; // 2026-09-05 從他真實上架的網址學到華廈=5
 const PURPOSE = { 住家用: 3, 住商用: 4 };
 
 function launchUrl(p) {

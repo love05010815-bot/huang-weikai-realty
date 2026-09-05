@@ -193,6 +193,37 @@
     document.body.click();
     return false;
   }
+  /**
+   * 街道下拉（華廈那種沒有「匯入地址」快速框的版面）：點開 → 面板 .ant-dropdown .street →
+   * 上面搜尋框打街道名 → 按放大鏡 → 下面 .street-content 的 li 只剩符合的 → 點那個 li。
+   * 2026-09-05 實測：只打字不按放大鏡、或不點下面的 li，都不會選到（他截圖指出來的）。
+   */
+  async function pickStreet(sel, road) {
+    if (!sel || !road) return false;
+    const current = () => txt(sel.querySelector(".ant-select-selection-item"));
+    if (current() === road) return true;
+    (sel.querySelector(".ant-select-selector") || sel).dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    const panel = await waitFor(() => [...document.querySelectorAll(".ant-dropdown .street")].find(visible), 3000);
+    if (!panel) return false;
+    const input = panel.querySelector(".street-header input");
+    const btn = panel.querySelector(".street-header button");
+    if (input) {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, road);
+      input.dispatchEvent(new Event("input", { bubbles: true })); // 不能 blur，面板會關
+      await sleep(200);
+      if (btn) btn.click();
+    }
+    const items = () => [...panel.querySelectorAll(".street-content li")].filter(visible);
+    const hit = await waitFor(() => items().find((li) => txt(li) === road) || items().find((li) => txt(li).includes(road)) || null, 4000);
+    if (!hit) {
+      document.body.click();
+      return false;
+    }
+    const picked = txt(hit);
+    hit.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    hit.click();
+    return !!(await waitFor(() => current() === picked, 3000));
+  }
   function setProseMirror(text) {
     const pm = document.querySelector("div.ProseMirror[contenteditable=true]");
     if (!pm) return false;
@@ -303,18 +334,14 @@
       }
       const addrLabel = labelEl("門牌地址") || labelEl("出售地址");
       if (!imported) {
-        const sels = after(addrLabel, SEL, 2);
+        // 華廈等版面沒有快速框：縣市／鄉鎮是一般下拉，街道是「搜尋 → 放大鏡 → 點清單」的自訂面板
+        const sels = after(addrLabel, SEL, 3);
         if (a.city && !(await pickSelect(sels[0], a.city))) log("縣市沒選到，請自己選", "bad");
         await sleep(500);
-        if (a.town && !(await pickSelect(after(addrLabel, SEL, 2)[1], a.town))) log("鄉鎮沒選到，請自己選", "bad");
-        const street = [...document.querySelectorAll("input")].find((i) => /街道/.test(i.placeholder || ""));
-        if (street && a.road) {
-          setNative(street, a.road);
-          const opt = await waitFor(
-            () => [...document.querySelectorAll(".ant-select-dropdown .ant-select-item-option, .ant-dropdown li, .ant-dropdown-menu-item")].find((o) => visible(o) && txt(o).includes(a.road)),
-            4000,
-          );
-          if (opt) opt.click();
+        if (a.town && !(await pickSelect(after(addrLabel, SEL, 3)[1], a.town))) log("鄉鎮沒選到，請自己選", "bad");
+        await sleep(500);
+        if (a.road) {
+          if (await pickStreet(after(addrLabel, SEL, 3)[2], a.road)) log(`地址：${a.city}${a.town}${a.road}`, "ok");
           else log(`街道「${a.road}」沒選到，請自己選`, "bad");
         }
       }
