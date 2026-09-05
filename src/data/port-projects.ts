@@ -76,7 +76,10 @@ export const STATUS_LABEL: Record<ProjectStatus, string> = {
  * 2026-08-27 陸續補進商圈的建案：沙鹿車站 28 案、鹿寮萬家福 64 案，全部由系統擁有者整理。
  * 2026-09-01 再補北勢靜宜 80 案（同樣是他整理的）。
  * 2026-09-02 再補新光田特區 107 案（他給的「歷年建案母名單」，只有案名）。
- * **五塊生活圈色塊現在全部有建案了。剩梧棲市區、清水市區兩個 0 案**，那是刻意留的空位；
+ * 2026-09-05 再補梧棲市區 166 案、清水市區 1 案。
+ * **八顆篩選臉全部有建案了，沒有 0 案的區。**
+ * ⚠️ 之後再加新的 `ProjectArea` 值，記得同時加進 `LeafletMap.tsx` 的 `PIN_GROUPS`（那是 array
+ *    不是 `Record<ProjectArea,…>`，TypeScript 不會替你抓漏，漏了那一區的圖釘會在初始畫面疊成一坨）；
  * 要補的時候把該案的 `area` 設成對應的值即可，篩選臉與統計都會自己跟上。
  *
  * 原本有個「市鎮中心」值，2026-08-27 系統擁有者拍板不要這一塊，掛著它的 3 案
@@ -315,7 +318,8 @@ export const BEISHI_PROVIDENCE_AMENITIES: AmenityGroup[] = [
 /**
  * area → 那一區的機能。**沒列到的區＝還沒有資料，整段不顯示。**
  *
- * ⚠️ **新光田與兩個市區的機能空著。**
+ * ⚠️ **新光田與兩個市區的機能空著 —— 但那三區現在都有建案了**（新光田 125、梧棲市區 166、清水市區 1），
+ *    所以那 292 案的詳情面板都不會有「周邊機能」區塊。
  * ⚠️ **新光田 2026-09-02 起有 107 案了，卻還是沒有機能** —— 那 107 案的詳情面板
  *    不會有「周邊機能」區塊。**不要拿北勢靜宜那份借過去**：那份量過是北勢靜宜的
  *    （靜宜大學、弘光、六福公園都在北勢靜宜色塊內），借過去就是對 107 案講錯生活圈。
@@ -2012,6 +2016,199 @@ export const PROJECTS: Project[] = [
      ⚠️ 「時代一景」跟既有的「世界一景四季區／麗池區」是不同建案，不要合併。 */
   { id: "biyi-guanyun", name: "碧益觀雲", builder: "碧益建設", area: "新光田", status: "completed", completion: "約 2005", sources: ["owner"] },
   { id: "shidai-yijing", name: "時代一景", builder: "德邑建設", area: "新光田", status: "completed", completion: "約 2015", sources: ["owner"] },
+
+  /* ─────────── 梧棲市區 166 案＋清水市區 1 案（2026-09-05 系統擁有者提供）───────────
+     這兩區是最後兩塊「有篩選臉卻 0 案」的區。補完之後**八顆篩選臉全部有建案**。
+
+     🔴 **他只給了案名，部分附屋齡；建商一個都沒給、座標一個都沒有。**
+        ・`builder` 全部「待確認」——**一個都不准照案名猜**（這幾天已經被證明十次以上：
+          德光→凱俊／偉晉、安城→品城、宏亞→臻揚、昇揚→宏亞、御璽→國璽、和樂龍融→中龍鋼鐵）。
+        ・沒附屋齡的 103 案 `status: "unknown"`／`completion: "待確認"`。
+          **`unknown` 全站又有案子了，圖例會自己從三格變回四格**（見 ProjectExplorer 的 legendStatuses）。
+        ・**這批沒有座標**，清單裡會出現 167 筆「未標位置」，地圖說明也會從乾淨版切回
+          「其中 N 案已標定；另外 M 案還沒標」。
+
+     ⚠️ **他那份清單裡有 7 個案名跟現有的梧棲（重劃區）建案完全同名，這批刻意沒有建立**：
+        聚佳欣世代、安美學、佳鋐樂灣、佳鋐樂邑、佳鋐新邑、佳瓚大賀、佳福柏斯市。
+        **同名建案不能存在兩筆**（清單會出現兩列一模一樣的名字、`/admin/map-listings` 也會分不清）。
+        要嘛那 7 案其實該從「梧棲」改成「梧棲市區」，要嘛是同名的不同案 —— 已請他決定。
+
+     ⚠️ 他清單裡自己重複的 8 個已去重（冠佑美墅／輝堡大德／麗豐大和／仁里晴美／和萍大宅／
+        住茂我家／松濤硯2章／樺懋芳庭），**有階段的那筆優先**。
+
+     🔵 三組「同名不同號」的跨區系列，照他給的分開存、沒有合併：微笑大未來（梧棲市區）vs
+        微笑大未來3（鹿寮萬家福）、村懋璞悅2（梧棲市區）vs 村懋璞悅（鹿寮萬家福）、
+        青樸院2（梧棲市區）vs 青樸院（鹿寮萬家福）。**兩區相距約 6 公里**，已請他順便確認。
+
+     🔵 「立坤圓滿(民安二街)」的括號是他用來跟「立坤圓滿11」區分的地點，不是屋齡，留在案名裡。 */
+  { id: "shulifang-2", name: "墅立方2", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "yujing-xinge", name: "淯璟馨閣", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "hesheng-haoyang", name: "禾盛好漾", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "hesheng-jingzhan", name: "禾盛晶綻", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "huangjia-xinyuan-2", name: "皇家新園2期", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "jiamei-bilu", name: "佳美碧綠", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "yushu-tiandi", name: "御墅天地", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "yunding-jinzuan-2", name: "雲頂金鑽2", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "yunding-jinzuan", name: "雲頂金鑽", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "quanxi-jiahe", name: "全禧家和", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "renwen-chengshe", name: "人文澄舍", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "kuncheng-xiangfuyu", name: "堃晟享富御", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "yatai-qiyejia", name: "亞太企業家", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "renai-luoma-jinrong", name: "仁愛羅馬金融名廈", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhonggang-huangjia", name: "中港皇家大樓", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "one-plus-shengyou", name: "ONE PLUS昇祐商務中心", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "juguo-jinghua", name: "鉅國京華", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhonggang-shimao", name: "中港世貿", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shengxi-yishu", name: "聖璽藝術大樓", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "renai-luoma-shangye-mingxia-3", name: "仁愛羅馬商業名廈3", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "huangjia-jingguan", name: "皇家景觀大樓", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "huangjin-haian", name: "黃金海岸", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhonggang-zhenzuan", name: "中港真鑽", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "lingxiu-tianxia", name: "領袖天廈", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "renai-luoma-shangye", name: "仁愛羅馬商業", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "renai-luoma", name: "仁愛羅馬", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "guoji-shangye", name: "國際商業大樓", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhonggang-tianxia", name: "中港天廈", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhonggang-yunding-2", name: "中港雲頂2", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shengxi-zonghe", name: "聖璽綜合大樓", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhonggang-huangxi", name: "中港皇璽", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhonggang-huiguan", name: "中港會館", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jiaguilin-huayuan", name: "甲桂林花園大廈", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shengli-tianxia", name: "勝麗天廈", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuyuan-yipin-6", name: "富園一品6期", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "qiaoyi-iju", name: "僑邑i居", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "guanyou-meishu", name: "冠佑美墅", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "shengxi-yunding-jindian", name: "聖璽雲頂金店", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "xinfuming-chunmei-2", name: "新富銘淳美2", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "chunmei-diyizhang", name: "淳美第一章", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "likun-yuanman-minan", name: "立坤圓滿(民安二街)", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "rimu-yijing", name: "日沐亦景", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "shengbang-lvyi-6", name: "勝邦綠邑6", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "minan-yijing-huaxia", name: "民安易境華廈區", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "likun-yuanman-11", name: "立坤圓滿11", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "huibao-dade", name: "輝堡大德", builder: "待確認", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "weixiao-daweilai", name: "微笑大未來", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "jindian-yusuo", name: "金典寓所", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "yujing-renmei", name: "淯璟仁美", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "caipan-yinfu", name: "采磐隱富", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "caipan-cangfu", name: "采磐藏富", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yangguang-wish", name: "暘光Wish", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "lantu-uni", name: "藍圖UNI", builder: "待確認", area: "梧棲市區", status: "newly", completion: "新成屋", sources: ["owner"] },
+  { id: "xuemeishu", name: "學美墅", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "heya-darenwu", name: "賀雅大人物", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "xuanpin-cangsui", name: "宣品藏穗", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yafu-onlife", name: "雅富Onlife", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "dazhuan-weimei", name: "大撰唯美", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhizhe-wutong", name: "知哲梧桐", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "hongguan-dibao", name: "宏觀帝堡", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "haozhai-zhuoyue", name: "好宅製所琢悅", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jiachang-xiyan-6", name: "佳昌喜硯6", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "lifeng-dahe", name: "麗豐大和", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "ruihan-jingcai", name: "瑞漢精彩", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhenxiang-wuju", name: "臻詳吾居", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "puyue-dunhe-2", name: "璞悅敦和2", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "renli-qingmei", name: "仁里晴美", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "taiju-huamei", name: "太聚華美", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "changyou-you1zan", name: "昌祐又1讚", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "taiju-damei", name: "太聚大美", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "fuda-tiandi-5", name: "富大天地5", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yujianhai", name: "寓見海", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "dadao-zhixing", name: "大道之星", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yushujia-19", name: "御墅家19", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "wanshi-ruyi", name: "萬事如邑", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "lvhuo-casa", name: "綠活CASA", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yunlei-ruian-1", name: "雲磊瑞安一號別墅", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "puyue-dunhe", name: "璞悅敦和", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "cunmao-puyue-2", name: "村懋璞悅2", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "baifa-yuansenhuo-2", name: "百發原森活2", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jiahong-shouyao", name: "佳鋐首耀", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "wenqing-hui", name: "文青匯", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "dadao-100", name: "大道100", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "luze-ju", name: "鹿澤聚", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yuqing-renjia", name: "餘慶仁家", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jingyi-heya", name: "敬益和雅", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "dunyue-3", name: "敦悅3", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "liangju-cengfeng", name: "良居層峰", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "panshi-zhencang", name: "磐石珍藏", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhimao-langjing-2", name: "智茂朗境2", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jiamei-chengken", name: "佳美城肯", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "hetang-caishen", name: "和唐財神", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shengxing-fengchuan", name: "勝興豐川", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhihe-yangzhen", name: "致和養真", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yujun-yuansu", name: "宇竣原宿", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "renwen-chengshe-3", name: "人文澄舍3", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shenghuo-yangzhen", name: "生活養真", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "hefeng-yijing-6", name: "和風逸境6", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "minhe-shouxi", name: "民和首席", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "heping-dazhai", name: "和萍大宅", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shanjing-yan", name: "山景硯", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shiji-xiongwei", name: "世紀雄偉", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "qiaoyi-puli-2", name: "僑邑璞麗2", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "senbaofu-6", name: "森堡富6", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "changyou-u-city", name: "昌祐U City", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shouyi-guobao", name: "首邑國寶", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shiyi-shu", name: "拾壹墅", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhen-xingfu", name: "臻幸福", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "zhumao-wojia", name: "住茂我家", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "xinfuming-yaqi", name: "新富銘雅砌", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "xuanpin-jingguan", name: "宣品靜觀", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "xuanpin-jingguan-2", name: "宣品靜觀2", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "heli-xingwu-tongshu", name: "禾立興梧同墅", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shengyang-qingkong-2", name: "聖揚晴空2", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "liuyi-wodejia-8", name: "六億我的家8", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yuanman-boai", name: "圓滿博愛", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "weixiao-meile", name: "微笑美樂", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "wuai-wuqi", name: "吾愛吾棲", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "xinjun-chuyun", name: "新竣初耘", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "gongyuan-shouxi-2", name: "公園首席2", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "chengfeng-cangzhen", name: "澄灃藏臻", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shu-huayuan", name: "墅花園", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "heyuan-18", name: "荷園18", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yanmei-banfu-8", name: "彥美班芙8", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shiji-xiongwei-3", name: "世紀雄偉3", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "yipin-tequ", name: "一品特區", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "futeng-fengshang", name: "富騰峰尚", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "yujian-gongyuan", name: "御見公園", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "qiqi-yueshe-7", name: "啟碁悅舍7", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "pinde-daren-24", name: "品德大仁24", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "pinde-daren-18", name: "品德大仁18", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "xuanpin-defu", name: "宣品德芙", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "songtao-yan-1", name: "松濤硯1章", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "songtao-yan-2", name: "松濤硯2章", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "yunding-jinzuan-3", name: "雲頂金鑽3", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "junji-daxin", name: "竣吉大心", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "junji-daxin-2", name: "竣吉大心2", builder: "待確認", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "zhongxiao-shouxi", name: "忠孝首席", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "haozhai-zhimei", name: "好宅製所緻美", builder: "待確認", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "junye-huangju", name: "君業皇居", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "zhonggang-haoxue", name: "中港好學", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "heyuan-17", name: "荷園17", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "hafo-xueyuan", name: "哈佛學苑", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2007", sources: ["owner"] },
+  { id: "dingji-rongyuan", name: "鼎濟融圓", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "shiji-xiongwei-2", name: "世紀雄偉2", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "wuju-wushu", name: "吾居吾墅", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "huangjia-xinyu", name: "皇家新寓", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "yuqing-fengge", name: "餘慶豐閣", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "huamao-fangting", name: "樺懋芳庭", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "junji-daxin-3", name: "竣吉大心3", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "xinfuyu-fengsui-10", name: "鑫富裕豐穗10", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "muguang-zhan", name: "沐光湛", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "ziran-yangzhen", name: "自然養真", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "jiuchuan-mumuxin", name: "九川木目心", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "qingpu-yuan-2", name: "青樸院2", builder: "待確認", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "jiuwang-yipinju-2", name: "久旺一品居2", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "shibao-xiangchen", name: "世堡祥宸", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "jingshangsen-2", name: "井上森2", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shulifang", name: "墅立方", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "baizhan-baisheng-2", name: "百戰百勝2", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "heyuan-21", name: "荷園21", builder: "待確認", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "lihuan-yuehao", name: "立桓閱好書房", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "chenyou-senguan", name: "晨右森觀", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "jiachuan-yushu-3", name: "家川御墅3", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "tianmu-zhongyang", name: "天睦中央親鄰", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "dingshang-fuyi-2", name: "鼎上富邑2", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+
+  { id: "deyi-chengyi-2", name: "德邑澄邑2", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
 ];
 
 /* ─────────────── 座標 ─────────────── */
