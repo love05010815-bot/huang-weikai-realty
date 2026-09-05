@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "591 刊登助手（凱心成家）",
-  "version": "1.1.1",
-  "description": "從官網後台按「上架到 591」，自動把物件資料、文案、照片填進 591 刊登表單。保存與付款仍由你自己按。",
+  "name": "591 刊登助手",
+  "version": "1.2.0",
+  "description": "貼上愛屋型錄或物件文字，一鍵把物件資料、文案、照片填進 591 刊登表單。保存與付款仍由你自己按。",
   "permissions": ["storage"],
   "host_permissions": ["https://*.houseol.com.tw/*", "https://*.591.com.tw/*"],
+  "action": { "default_title": "591 刊登助手：貼資料 → 上架" },
   "background": { "service_worker": "background.js" },
   "content_scripts": [
     {

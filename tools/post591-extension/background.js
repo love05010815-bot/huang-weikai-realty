@@ -1,8 +1,10 @@
 /**
- * 背景程式做三件事：
- *   ① 保管後台送來的物件資料（chrome.storage.session，關瀏覽器就沒了）並開 591 刊登分頁
- *   ② 591 頁面的 content.js 來要資料就給它、填完就清掉
- *   ③ 幫 content.js 把愛屋圖檔主機（hq.houseol.com.tw）的照片抓回來 —— 591 頁面本身不能跨網域抓
+ * 背景程式做四件事：
+ *   ① 點工具列圖示 → 開外掛自己的頁面 app.html（同事版入口：貼資料 → 解析 → 上架，不需要任何後台）
+ *   ② 保管資料包（chrome.storage.session，關瀏覽器就沒了）並開 591 刊登分頁
+ *      —— 資料包來源有兩個：app.html（同事版）或 weikaihouse.com 後台的 bridge.js（黃瑋凱自己用）
+ *   ③ 591 頁面的 content.js 來要資料就給它、填完就清掉
+ *   ④ 幫 content.js 把愛屋圖檔主機（hq.houseol.com.tw）的照片抓回來 —— 591 頁面本身不能跨網域抓
  *
  * ⚠️ 這裡不會、也不准去 591 或愛屋抓「資料」—— 只抓使用者自己那一戶的照片檔。
  *
@@ -21,6 +23,10 @@ function launchUrl(p) {
   if (k && s && u) return "https://user.591.com.tw/post/two/sale?is_use_first=1&kind=" + k + "&shape=" + s + "&purpose=" + u + "&purpose_custom=";
   return "https://user.591.com.tw/post/first";
 }
+
+chrome.action.onClicked.addListener(() => {
+  chrome.tabs.create({ url: chrome.runtime.getURL("app.html") });
+});
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (!msg || typeof msg !== "object") return false;

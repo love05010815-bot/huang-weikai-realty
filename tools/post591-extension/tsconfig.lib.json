@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "module": "es2020",
+    "target": "es2020",
+    "moduleResolution": "bundler",
+    "outDir": "./lib",
+    "rootDir": "../../src",
+    "incremental": false,
+    "declaration": false,
+    "sourceMap": false,
+    "plugins": []
+  },
+  "files": [
+    "../../src/lib/post591-parser.ts",
+    "../../src/lib/post591-map.ts",
+    "../../src/lib/listing-copy-risk.ts",
+    "../../src/config/post591-template.ts"
+  ],
+  "include": []
+}

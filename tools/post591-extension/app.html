@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>591 刊登助手</title>
+<link rel="stylesheet" href="app.css" />
+<script type="importmap">
+{
+  "imports": {
+    "@/config/post591-template": "./lib/config/post591-template.js",
+    "@/lib/listing-copy-risk": "./lib/lib/listing-copy-risk.js",
+    "@/lib/post591-parser": "./lib/lib/post591-parser.js",
+    "@/lib/post591-map": "./lib/lib/post591-map.js"
+  }
+}
+</script>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>591 刊登助手</h1>
+    <p class="sub">貼上愛屋型錄或物件文字 → 解析 → 按「上架到 591」，外掛幫你把 591 刊登表單填好。<b>保存與付款仍由你自己按。</b></p>
+  </div>
+  <button id="toggle-settings" class="ghost" type="button">⚙ 我的資料</button>
+</header>
+
+<section id="settings" class="card" hidden>
+  <h2>⚙ 我的資料（存在你自己的 Chrome，只要填一次）</h2>
+  <div class="grid2">
+    <label>姓名（591 聯絡人）<input id="s-name" placeholder="例：王小明" /></label>
+    <label>手機<input id="s-phone" placeholder="例：0912-345-678" /></label>
+    <label>LINE ID（含 @）<input id="s-line" placeholder="例：@abc123" /></label>
+    <label>委託書預設<select id="s-contract"><option>有簽訂</option><option>無簽訂</option></select></label>
+  </div>
+  <label class="block">現況特色描述的固定版型（✨ 特色行之後接的整段；<code>{{name}}</code> <code>{{phone}}</code> <code>{{line}}</code> 會自動換成上面填的）
+    <textarea id="s-tail" rows="14" spellcheck="false"></textarea>
+  </label>
+  <div class="row-btns">
+    <button id="s-save" class="primary" type="button">儲存</button>
+    <button id="s-reset" class="ghost" type="button">還原預設版型</button>
+    <span id="s-msg" class="msg"></span>
+  </div>
+</section>
+
+<section class="card">
+  <h2>① 貼上資料</h2>
+  <p class="hint">愛屋型錄：打開型錄頁先把地址旁的「<b>顯示</b>」點開 → Ctrl+A → Ctrl+C → 貼在這裡。
+    也可以貼自己打的物件文字（「標題」／地址：／售價：／格局：／總建坪…／✨ 特色行）。</p>
+  <textarea id="raw" rows="10" placeholder="貼在這裡…" spellcheck="false"></textarea>
+  <div class="row-btns">
+    <button id="parse" class="primary" type="button" disabled>解析</button>
+    <button id="clear" class="ghost" type="button">清空</button>
+  </div>
+</section>
+
+<div id="result" hidden>
+  <section id="warn-card" class="card warn" hidden>
+    <h2>⚠ 辨識時的提醒</h2>
+    <ul id="warns"></ul>
+  </section>
+
+  <section class="card">
+    <h2>② 591 第①頁：對應到</h2>
+    <div id="steps" class="steps"></div>
+    <p class="hint" id="steps-note"></p>
+  </section>
+
+  <section class="card">
+    <h2>③ 第②頁：每一格</h2>
+    <p class="hint"><span class="legend need">紅底</span> = 資料裡沒有、你要補；<span class="legend pick">綠字</span> = 591 是選項。每格都能改，改了就照你改的填。</p>
+    <div id="rows" class="rows"></div>
+  </section>
+
+  <section class="card">
+    <h2>④ 廣告標題與現況特色描述</h2>
+    <label class="block">廣告標題（6～30 字）<input id="title" /></label>
+    <p id="title-msg" class="msg"></p>
+    <label class="block">現況特色描述（你的固定版型，只有 ✨ 那幾行是這戶的）<textarea id="desc" rows="14" spellcheck="false"></textarea></label>
+    <p id="desc-msg" class="msg"></p>
+    <div id="risks" class="risk" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2>⑤ 照片</h2>
+    <p id="photos-msg" class="hint"></p>
+    <label class="block">沒抓到照片時：到型錄頁在「<b>更多照片</b>」連結上按右鍵 → 複製連結網址 → 貼這裡
+      <input id="photo-link" placeholder="貼「更多照片」的連結" />
+    </label>
+    <p id="photo-link-msg" class="msg"></p>
+  </section>
+
+  <section class="card launch">
+    <h2>⑥ 上架到 591</h2>
+    <p class="hint">紅底的格子先補完再按。會開一個 591 刊登分頁自動填，右下角面板列出還缺什麼。
+      <b>填的時候不要切到別的分頁</b>，等面板出現「✅ 填完」再從上往下核對，最後自己按「保存資料，下一步」和「立即支付」。</p>
+    <div class="row-btns">
+      <button id="launch" class="primary big" type="button">🚀 上架到 591</button>
+      <span id="need-msg" class="msg bad"></span>
+    </div>
+    <p id="launch-msg" class="msg"></p>
+  </section>
+</div>
+
+<footer class="foot">
+  這個工具只是幫你把「自己的物件資料」填進 591 表單，不會抓 591 任何資料、不存你的 591 帳密；送出與付款永遠由你本人操作。
+  資料只在你的瀏覽器裡，不會傳到別的地方。
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
