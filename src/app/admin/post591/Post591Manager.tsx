@@ -45,6 +45,11 @@ export default function Post591Manager() {
   const [launchMsg, setLaunchMsg] = useState("");
 
   const derived = useMemo(() => (listing ? derive(listing) : null), [listing]);
+  /** ⑤ 那格貼的若是型錄「更多照片」連結（picstr=網址,網址…），就拆成照片網址交給外掛；貼資料夾路徑就只是備註 */
+  const extraPhotos = useMemo(() => {
+    const m = photoFolder.match(/picstr=([^&)\s\]]+)/);
+    return m ? m[1].split(",").map((s) => s.trim()).filter((s) => /^https?:\/\//.test(s)) : [];
+  }, [photoFolder]);
 
   function run() {
     const d = parseListing(text);
@@ -75,8 +80,9 @@ export default function Post591Manager() {
   async function launch() {
     if (!listing || !derived) return;
     const payload = buildPayload(listing, derived, rows, title, desc);
+    if (!payload.photos.length && extraPhotos.length) payload.photos = extraPhotos;
     if (!document.documentElement.getAttribute("data-p591-ext")) {
-      setLaunchMsg("沒偵測到「591 刊登助手」外掛：先照下面的裝法裝好（裝好後把這頁重新整理一次），再按一次。");
+      setLaunchMsg("沒偵測到外掛：請按 F5 把這一頁重新整理，再按一次（這頁開得比外掛早、或外掛剛更新過都會這樣）。還沒裝外掛的話，照下面的裝法裝好再來。");
       return;
     }
     setLaunchMsg("已交給外掛，正在開 591 分頁…");
@@ -249,13 +255,17 @@ export default function Post591Manager() {
               </>
             ) : (
               <>
-                <p className={styles.hint}>這份資料沒有照片網址。照片放在哪個資料夾，填在這裡，會一起進交接摘要：</p>
+                <p className={styles.hint}>
+                  這份資料沒有照片網址。到型錄頁把「<b>更多照片</b>」那個連結複製過來貼在這裡（右鍵 → 複製連結網址），
+                  外掛就會把照片一起上傳；或填照片資料夾路徑，只會寫進交接摘要。
+                </p>
                 <input
                   className={styles.input}
                   value={photoFolder}
                   onChange={(e) => setPhotoFolder(e.target.value)}
-                  placeholder="例如 D:\Agent-os\591-poster\領袖天下"
+                  placeholder="貼「更多照片」連結，或例如 D:\Agent-os\591-poster\領袖天下"
                 />
+                {extraPhotos.length > 0 && <p className={styles.okText}>抓到 {extraPhotos.length} 張照片網址，按「上架到 591」會一起上傳。</p>}
               </>
             )}
           </section>
