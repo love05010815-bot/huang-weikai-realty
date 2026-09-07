@@ -1062,7 +1062,8 @@
 
 /* ---------- Footer ---------- */
 .footer {
-  background: #1a1310;
+  /* 2026-09-07 從暖棕 #1a1310 改成深藍黑：上面「預約諮詢」是深藍，兩塊深色撞色調 */
+  background: var(--primary-dark);
   color: rgba(255, 255, 255, 0.55);
   padding: 28px 20px;
   text-align: center;
@@ -1127,4 +1128,85 @@
 .footerVisits p {
   margin: 0;
   line-height: 1.9;
+}
+
+/* ============================================================
+   🎨 主題色帶（2026-09-07 系統擁有者指定「每個主題的分割用色塊處理」）
+   ============================================================
+
+   首頁每一個主題區塊各自一塊底色，相鄰兩塊之間用一道淺弧（_ui/SectionWave.tsx）接起來，
+   不再是整頁白底靠標題分段。順序與配色：
+
+     hero        米色漸層（原本就有，不動）
+     關於我      淺藍灰    .bandCool   （第一版用白，跟 hero 底部的白接在一起看不出是兩塊、弧也消失，1280 截圖看過才改）
+     精選好案    米色      .bandSoft   （卡片是白的，放米色底上才跳得出來）
+     服務項目    白        .bandWhite
+     稅費試算    米色      .bandSoft
+     預約諮詢    深藍      .contact（原本就是深色，只補弧）
+     頁尾        深藍黑    原本是暖棕 #1a1310，跟上面深藍區塊撞色調，改成 --primary-dark
+
+   ⚠️ 弧是絕對定位在區塊**頂端外面** 56px（手機 36px），會蓋到上一個區塊的底部 padding。
+      所以任何帶 .band 的區塊，它「上面那一塊」的 padding-bottom 都要 ≥ 56px；
+      .section 是 72、hero 是 90，都夠。哪天有人把 padding 縮小，弧就會壓到內容，
+      而且不會報錯。
+   ⚠️ 帶 .band 的區塊不能加 overflow:hidden，弧會被剪掉。 */
+.page {
+  --cool: #eef3f5;
+}
+
+.band {
+  position: relative;
+}
+
+.wave {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -56px;
+  width: 100%;
+  height: 56px;
+  display: block;
+  pointer-events: none;
+}
+
+.waveFlip {
+  transform: scaleX(-1);
+}
+
+.bandWhite {
+  background: #fff;
+}
+.bandWhite .wave {
+  color: #fff;
+}
+
+.bandSoft {
+  background: var(--soft);
+}
+.bandSoft .wave {
+  color: var(--soft);
+}
+
+.bandCool {
+  background: var(--cool);
+}
+.bandCool .wave {
+  color: var(--cool);
+}
+
+/* 預約諮詢那塊本來就是深藍（.contact），弧跟著深藍 */
+.contact .wave {
+  color: var(--ink);
+}
+
+/* 米色底上的米色提醒框會糊成一片，換白底 */
+.bandSoft .toolDisclaimer {
+  background: #fff;
+}
+
+@media (max-width: 640px) {
+  .wave {
+    top: -36px;
+    height: 36px;
+  }
 }
