@@ -1101,6 +1101,97 @@
   }
 }
 
+/* ---------- 首頁影音專區（三支最新） ----------
+   2026-09-07 加的。卡片＝縮圖 16:9 ＋ 分類標籤 ＋ 標題（最多兩行）＋ 日期，整張是連到
+   /videos?v=<id> 的 <Link>。播放鈕（.playBadge）與分類標籤（.tag）直接用 videos.module.css 的，
+   兩頁長一樣、改一處兩邊變。 */
+.videoGrid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.videoCard {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.videoCard:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow);
+  border-color: var(--accent);
+}
+
+.videoThumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #1a1310;
+  overflow: hidden;
+}
+
+.videoThumbImg {
+  width: 100%;
+  height: 100%;
+  /* YouTube 的 hqdefault 是 4:3，直接放上下會有黑槓，用 cover 裁掉 */
+  object-fit: cover;
+  display: block;
+}
+
+.videoThumbEmpty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  opacity: 0.35;
+}
+
+.videoBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px 18px 18px;
+}
+
+.videoTitle {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.45;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.videoMeta {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+@media (max-width: 860px) {
+  .videoGrid {
+    grid-template-columns: 1fr;
+    max-width: 440px;
+    margin: 0 auto;
+  }
+}
+
 /* ---------- Footer ---------- */
 .footer {
   /* 2026-09-07 從暖棕 #1a1310 改成深藍黑：上面「預約諮詢」是深藍，兩塊深色撞色調 */

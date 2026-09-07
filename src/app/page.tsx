@@ -8,6 +8,9 @@ import { OWNER, SOCIAL, SITE_URL } from "@/config/owner";
 import { AREAS } from "@/config/profile";
 import { HOME_FEATURED_COUNT } from "@/config/listings";
 import { getPublicListings } from "@/lib/listings";
+import { getPublicVideos, CATEGORY_META } from "@/lib/videos";
+// 影片卡片的播放鈕與分類標籤跟 /videos 共用同一份樣式
+import vid from "./videos/videos.module.css";
 import { formatWan } from "@/lib/houseol-price";
 import styles from "./home.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
@@ -182,7 +185,10 @@ const jsonLd = {
 export const revalidate = 300;
 
 export default async function HomePage() {
-  const listings = await getPublicListings();
+  const [listings, videos] = await Promise.all([getPublicListings(), getPublicVideos()]);
+  /* 首頁只放三支最新的（2026-09-07 系統擁有者指定）。「最新」看 publishedAt（YYYY-MM-DD 字串，
+     直接比大小），跟 /videos 側欄「最新影片」同一個定義；一支都沒有就整個區塊不出現。 */
+  const latestVideos = [...videos].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)).slice(0, 3);
   return (
     <div className={styles.page}>
       <script
@@ -422,6 +428,51 @@ export default async function HomePage() {
           </div>
         </section>
 
+
+        {/* ---------------- 影音專區（首頁只放三支最新） ----------------
+            2026-08-25 拍板「影音做成獨立分頁、不放首頁下滑區塊」；2026-09-07 系統擁有者再指定
+            「影音也放上三個最新影片在首頁」—— 分頁照舊，首頁多一個三支最新的入口。
+            卡片點下去走 /videos?v=<id>，由 VideoLibrary 自動打開那支。
+            ⚠️ 一支上架中的影片都沒有時整個區塊不畫（連標題都不畫），免得留一塊空白。 */}
+        {latestVideos.length > 0 ? (
+          <section id="videos" className={`${styles.section} ${styles.band} ${styles.bandWhite}`}>
+            <SectionWave />
+            <div className={`${styles.container} ${styles.center}`}>
+              <span className={styles.eyebrow}>VIDEOS</span>
+              <h2 className={styles.sectionTitle}>影音專區</h2>
+              <p className={styles.sectionDesc}>最新三支。房產知識、生活知識、房屋開箱，我自己拍、自己講。</p>
+            </div>
+            <div className={styles.container}>
+              <ul className={styles.videoGrid}>
+                {latestVideos.map((v) => (
+                  <li key={v.id}>
+                    <Link className={styles.videoCard} href={`/videos?v=${encodeURIComponent(v.id)}`}>
+                      <span className={styles.videoThumb}>
+                        {v.thumbnail ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img className={styles.videoThumbImg} src={v.thumbnail} alt="" loading="lazy" />
+                        ) : (
+                          <span className={styles.videoThumbEmpty} aria-hidden="true">🎬</span>
+                        )}
+                        <span className={vid.playBadge} aria-hidden="true" />
+                      </span>
+                      <span className={styles.videoBody}>
+                        <span className={vid.tag}>{CATEGORY_META[v.category].label}</span>
+                        <span className={styles.videoTitle}>{v.title}</span>
+                        <span className={styles.videoMeta}>🕘 {v.publishedAt}</span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <div className={styles.listingsMore}>
+                <Link className={`${styles.btn} ${styles.btnPrimary}`} href="/videos">
+                  看全部影片
+                </Link>
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         {/* ---------------- 預約系統 ---------------- */}
         <section id="booking" className={`${styles.section} ${styles.contact} ${styles.band}`}>

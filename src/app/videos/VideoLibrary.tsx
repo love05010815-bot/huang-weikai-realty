@@ -26,7 +26,7 @@
  * 脈絡見 `src/lib/videos.ts` 檔頭。
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   CATEGORY_META,
@@ -95,6 +95,19 @@ export default function VideoLibrary({
   );
 
   const playing = playingId ? videos.find((v) => v.id === playingId) ?? null : null;
+
+  /* 深連結：/videos?v=<id> 一進來就打開那支（首頁「影音專區」的三張卡片走這條）。
+     ⚠️ 用 window.location 而不是 useSearchParams —— 後者在靜態頁要包 Suspense，
+        不包 build 會直接報錯。放在 useEffect 裡只在瀏覽器跑，SSR 不會碰到 window。
+     找不到那個 id（影片被下架）就什麼都不做，頁面照常顯示清單。 */
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("v");
+    if (!id) return;
+    const target = videos.find((v) => v.id === id);
+    if (target) play(target);
+    // 只在第一次載入看網址，之後使用者自己點什麼就是什麼
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function play(v: PublicVideo) {
     setPlayingId(v.id);
