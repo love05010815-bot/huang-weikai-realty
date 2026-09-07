@@ -77,6 +77,7 @@ export const STATUS_LABEL: Record<ProjectStatus, string> = {
  * 2026-09-01 再補北勢靜宜 80 案（同樣是他整理的）。
  * 2026-09-02 再補新光田特區 107 案（他給的「歷年建案母名單」，只有案名）。
  * 2026-09-05 再補梧棲市區 166 案、清水市區 1 案。
+ * 2026-09-07 那 7 案從重劃區改掛梧棲市區、再補生活家與文化國宅 2 案（全站 511）。
  * **八顆篩選臉全部有建案了，沒有 0 案的區。**
  * ⚠️ 之後再加新的 `ProjectArea` 值，記得同時加進 `LeafletMap.tsx` 的 `PIN_GROUPS`（那是 array
  *    不是 `Record<ProjectArea,…>`，TypeScript 不會替你抓漏，漏了那一區的圖釘會在初始畫面疊成一坨）；
@@ -318,8 +319,9 @@ export const BEISHI_PROVIDENCE_AMENITIES: AmenityGroup[] = [
 /**
  * area → 那一區的機能。**沒列到的區＝還沒有資料，整段不顯示。**
  *
- * ⚠️ **新光田與兩個市區的機能空著 —— 但那三區現在都有建案了**（新光田 125、梧棲市區 166、清水市區 1），
- *    所以那 292 案的詳情面板都不會有「周邊機能」區塊。
+ * ⚠️ **新光田與兩個市區的機能空著 —— 但那三區現在都有建案了**（新光田 125、梧棲市區 175、清水市區 1），
+ *    所以那 **301 案**的詳情面板都不會有「周邊機能」區塊。這個數字會跟著他補案子長大，
+ *    要寫在畫面或話術上就用 `projectStats()` 算，不要抄這裡。
  * ⚠️ **新光田 2026-09-02 起有 107 案了，卻還是沒有機能** —— 那 107 案的詳情面板
  *    不會有「周邊機能」區塊。**不要拿北勢靜宜那份借過去**：那份量過是北勢靜宜的
  *    （靜宜大學、弘光、六福公園都在北勢靜宜色塊內），借過去就是對 107 案講錯生活圈。
@@ -2018,6 +2020,7 @@ export const PROJECTS: Project[] = [
   { id: "shidai-yijing", name: "時代一景", builder: "德邑建設", area: "新光田", status: "completed", completion: "約 2015", sources: ["owner"] },
 
   /* ─────────── 梧棲市區 166 案＋清水市區 1 案（2026-09-05 系統擁有者提供）───────────
+     （這個區後來又長大：9/7 從重劃區改掛過來 7 案、再新建 2 案 —— 現在梧棲市區共 175 案。）
      這兩區是最後兩塊「有篩選臉卻 0 案」的區。補完之後**八顆篩選臉全部有建案**。
 
      🔴 **他只給了案名，部分附屋齡；建商一個都沒給、座標一個都沒有。**
@@ -2025,8 +2028,9 @@ export const PROJECTS: Project[] = [
           德光→凱俊／偉晉、安城→品城、宏亞→臻揚、昇揚→宏亞、御璽→國璽、和樂龍融→中龍鋼鐵）。
         ・沒附屋齡的 103 案 `status: "unknown"`／`completion: "待確認"`。
           **`unknown` 全站又有案子了，圖例會自己從三格變回四格**（見 ProjectExplorer 的 legendStatuses）。
-        ・**這批沒有座標**，清單裡會出現 167 筆「未標位置」，地圖說明也會從乾淨版切回
-          「其中 N 案已標定；另外 M 案還沒標」。
+        ・這批一開始**完全沒有座標**，清單裡冒出 167 筆「未標位置」。
+          **2026-09-07 他點回來 27 筆**（見下面 COORDS 那段），未標位置降到 142 筆；
+          地圖說明仍是「其中 N 案已標定；另外 M 案還沒標」的版本，等他把剩下的點完才會回乾淨版。
 
      ✅ **那 7 個跟現有梧棲（重劃區）建案同名的，2026-09-07 他拍板「改成梧棲市區」，已改**：
         聚佳欣世代、安美學、佳鋐樂灣、佳鋐樂邑、佳鋐新邑、佳瓚大賀、佳福柏斯市。
@@ -2211,6 +2215,12 @@ export const PROJECTS: Project[] = [
   { id: "jiachuan-yushu-3", name: "家川御墅3", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
   { id: "tianmu-zhongyang", name: "天睦中央親鄰", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "dingshang-fuyi-2", name: "鼎上富邑2", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+
+  /* 2026-09-07 他說「梧棲市區補 亞太企業家、生活家、文化國宅」。
+     ⚠️ **亞太企業家 9/5 那批已經建立過了**（就在上面），這裡只新建另外兩案，沒有做出第二筆同名的。
+     建商／屋齡他都沒給 —— 「文化國宅」看起來是公部門的案子，但**不准自己填國宅處或縣政府**。 */
+  { id: "shenghuo-jia", name: "生活家", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "wenhua-guozhai", name: "文化國宅", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
 
   { id: "deyi-chengyi-2", name: "德邑澄邑2", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
 ];
@@ -2681,6 +2691,41 @@ export const COORDS: Record<string, Coord> = {
      🔵 **這條驗證了「口頭給的區域跟他點的座標對不起來時，先回報、不要自己選一邊」** ——
         當初若自作主張改成梧棲市區，就是把一個重劃區的建案歸錯區。 */
   "hele-longrong": { lat: 24.26518, lng: 120.53289, precision: "exact" }, // 和樂龍融
+  /* ── 梧棲市區前 27 案（2026-09-07，系統擁有者用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、區域都是梧棲市區、precision 全 exact、
+     本批不重複、沒有覆蓋既有座標，**27 筆全部落在梧棲市區色塊內、也沒有落進別區**。
+     🔵 兩筆貼著色塊邊緣但確實在內側：昌祐又1讚（東緣 120.5561，色塊到 120.5587）、
+        全禧家和（南緣 24.2394，色塊到 24.2390）—— 不是畫錯，是那塊本來就長到那裡。
+     🔵 30 公尺內沒有任何鄰居，這批不會在地圖上疊成一坨。
+     ⚠️ 梧棲市區還有 141 案沒座標（那 7 個從重劃區改過來的本來就帶著座標）；
+        全站未標位置 142 筆＝梧棲市區 141 ＋ 清水市區 1。 */
+  "juguo-jinghua": { lat: 24.26342, lng: 120.53376, precision: "exact" }, // 鉅國京華
+  "zhonggang-shimao": { lat: 24.26338, lng: 120.53406, precision: "exact" }, // 中港世貿
+  "one-plus-shengyou": { lat: 24.26164, lng: 120.53276, precision: "exact" }, // ONE PLUS昇祐商務中心
+  "zhonggang-huangjia": { lat: 24.26141, lng: 120.53236, precision: "exact" }, // 中港皇家大樓
+  "renai-luoma-shangye-mingxia-3": { lat: 24.26183, lng: 120.53486, precision: "exact" }, // 仁愛羅馬商業名廈3
+  "huangjin-haian": { lat: 24.26201, lng: 120.53594, precision: "exact" }, // 黃金海岸
+  "renai-luoma-shangye": { lat: 24.26147, lng: 120.53599, precision: "exact" }, // 仁愛羅馬商業
+  "huangjia-jingguan": { lat: 24.26133, lng: 120.53509, precision: "exact" }, // 皇家景觀大樓
+  "lingxiu-tianxia": { lat: 24.26116, lng: 120.53663, precision: "exact" }, // 領袖天廈
+  "jiaguilin-huayuan": { lat: 24.26006, lng: 120.53885, precision: "exact" }, // 甲桂林花園大廈
+  "zhonggang-tianxia": { lat: 24.26036, lng: 120.53771, precision: "exact" }, // 中港天廈
+  "zhonggang-yunding-2": { lat: 24.26117, lng: 120.53783, precision: "exact" }, // 中港雲頂2
+  "shengxi-zonghe": { lat: 24.26113, lng: 120.53832, precision: "exact" }, // 聖璽綜合大樓
+  "zhonggang-huangxi": { lat: 24.26104, lng: 120.53878, precision: "exact" }, // 中港皇璽
+  "zhonggang-huiguan": { lat: 24.26053, lng: 120.53916, precision: "exact" }, // 中港會館
+  "lihuan-yuehao": { lat: 24.25399, lng: 120.53856, precision: "exact" }, // 立桓閱好書房
+  "shengxi-yunding-jindian": { lat: 24.2577, lng: 120.54048, precision: "exact" }, // 聖璽雲頂金店
+  "changyou-you1zan": { lat: 24.2524, lng: 120.55611, precision: "exact" }, // 昌祐又1讚
+  "dadao-zhixing": { lat: 24.24911, lng: 120.55431, precision: "exact" }, // 大道之星
+  "jiahong-shouyao": { lat: 24.2475, lng: 120.55302, precision: "exact" }, // 佳鋐首耀
+  "dadao-100": { lat: 24.24606, lng: 120.55231, precision: "exact" }, // 大道100
+  "yuqing-renjia": { lat: 24.24421, lng: 120.55007, precision: "exact" }, // 餘慶仁家
+  "minhe-shouxi": { lat: 24.24857, lng: 120.5495, precision: "exact" }, // 民和首席
+  "quanxi-jiahe": { lat: 24.23939, lng: 120.53118, precision: "exact" }, // 全禧家和
+  "hesheng-jingzhan": { lat: 24.2403, lng: 120.52906, precision: "exact" }, // 禾盛晶綻
+  "caipan-yinfu": { lat: 24.2407, lng: 120.52955, precision: "exact" }, // 采磐隱富
+  "caipan-cangfu": { lat: 24.25685, lng: 120.5359, precision: "exact" }, // 采磐藏富
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
