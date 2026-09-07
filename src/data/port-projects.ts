@@ -77,7 +77,8 @@ export const STATUS_LABEL: Record<ProjectStatus, string> = {
  * 2026-09-01 再補北勢靜宜 80 案（同樣是他整理的）。
  * 2026-09-02 再補新光田特區 107 案（他給的「歷年建案母名單」，只有案名）。
  * 2026-09-05 再補梧棲市區 166 案、清水市區 1 案。
- * 2026-09-07 那 7 案從重劃區改掛梧棲市區，分五批補梧棲市區 12 案、移除仁愛羅馬金融名廈 1 案（全站 520）。
+ * 2026-09-07 那 7 案從重劃區改掛梧棲市區，分五批補梧棲市區 12 案、
+ *            移除仁愛羅馬金融名廈與仁愛羅馬 2 案、青樸院2 改掛清水市區（全站 519）。
  * **八顆篩選臉全部有建案了，沒有 0 案的區。**
  * ⚠️ 之後再加新的 `ProjectArea` 值，記得同時加進 `LeafletMap.tsx` 的 `PIN_GROUPS`（那是 array
  *    不是 `Record<ProjectArea,…>`，TypeScript 不會替你抓漏，漏了那一區的圖釘會在初始畫面疊成一坨）；
@@ -2073,7 +2074,6 @@ export const PROJECTS: Project[] = [
   { id: "zhonggang-zhenzuan", name: "中港真鑽", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "lingxiu-tianxia", name: "領袖天廈", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "renai-luoma-shangye", name: "仁愛羅馬商業", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "renai-luoma", name: "仁愛羅馬", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "guoji-shangye", name: "國際商業大樓", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "zhonggang-tianxia", name: "中港天廈", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "zhonggang-yunding-2", name: "中港雲頂2", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
@@ -2202,7 +2202,12 @@ export const PROJECTS: Project[] = [
   { id: "muguang-zhan", name: "沐光湛", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
   { id: "ziran-yangzhen", name: "自然養真", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
   { id: "jiuchuan-mumuxin", name: "九川木目心", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
-  { id: "qingpu-yuan-2", name: "青樸院2", builder: "待確認", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  /* 2026-09-07 他拍板：青樸院2 從梧棲市區改到清水市區。
+     🔵 這也把「三組跨區同系列」的最後一組結掉了：青樸院2（清水市區）vs 青樸院（鹿寮萬家福，新富筑建設）
+        **仍是兩個不同區的不同案，分開存、不要合併**。
+     ⚠️ 這案還沒有座標，所以這次的改區**沒有辦法用圖釘驗證**（前兩組是量出 2,569 m／704 m 才確定的）。
+        他點完座標之後，記得回頭量一次它是不是真的落在清水市區色塊裡。 */
+  { id: "qingpu-yuan-2", name: "青樸院2", builder: "待確認", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "jiuwang-yipinju-2", name: "久旺一品居2", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
   { id: "shibao-xiangchen", name: "世堡祥宸", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
   { id: "jingshangsen-2", name: "井上森2", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
@@ -2866,14 +2871,10 @@ export const COORDS: Record<string, Coord> = {
      本批不重複、沒有覆蓋既有座標，**17 筆全部落在梧棲市區色塊內、也沒有落進別區**。
      🔵 一對 30 公尺內的鄰居：和唐財神 ↔ 磐石珍藏 18m（同街廓兩棟）。
 
-     🔴 **他這批其實給了 18 筆，「仁愛羅馬」那筆刻意沒有收進來，要他重點。**
-        他點的是 24.27848 / 120.50809 —— **不在任何一塊色塊裡**，離梧棲市區邊界 2,748 公尺、
-        離最近的既有建案（益翔有藝仕）2,628 公尺，位置在臨港路以西的港區裡。
-        **而且離它自己同系列的兩案 3.3～3.4 公里**：仁愛羅馬商業 24.26147/120.53599、
-        仁愛羅馬商業名廈3 24.26183/120.53486（兩案都在梧棲市區核心）。
-        ⚠️ 這不是邊界誤差，是掉進海裡 —— 存下去畫面上會有一根圖釘浮在港區。
-        照 2026-09-04「和樂龍融」那次的做法：**矛盾講出來、不要自己選一邊**。
-        他重點之後補一行就好，`renai-luoma` 目前維持「未標位置」。 */
+     ✅ **當時「仁愛羅馬」那筆座標刻意沒收（他點到臨港路以西的港區，離自己同系列兩案 3.3～3.4 km），
+        2026-09-07 他的答覆是「仁愛羅馬移除」—— 整案已刪，所以那個座標永遠不會用到了。**
+        🔵 這次又驗證一遍：**座標對不起來時先回報、不要自己挑一邊改。**
+        當初若自作主張把圖釘挪到同系列旁邊，就是把一個他要刪的案子留在地圖上、還給了假位置。 */
   "jiamei-chengken": { lat: 24.23992, lng: 120.54804, precision: "exact" }, // 佳美城肯
   "hetang-caishen": { lat: 24.2401, lng: 120.54884, precision: "exact" }, // 和唐財神
   "panshi-zhencang": { lat: 24.24024, lng: 120.54892, precision: "exact" }, // 磐石珍藏
@@ -2891,6 +2892,29 @@ export const COORDS: Record<string, Coord> = {
   "guoji-shangye": { lat: 24.261, lng: 120.53727, precision: "exact" }, // 國際商業大樓
   "tiankong-shu": { lat: 24.25046, lng: 120.55296, precision: "exact" }, // 天空墅
   "taiju-huamei": { lat: 24.2556, lng: 120.55673, precision: "exact" }, // 太聚華美
+  /* ── 梧棲市區第五批 17 案（2026-09-07 深夜，系統擁有者用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、區域都是梧棲市區、precision 全 exact、
+     沒有覆蓋既有座標，**18 筆全部落在梧棲市區色塊內、也沒有落進別區**。
+     ⚠️ **他給了 18 行但只有 17 案：「君業皇居」貼了兩次**（24.24804/120.54406 與 24.24809/120.54414，
+        相距 10 公尺）。**取後面那筆** —— 後貼的是重點過的，而且 JS 物件字面值本來就是後面蓋前面，
+        兩者一致。10 公尺在畫面上看不出差別，但留兩行會讓之後的 id 稽核一直報重複。 */
+  "shiji-xiongwei-3": { lat: 24.2487, lng: 120.54537, precision: "exact" }, // 世紀雄偉3
+  "yanmei-banfu-8": { lat: 24.24887, lng: 120.5467, precision: "exact" }, // 彥美班芙8
+  "renli-wenyuan": { lat: 24.256, lng: 120.55641, precision: "exact" }, // 仁里文園
+  "shiji-xiongwei-5": { lat: 24.24546, lng: 120.53385, precision: "exact" }, // 世紀雄偉5
+  "minan-yijing-huaxia": { lat: 24.25987, lng: 120.54758, precision: "exact" }, // 民安易境華廈區
+  "likun-yuanman-11": { lat: 24.25897, lng: 120.54741, precision: "exact" }, // 立坤圓滿11
+  "hesheng-haoyang": { lat: 24.2418, lng: 120.52969, precision: "exact" }, // 禾盛好漾
+  "guangwei-zhenpin": { lat: 24.25897, lng: 120.53348, precision: "exact" }, // 光崴臻品
+  "yujun-yuansu": { lat: 24.24478, lng: 120.54735, precision: "exact" }, // 宇竣原宿
+  "jingyi-heya": { lat: 24.2441, lng: 120.5493, precision: "exact" }, // 敬益和雅
+  "baifa-yuansenhuo-2": { lat: 24.24947, lng: 120.55294, precision: "exact" }, // 百發原森活2
+  "lvhuo-casa": { lat: 24.2509, lng: 120.55379, precision: "exact" }, // 綠活CASA
+  "qiaoli-i-do": { lat: 24.25017, lng: 120.55273, precision: "exact" }, // 喬立I DO
+  "xinfuming-yaqi": { lat: 24.25125, lng: 120.55322, precision: "exact" }, // 新富銘雅砌
+  "zhumao-wojia": { lat: 24.25214, lng: 120.5515, precision: "exact" }, // 住茂我家
+  "junye-huangju": { lat: 24.24809, lng: 120.54414, precision: "exact" }, // 君業皇居
+  "hongguan-dibao": { lat: 24.25729, lng: 120.55334, precision: "exact" }, // 宏觀帝堡
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
