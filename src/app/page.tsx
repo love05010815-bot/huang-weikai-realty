@@ -321,7 +321,7 @@ export default async function HomePage() {
         {/* 🚫 2026-09-07 系統擁有者拍板：首頁不再有「關於我」區塊。
             原本這裡是一塊淡粉色帶＋六句自我介紹的卡片，現在那六句併進上面 hero 形象照旁邊
             （.heroStory，他親自寫的三段自述），完整版仍在 /about（導覽列「關於我」已改成連到 /about）。
-            主題色帶現在是：hero 淡藍漸層 → 精選好案 天空藍 #6FA8DC → 服務 白 → 試算 蜜桃奶油 → 預約 深藍綠。 */}
+            主題色帶現在是：hero 淡藍漸層 → 精選好案 淡藍 #CFE2F3 → 服務 白 → 試算 蜜桃奶油 → 預約 深藍綠。 */}
         {/* ---------------- 精選好案 ---------------- */}
         <section id="listings" className={`${styles.section} ${styles.band} ${styles.bandBlue}`}>
           <SectionWave flip />
