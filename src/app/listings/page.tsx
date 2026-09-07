@@ -11,6 +11,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { OWNER, SITE_URL } from "@/config/owner";
 import { getPublicListings } from "@/lib/listings";
+import { formatWan } from "@/lib/houseol-price";
 import styles from "../home.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
@@ -124,6 +125,14 @@ export default async function ListingsPage() {
                     <div className={lst.body}>
                       <span className={lst.area}>{item.area}</span>
                       <h2 className={lst.title}>{item.title}</h2>
+                      {/* 🏷️ 售價：從物件資訊那顆愛屋型錄連結現抓（lib/houseol-price.ts），
+                          不是後台填的。抓不到、或連結是 591 → price 是 null → 這行整個不渲染。
+                          看到某張卡片沒有售價，先看它的物件資訊連的是不是愛屋，再懷疑抓取。 */}
+                      {item.price != null ? (
+                        <p className={lst.price}>
+                          售價 <b>{formatWan(item.price)}</b>
+                        </p>
+                      ) : null}
                       <ul className={lst.points}>
                         {item.points.map((p) => (
                           <li key={p}>{p}</li>

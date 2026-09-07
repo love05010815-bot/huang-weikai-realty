@@ -252,6 +252,25 @@
   color: var(--ink);
 }
 
+/* 🏷️ 售價。從愛屋型錄現抓（lib/houseol-price.ts）；抓不到這行整個不渲染，不會留一塊空白。
+   首頁那張卡的文字區是 <a>，所以這裡用 <span>；/listings 用 <p>。兩邊共用這個樣式。 */
+.price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: -6px 0 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.price b {
+  font-size: 21px;
+  font-weight: 900;
+  line-height: 1.2;
+  color: var(--primary);
+}
+
 .points {
   list-style: none;
   margin: 0 0 18px;

@@ -21,6 +21,7 @@ import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { getConfig, setConfig } from "@/lib/google-calendar";
 import { LISTINGS, MAX_PHOTOS, type Listing } from "@/config/listings";
+import { fetchHouseolPrice } from "@/lib/houseol-price";
 
 export type ListingStatus = "active" | "sold";
 
@@ -210,9 +211,10 @@ export async function listAllListings(): Promise<ListingRecord[]> {
  *    官網首頁不能因為資料庫抽風就開天窗 —— 顯示舊物件遠比整頁掛掉好。
  */
 export async function getPublicListings(): Promise<Listing[]> {
+  let items: Listing[];
   try {
     const rows = await listAllListings();
-    return rows
+    items = rows
       .filter((row) => row.status === "active")
       .map((row) => ({
         slug: row.slug,
@@ -228,8 +230,24 @@ export async function getPublicListings(): Promise<Listing[]> {
         status: "active" as const,
       }));
   } catch {
-    return LISTINGS.filter((item) => item.status === "active");
+    items = LISTINGS.filter((item) => item.status === "active");
   }
+  // 🏷️ 售價是這裡補的，不在資料庫裡。拿掉這一行就是整站不顯示售價（見 houseol-price.ts 檔頭）。
+  return withHouseolPrices(items);
+}
+
+/**
+ * 🏷️ 每一筆補上「物件資訊」那顆愛屋型錄連結的售價。
+ * 一戶抓不到就那一戶 null、其他戶照常；`fetchHouseolPrice` 永遠不 throw，
+ * 所以這裡整批不會因為愛屋掛掉而失敗。連到 591 的、沒連結的，直接 null。
+ */
+async function withHouseolPrices(items: Listing[]): Promise<Listing[]> {
+  return Promise.all(
+    items.map(async (item) => ({
+      ...item,
+      price: item.link ? await fetchHouseolPrice(item.link.href) : null,
+    })),
+  );
 }
 
 // ---------------------------------------------------------------- 寫

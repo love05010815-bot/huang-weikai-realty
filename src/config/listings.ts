@@ -53,6 +53,12 @@ export type Listing = {
   link: { label: string; href: string } | null;
   /** 影片賞析連結。種子資料一律沒有，實際內容進後台填。 */
   video?: { label: string; href: string } | null;
+  /**
+   * 售價（萬）。**不是後台填的、種子也沒有** —— 是 `getPublicListings()` 從「物件資訊」
+   * 那顆愛屋型錄連結現抓的（見 lib/houseol-price.ts）。
+   * null／undefined ＝ 抓不到、或連結不是愛屋（例如 591），卡片就不顯示這一行。
+   */
+  price?: number | null;
   /** active = 顯示在網站上；sold = 已成交／已下架，不顯示 */
   status: "active" | "sold";
 };
