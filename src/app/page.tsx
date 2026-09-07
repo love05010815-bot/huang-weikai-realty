@@ -298,10 +298,10 @@ export default async function HomePage() {
             剩下的靠按鈕帶過去 —— 跟精選好案同一個模式。
             戰績與服務區域不放這裡也沒關係，hero 的兩個徽章已經寫著
             「連續三年千萬經紀人」與「服務區域：沙鹿・梧棲・清水・龍井」。 */}
-        {/* 主題色帶：關於我＝淺藍灰、精選好案＝米、服務＝白、試算＝米、預約＝深藍，
-            相鄰兩塊之間一道弧（SectionWave）。配色與注意事項見 home.module.css 檔尾。
+        {/* 主題色帶：關於我＝淡粉 #EBD6D6（系統擁有者指定）、精選好案＝米、服務＝白、試算＝米、
+            預約＝深藍，相鄰兩塊之間一道弧（SectionWave）。配色與注意事項見 home.module.css 檔尾。
             ⚠️ 關於我不能用白：hero 的漸層底部就是白，白接白看不出是兩塊，弧也消失。 */}
-        <section id="about" className={`${styles.section} ${styles.band} ${styles.bandCool}`}>
+        <section id="about" className={`${styles.section} ${styles.band} ${styles.bandRose}`}>
           <SectionWave />
           <div className={`${styles.container} ${styles.center}`}>
             <span className={styles.eyebrow}>ABOUT ME</span>
