@@ -434,7 +434,7 @@ export const SOURCES: Record<string, { label: string; url: string }> = {
  */
 export const PROJECTS: Project[] = [
   // ───── 安美建設 ─────
-  { id: "anmei-xue", name: "安美學", builder: "安美建設", area: "梧棲", status: "completed", completion: "2023", units: 168, sources: ["owner"] },
+  { id: "anmei-xue", name: "安美學", builder: "安美建設", area: "梧棲市區", status: "completed", completion: "2023", units: 168, sources: ["owner"] },
 
   // ───── 佳泰建設 ─────
   {
@@ -443,14 +443,14 @@ export const PROJECTS: Project[] = [
   },
 
   // ───── 佳福建設 ─────
-  { id: "jiafu-bosishi", name: "佳福柏斯市", builder: "佳福建設", area: "梧棲", status: "completed", completion: "2024", units: 301, sources: ["owner"] },
+  { id: "jiafu-bosishi", name: "佳福柏斯市", builder: "佳福建設", area: "梧棲市區", status: "completed", completion: "2024", units: 301, sources: ["owner"] },
 
   // ───── 佳鋐建設（寶佳機構） ─────
-  { id: "jiahong-lewan", name: "佳鋐樂灣", builder: "佳鋐建設", area: "梧棲", status: "completed", completion: "2018", units: 144, sources: ["owner"] },
+  { id: "jiahong-lewan", name: "佳鋐樂灣", builder: "佳鋐建設", area: "梧棲市區", status: "completed", completion: "2018", units: 144, sources: ["owner"] },
   { id: "jiahong-qingwan", name: "佳鋐晴灣", builder: "佳鋐建設", area: "清水", status: "completed", completion: "2020", units: 194, sources: ["owner"] },
-  { id: "jiahong-leyi", name: "佳鋐樂邑", builder: "佳鋐建設", area: "梧棲", status: "completed", completion: "2023", units: 115, sources: ["owner"] },
+  { id: "jiahong-leyi", name: "佳鋐樂邑", builder: "佳鋐建設", area: "梧棲市區", status: "completed", completion: "2023", units: 115, sources: ["owner"] },
   {
-    id: "jiahong-xinyi", name: "佳鋐新邑", builder: "佳鋐建設", area: "梧棲",
+    id: "jiahong-xinyi", name: "佳鋐新邑", builder: "佳鋐建設", area: "梧棲市區",
     status: "completed", completion: "2024", units: 243,
     street: "大仁路二段", streets: "大仁路二段 291 巷 50 號",
     layout: "2～4 房，約 27～45 坪", floors: "地上 15 層／地下 4 層", siteAreaPing: 979,
@@ -459,7 +459,7 @@ export const PROJECTS: Project[] = [
   },
 
   // ───── 佳瓚建設 ─────
-  { id: "jiazan-dahe", name: "佳瓚大賀", builder: "佳瓚建設", area: "梧棲", status: "completed", completion: "2024", units: 234, sources: ["owner"] },
+  { id: "jiazan-dahe", name: "佳瓚大賀", builder: "佳瓚建設", area: "梧棲市區", status: "completed", completion: "2024", units: 234, sources: ["owner"] },
 
   // ───── 協和建設 ─────
   { id: "xiehe-fengjing", name: "協和丰景", builder: "協和建設", area: "清水", status: "completed", completion: "2024", units: 230, sources: ["owner"] },
@@ -534,7 +534,7 @@ export const PROJECTS: Project[] = [
   },
 
   // ───── 聚佳建設 ─────
-  { id: "jujia-xinshidai", name: "聚佳欣世代", builder: "聚佳建設", area: "梧棲", status: "completed", completion: "2023", units: 173, sources: ["owner"] },
+  { id: "jujia-xinshidai", name: "聚佳欣世代", builder: "聚佳建設", area: "梧棲市區", status: "completed", completion: "2023", units: 173, sources: ["owner"] },
 
   // ───── 聖璽建設 ─────
   {
@@ -2028,10 +2028,14 @@ export const PROJECTS: Project[] = [
         ・**這批沒有座標**，清單裡會出現 167 筆「未標位置」，地圖說明也會從乾淨版切回
           「其中 N 案已標定；另外 M 案還沒標」。
 
-     ⚠️ **他那份清單裡有 7 個案名跟現有的梧棲（重劃區）建案完全同名，這批刻意沒有建立**：
+     ✅ **那 7 個跟現有梧棲（重劃區）建案同名的，2026-09-05 他拍板「改成梧棲市區」，已改**：
         聚佳欣世代、安美學、佳鋐樂灣、佳鋐樂邑、佳鋐新邑、佳瓚大賀、佳福柏斯市。
-        **同名建案不能存在兩筆**（清單會出現兩列一模一樣的名字、`/admin/map-listings` 也會分不清）。
-        要嘛那 7 案其實該從「梧棲」改成「梧棲市區」，要嘛是同名的不同案 —— 已請他決定。
+        所以這 7 案**不在下面這批新建的裡面**，是原本那筆改了 `area`（座標與建商都留著）。
+        🔵 **他的判斷有座標可以佐證**：那 7 案的圖釘（他自己點的）全部落在重劃區色塊外
+        42～252 公尺、且全部落在梧棲市區色塊內。**把全部梧棲／清水的案子拿同一個測試掃一遍，
+        掉在重劃區外的剛好就是這 7 案，一個不多一個不少** —— 原本歸重劃區是錯的。
+        ⚠️ 因此**重劃區從 40 案變成 33 案**（梧棲 14＋清水 19）。凡是句子裡有「重劃區」的數字
+        都要用 `projectStats().district`，不要寫死。
 
      ⚠️ 他清單裡自己重複的 8 個已去重（冠佑美墅／輝堡大德／麗豐大和／仁里晴美／和萍大宅／
         住茂我家／松濤硯2章／樺懋芳庭），**有階段的那筆優先**。
