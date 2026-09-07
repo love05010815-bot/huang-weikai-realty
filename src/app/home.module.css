@@ -467,49 +467,28 @@
   vertical-align: -0.28em;
 }
 
-.heroTagline {
-  font-size: 16px;
+/* 自我介紹三段（2026-09-07 系統擁有者親自改寫；取代原本的一句 tagline＋六句 icon 清單）。
+   灰字、行距鬆一點好讀；他指定加粗的那句用 <strong>，黑色（--ink）。
+   860px 以下 hero 整段置中，但這三段是多句的長文，置中會不好讀，所以整塊置中、字靠左。 */
+.heroStory {
+  max-width: 520px;
+  margin: 0 0 24px;
+}
+
+.heroStory p {
+  margin: 0 0 12px;
+  font-size: 15.5px;
+  line-height: 1.85;
   color: var(--muted);
-  margin: 0 0 26px;
-  max-width: 480px;
 }
 
-/* 六句自我介紹（原本在獨立的「關於我」區塊，2026-09-07 併進 hero）。
-   桌機兩欄：每句 12 個字 ≈ 174px ＋ icon 28 ＋ 間距 9 ≈ 211px，兩欄 440px，
-   放得進 hero 左欄（1080 容器的 1.1fr ≈ 567px）；860px 以下一欄、整塊置中但字靠左。 */
-.heroIntro {
-  list-style: none;
-  margin: 0 0 22px;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 18px;
-  max-width: 560px;
+.heroStory p:last-child {
+  margin-bottom: 0;
 }
 
-.heroIntroItem {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 14.5px;
-  font-weight: 500;
-  line-height: 1.5;
+.heroStory strong {
+  font-weight: 800;
   color: var(--ink);
-  white-space: nowrap;
-}
-
-.heroIntroIcon {
-  box-sizing: border-box;
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #fff;
-  border: 1px solid var(--line-warm);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
 }
 
 .heroBadges {
@@ -586,19 +565,12 @@
     text-align: center;
   }
 
-  .heroTagline {
-    margin-left: auto;
-    margin-right: auto;
-  }
-
   .heroBadges,
   .heroCta {
     justify-content: center;
   }
 
-  .heroIntro {
-    grid-template-columns: 1fr;
-    max-width: 320px;
+  .heroStory {
     margin-left: auto;
     margin-right: auto;
     text-align: left;
@@ -1185,8 +1157,8 @@
    不再是整頁白底靠標題分段。順序與配色：
 
      hero        米色漸層（原本就有，不動）
-     （關於我   2026-09-07 拍板整塊拿掉，六句介紹併進 hero；它用過白 → 淺藍灰 → 淡粉 #EBD6D6 三種底色，
-                 都不用了。）
+     （關於我   2026-09-07 拍板整塊拿掉，介紹併進 hero（先是六句 icon 清單、同日再改成他親自寫的三段自述）；
+                 它用過白 → 淺藍灰 → 淡粉 #EBD6D6 三種底色，都不用了。）
      精選好案    米色      .bandSoft   （卡片是白的，放米色底上才跳得出來；hero 底部漸到白，米色接得出弧）
      服務項目    白        .bandWhite
      稅費試算    米色      .bandSoft

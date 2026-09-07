@@ -5,7 +5,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { OWNER, SOCIAL, SITE_URL } from "@/config/owner";
-import { INTRO_LINES, AREAS } from "@/config/profile";
+import { AREAS } from "@/config/profile";
 import { HOME_FEATURED_COUNT } from "@/config/listings";
 import { getPublicListings } from "@/lib/listings";
 import { formatWan } from "@/lib/houseol-price";
@@ -259,20 +259,17 @@ export default async function HomePage() {
                 )}
                 {OWNER.title}
               </p>
-              <p className={styles.heroTagline}>
-                連續三年千萬經紀人的實戰經驗，陪您把買房、賣房、資產配置的每一個決定都做對——不只成交，更要成交得安心。
-              </p>
-              {/* 六句自我介紹。2026-09-07 從下面獨立的「關於我」區塊併上來的 —— 系統擁有者要
-                  「整合到照片旁邊的介紹裡面」。桌機兩欄（每句 12 個字等長，兩欄才排得整齊），
-                  860px 以下一欄置中。文案在 src/config/profile.ts 的 INTRO_LINES，跟 /about 共用。 */}
-              <ul className={styles.heroIntro}>
-                {INTRO_LINES.map((line) => (
-                  <li key={line.text} className={styles.heroIntroItem}>
-                    <span className={styles.heroIntroIcon} aria-hidden="true">{line.icon}</span>
-                    {line.text}
-                  </li>
-                ))}
-              </ul>
+              {/* 自我介紹三段。2026-09-07 系統擁有者親自改寫（取代原本的一句 tagline＋六句 icon 清單），
+                  文案照他給的原文一字不改；只有「連續三年獲得千萬經紀人的肯定」他指定加粗、變黑。
+                  ⚠️ 文案是他寫的，要改內容先問他。 */}
+              <div className={styles.heroStory}>
+                <p>
+                  我從二十歲踏入房仲業，這是我人生中的第一份工作，也是至今唯一的一份。十五年來，我專注在不動產這一件事上，
+                  <strong>連續三年獲得千萬經紀人的肯定</strong>，更重要的是，我親眼見證了一組又一組家庭在這裡圓夢的故事。
+                </p>
+                <p>買房、賣房、資產配置，每一個決定都牽動一個家的未來。我相信自己能陪您把每一步都走對——不只是成交，更要讓您成交得安心。</p>
+                <p>說到做到，是我對客戶的承諾；負責到底，是我為您的夢想把關的態度。</p>
+              </div>
               <div className={styles.heroBadges}>
                 <span className={styles.heroBadge}>🏆 112・113・114年連續三年千萬經紀人</span>
                 <span className={styles.heroBadge}>📍 服務區域：沙鹿・梧棲・清水・龍井</span>
@@ -311,7 +308,7 @@ export default async function HomePage() {
             「連續三年千萬經紀人」與「服務區域：沙鹿・梧棲・清水・龍井」。 */}
         {/* 🚫 2026-09-07 系統擁有者拍板：首頁不再有「關於我」區塊。
             原本這裡是一塊淡粉色帶＋六句自我介紹的卡片，現在那六句併進上面 hero 形象照旁邊
-            （.heroIntro），完整版仍在 /about（導覽列「關於我」已改成連到 /about）。
+            （.heroStory，他親自寫的三段自述），完整版仍在 /about（導覽列「關於我」已改成連到 /about）。
             主題色帶現在是：hero 米色漸層 → 精選好案 米 → 服務 白 → 試算 米 → 預約 深藍。 */}
         {/* ---------------- 精選好案 ---------------- */}
         <section id="listings" className={`${styles.section} ${styles.band} ${styles.bandSoft}`}>
