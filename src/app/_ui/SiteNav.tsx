@@ -46,9 +46,9 @@ type NavItem =
   | { label: string; kind: "route"; href: "/about" | "/map" | "/videos" };
 
 const ITEMS: readonly NavItem[] = [
-  // 2026-09-07 系統擁有者拍板首頁不再有「關於我」區塊（六句介紹併進 hero），
-  // 錨點 #about 沒東西可跳了，改連到完整版 /about。標籤與順序沒動。
-  { label: "關於我", kind: "route", href: "/about" },
+  // 🚫 2026-09-07 系統擁有者：「首頁上方的關於我請移除」—— 導覽列不再有「關於我」。
+  //    /about 頁還在（沒刪），只是沒有入口；要放回來就補一行 { label: "關於我", kind: "route", href: "/about" }。
+  //    同日稍早首頁的「關於我」區塊也已拿掉（介紹併進 hero）。
   { label: "服務項目", kind: "anchor", hash: "#services" },
   { label: "精選好案", kind: "anchor", hash: "#listings" },
   // 2026-08-21 恢復入口。原本雪藏是因為「土地使用分區」那層的建商名沒核對完；該層已從 /map 移除。

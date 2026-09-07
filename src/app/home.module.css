@@ -36,9 +36,9 @@
   /* 精選好案那塊色帶：系統擁有者點名的 #CFE2F3（第一版 #6FA8DC 他看過線上後改淡）。
      灰字（--muted）在上面 4.2:1、差一點到 4.5，那塊的說明文字維持用 --ink，見 .bandBlue */
   --blue: #CFE2F3;
-  /* 形象照後面那塊錯位底板。2026-09-07 他指定 #FFFAF4（原本是 --primary）；
+  /* 形象照後面那塊錯位底板。2026-09-07 他指定 #FFEEDD（原本是 --primary；中間試過 #FFFAF4 太淡）；
      在白底 hero 上很淡，靠照片本身的白框＋陰影撐出層次 */
-  --photo-backdrop: #FFFAF4;
+  --photo-backdrop: #FFEEDD;
   --contact: #245F5A;
   --footer: #1B4B47;
   /* 米色系的卡片邊框。原本藍灰框於白底只有 1.29 對比，幾乎看不見；
