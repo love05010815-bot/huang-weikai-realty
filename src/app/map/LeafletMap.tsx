@@ -197,7 +197,7 @@ function buildingSvg(bg: string, ink: string, mine: boolean, on: boolean) {
 <svg width="${w}" height="${h}" viewBox="0 0 ${PIN_VB.w} ${PIN_VB.h}" xmlns="http://www.w3.org/2000/svg">
   <g transform="translate(0,4)">
     <path d="M14 34c0 0-10.5-11.5-10.5-19.5A10.5 10.5 0 0 1 24.5 14.5C24.5 22.5 14 34 14 34z"
-          fill="${bg}" stroke="${on ? "#01354D" : "#fff"}" stroke-width="${on ? 2.6 : 1.8}"/>
+          fill="${bg}" stroke="${on ? "#2FA894" : "#fff"}" stroke-width="${on ? 2.6 : 1.8}"/>
     <rect x="8" y="7" width="12" height="13" rx="1.2" fill="${ink}" opacity="0.95"/>
     <g fill="${bg}">
       <rect x="9.6" y="9" width="2.6" height="2.6"/><rect x="13.6" y="9" width="2.6" height="2.6"/>

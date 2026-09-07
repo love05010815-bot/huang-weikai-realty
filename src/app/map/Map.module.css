@@ -1,17 +1,17 @@
-/* 台中港特定區土地分佈圖 —— 沿用首頁「凱心成家」深藍 #01354D ＋ 米色 #DAB38A */
+/* 台中港特定區土地分佈圖 —— 沿用首頁那套配色（2026-09-07 起是馬卡龍：藍綠 #2FA894 主色，見 home.module.css 檔頭） */
 
 .page {
-  --primary: #01354d;
-  --primary-dark: #012738;
-  --ink: #122a38;
-  --accent: #dab38a;
-  --accent-soft: #efdcc4;
-  --muted: #5c6a73;
-  --line: #dce4e9;
-  --line-warm: #dcc6a5;
-  --soft: #f7f0e2;
+  --primary: #2fa894;
+  --primary-dark: #227f71;
+  --ink: #22323f;
+  --accent: #f4a876;
+  --accent-soft: #fde7d6;
+  --muted: #5b6b73;
+  --line: #d9e2e6;
+  --line-warm: #d3e2e9;
+  --soft: #fde7d6;
   --radius: 14px;
-  --shadow: 0 12px 30px rgba(18, 42, 56, 0.1);
+  --shadow: 0 12px 30px rgba(34, 50, 63, 0.1);
 
   font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif;
   color: var(--ink);
@@ -268,7 +268,7 @@
 }
 
 .parcel:focus-visible rect {
-  stroke: #01354d;
+  stroke: var(--primary);
   stroke-width: 3;
 }
 
@@ -329,7 +329,7 @@
   width: 15px;
   height: 15px;
   border-radius: 3px;
-  border: 1px solid rgba(18, 42, 56, 0.18);
+  border: 1px solid rgba(34, 50, 63, 0.18);
   flex: none;
 }
 
@@ -391,9 +391,9 @@
    他看了截圖再指定「左邊那塊用別的顏色或加框底，但要維持整體版面一致」。
 
    這一版：標題做成米色膠囊 ——
-     底 --soft(#f7f0e2)、左邊一條 --accent(#dab38a)、字 --primary(#01354d)。
+     底 --soft(蜜桃奶油)、左邊一條 --accent(蜜桃)、字 --primary(藍綠)。
    三個都是站上既有的品牌變數（首頁那套深藍＋米色），沒有另外調新顏色，
-   所以跟其他區塊看起來是同一套。#01354d 在 #f7f0e2 上對比約 11.5:1。
+   所以跟其他區塊看起來是同一套。藍綠 #2fa894 在 #fde7d6 上對比約 3.1:1，這行是粗體大字才過得了。
 
    ⚠️ `align-self: start` 是必要的：周邊機能／資料出處那兩列的 dd 有好幾行，
       不加的話膠囊會被拉成一整條，跟旁邊短列的高度對不齊，版面會亂。
@@ -1093,7 +1093,7 @@
 
 .projectCard:hover {
   border-color: var(--line-warm);
-  box-shadow: 0 6px 18px rgba(18, 42, 56, 0.07);
+  box-shadow: 0 6px 18px rgba(34, 50, 63, 0.07);
 }
 
 .projectCardOpen {
@@ -1258,7 +1258,7 @@
 }
 
 .pmItem:focus-visible rect {
-  stroke: #01354d;
+  stroke: var(--primary);
   stroke-width: 3;
 }
 
@@ -1288,7 +1288,7 @@
   width: 14px;
   height: 14px;
   border-radius: 3px;
-  border: 1px solid rgba(18, 42, 56, 0.2);
+  border: 1px solid rgba(34, 50, 63, 0.2);
   flex: none;
 }
 
@@ -1298,7 +1298,7 @@
 }
 
 .pmDot {
-  background: #01354d;
+  background: var(--primary);
   border-radius: 50% !important;
   width: 11px !important;
   height: 11px !important;
@@ -1682,7 +1682,7 @@
   width: 14px;
   height: 14px;
   border-radius: 3px;
-  border: 1px solid rgba(18, 42, 56, 0.2);
+  border: 1px solid rgba(34, 50, 63, 0.2);
   flex: none;
 }
 
@@ -1971,7 +1971,7 @@
   justify-content: center;
   padding: 4px 12px;
   border-radius: 999px;
-  background: #01354d !important;
+  background: var(--primary) !important;
   border: 2px solid #fff !important;
   box-shadow: 0 2px 8px rgba(1, 53, 77, 0.35);
   color: #fff;

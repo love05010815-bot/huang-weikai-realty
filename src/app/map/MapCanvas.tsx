@@ -320,7 +320,7 @@ export default function MapCanvas() {
                     width={w}
                     height={h}
                     fill={fillOf(p)}
-                    stroke={isOn ? "#01354D" : "#FFFFFF"}
+                    stroke={isOn ? "#2FA894" : "#FFFFFF"}
                     strokeWidth={isOn ? 3 : 1}
                     rx={1.5}
                   />

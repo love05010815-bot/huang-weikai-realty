@@ -1,7 +1,7 @@
 .page {
   min-height: 100vh;
-  background: #F5F1EA;
-  color: #122A38;
+  background: #F1F6F4;
+  color: #22323F;
   font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
   padding: 24px 16px 48px;
 }
@@ -13,11 +13,11 @@
 
 .header {
   padding: 8px 2px 24px;
-  border-bottom: 1px solid #DCE4E9;
+  border-bottom: 1px solid #D9E2E6;
 }
 
 .brand {
-  color: #122A38;
+  color: #22323F;
   font-size: 13px;
   font-weight: 900;
   letter-spacing: 0.12em;
@@ -61,11 +61,11 @@
 }
 
 .progressItemActive {
-  color: #122A38;
+  color: #22323F;
 }
 
 .progressItemActive .progressBar {
-  background: #01354D;
+  background: #2FA894;
 }
 
 .form {
@@ -74,7 +74,7 @@
 
 .section {
   padding: 24px 2px;
-  border-bottom: 1px solid #DCE4E9;
+  border-bottom: 1px solid #D9E2E6;
 }
 
 .sectionHeading {
@@ -92,7 +92,7 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: #122A38;
+  background: #22323F;
   color: #fff;
   font-size: 13px;
   font-weight: 900;
@@ -125,23 +125,23 @@
 .option {
   min-height: 74px;
   padding: 12px 13px;
-  border: 1.5px solid #DCE4E9;
+  border: 1.5px solid #D9E2E6;
   border-radius: 8px;
   background: #fff;
-  color: #122A38;
+  color: #22323F;
   cursor: pointer;
   font: inherit;
   text-align: left;
 }
 
 .option:hover {
-  border-color: #01354D;
+  border-color: #2FA894;
 }
 
 .optionActive {
-  border-color: #122A38;
-  background: #EFDCC4;
-  box-shadow: inset 0 0 0 1px #122A38;
+  border-color: #22323F;
+  background: #FDE7D6;
+  box-shadow: inset 0 0 0 1px #22323F;
 }
 
 .optionDisabled {
@@ -193,10 +193,10 @@
 .select {
   width: 100%;
   box-sizing: border-box;
-  border: 1.5px solid #DCE4E9;
+  border: 1.5px solid #D9E2E6;
   border-radius: 8px;
   background: #fff;
-  color: #122A38;
+  color: #22323F;
   font: inherit;
   font-size: 16px;
   outline: none;
@@ -212,7 +212,7 @@
 .input:focus,
 .textarea:focus,
 .select:focus {
-  border-color: #122A38;
+  border-color: #22323F;
   box-shadow: 0 0 0 3px rgba(1, 53, 77, 0.2);
 }
 
@@ -233,7 +233,7 @@
 .successNotice,
 .warningNotice {
   margin: 12px 0 0;
-  border: 1px solid #DCE4E9;
+  border: 1px solid #D9E2E6;
   border-radius: 8px;
   background: #fff;
   color: #33454F;
@@ -261,7 +261,7 @@
 }
 
 .link {
-  color: #122A38;
+  color: #22323F;
   font-weight: 800;
 }
 
@@ -289,14 +289,14 @@
 
 .retryButton,
 .secondaryButton {
-  border-color: #DCE4E9;
+  border-color: #D9E2E6;
   background: #fff;
-  color: #122A38;
+  color: #22323F;
 }
 
 .primaryButton {
-  background: #DAB38A;
-  color: #122A38;
+  background: #F4A876;
+  color: #22323F;
 }
 
 .dangerButton {
@@ -324,7 +324,7 @@
   flex: 0 0 auto;
   min-width: 104px;
   min-height: 48px;
-  border: 1px solid #DCE4E9;
+  border: 1px solid #D9E2E6;
   border-radius: 8px;
   background: #fff;
   color: #33454F;
@@ -336,9 +336,9 @@
 }
 
 .dayTabActive {
-  border-color: #122A38;
-  background: #EFDCC4;
-  color: #122A38;
+  border-color: #22323F;
+  background: #FDE7D6;
+  color: #22323F;
 }
 
 .slotGrid {
@@ -350,10 +350,10 @@
 .slotButton {
   min-width: 0;
   min-height: 44px;
-  border: 1px solid #DCE4E9;
+  border: 1px solid #D9E2E6;
   border-radius: 8px;
   background: #fff;
-  color: #122A38;
+  color: #22323F;
   cursor: pointer;
   font: inherit;
   font-size: 14px;
@@ -362,10 +362,10 @@
 }
 
 .slotButtonActive {
-  border-color: #DAB38A;
-  background: #F7EEE2;
-  color: #122A38;
-  box-shadow: inset 0 0 0 1px #DAB38A;
+  border-color: #F4A876;
+  background: #FDE7D6;
+  color: #22323F;
+  box-shadow: inset 0 0 0 1px #F4A876;
 }
 
 .durationRow {
@@ -378,7 +378,7 @@
 .durationButton {
   min-width: 92px;
   min-height: 42px;
-  border: 1px solid #DCE4E9;
+  border: 1px solid #D9E2E6;
   border-radius: 8px;
   background: #fff;
   color: #33454F;
@@ -390,16 +390,16 @@
 }
 
 .durationButtonActive {
-  border-color: #122A38;
-  background: #EFDCC4;
-  color: #122A38;
+  border-color: #22323F;
+  background: #FDE7D6;
+  color: #22323F;
 }
 
 .selectionSummary {
   margin-top: 13px;
-  border-left: 4px solid #DAB38A;
-  background: #F7EEE2;
-  color: #122A38;
+  border-left: 4px solid #F4A876;
+  background: #FDE7D6;
+  color: #22323F;
   font-size: 14px;
   font-weight: 800;
   line-height: 1.65;
@@ -437,8 +437,8 @@
   display: grid;
   gap: 8px;
   margin: 18px 0 14px;
-  border-top: 1px solid #DCE4E9;
-  border-bottom: 1px solid #DCE4E9;
+  border-top: 1px solid #D9E2E6;
+  border-bottom: 1px solid #D9E2E6;
   padding: 14px 2px;
 }
 
@@ -460,7 +460,7 @@
   min-height: 54px;
   border: 0;
   border-radius: 8px;
-  background: #01354D;
+  background: #2FA894;
   color: #fff;
   cursor: pointer;
   font: inherit;
@@ -493,10 +493,10 @@
   min-height: 44px;
   align-items: center;
   justify-content: center;
-  border: 1px solid #DCE4E9;
+  border: 1px solid #D9E2E6;
   border-radius: 8px;
   background: #fff;
-  color: #122A38;
+  color: #22323F;
   font-size: 15px;
   font-weight: 850;
   padding: 9px 14px;
@@ -504,21 +504,21 @@
 }
 
 .actionLinkPrimary {
-  border-color: #01354D;
-  background: #01354D;
+  border-color: #2FA894;
+  background: #2FA894;
   color: #fff;
 }
 
 .statusPanel {
   margin-top: 18px;
-  border-top: 5px solid #01354D;
+  border-top: 5px solid #2FA894;
   background: #fff;
-  box-shadow: 0 8px 28px rgba(18, 42, 56, 0.1);
+  box-shadow: 0 8px 28px rgba(34, 50, 63, 0.1);
   padding: 22px 20px;
 }
 
 .statusPanelWarning {
-  border-top-color: #DAB38A;
+  border-top-color: #F4A876;
 }
 
 .statusPanelDanger {
@@ -541,7 +541,7 @@
 .countdown {
   display: inline-block;
   margin-top: 12px;
-  color: #012738;
+  color: #227F71;
   font-size: 16px;
   font-weight: 900;
 }
@@ -550,14 +550,14 @@
   display: grid;
   gap: 0;
   margin: 18px 0;
-  border-top: 1px solid #DCE4E9;
+  border-top: 1px solid #D9E2E6;
 }
 
 .infoRow {
   display: grid;
   grid-template-columns: 100px minmax(0, 1fr);
   gap: 12px;
-  border-bottom: 1px solid #DCE4E9;
+  border-bottom: 1px solid #D9E2E6;
   padding: 12px 0;
 }
 
@@ -568,7 +568,7 @@
 
 .infoValue {
   min-width: 0;
-  color: #122A38;
+  color: #22323F;
   font-size: 15px;
   font-weight: 750;
   line-height: 1.55;
@@ -577,8 +577,8 @@
 
 .reschedule {
   margin: 18px 0;
-  border-top: 1px solid #DCE4E9;
-  border-bottom: 1px solid #DCE4E9;
+  border-top: 1px solid #D9E2E6;
+  border-bottom: 1px solid #D9E2E6;
   padding: 18px 0;
 }
 

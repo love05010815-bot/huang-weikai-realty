@@ -188,11 +188,11 @@ export default function ProjectMap({
                 height={p.h}
                 rx={7}
                 fill={c.fill}
-                stroke={on ? "#01354D" : c.stroke}
+                stroke={on ? "#2FA894" : c.stroke}
                 strokeWidth={on ? 3 : 1}
                 strokeDasharray={p.units == null ? "4 3" : undefined}
               />
-              {mine && <circle cx={p.x + p.w - 11} cy={p.y + 11} r={5} fill="#01354D" />}
+              {mine && <circle cx={p.x + p.w - 11} cy={p.y + 11} r={5} fill="#2FA894" />}
               <text
                 x={p.x + p.w / 2}
                 y={p.y + (p.units != null ? p.h / 2 - 6 : p.h / 2)}

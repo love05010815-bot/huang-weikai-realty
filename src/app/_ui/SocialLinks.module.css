@@ -77,7 +77,7 @@
 }
 
 .floatBtn:focus-visible {
-  outline: 2px solid var(--accent, #dab38a);
+  outline: 2px solid var(--accent, #f4a876);
   outline-offset: 1px;
 }
 
@@ -117,7 +117,7 @@
   font-size: 15.5px;
   font-weight: 800;
   letter-spacing: 0.02em;
-  color: var(--ink, #122a38);
+  color: var(--ink, #22323f);
   white-space: nowrap;
 }
 
@@ -157,7 +157,7 @@
 }
 
 .barBtn:focus-visible {
-  outline: 2px solid var(--accent, #dab38a);
+  outline: 2px solid var(--accent, #f4a876);
   outline-offset: 1px;
 }
 
@@ -258,7 +258,7 @@
 }
 
 /* tone="light"：/card 名片頁。數值照抄名片頁原本自己那套 SocialBtn（50×50、圓角 14、
-   米色底 #F5F1EA、邊框 #DCE4E9、間距 16），換元件不換長相，客戶看不出差別。 */
+   米色底 #F1F6F4、邊框 #D9E2E6、間距 16），換元件不換長相，客戶看不出差別。 */
 .tilesLight {
   margin-top: 10px;
 }
@@ -280,8 +280,8 @@
   width: 50px;
   height: 50px;
   border-radius: 14px;
-  background: #f5f1ea;
-  border: 1px solid #dce4e9;
+  background: #F1F6F4;
+  border: 1px solid #D9E2E6;
   box-shadow: none;
 }
 
@@ -292,7 +292,7 @@
 }
 
 .tilesLight .btn:focus-visible {
-  outline: 2px solid #01354d;
+  outline: 2px solid #2fa894;
   outline-offset: 2px;
 }
 

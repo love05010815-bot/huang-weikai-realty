@@ -1,8 +1,16 @@
 /* 個人官網首頁 — 太平洋房屋 CIS 亮色版（給客戶看） */
 
 /* ---------- 配色 ----------
-   凱心成家 logo 色系：深藍 #01354D ＋ 米色 #DAB38A。
-   2026-08-19 從太平洋房屋 CIS 的紅粉系整體換過來。
+   2026-09-07 系統擁有者拍板換成馬卡龍色系（他說「活潑一點、像馬卡龍但不要太花」），
+   三組預覽裡選了 A「薄荷 × 蜜桃」，再把其中一個淡色指定成 #6FA8DC：
+     主色（按鈕、照片底板、連結）  藍綠 #2FA894 / 深一階 #227F71
+     深字                          #22323F
+     淡色一（精選好案色帶）        天空藍 #6FA8DC ← 他點名的色號（--blue）
+     淡色二（稅費試算色帶、標籤底）蜜桃奶油 #FDE7D6（--soft ＝ --accent-soft）
+     hero 漸層上緣                 --blue 的淡版 #D7E7F6（--hero-top；整塊用 #6FA8DC 灰字會看不清）
+     預約諮詢／頁尾                深藍綠 #245F5A / #1B4B47
+   凱心成家 logo 本身（深藍＋米色）不動，只有介面配色換；名片頁 _cis.ts、地圖 Map.module.css、
+   預約表單 Booking.module.css 同日一起換成這組。之前是深藍 #01354D ＋ 米色 #DAB38A（2026-08-19 起）。
 
    ⚠️ 以下顏色刻意不在這組變數裡，也不要換成品牌色：
       錯誤 #c9473e／成功 #176a43／警告 #e7c47d（在 booking/Booking.module.css）
@@ -16,22 +24,29 @@
       2026-09-07 系統擁有者加了第二處：精選好案卡片的售價數字（listings.module.css 的 .price b）。
       除了這兩處，全站不要再用這個紅色。 */
 .page {
-  --primary: #01354D;
-  --primary-dark: #012738;
-  --ink: #122A38;
-  --accent: #DAB38A;
-  --accent-soft: #EFDCC4;
-  --muted: #5C6A73;
-  --line: #DCE4E9;
-  --soft: #F7F0E2;
+  --primary: #2FA894;
+  --primary-dark: #227F71;
+  --ink: #22323F;
+  --accent: #F4A876;
+  --accent-soft: #FDE7D6;
+  --muted: #5B6B73;
+  --line: #D9E2E6;
+  --soft: #FDE7D6;
+  /* 精選好案那塊色帶：系統擁有者點名的 #6FA8DC。中等飽和的藍，灰字（--muted）在上面只有 2.2:1，
+     所以那塊的說明文字改用 --ink（5.2:1），見 .bandBlue */
+  --blue: #6FA8DC;
+  /* hero 漸層上緣：--blue 的淡版。整塊用 #6FA8DC 的話自述那三段灰字會看不清 */
+  --hero-top: #D7E7F6;
+  --contact: #245F5A;
+  --footer: #1B4B47;
   /* 米色系的卡片邊框。原本藍灰框於白底只有 1.29 對比，幾乎看不見；
      這個是 1.66，明顯但不搶戲。 */
-  --line-warm: #DCC6A5;
+  --line-warm: #D3E2E9;
   /* 太平洋房屋企業紅。只給首頁主標的「安心不踩雷」用，
      刻意跟凱心成家的品牌主色分開，避免日後有人拿它當一般強調色。 */
   --pacific-red: #e00000;
   --radius: 14px;
-  --shadow: 0 12px 30px rgba(18, 42, 56, 0.1);
+  --shadow: 0 12px 30px rgba(34, 50, 63, 0.1);
   --line-green: #06c755;
 
   font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif;
@@ -417,7 +432,7 @@
   padding: 64px 20px 90px;
   background:
     radial-gradient(circle at 85% 10%, var(--accent-soft) 0%, rgba(239, 220, 196, 0) 55%),
-    linear-gradient(180deg, var(--soft) 0%, #fff 100%);
+    linear-gradient(180deg, var(--hero-top) 0%, #fff 100%);
 }
 
 .heroInner {
@@ -492,7 +507,7 @@
 }
 
 /* 「買房、賣房、資產配置」—— 2026-09-07 系統擁有者指定 #4a86e8＋底線。
-   ⚠️ 這個藍不在品牌色裡（品牌是深藍 #01354D），是他點名的色號，不要「順手」改成品牌色。
+   ⚠️ 這個藍不在配色變數裡（主色是藍綠 #2FA894），是他點名的色號，不要「順手」改成 --primary。
    做成連到 #services 的真連結：藍字底線就是連結的長相，只做樣式客戶會點了沒反應。 */
 .heroStoryLink {
   color: #4a86e8;
@@ -957,7 +972,7 @@
 
 /* ---------- 預約 / 聯絡 ---------- */
 .contact {
-  background: var(--ink);
+  background: var(--contact);
   color: #fff;
 }
 
@@ -1194,8 +1209,8 @@
 
 /* ---------- Footer ---------- */
 .footer {
-  /* 2026-09-07 從暖棕 #1a1310 改成深藍黑：上面「預約諮詢」是深藍，兩塊深色撞色調 */
-  background: var(--primary-dark);
+  /* 跟上面「預約諮詢」同一個色調、再深一階（--footer） */
+  background: var(--footer);
   color: rgba(255, 255, 255, 0.55);
   padding: 28px 20px;
   text-align: center;
@@ -1272,9 +1287,9 @@
      hero        米色漸層（原本就有，不動）
      （關於我   2026-09-07 拍板整塊拿掉，介紹併進 hero（先是六句 icon 清單、同日再改成他親自寫的三段自述）；
                  它用過白 → 淺藍灰 → 淡粉 #EBD6D6 三種底色，都不用了。）
-     精選好案    米色      .bandSoft   （卡片是白的，放米色底上才跳得出來；hero 底部漸到白，米色接得出弧）
+     精選好案    天空藍    .bandBlue   #6FA8DC（他點名）；卡片是白的，放藍底上很跳
      服務項目    白        .bandWhite
-     稅費試算    米色      .bandSoft
+     稅費試算    蜜桃奶油  .bandSoft   --soft
      預約諮詢    深藍      .contact（原本就是深色，只補弧）
      頁尾        深藍黑    原本是暖棕 #1a1310，跟上面深藍區塊撞色調，改成 --primary-dark
 
@@ -1316,9 +1331,25 @@
   color: var(--soft);
 }
 
-/* 預約諮詢那塊本來就是深藍（.contact），弧跟著深藍 */
+/* 預約諮詢那塊是深藍綠（.contact），弧跟著 */
 .contact .wave {
+  color: var(--contact);
+}
+
+/* 精選好案的色帶：系統擁有者點名的 #6FA8DC。中等飽和，灰字看不清，說明文字改深字；
+   標籤（eyebrow）在有色色帶上一律白底，不然蜜桃色的標籤壓在蜜桃色帶上會糊掉。 */
+.bandBlue {
+  background: var(--blue);
+}
+.bandBlue .wave {
+  color: var(--blue);
+}
+.bandBlue .sectionDesc {
   color: var(--ink);
+}
+.bandBlue .eyebrow,
+.bandSoft .eyebrow {
+  background: #fff;
 }
 
 /* 米色底上的米色提醒框會糊成一片，換白底 */
