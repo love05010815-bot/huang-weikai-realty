@@ -7,6 +7,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["next", "dev"],
       "autoPort": true
+    },
+    {
+      "name": "booking-system-verify",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "start", "-p", "3100"],
+      "port": 3100
     }
   ]
 }
