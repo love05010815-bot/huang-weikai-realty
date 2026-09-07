@@ -284,6 +284,8 @@ const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt
  */
 export function descToHtml(desc) {
     const S = DESC_STYLE;
+    if (!S.fontSize && !S.bold && !S.rules.length)
+        return ""; // 同事版：不套任何格式，外掛就貼純文字
     let fromColor;
     return desc
         .replace(/\r/g, "")
@@ -313,7 +315,8 @@ export function descToHtml(desc) {
             inner = `<strong>${inner}</strong>`;
         if (color)
             inner = `<span style="color:${color}">${inner}</span>`;
-        inner = `<span style="font-size:${S.fontSize}">${inner}</span>`;
+        if (S.fontSize)
+            inner = `<span style="font-size:${S.fontSize}">${inner}</span>`;
         if (bg)
             inner = `<span style="background-color:${bg}">${inner}</span>`;
         return `<p>${inner}</p>`;
@@ -398,7 +401,7 @@ export function buildPayload(d, o, rows, title, desc) {
         life: (e.get("勾選這些") || o.life.join("、")).split(/[、,，]/).map((s) => s.trim()).filter((s) => /^近/.test(s)),
         title,
         desc,
-        descHtml: descToHtml(desc),
+        descHtml: descToHtml(desc) || undefined,
         contact: { name: strOr(e.get("聯絡人"), ""), contract: strOr(e.get("委託書"), POST591_DEFAULTS.contract), serviceFee: true },
         photos: d.photos,
     };
