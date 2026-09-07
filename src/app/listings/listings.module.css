@@ -268,7 +268,9 @@
   font-size: 21px;
   font-weight: 900;
   line-height: 1.2;
-  color: var(--primary);
+  /* 2026-09-07 系統擁有者指定數字用紅色。沿用 home.module.css 刻意保留的太平洋紅，
+     不另外發明第二種紅；「售價」兩個字維持深色（.price 的 --ink）。 */
+  color: var(--pacific-red);
 }
 
 .points {
