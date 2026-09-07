@@ -12,7 +12,6 @@ import { formatWan } from "@/lib/houseol-price";
 import styles from "./home.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
-import SectionWave from "@/app/_ui/SectionWave";
 // 卡片樣式跟 /listings 共用同一份，改一處兩邊都會變
 import lst from "./listings/listings.module.css";
 import FeaturedTitle from "./listings/FeaturedTitle";
@@ -298,10 +297,7 @@ export default async function HomePage() {
             剩下的靠按鈕帶過去 —— 跟精選好案同一個模式。
             戰績與服務區域不放這裡也沒關係，hero 的兩個徽章已經寫著
             「連續三年千萬經紀人」與「服務區域：沙鹿・梧棲・清水・龍井」。 */}
-        {/* 主題色帶：關於我＝白、精選好案＝米、服務＝淺藍灰、試算＝米、預約＝深藍，
-            相鄰兩塊之間一道弧（SectionWave）。配色與注意事項見 home.module.css 檔尾。 */}
-        <section id="about" className={`${styles.section} ${styles.band} ${styles.bandWhite}`}>
-          <SectionWave />
+        <section id="about" className={styles.section}>
           <div className={`${styles.container} ${styles.center}`}>
             <span className={styles.eyebrow}>ABOUT ME</span>
             <h2 className={styles.sectionTitle}>關於我</h2>
@@ -327,8 +323,7 @@ export default async function HomePage() {
         </section>
 
         {/* ---------------- 精選好案 ---------------- */}
-        <section id="listings" className={`${styles.section} ${styles.band} ${styles.bandSoft}`}>
-          <SectionWave flip />
+        <section id="listings" className={styles.section}>
           <div className={`${styles.container} ${styles.center}`}>
             <span className={styles.eyebrow}>LISTINGS</span>
             {/* 標題與 /listings 共用同一個元件，兩邊講的話保證一致。
@@ -381,8 +376,7 @@ export default async function HomePage() {
         </section>
 
         {/* ---------------- 服務項目 ---------------- */}
-        <section id="services" className={`${styles.section} ${styles.band} ${styles.bandCool}`}>
-          <SectionWave />
+        <section id="services" className={styles.section}>
           <div className={`${styles.container} ${styles.center}`}>
             <span className={styles.eyebrow}>SERVICES</span>
             <h2 className={styles.sectionTitle}>我提供的服務項目</h2>
@@ -403,8 +397,7 @@ export default async function HomePage() {
         </section>
 
         {/* ---------------- 稅費試算 ---------------- */}
-        <section id="tools" className={`${styles.section} ${styles.band} ${styles.bandSoft}`}>
-          <SectionWave flip />
+        <section id="tools" className={styles.section}>
           <div className={`${styles.container} ${styles.center}`}>
             <span className={styles.eyebrow}>TOOLS</span>
             <h2 className={styles.sectionTitle}>稅費試算</h2>
@@ -434,8 +427,7 @@ export default async function HomePage() {
 
 
         {/* ---------------- 預約系統 ---------------- */}
-        <section id="booking" className={`${styles.section} ${styles.contact} ${styles.band}`}>
-          <SectionWave />
+        <section id="booking" className={`${styles.section} ${styles.contact}`}>
           <div className={`${styles.container} ${styles.center}`}>
             <span className={styles.eyebrow}>BOOKING</span>
             <h2 className={styles.sectionTitle}>預約諮詢</h2>
