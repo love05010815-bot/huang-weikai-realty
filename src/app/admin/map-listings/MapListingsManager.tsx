@@ -86,6 +86,7 @@ export default function MapListingsManager({
   const [uploading, setUploading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [invQuery, setInvQuery] = useState("");
+  const [projQuery, setProjQuery] = useState("");
   const [pending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -98,6 +99,27 @@ export default function MapListingsManager({
       : inventory;
   }, [inventory, invQuery]);
   const invMatches = useMemo(() => invPool.slice(0, 20), [invPool]);
+
+  /**
+   * 建案挑選（2026-09-07 改）。原本是一顆 `<select>`，但建案有 500 多個，
+   * 下拉找到天荒地老 —— 改成跟上面愛屋挑案同一套：打關鍵字、按一下選。
+   * 建商名也能搜（打「遠雄」列出所有遠雄的案子）。
+   */
+  const selectedProject = useMemo(() => {
+    const id = draft?.projectId ?? "";
+    return id ? projects.find((p) => p.id === id) ?? null : null;
+  }, [projects, draft]);
+  const projPool = useMemo(() => {
+    const q = projQuery.trim();
+    return q ? projects.filter((p) => `${p.name}${p.builder}`.includes(q)) : projects;
+  }, [projects, projQuery]);
+  const projMatches = useMemo(() => projPool.slice(0, 20), [projPool]);
+
+  /** 選定一個建案。選完把關鍵字清掉，下次要換時是乾淨的清單 */
+  const pickProject = (id: string) => {
+    patch({ projectId: id });
+    setProjQuery("");
+  };
 
   const projectName = useMemo(() => {
     const m = new Map<string, string>();
@@ -247,6 +269,7 @@ export default function MapListingsManager({
                 setDraft({ ...EMPTY });
                 setDirty(false);
                 setMsg(null);
+                setProjQuery("");
               }}
             >
               ＋ 新增物件
@@ -332,6 +355,7 @@ export default function MapListingsManager({
                             setDraft(toDraft(r));
                             setDirty(false);
                             setMsg(null);
+                            setProjQuery("");
                           }}
                         >
                           編輯
@@ -409,19 +433,67 @@ export default function MapListingsManager({
                 )}
               </div>
 
-              <label>
-                <span>
+              {/* 選好之後只留一行，候選清單收起來 —— 不然表單會被清單撐得很長，
+                  下面的欄位跑到畫面外，你會以為表單只有這幾格。 */}
+              <div className={styles.projBlock}>
+                <span className={styles.fieldLabel}>
                   屬於哪個建案 <em>必填</em>
                 </span>
-                <select value={draft.projectId} onChange={(e) => patch({ projectId: e.target.value })}>
-                  <option value="">— 請選擇 —</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {`${p.name}（${p.builder}）${p.count > 0 ? ` ・已有 ${p.count} 間` : ""}`}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                {selectedProject ? (
+                  <div className={styles.projPicked}>
+                    <span>
+                      <b>{selectedProject.name}</b>
+                      {`（${selectedProject.builder}）`}
+                    </span>
+                    <button type="button" onClick={() => pickProject("")}>
+                      換一個
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {draft.projectId && (
+                      <small className={styles.projWarn}>
+                        ⚠️ 這筆存的建案代號 <code>{draft.projectId}</code> 不在建案清單裡（改過名字或刪掉了？），
+                        重新挑一個再存。
+                      </small>
+                    )}
+                    <input
+                      type="text"
+                      placeholder={`打關鍵字找建案（共 ${projects.length} 個。案名、建商都能搜）`}
+                      value={projQuery}
+                      onChange={(e) => setProjQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        // 打完字直接按 Enter 選第一筆，手不用離開鍵盤
+                        if (e.key !== "Enter") return;
+                        e.preventDefault();
+                        if (projMatches.length > 0) pickProject(projMatches[0].id);
+                      }}
+                    />
+                    {projMatches.length === 0 ? (
+                      <small>沒有符合的建案。少打幾個字試試（例如只打「遠雄」）。</small>
+                    ) : (
+                      <ul className={styles.invList}>
+                        {projMatches.map((p) => (
+                          <li key={p.id}>
+                            <div>
+                              <b>{p.name}</b>
+                              <small>{`${p.builder}${p.count > 0 ? ` ・已有 ${p.count} 間` : ""}`}</small>
+                            </div>
+                            <button type="button" onClick={() => pickProject(p.id)}>
+                              選這個
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {projPool.length > projMatches.length && (
+                      <small>
+                        符合的有 {projPool.length} 個，只列前 {projMatches.length} 個，多打幾個字縮小範圍。
+                      </small>
+                    )}
+                  </>
+                )}
+              </div>
 
               <label>
                 <span>

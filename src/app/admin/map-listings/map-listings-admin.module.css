@@ -320,7 +320,8 @@
   font-size: 13px;
 }
 
-.form label em {
+.form label em,
+.fieldLabel em {
   font-style: normal;
   font-size: 11px;
   color: #fb7185;
@@ -572,4 +573,50 @@
   font-size: 11px;
   line-height: 1.5;
   color: #f5c0c4;
+}
+
+/* ── 建案挑選（2026-09-07）──
+   500 多個建案沒辦法用下拉選單找，改成打關鍵字挑。
+   候選清單沿用 .invList，看起來跟上面愛屋挑案是同一套。 */
+.projBlock {
+  display: grid;
+  gap: 6px;
+}
+
+.projPicked {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 14px;
+}
+
+.projPicked b {
+  font-weight: 700;
+}
+
+.projPicked button {
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #d0c6c4;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.projPicked button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8f4f3;
+}
+
+/* 存著的建案代號在清單裡找不到 —— 要紅一點，不然會直接存下去 */
+.projWarn {
+  color: #fb7185;
 }
