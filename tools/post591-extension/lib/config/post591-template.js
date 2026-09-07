@@ -3,3 +3,5 @@
 export const DESC_HEAD = "☆主推特色介紹:";
 export const DESC_TAIL = "";
 export const POST591_DEFAULTS = {"downPaymentRatio":0.2,"contract":"有簽訂","defaultCity":"台中市","titleMin":6,"titleMax":30,"descMax":2500};
+// 同事版只統一 18px 粗體，不上任何顏色（顏色規則是黃瑋凱自己版型的）
+export const DESC_STYLE = { fontSize: "18px", bold: true, rules: [] };

@@ -224,11 +224,28 @@
     hit.click();
     return !!(await waitFor(() => current() === picked, 3000));
   }
-  function setProseMirror(text) {
+  /**
+   * 描述：有 HTML（後台算好的 18px 粗體＋顏色＋底色）就用「貼上」塞進去，ProseMirror 會照它的規則留下
+   * <span style="font-size/color/background-color"> 和 <strong>；沒有 HTML 就貼純文字。
+   * 2026-09-07 實測：selectAll 之後要等一拍再貼，不然 ProseMirror 的選取還沒同步、內容會接在後面而不是取代。
+   */
+  async function setProseMirror(text, html) {
     const pm = document.querySelector("div.ProseMirror[contenteditable=true]");
     if (!pm) return false;
     pm.focus();
     document.execCommand("selectAll", false, null);
+    await sleep(150);
+    if (html) {
+      const dt = new DataTransfer();
+      dt.setData("text/html", html);
+      dt.setData("text/plain", text);
+      pm.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+      await sleep(300);
+      if (txt(pm).length >= 20) return true;
+      pm.focus();
+      document.execCommand("selectAll", false, null);
+      await sleep(150);
+    }
     const ok = document.execCommand("insertText", false, text);
     if (!ok || txt(pm).length < 20) {
       // 退路：用貼上事件，ProseMirror 對 paste 的處理最穩
@@ -430,8 +447,8 @@
       setTxtAfter("廣告標題", p.title || "");
       if (!p.title) missing.push("廣告標題");
       if (p.desc) {
-        setProseMirror(p.desc);
-        log("文案已貼入（版型）", "ok");
+        await setProseMirror(p.desc, p.descHtml);
+        log(p.descHtml ? "文案已貼入（版型＋字級顏色）" : "文案已貼入（版型）", "ok");
       }
     } catch (e) {
       log(`文案出錯：${e.message}`, "bad");

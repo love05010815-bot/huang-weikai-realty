@@ -10,7 +10,7 @@
  *
  * ⚠️ 這支不碰 DOM、不碰 node，client 與測試腳本共用。
  */
-import { DESC_HEAD, DESC_TAIL, POST591_DEFAULTS } from "../config/post591-template.js";
+import { DESC_HEAD, DESC_STYLE, DESC_TAIL, POST591_DEFAULTS } from "../config/post591-template.js";
 import { findCopyRisks } from "./listing-copy-risk.js";
 /* ───────── 地址 ───────── */
 /**
@@ -276,6 +276,50 @@ export function buildDescription(features) {
     const lines = features.map((l) => l.replace(/^✨\s*/, "")).filter(Boolean).map((l) => `✨${l}`);
     return `${DESC_HEAD}\n\n${lines.join("\n")}\n\n${DESC_TAIL}`;
 }
+const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+/**
+ * 把後台那格純文字描述變成 591 編輯器吃得下的 HTML（一行一個 <p>；樣式規則在 DESC_STYLE）。
+ * 純文字仍是「真相」—— 後台顯示、算字數、備用交接都用純文字；HTML 只在上架那一刻算出來。
+ * 空行變 <p><br></p>（ProseMirror 的空段落寫法），才會保留他版型裡的空行。
+ */
+export function descToHtml(desc) {
+    const S = DESC_STYLE;
+    let fromColor;
+    return desc
+        .replace(/\r/g, "")
+        .split("\n")
+        .map((line) => {
+        const t = line.trim();
+        if (!t)
+            return "<p><br></p>";
+        let color = fromColor;
+        let bg;
+        for (const r of S.rules) {
+            if (r.from && r.from.test(t)) {
+                fromColor = r.color;
+                color = r.color;
+                break;
+            }
+            if (r.match && r.match.test(t)) {
+                if (r.color)
+                    color = r.color;
+                if (r.bg)
+                    bg = r.bg;
+                break;
+            }
+        }
+        let inner = escapeHtml(t);
+        if (S.bold)
+            inner = `<strong>${inner}</strong>`;
+        if (color)
+            inner = `<span style="color:${color}">${inner}</span>`;
+        inner = `<span style="font-size:${S.fontSize}">${inner}</span>`;
+        if (bg)
+            inner = `<span style="background-color:${bg}">${inner}</span>`;
+        return `<p>${inner}</p>`;
+    })
+        .join("");
+}
 /**
  * 風險字：站上共用的 findCopyRisks（保證／最／未通車捷運／增值）之外，
  * 補兩條 591 刊登特別會踩的。標出來不擋 —— 說得出根據就能寫，決定在他。
@@ -354,6 +398,7 @@ export function buildPayload(d, o, rows, title, desc) {
         life: (e.get("勾選這些") || o.life.join("、")).split(/[、,，]/).map((s) => s.trim()).filter((s) => /^近/.test(s)),
         title,
         desc,
+        descHtml: descToHtml(desc),
         contact: { name: strOr(e.get("聯絡人"), ""), contract: strOr(e.get("委託書"), POST591_DEFAULTS.contract), serviceFee: true },
         photos: d.photos,
     };

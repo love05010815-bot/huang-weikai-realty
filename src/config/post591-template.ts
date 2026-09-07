@@ -70,6 +70,26 @@ export const DESC_TAIL = `※歡迎來電預約看屋※0909-787-865 【黃瑋�
 
 希望我能有這個機會能為你服務我將盡力為你尋找最適合的家。`;
 
+/**
+ * 描述貼進 591 時的樣式（2026-09-07 他指定）：全文 18px 粗體，特定段落上色／上底色。
+ * 用「這一行開頭長什麼樣」來認段落，所以他在後台改 ✨ 行、甚至改幾個字都不影響；
+ * `from` 表示從那一行起到最後都套同一個顏色（貼心提醒整段紅）。
+ * 591 的編輯器（ProseMirror）實測吃 <span style="font-size / color / background-color"> 與 <strong>，其他都丟。
+ */
+export const DESC_STYLE = {
+  fontSize: "18px",
+  bold: true,
+  rules: [
+    { match: /^☆主推特色介紹/, bg: "#ffff00" },
+    { match: /^※歡迎來電預約看屋|^官方LINE/, bg: "#ffff00" },
+    { match: /YouTube/, color: "#9035cc" },
+    { match: /^★★★歡迎屋主/, color: "#AF551B" },
+    { match: /^(⚜|✅)/, color: "#246AED" },
+    { match: /^｜/, color: "#951919" },
+    { from: /^貼心提醒/, color: "#ff0207" },
+  ] as ReadonlyArray<{ match?: RegExp; from?: RegExp; color?: string; bg?: string }>,
+};
+
 /** 他拍板的預設（2026-09-01／09-04） */
 export const POST591_DEFAULTS = {
   /** 自備款 = 售價 × 這個比例，四捨五入到整數萬 */

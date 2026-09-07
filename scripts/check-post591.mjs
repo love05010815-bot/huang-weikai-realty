@@ -7,7 +7,7 @@
 import { register } from "node:module";
 register("./alias-hooks.mjs", import.meta.url);
 const { combinePhotos, detectSource, extractPhotoUrls, extractPhotosFromHtml, isHouseolPage, listingNoFromUrl, parseListing, photoLinkReport, splitFeatureLines } = await import("../src/lib/post591-parser.ts");
-const { buildDescription, buildPayload, buildRows, derive, encodePayload, photoCommand, post591Risks, splitAddress, titleCheck } =
+const { buildDescription, buildPayload, buildRows, derive, descToHtml, encodePayload, photoCommand, post591Risks, splitAddress, titleCheck } =
   await import("../src/lib/post591-map.ts");
 
 let pass = true;
@@ -337,6 +337,28 @@ ZZ0000003
   eq("型錄頁 2 張＋更多照片 6 張", all.length, 8);
   eq("順序：型錄頁的先", all[0].endsWith("H2AA0000001a.jpg"), true);
   eq("沒掃到的型錄頁先算 0 張、pages 會列出來", photoLinkReport(a + b).pages.length + "/" + photoLinkReport(a + b).perLink.join("/"), "1/0/6");
+}
+/* ───── H. 描述樣式：18px 粗體、指定段落顏色／底色、貼心提醒整段紅（2026-09-07 他指定） ───── */
+{
+  console.log("H. 描述樣式");
+  const html = descToHtml(buildDescription(["測試一行", "測試二行"]));
+  const paras = html.split("</p>").filter(Boolean);
+  ok(paras.every((p) => p.startsWith("<p>")), "每行一個 <p>", paras.length, ">0");
+  ok(paras.filter((p) => p !== "<p><br>").every((p) => p.includes("font-size:18px") && p.includes("<strong>")), "每行 18px 粗體", "ok", "ok");
+  const find = (t) => paras.find((p) => p.includes(t)) || "";
+  ok(find("☆主推特色介紹").includes("background-color:#ffff00"), "標頭黃底", find("☆主推特色介紹").slice(0, 60), "bg");
+  ok(!find("✨測試一行").includes("background-color") && !find("✨測試一行").includes("color:#"), "✨ 行不上色", find("✨測試一行").slice(0, 60), "plain");
+  ok(find("※歡迎來電預約看屋").includes("background-color:#ffff00") && find("官方LINE").includes("background-color:#ffff00"), "聯絡兩行黃底", "ok", "ok");
+  ok(find("YouTube").includes("color:#9035cc"), "影音行紫", find("YouTube").slice(0, 60), "#9035cc");
+  ok(find("★★★歡迎屋主").includes("color:#AF551B"), "委託行褐", "ok", "ok");
+  ok(find("你的期待由我來達成").includes("color:#246AED") && find("✅房屋打造專屬空拍影音").includes("color:#246AED"), "⚜️✅ 區塊藍", "ok", "ok");
+  ok(find("海線破億團隊").includes("color:#951919") && find("廣告行銷最大").includes("color:#951919"), "｜｜行深紅", "ok", "ok");
+  ok(find("貼心提醒").includes("color:#ff0207") && find("最適合的家").includes("color:#ff0207"), "貼心提醒整段紅到最後", "ok", "ok");
+  ok(!find("太平洋房屋").includes("color:#") && !find("經紀人:").includes("color:#"), "店名／經紀人不上色", "ok", "ok");
+  eq("空行變空段落", paras.includes("<p><br>"), true);
+  eq("HTML 跳脫", descToHtml("a<b>&c").includes("a&lt;b&gt;&amp;c"), true);
+  const p2 = buildPayload(parseListing(型錄大樓), derive(parseListing(型錄大樓), 2026), [], "標題六個字啊", buildDescription(["x"]));
+  eq("資料包帶 descHtml", typeof p2.descHtml === "string" && p2.descHtml.includes("font-size:18px"), true);
 }
 console.log("");
 console.log(pass ? "✅ 591 刊登助手：辨識器與對應規則全部一致" : "❌ 有差異，不要往下做");

@@ -24,6 +24,8 @@ const out = [
   `export const DESC_HEAD = ${JSON.stringify(tpl.DESC_HEAD)};`,
   `export const DESC_TAIL = "";`,
   `export const POST591_DEFAULTS = ${JSON.stringify(tpl.POST591_DEFAULTS)};`,
+  "// 同事版只統一 18px 粗體，不上任何顏色（顏色規則是黃瑋凱自己版型的）",
+  `export const DESC_STYLE = { fontSize: ${JSON.stringify(tpl.DESC_STYLE.fontSize)}, bold: ${tpl.DESC_STYLE.bold}, rules: [] };`,
   "",
 ].join("\n");
 fs.writeFileSync(tplPath, out, "utf8");
