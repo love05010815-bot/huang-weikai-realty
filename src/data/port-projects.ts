@@ -79,6 +79,8 @@ export const STATUS_LABEL: Record<ProjectStatus, string> = {
  * 2026-09-05 再補梧棲市區 166 案、清水市區 1 案。
  * 2026-09-07 那 7 案從重劃區改掛梧棲市區，分五批補梧棲市區 12 案、
  *            移除仁愛羅馬金融名廈與仁愛羅馬 2 案、青樸院2 改掛清水市區（全站 519）。
+ * 🏁 **2026-09-07 座標補完：519 案全部有位置，「未標位置」0 案。**
+ *    當天他分六批點回 177 根圖釘（早上還有 167 案沒位置）。
  * **八顆篩選臉全部有建案了，沒有 0 案的區。**
  * ⚠️ 之後再加新的 `ProjectArea` 值，記得同時加進 `LeafletMap.tsx` 的 `PIN_GROUPS`（那是 array
  *    不是 `Record<ProjectArea,…>`，TypeScript 不會替你抓漏，漏了那一區的圖釘會在初始畫面疊成一坨）；
@@ -2915,6 +2917,36 @@ export const COORDS: Record<string, Coord> = {
   "zhumao-wojia": { lat: 24.25214, lng: 120.5515, precision: "exact" }, // 住茂我家
   "junye-huangju": { lat: 24.24809, lng: 120.54414, precision: "exact" }, // 君業皇居
   "hongguan-dibao": { lat: 24.25729, lng: 120.55334, precision: "exact" }, // 宏觀帝堡
+  /* ── 🏁 最後 20 案（2026-09-07 深夜，系統擁有者用 /map?fix=1 親手點的）──
+     **這批補完，全站每一案都有座標了，「未標位置」歸零。**
+     核對過：id 全部存在、案名與註解相符、precision 全 exact、本批不重複、沒有覆蓋既有座標。
+     🔵 **這次驗證改成「每一筆比對它自己那一區的色塊」**（`scratchpad/v4.mjs`），不是寫死單一區 ——
+        因為這批橫跨兩區：梧棲市區 18、清水市區 2。**20/20 都落在自己那一區裡。**
+     🟢 **青樸院2 這根圖釘同時驗證了他前一批的改區**：他說「青樸院2 改清水市區」時這案還沒座標、
+        改區沒辦法驗；這次他點的 24.26111/120.54843 **確實落在清水市區色塊內** —— 改對了。
+     ⚠️ 三對 30 公尺內的鄰居，同系列那對正常，另外兩對是不同系列、已請他瞄一眼：
+        荷園19 ↔ 荷園20 16m（同系列相鄰）、**淯璟馨閣 ↔ 禾盛好漾 11m**、
+        **雲磊瑞安一號別墅 ↔ 寓見海 22m**。 */
+  "pinquan-heyuan-9": { lat: 24.24179, lng: 120.54264, precision: "exact" }, // 品荃荷園9
+  "pinde-shengmuhui": { lat: 24.24674, lng: 120.53615, precision: "exact" }, // 品德聖母會
+  "hafo-xueyuan": { lat: 24.24617, lng: 120.54111, precision: "exact" }, // 哈佛學苑
+  "yujian-gongyuan": { lat: 24.25169, lng: 120.54755, precision: "exact" }, // 御見公園
+  "yujing-xinge": { lat: 24.24184, lng: 120.52959, precision: "exact" }, // 淯璟馨閣
+  "heyuan-19": { lat: 24.24168, lng: 120.54221, precision: "exact" }, // 荷園19
+  "heyuan-20": { lat: 24.24156, lng: 120.54213, precision: "exact" }, // 荷園20
+  "luze-ju": { lat: 24.24484, lng: 120.55189, precision: "exact" }, // 鹿澤聚
+  "shengbang-lvyi-6": { lat: 24.26022, lng: 120.54717, precision: "exact" }, // 勝邦綠邑6
+  "fuda-tiandi-5": { lat: 24.25065, lng: 120.5546, precision: "exact" }, // 富大天地5
+  "yunlei-ruian-1": { lat: 24.2501, lng: 120.5547, precision: "exact" }, // 雲磊瑞安一號別墅
+  "ruihan-jingcai": { lat: 24.25821, lng: 120.55633, precision: "exact" }, // 瑞漢精彩
+  "shengxi-yishu": { lat: 24.26325, lng: 120.53447, precision: "exact" }, // 聖璽藝術大樓
+  "dingshang-fuyi-2": { lat: 24.25589, lng: 120.5404, precision: "exact" }, // 鼎上富邑2
+  "dingji-rongyuan": { lat: 24.24789, lng: 120.53952, precision: "exact" }, // 鼎濟融圓
+  "xuemeishu": { lat: 24.25824, lng: 120.54986, precision: "exact" }, // 學美墅
+  "lantu-uni": { lat: 24.25839, lng: 120.5494, precision: "exact" }, // 藍圖UNI
+  "xinfuyu-fengsui-10": { lat: 24.25466, lng: 120.54412, precision: "exact" }, // 鑫富裕豐穗10
+  "qingpu-yuan-2": { lat: 24.26111, lng: 120.54843, precision: "exact" }, // 青樸院2
+  "deyi-chengyi-2": { lat: 24.26323, lng: 120.54741, precision: "exact" }, // 德邑澄邑2
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
