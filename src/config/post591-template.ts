@@ -83,6 +83,7 @@ export const DESC_STYLE = {
     { match: /^☆主推特色介紹/, bg: "#ffff00" },
     { match: /^※歡迎來電預約看屋|^官方LINE/, bg: "#ffff00" },
     { match: /YouTube/, color: "#9035cc" },
+    { match: /^小凱專營/, color: "#AF551B" },
     { match: /^★★★歡迎屋主/, color: "#AF551B" },
     { match: /^(⚜|✅)/, color: "#246AED" },
     { match: /^｜/, color: "#951919" },

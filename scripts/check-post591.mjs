@@ -351,6 +351,7 @@ ZZ0000003
   ok(find("※歡迎來電預約看屋").includes("background-color:#ffff00") && find("官方LINE").includes("background-color:#ffff00"), "聯絡兩行黃底", "ok", "ok");
   ok(find("YouTube").includes("color:#9035cc"), "影音行紫", find("YouTube").slice(0, 60), "#9035cc");
   ok(find("★★★歡迎屋主").includes("color:#AF551B"), "委託行褐", "ok", "ok");
+  ok(find("小凱專營").includes("color:#AF551B"), "專營行褐（2026-09-07 補）", find("小凱專營").slice(0, 60), "#AF551B");
   ok(find("你的期待由我來達成").includes("color:#246AED") && find("✅房屋打造專屬空拍影音").includes("color:#246AED"), "⚜️✅ 區塊藍", "ok", "ok");
   ok(find("海線破億團隊").includes("color:#951919") && find("廣告行銷最大").includes("color:#951919"), "｜｜行深紅", "ok", "ok");
   ok(find("貼心提醒").includes("color:#ff0207") && find("最適合的家").includes("color:#ff0207"), "貼心提醒整段紅到最後", "ok", "ok");
