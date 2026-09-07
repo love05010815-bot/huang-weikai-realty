@@ -77,7 +77,7 @@ export const STATUS_LABEL: Record<ProjectStatus, string> = {
  * 2026-09-01 再補北勢靜宜 80 案（同樣是他整理的）。
  * 2026-09-02 再補新光田特區 107 案（他給的「歷年建案母名單」，只有案名）。
  * 2026-09-05 再補梧棲市區 166 案、清水市區 1 案。
- * 2026-09-07 那 7 案從重劃區改掛梧棲市區，再分三批補梧棲市區 5 案（全站 514）。
+ * 2026-09-07 那 7 案從重劃區改掛梧棲市區，再分四批補梧棲市區 8 案（全站 517）。
  * **八顆篩選臉全部有建案了，沒有 0 案的區。**
  * ⚠️ 之後再加新的 `ProjectArea` 值，記得同時加進 `LeafletMap.tsx` 的 `PIN_GROUPS`（那是 array
  *    不是 `Record<ProjectArea,…>`，TypeScript 不會替你抓漏，漏了那一區的圖釘會在初始畫面疊成一坨）；
@@ -2229,6 +2229,13 @@ export const PROJECTS: Project[] = [
         不是漏打；他要是真的有 4，補進來就好。 */
   { id: "shiji-xiongwei-5", name: "世紀雄偉5", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "pinde-shengmuhui", name: "品德聖母會", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  /* 2026-09-07 第四次補：光崴臻品、喬立I DO、天空墅。建商／屋齡他都沒給。
+     🔴 **喬立I DO 的建商不要填。** 全站已經有「喬立ME TOWN＝喬立建設」（新光田），
+        前綴一模一樣 —— 但「案名前綴≠建商」這幾天已經被證明十幾次（德光四案就三家不同公司）。
+        列為候選、等他點頭，不要因為看起來很像就填進去。 */
+  { id: "guangwei-zhenpin", name: "光崴臻品", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "qiaoli-i-do", name: "喬立I DO", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "tiankong-shu", name: "天空墅", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
 
   { id: "deyi-chengyi-2", name: "德邑澄邑2", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
 ];
@@ -2794,6 +2801,59 @@ export const COORDS: Record<string, Coord> = {
   "lifeng-dahe": { lat: 24.25681, lng: 120.55336, precision: "exact" }, // 麗豐大和
   "xinjun-chuyun": { lat: 24.25673, lng: 120.55373, precision: "exact" }, // 新竣初耘
   "haozhai-zhuoyue": { lat: 24.25691, lng: 120.55432, precision: "exact" }, // 好宅製所琢悅
+  /* ── 梧棲市區第三批 43 案（2026-09-07 傍晚，系統擁有者用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、區域都是梧棲市區、precision 全 exact、
+     本批不重複、沒有覆蓋既有座標，**43 筆全部落在梧棲市區色塊內、也沒有落進別區**。
+     🔵 兩對 30 公尺內的鄰居：村懋璞悅2 ↔ 璞悅敦和 23m（同系列相鄰）、
+        **生活養真 ↔ 人文澄舍3 只差 14m**（不同系列，看起來是同一街廓的兩棟）—— 已請他瞄一眼。
+     🔵 **兩組跨區同系列這批有答案了**（他自己點的位置說話）：
+        微笑大未來（梧棲市區）↔ 微笑大未來3（鹿寮萬家福）相距 **2,569 m**、
+        村懋璞悅2（梧棲市區）↔ 村懋璞悅（鹿寮萬家福）相距 **704 m** ——
+        **確實是不同地點的不同案，分開存是對的、不要合併。**
+        剩青樸院2 ↔ 青樸院還沒答案（青樸院2 還沒座標）。 */
+  "yunding-jinzuan-2": { lat: 24.25875, lng: 120.52825, precision: "exact" }, // 雲頂金鑽2
+  "yushu-tiandi": { lat: 24.25851, lng: 120.52957, precision: "exact" }, // 御墅天地
+  "yunding-jinzuan": { lat: 24.25688, lng: 120.52726, precision: "exact" }, // 雲頂金鑽
+  "jiamei-bilu": { lat: 24.25417, lng: 120.52737, precision: "exact" }, // 佳美碧綠
+  "zhenxiang-wuju": { lat: 24.25372, lng: 120.53458, precision: "exact" }, // 臻詳吾居
+  "shulifang-2": { lat: 24.25075, lng: 120.53219, precision: "exact" }, // 墅立方2
+  "kuncheng-xiangfuyu": { lat: 24.24974, lng: 120.53315, precision: "exact" }, // 堃晟享富御
+  "huangjia-xinyuan-2": { lat: 24.25043, lng: 120.5252, precision: "exact" }, // 皇家新園2期
+  "baizhan-baisheng-2": { lat: 24.24428, lng: 120.53416, precision: "exact" }, // 百戰百勝2
+  "heyuan-21": { lat: 24.24521, lng: 120.5349, precision: "exact" }, // 荷園21
+  "jingshangsen-2": { lat: 24.24503, lng: 120.53602, precision: "exact" }, // 井上森2
+  "shulifang": { lat: 24.24332, lng: 120.53591, precision: "exact" }, // 墅立方
+  "heyuan-17": { lat: 24.24529, lng: 120.53824, precision: "exact" }, // 荷園17
+  "zhonggang-haoxue": { lat: 24.24256, lng: 120.53994, precision: "exact" }, // 中港好學
+  "shanjing-yan": { lat: 24.24894, lng: 120.55085, precision: "exact" }, // 山景硯
+  "zhonggang-zhenzuan": { lat: 24.26028, lng: 120.53606, precision: "exact" }, // 中港真鑽
+  "taiju-damei": { lat: 24.25728, lng: 120.53808, precision: "exact" }, // 太聚大美
+  "yujing-renmei": { lat: 24.25606, lng: 120.53746, precision: "exact" }, // 淯璟仁美
+  "yangguang-wish": { lat: 24.25447, lng: 120.53588, precision: "exact" }, // 暘光Wish
+  "weixiao-daweilai": { lat: 24.25647, lng: 120.5406, precision: "exact" }, // 微笑大未來
+  "jindian-yusuo": { lat: 24.25673, lng: 120.53943, precision: "exact" }, // 金典寓所
+  "tianmu-zhongyang": { lat: 24.2557, lng: 120.53984, precision: "exact" }, // 天睦中央親鄰
+  "shengxi-huangdi": { lat: 24.25549, lng: 120.54217, precision: "exact" }, // 聖璽皇邸大樓
+  "renli-qingmei": { lat: 24.25196, lng: 120.54758, precision: "exact" }, // 仁里晴美
+  "futeng-fengshang": { lat: 24.25181, lng: 120.54846, precision: "exact" }, // 富騰峰尚
+  "qiqi-yueshe-7": { lat: 24.25396, lng: 120.54834, precision: "exact" }, // 啟碁悅舍7
+  "zhen-xingfu": { lat: 24.25176, lng: 120.55005, precision: "exact" }, // 臻幸福
+  "gongyuan-shouxi-2": { lat: 24.25099, lng: 120.54899, precision: "exact" }, // 公園首席2
+  "heping-dazhai": { lat: 24.24943, lng: 120.54945, precision: "exact" }, // 和萍大宅
+  "qiaoyi-puli-2": { lat: 24.24977, lng: 120.55075, precision: "exact" }, // 僑邑璞麗2
+  "senbaofu-6": { lat: 24.25009, lng: 120.55092, precision: "exact" }, // 森堡富6
+  "shiji-xiongwei": { lat: 24.24895, lng: 120.55023, precision: "exact" }, // 世紀雄偉
+  "changyou-u-city": { lat: 24.25079, lng: 120.55131, precision: "exact" }, // 昌祐U City
+  "hefeng-yijing-6": { lat: 24.24803, lng: 120.5492, precision: "exact" }, // 和風逸境6
+  "shenghuo-yangzhen": { lat: 24.24724, lng: 120.54897, precision: "exact" }, // 生活養真
+  "shouyi-guobao": { lat: 24.25144, lng: 120.55186, precision: "exact" }, // 首邑國寶
+  "shiyi-shu": { lat: 24.24986, lng: 120.55244, precision: "exact" }, // 拾壹墅
+  "yushujia-19": { lat: 24.25037, lng: 120.5537, precision: "exact" }, // 御墅家19
+  "wanshi-ruyi": { lat: 24.25045, lng: 120.55406, precision: "exact" }, // 萬事如邑
+  "yujianhai": { lat: 24.25018, lng: 120.5545, precision: "exact" }, // 寓見海
+  "cunmao-puyue-2": { lat: 24.24966, lng: 120.55372, precision: "exact" }, // 村懋璞悅2
+  "puyue-dunhe": { lat: 24.24946, lng: 120.55377, precision: "exact" }, // 璞悅敦和
+  "wenqing-hui": { lat: 24.24689, lng: 120.55286, precision: "exact" }, // 文青匯
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
