@@ -77,7 +77,7 @@ export const STATUS_LABEL: Record<ProjectStatus, string> = {
  * 2026-09-01 再補北勢靜宜 80 案（同樣是他整理的）。
  * 2026-09-02 再補新光田特區 107 案（他給的「歷年建案母名單」，只有案名）。
  * 2026-09-05 再補梧棲市區 166 案、清水市區 1 案。
- * 2026-09-07 那 7 案從重劃區改掛梧棲市區，再分四批補梧棲市區 8 案（全站 517）。
+ * 2026-09-07 那 7 案從重劃區改掛梧棲市區，分五批補梧棲市區 12 案、移除仁愛羅馬金融名廈 1 案（全站 520）。
  * **八顆篩選臉全部有建案了，沒有 0 案的區。**
  * ⚠️ 之後再加新的 `ProjectArea` 值，記得同時加進 `LeafletMap.tsx` 的 `PIN_GROUPS`（那是 array
  *    不是 `Record<ProjectArea,…>`，TypeScript 不會替你抓漏，漏了那一區的圖釘會在初始畫面疊成一坨）；
@@ -2062,7 +2062,6 @@ export const PROJECTS: Project[] = [
   { id: "renwen-chengshe", name: "人文澄舍", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
   { id: "kuncheng-xiangfuyu", name: "堃晟享富御", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
   { id: "yatai-qiyejia", name: "亞太企業家", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "renai-luoma-jinrong", name: "仁愛羅馬金融名廈", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "zhonggang-huangjia", name: "中港皇家大樓", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "one-plus-shengyou", name: "ONE PLUS昇祐商務中心", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "juguo-jinghua", name: "鉅國京華", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
@@ -2236,6 +2235,14 @@ export const PROJECTS: Project[] = [
   { id: "guangwei-zhenpin", name: "光崴臻品", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "qiaoli-i-do", name: "喬立I DO", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
   { id: "tiankong-shu", name: "天空墅", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  /* 2026-09-07 第五次補：品荃荷園9、荷園20、荷園19、仁里文園。建商／屋齡他都沒給。
+     🔵 荷園系列現在是 15／17／18／19／20／21 ＋ 品荃荷園9。**荷園15 的建商是荷風建設**，
+        其餘全部「待確認」—— 同前綴不代表同一家，等他一家一家點頭。
+     🔵 同一批他說「移除仁愛羅馬金融名廈」，已刪（那筆沒有座標、沒有任何其他引用）。 */
+  { id: "pinquan-heyuan-9", name: "品荃荷園9", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "heyuan-20", name: "荷園20", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "heyuan-19", name: "荷園19", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "renli-wenyuan", name: "仁里文園", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
 
   { id: "deyi-chengyi-2", name: "德邑澄邑2", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
 ];
@@ -2854,6 +2861,36 @@ export const COORDS: Record<string, Coord> = {
   "cunmao-puyue-2": { lat: 24.24966, lng: 120.55372, precision: "exact" }, // 村懋璞悅2
   "puyue-dunhe": { lat: 24.24946, lng: 120.55377, precision: "exact" }, // 璞悅敦和
   "wenqing-hui": { lat: 24.24689, lng: 120.55286, precision: "exact" }, // 文青匯
+  /* ── 梧棲市區第四批 17 案（2026-09-07 晚上，系統擁有者用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、區域都是梧棲市區、precision 全 exact、
+     本批不重複、沒有覆蓋既有座標，**17 筆全部落在梧棲市區色塊內、也沒有落進別區**。
+     🔵 一對 30 公尺內的鄰居：和唐財神 ↔ 磐石珍藏 18m（同街廓兩棟）。
+
+     🔴 **他這批其實給了 18 筆，「仁愛羅馬」那筆刻意沒有收進來，要他重點。**
+        他點的是 24.27848 / 120.50809 —— **不在任何一塊色塊裡**，離梧棲市區邊界 2,748 公尺、
+        離最近的既有建案（益翔有藝仕）2,628 公尺，位置在臨港路以西的港區裡。
+        **而且離它自己同系列的兩案 3.3～3.4 公里**：仁愛羅馬商業 24.26147/120.53599、
+        仁愛羅馬商業名廈3 24.26183/120.53486（兩案都在梧棲市區核心）。
+        ⚠️ 這不是邊界誤差，是掉進海裡 —— 存下去畫面上會有一根圖釘浮在港區。
+        照 2026-09-04「和樂龍融」那次的做法：**矛盾講出來、不要自己選一邊**。
+        他重點之後補一行就好，`renai-luoma` 目前維持「未標位置」。 */
+  "jiamei-chengken": { lat: 24.23992, lng: 120.54804, precision: "exact" }, // 佳美城肯
+  "hetang-caishen": { lat: 24.2401, lng: 120.54884, precision: "exact" }, // 和唐財神
+  "panshi-zhencang": { lat: 24.24024, lng: 120.54892, precision: "exact" }, // 磐石珍藏
+  "liangju-cengfeng": { lat: 24.24063, lng: 120.54908, precision: "exact" }, // 良居層峰
+  "zhimao-langjing-2": { lat: 24.24023, lng: 120.54815, precision: "exact" }, // 智茂朗境2
+  "dunyue-3": { lat: 24.24185, lng: 120.54833, precision: "exact" }, // 敦悅3
+  "shengxing-fengchuan": { lat: 24.2406, lng: 120.545, precision: "exact" }, // 勝興豐川
+  "zhihe-yangzhen": { lat: 24.24138, lng: 120.54439, precision: "exact" }, // 致和養真
+  "heyuan-18": { lat: 24.24203, lng: 120.54455, precision: "exact" }, // 荷園18
+  "weixiao-meile": { lat: 24.25615, lng: 120.55512, precision: "exact" }, // 微笑美樂
+  "wuai-wuqi": { lat: 24.25559, lng: 120.55544, precision: "exact" }, // 吾愛吾棲
+  "liuyi-wodejia-8": { lat: 24.25572, lng: 120.55489, precision: "exact" }, // 六億我的家8
+  "yuanman-boai": { lat: 24.25525, lng: 120.55496, precision: "exact" }, // 圓滿博愛
+  "jiachang-xiyan-6": { lat: 24.25698, lng: 120.55492, precision: "exact" }, // 佳昌喜硯6
+  "guoji-shangye": { lat: 24.261, lng: 120.53727, precision: "exact" }, // 國際商業大樓
+  "tiankong-shu": { lat: 24.25046, lng: 120.55296, precision: "exact" }, // 天空墅
+  "taiju-huamei": { lat: 24.2556, lng: 120.55673, precision: "exact" }, // 太聚華美
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
