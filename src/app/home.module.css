@@ -491,6 +491,21 @@
   color: var(--ink);
 }
 
+/* 「買房、賣房、資產配置」—— 2026-09-07 系統擁有者指定 #4a86e8＋底線。
+   ⚠️ 這個藍不在品牌色裡（品牌是深藍 #01354D），是他點名的色號，不要「順手」改成品牌色。
+   做成連到 #services 的真連結：藍字底線就是連結的長相，只做樣式客戶會點了沒反應。 */
+.heroStoryLink {
+  color: #4a86e8;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+  font-weight: 600;
+}
+
+.heroStoryLink:hover {
+  color: #2f6fd6;
+}
+
 .heroBadges {
   display: flex;
   flex-wrap: wrap;
