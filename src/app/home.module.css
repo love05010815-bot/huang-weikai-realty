@@ -506,6 +506,13 @@
   color: #2f6fd6;
 }
 
+/* 第三段「說到做到…把關的態度」—— 2026-09-07 系統擁有者指定整句 #ff0000。
+   ⚠️ 這是他點名的純紅，不是 --pacific-red（#e00000），不要「順手」換成變數。
+   純紅在米色底上對比約 3.5:1（一般內文的無障礙門檻是 4.5），他要的就是這個色，先照做。 */
+.heroStory .heroStoryRed {
+  color: #ff0000;
+}
+
 .heroBadges {
   display: flex;
   flex-wrap: wrap;

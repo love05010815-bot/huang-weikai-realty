@@ -273,7 +273,8 @@ export default async function HomePage() {
                   <a href="#services" className={styles.heroStoryLink}>買房、賣房、資產配置</a>
                   ，每一個決定都牽動一個家的未來。我相信自己能陪您把每一步都走對——不只是成交，更要讓您成交得安心。
                 </p>
-                <p>說到做到，是我對客戶的承諾；負責到底，是我為您的夢想把關的態度。</p>
+                {/* 第三段他指定整句 #ff0000 */}
+                <p className={styles.heroStoryRed}>說到做到，是我對客戶的承諾；負責到底，是我為您的夢想把關的態度。</p>
               </div>
               <div className={styles.heroBadges}>
                 <span className={styles.heroBadge}>🏆 112・113・114年連續三年千萬經紀人</span>
