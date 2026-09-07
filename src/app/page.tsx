@@ -262,6 +262,17 @@ export default async function HomePage() {
               <p className={styles.heroTagline}>
                 連續三年千萬經紀人的實戰經驗，陪您把買房、賣房、資產配置的每一個決定都做對——不只成交，更要成交得安心。
               </p>
+              {/* 六句自我介紹。2026-09-07 從下面獨立的「關於我」區塊併上來的 —— 系統擁有者要
+                  「整合到照片旁邊的介紹裡面」。桌機兩欄（每句 12 個字等長，兩欄才排得整齊），
+                  860px 以下一欄置中。文案在 src/config/profile.ts 的 INTRO_LINES，跟 /about 共用。 */}
+              <ul className={styles.heroIntro}>
+                {INTRO_LINES.map((line) => (
+                  <li key={line.text} className={styles.heroIntroItem}>
+                    <span className={styles.heroIntroIcon} aria-hidden="true">{line.icon}</span>
+                    {line.text}
+                  </li>
+                ))}
+              </ul>
               <div className={styles.heroBadges}>
                 <span className={styles.heroBadge}>🏆 112・113・114年連續三年千萬經紀人</span>
                 <span className={styles.heroBadge}>📍 服務區域：沙鹿・梧棲・清水・龍井</span>
@@ -298,35 +309,10 @@ export default async function HomePage() {
             剩下的靠按鈕帶過去 —— 跟精選好案同一個模式。
             戰績與服務區域不放這裡也沒關係，hero 的兩個徽章已經寫著
             「連續三年千萬經紀人」與「服務區域：沙鹿・梧棲・清水・龍井」。 */}
-        {/* 主題色帶：關於我＝淡粉 #EBD6D6（系統擁有者指定）、精選好案＝米、服務＝白、試算＝米、
-            預約＝深藍，相鄰兩塊之間一道弧（SectionWave）。配色與注意事項見 home.module.css 檔尾。
-            ⚠️ 關於我不能用白：hero 的漸層底部就是白，白接白看不出是兩塊，弧也消失。 */}
-        <section id="about" className={`${styles.section} ${styles.band} ${styles.bandRose}`}>
-          <SectionWave />
-          <div className={`${styles.container} ${styles.center}`}>
-            <span className={styles.eyebrow}>ABOUT ME</span>
-            <h2 className={styles.sectionTitle}>關於我</h2>
-            <div className={styles.aboutIntro}>
-              <div className={styles.aboutIntroLines}>
-                {INTRO_LINES.map((line) => (
-                  <p key={line.text} className={styles.aboutIntroLine}>
-                    {/* 圖示是裝飾，語意已經在文字裡，所以對螢幕閱讀器隱藏 */}
-                    <span className={styles.aboutIntroIcon} aria-hidden="true">
-                      {line.icon}
-                    </span>
-                    {line.text}
-                  </p>
-                ))}
-              </div>
-            </div>
-            <div className={styles.aboutMore}>
-              <Link className={`${styles.btn} ${styles.btnPrimary}`} href="/about">
-                更多關於我
-              </Link>
-            </div>
-          </div>
-        </section>
-
+        {/* 🚫 2026-09-07 系統擁有者拍板：首頁不再有「關於我」區塊。
+            原本這裡是一塊淡粉色帶＋六句自我介紹的卡片，現在那六句併進上面 hero 形象照旁邊
+            （.heroIntro），完整版仍在 /about（導覽列「關於我」已改成連到 /about）。
+            主題色帶現在是：hero 米色漸層 → 精選好案 米 → 服務 白 → 試算 米 → 預約 深藍。 */}
         {/* ---------------- 精選好案 ---------------- */}
         <section id="listings" className={`${styles.section} ${styles.band} ${styles.bandSoft}`}>
           <SectionWave flip />

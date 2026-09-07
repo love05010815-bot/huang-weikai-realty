@@ -474,6 +474,44 @@
   max-width: 480px;
 }
 
+/* 六句自我介紹（原本在獨立的「關於我」區塊，2026-09-07 併進 hero）。
+   桌機兩欄：每句 12 個字 ≈ 174px ＋ icon 28 ＋ 間距 9 ≈ 211px，兩欄 440px，
+   放得進 hero 左欄（1080 容器的 1.1fr ≈ 567px）；860px 以下一欄、整塊置中但字靠左。 */
+.heroIntro {
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 18px;
+  max-width: 560px;
+}
+
+.heroIntroItem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.heroIntroIcon {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
 .heroBadges {
   display: flex;
   flex-wrap: wrap;
@@ -556,6 +594,14 @@
   .heroBadges,
   .heroCta {
     justify-content: center;
+  }
+
+  .heroIntro {
+    grid-template-columns: 1fr;
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: left;
   }
 
   .heroPhotoWrap {
@@ -1139,10 +1185,9 @@
    不再是整頁白底靠標題分段。順序與配色：
 
      hero        米色漸層（原本就有，不動）
-     關於我      淡粉      .bandRose   #EBD6D6，2026-09-07 系統擁有者親自指定的色號。
-                                        （第一版用白，跟 hero 底部的白接在一起看不出是兩塊、弧也消失；
-                                        第二版淺藍灰 #EEF3F5，他看過後改成這個粉。）
-     精選好案    米色      .bandSoft   （卡片是白的，放米色底上才跳得出來）
+     （關於我   2026-09-07 拍板整塊拿掉，六句介紹併進 hero；它用過白 → 淺藍灰 → 淡粉 #EBD6D6 三種底色，
+                 都不用了。）
+     精選好案    米色      .bandSoft   （卡片是白的，放米色底上才跳得出來；hero 底部漸到白，米色接得出弧）
      服務項目    白        .bandWhite
      稅費試算    米色      .bandSoft
      預約諮詢    深藍      .contact（原本就是深色，只補弧）
@@ -1153,10 +1198,6 @@
       .section 是 72、hero 是 90，都夠。哪天有人把 padding 縮小，弧就會壓到內容，
       而且不會報錯。
    ⚠️ 帶 .band 的區塊不能加 overflow:hidden，弧會被剪掉。 */
-.page {
-  --rose: #ebd6d6;
-}
-
 .band {
   position: relative;
 }
@@ -1188,13 +1229,6 @@
 }
 .bandSoft .wave {
   color: var(--soft);
-}
-
-.bandRose {
-  background: var(--rose);
-}
-.bandRose .wave {
-  color: var(--rose);
 }
 
 /* 預約諮詢那塊本來就是深藍（.contact），弧跟著深藍 */

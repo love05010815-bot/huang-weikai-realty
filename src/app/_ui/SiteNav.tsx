@@ -21,9 +21,9 @@
  *
  * ## ⚠️ `variant` 一定要給對，這是最容易默默壞掉的地方
  *
- * `#about` 這種錨點**只有在首頁才跳得到東西**。在 /videos 上點它，
+ * `#services` 這種錨點**只有在首頁才跳得到東西**。在 /videos 上點它，
  * 網址列會變、畫面完全不動、**不會有任何錯誤訊息**。
- * 所以首頁用 `home`（錨點直接跳），其他頁一律 `sub`（自動變成 `/#about`，
+ * 所以首頁用 `home`（錨點直接跳），其他頁一律 `sub`（自動變成 `/#services`，
  * 先回首頁再跳）。
  */
 
@@ -43,10 +43,12 @@ import styles from "./SiteNav.module.css";
  */
 type NavItem =
   | { label: string; kind: "anchor"; hash: string }
-  | { label: string; kind: "route"; href: "/map" | "/videos" };
+  | { label: string; kind: "route"; href: "/about" | "/map" | "/videos" };
 
 const ITEMS: readonly NavItem[] = [
-  { label: "關於我", kind: "anchor", hash: "#about" },
+  // 2026-09-07 系統擁有者拍板首頁不再有「關於我」區塊（六句介紹併進 hero），
+  // 錨點 #about 沒東西可跳了，改連到完整版 /about。標籤與順序沒動。
+  { label: "關於我", kind: "route", href: "/about" },
   { label: "服務項目", kind: "anchor", hash: "#services" },
   { label: "精選好案", kind: "anchor", hash: "#listings" },
   // 2026-08-21 恢復入口。原本雪藏是因為「土地使用分區」那層的建商名沒核對完；該層已從 /map 移除。
