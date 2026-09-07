@@ -7,7 +7,8 @@
      深字                          #22323F
      淡色一（精選好案色帶）        淡藍 #CFE2F3 ← 他點名的色號（--blue；第一版是 #6FA8DC，他看過線上後改淡）
      淡色二（稅費試算色帶、標籤底）蜜桃奶油 #FDE7D6（--soft ＝ --accent-soft）
-     hero 漸層上緣                 #D7E7F6（--hero-top，跟 --blue 同色系、略淡一階）
+     hero 底                       白（他看過線上後指定；原本是 #D7E7F6 → 白的漸層加一抹蜜桃）
+     形象照後面的底板              #FFFAF4（--photo-backdrop，他點名；原本是主色藍綠）
      預約諮詢／頁尾                深藍綠 #245F5A / #1B4B47
    凱心成家 logo 本身（深藍＋米色）不動，只有介面配色換；名片頁 _cis.ts、地圖 Map.module.css、
    預約表單 Booking.module.css 同日一起換成這組。之前是深藍 #01354D ＋ 米色 #DAB38A（2026-08-19 起）。
@@ -35,8 +36,9 @@
   /* 精選好案那塊色帶：系統擁有者點名的 #CFE2F3（第一版 #6FA8DC 他看過線上後改淡）。
      灰字（--muted）在上面 4.2:1、差一點到 4.5，那塊的說明文字維持用 --ink，見 .bandBlue */
   --blue: #CFE2F3;
-  /* hero 漸層上緣：跟 --blue 同色系、略淡一階 */
-  --hero-top: #D7E7F6;
+  /* 形象照後面那塊錯位底板。2026-09-07 他指定 #FFFAF4（原本是 --primary）；
+     在白底 hero 上很淡，靠照片本身的白框＋陰影撐出層次 */
+  --photo-backdrop: #FFFAF4;
   --contact: #245F5A;
   --footer: #1B4B47;
   /* 米色系的卡片邊框。原本藍灰框於白底只有 1.29 對比，幾乎看不見；
@@ -430,9 +432,9 @@
 /* ---------- Hero ---------- */
 .hero {
   padding: 64px 20px 90px;
-  background:
-    radial-gradient(circle at 85% 10%, var(--accent-soft) 0%, rgba(239, 220, 196, 0) 55%),
-    linear-gradient(180deg, var(--hero-top) 0%, #fff 100%);
+  /* 2026-09-07 他指定整塊白底（之前是淡藍 → 白的漸層加右上一抹蜜桃）。
+     下面精選好案的淡藍色帶（#CFE2F3）接在白底上，弧看得出來。 */
+  background: #fff;
 }
 
 .heroInner {
@@ -563,7 +565,7 @@
   content: "";
   position: absolute;
   inset: 18px -18px -18px 18px;
-  background: var(--primary);
+  background: var(--photo-backdrop);
   border-radius: 20px;
   z-index: 0;
 }
