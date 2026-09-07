@@ -77,7 +77,7 @@ export const STATUS_LABEL: Record<ProjectStatus, string> = {
  * 2026-09-01 再補北勢靜宜 80 案（同樣是他整理的）。
  * 2026-09-02 再補新光田特區 107 案（他給的「歷年建案母名單」，只有案名）。
  * 2026-09-05 再補梧棲市區 166 案、清水市區 1 案。
- * 2026-09-07 那 7 案從重劃區改掛梧棲市區，再補生活家、文化國宅、聖璽皇邸大樓 3 案（全站 512）。
+ * 2026-09-07 那 7 案從重劃區改掛梧棲市區，再分三批補梧棲市區 5 案（全站 514）。
  * **八顆篩選臉全部有建案了，沒有 0 案的區。**
  * ⚠️ 之後再加新的 `ProjectArea` 值，記得同時加進 `LeafletMap.tsx` 的 `PIN_GROUPS`（那是 array
  *    不是 `Record<ProjectArea,…>`，TypeScript 不會替你抓漏，漏了那一區的圖釘會在初始畫面疊成一坨）；
@@ -2224,6 +2224,11 @@ export const PROJECTS: Project[] = [
   /* 2026-09-07 第二次補：聖璽皇邸大樓。全站已經有聖璽藝術大樓／聖璽綜合大樓／聖璽雲頂金店，
      這是第四棟「聖璽」，不是打錯 —— 沒有跟任何一棟同名。建商／屋齡他沒給。 */
   { id: "shengxi-huangdi", name: "聖璽皇邸大樓", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  /* 2026-09-07 第三次補：世紀雄偉5、品德聖母會。建商／屋齡他都沒給。
+     🔵 世紀雄偉這個系列現在是 1／2／3／5 —— **沒有 4**。台灣建案跳過 4 很常見，
+        不是漏打；他要是真的有 4，補進來就好。 */
+  { id: "shiji-xiongwei-5", name: "世紀雄偉5", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "pinde-shengmuhui", name: "品德聖母會", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
 
   { id: "deyi-chengyi-2", name: "德邑澄邑2", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
 ];
