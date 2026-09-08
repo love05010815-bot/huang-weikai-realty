@@ -41,7 +41,16 @@ const stats = projectStats();
  *    所以下面那句文案已經把「沙鹿的」拿掉 —— 再加一塊非沙鹿的區域時，
  *    只要確認文案沒有重新寫死區域名就好。
  */
-const LOCAL_ZONE_COUNT = ZONES.filter((z) => !z.official).length;
+const LOCAL_ZONE_COUNT = ZONES.filter((z) => !z.official && !z.industrial).length;
+
+/**
+ * 產業／設施類的色塊（目前只有關連工業區）。
+ *
+ * ⚠️ **不能併進上面那個數字。** 那句文案講的是「生活圈」，工業區算進去就是對客戶說
+ *    那塊也是可以住的區域。所以另外列名字，不是加一到 N 裡面。
+ * 之後再加第二塊產業色塊，這裡自己會變成「關連工業區、○○」，文案不用改。
+ */
+const INDUSTRIAL_ZONE_NAMES = ZONES.filter((z) => z.industrial).map((z) => z.name);
 
 /**
  * 重劃區以外、有建案的生活圈，照案數多的排前面 ——「鹿寮萬家福商圈 64 案、沙鹿車站商圈 28 案」。
@@ -276,7 +285,9 @@ export default async function MapPage() {
               接在「133 個建案」後面會被讀成 133 案的總戶數 —— 低報，但不準。
               要恢復戶數，先把 45 案補齊再說。og／twitter 的 description 同批拿掉了。 */}
           <p className={styles.lede}>
-            {`這裡整理了台中海線 ${stats.total} 個建案：${DISTRICT.alias}重劃區（梧棲＋清水）${stats.district} 案，${AREA_BREAKDOWN}。地圖範圍是整個台中港生活圈，除了重劃區也畫出周邊 ${LOCAL_ZONE_COUNT} 塊生活圈範圍。`}
+            {`這裡整理了台中海線 ${stats.total} 個建案：${DISTRICT.alias}重劃區（梧棲＋清水）${stats.district} 案，${AREA_BREAKDOWN}。地圖範圍是整個台中港生活圈，除了重劃區也畫出周邊 ${LOCAL_ZONE_COUNT} 塊生活圈範圍${
+              INDUSTRIAL_ZONE_NAMES.length ? `，以及${INDUSTRIAL_ZONE_NAMES.join("、")}` : ""
+            }。`}
           </p>
 
           <p className={styles.bounds}>
