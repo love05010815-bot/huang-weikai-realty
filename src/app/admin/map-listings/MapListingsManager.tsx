@@ -21,6 +21,7 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import { resolvePhotoSrc } from "@/lib/photo-src";
 import { MAX_PHOTOS, type MapListingRecord, type MapListingStatus } from "@/lib/map-listings";
 import { houseolItemSummary, type HouseolItem } from "@/lib/houseol-item";
+import { uploadPhotos } from "@/lib/photo-upload-client";
 import type { ListingClickStats } from "@/lib/listing-clicks";
 import {
   deleteMapListingAction,
@@ -176,27 +177,26 @@ export default function MapListingsManager({
       setMsg({ kind: "err", text: `已經有 ${MAX_PHOTOS} 張了，先移除幾張再傳` });
       return;
     }
-    const form = new FormData();
-    for (const f of Array.from(files).slice(0, room)) form.append("file", f);
+    const picked = Array.from(files).slice(0, room);
 
     setUploading(true);
     setMsg(null);
     try {
-      const res = await fetch("/api/admin/listings/photo", { method: "POST", body: form });
-      const data = (await res.json()) as {
-        uploaded?: { name: string; url: string }[];
-        failed?: { name: string; error: string }[];
-        error?: string;
-      };
-      if (!res.ok) throw new Error(data.error ?? `上傳失敗（${res.status}）`);
-
-      const urls = (data.uploaded ?? []).map((u) => u.url);
+      // 一張一張送、送之前先在瀏覽器縮小 —— 平台對整個請求有 4.5MB 上限，
+      // 手機直出的照片一次送兩張就爆（見 lib/photo-upload-client.ts 檔頭）
+      const { urls, failed } = await uploadPhotos(picked, (done, total) => {
+        if (done < total) setMsg({ kind: "ok", text: `處理中… 第 ${done + 1} 張／共 ${total} 張` });
+      });
       if (urls.length) patch({ photos: [...draft.photos, ...urls] });
 
-      const failed = data.failed ?? [];
       setMsg(
         failed.length
-          ? { kind: "err", text: `${urls.length} 張成功、${failed.length} 張失敗：${failed[0].error}` }
+          ? {
+              kind: "err",
+              text: `${urls.length} 張成功、${failed.length} 張失敗：${failed
+                .map((f) => `${f.name}（${f.error}）`)
+                .join("、")}`,
+            }
           : { kind: "ok", text: `已上傳 ${urls.length} 張。⚠️ 記得按「儲存」才會寫進資料庫` }
       );
     } catch (e) {

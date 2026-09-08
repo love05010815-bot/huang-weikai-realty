@@ -15,6 +15,7 @@ import { Icon } from "@/app/admin/_ui/icons";
 import { MAX_PHOTOS } from "@/config/listings";
 import { findCopyRisks } from "@/lib/listing-copy-risk";
 import { photoDisplayName, resolvePhotoSrc } from "@/lib/photo-src";
+import { uploadPhotos } from "@/lib/photo-upload-client";
 import type { ListingInput, ListingRecord, ListingStatus } from "@/lib/listings";
 import type { ListingClickStats } from "@/lib/listing-clicks";
 import styles from "./listings-admin.module.css";
@@ -446,15 +447,11 @@ function ListingForm({
     setUploading(true);
     setUploadMsg(null);
     try {
-      const body = new FormData();
-      for (const f of take) body.append("file", f);
-
-      const res = await fetch("/api/admin/listings/photo", { method: "POST", body });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || `上傳失敗（${res.status}）`);
-
-      const urls: string[] = (data.uploaded || []).map((u: { url: string }) => u.url);
-      const failed: Array<{ name: string; error: string }> = data.failed || [];
+      // 一張一張送、送之前先在瀏覽器縮小 —— 平台對整個請求有 4.5MB 上限，
+      // 手機直出的照片一次送兩張就爆（見 lib/photo-upload-client.ts 檔頭）
+      const { urls, failed } = await uploadPhotos(take, (done, total) => {
+        if (done < total) setUploadMsg({ ok: true, text: `處理中… 第 ${done + 1} 張／共 ${total} 張` });
+      });
 
       if (urls.length > 0) {
         setForm((prev) => {

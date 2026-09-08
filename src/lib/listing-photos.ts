@@ -19,7 +19,15 @@ import { isBlobUrl } from "@/lib/photo-src";
 
 export { isBlobUrl, photoDisplayName, resolvePhotoSrc } from "@/lib/photo-src";
 
-/** 上傳前的原始檔上限。手機直出的照片通常 3～8MB，20MB 夠寬鬆又擋得住誤傳影片。 */
+/**
+ * 上傳前的原始檔上限。
+ *
+ * 🔴 **這個數字在線上永遠輪不到它把關**（2026-09-08 實測）：Vercel 的 serverless
+ *    函式對整個請求有 4.5MB 硬上限，超過直接回 `413 FUNCTION_PAYLOAD_TOO_LARGE`，
+ *    這支程式一行都不會跑到。真正的把關在瀏覽器端 `lib/photo-upload-client.ts`
+ *    —— 那裡會先縮圖再一張一張送。**不要為了「讓大檔傳得上來」而調高這個數字，
+ *    調了沒有用。**
+ */
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 /**
