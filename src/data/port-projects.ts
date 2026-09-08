@@ -2080,31 +2080,32 @@ export const PROJECTS: Project[] = [
   { id: "zhonggang-tianxia", name: "中港天廈", builder: "中港建設", area: "梧棲市區", status: "completed", completion: "約 1992", sources: ["owner"] },
   { id: "zhonggang-yunding-2", name: "中港雲頂2", builder: "聖璽建設", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
   { id: "shengxi-zonghe", name: "聖璽綜合大樓", builder: "聖璽建設", area: "梧棲市區", status: "completed", completion: "約 2000", sources: ["owner"] },
-  /* ⚠️ 2026-09-08 他回這案時建商欄打的是「中港皇璽」＝案名本身，八成是貼行時手滑。
-     屋齡（31 年）照收，**建商維持待確認、沒有拿案名去填**。已回問。 */
-  { id: "zhonggang-huangxi", name: "中港皇璽", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 1995", sources: ["owner"] },
+  /* ✅ 2026-09-08 回問過了：**「中港皇璽」真的是建商名，不是我以為的手滑貼到案名。**
+     他重打一次確認，同一家還蓋了富園一品6期。⚠️ 這家沒有「建設／開發」字尾，照原文存，
+     不要順手補成「中港皇璽建設」。跟中港建設、中港皇家建設、中港雲頂開發都是不同家。 */
+  { id: "zhonggang-huangxi", name: "中港皇璽", builder: "中港皇璽", area: "梧棲市區", status: "completed", completion: "約 1995", sources: ["owner"] },
   { id: "zhonggang-huiguan", name: "中港會館", builder: "紘鉅建設", area: "梧棲市區", status: "completed", completion: "約 2009", sources: ["owner"] },
   { id: "jiaguilin-huayuan", name: "甲桂林花園大廈", builder: "兆陽建設", area: "梧棲市區", status: "completed", completion: "約 1995", sources: ["owner"] },
   { id: "shengli-tianxia", name: "勝麗天廈", builder: "勝麗建設", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
-  /* ⚠️ 2026-09-08 同上：建商欄打的是「富園一品6期」＝案名本身（還帶著「期」字，不會是公司名）。
-     屋齡（6 年）照收，**建商維持待確認**。已回問。 */
-  { id: "fuyuan-yipin-6", name: "富園一品6期", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2020", sources: ["owner"] },
-  { id: "qiaoyi-iju", name: "僑邑i居", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "guanyou-meishu", name: "冠佑美墅", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
-  { id: "shengxi-yunding-jindian", name: "聖璽雲頂金店", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
-  { id: "xinfuming-chunmei-2", name: "新富銘淳美2", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "chunmei-diyizhang", name: "淳美第一章", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "likun-yuanman-minan", name: "立坤圓滿(民安二街)", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2023", sources: ["owner"] },
-  { id: "rimu-yijing", name: "日沐亦景", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
-  { id: "shengbang-lvyi-6", name: "勝邦綠邑6", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "minan-yijing-huaxia", name: "民安易境華廈區", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
-  { id: "likun-yuanman-11", name: "立坤圓滿11", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
-  { id: "huibao-dade", name: "輝堡大德", builder: "待確認", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
-  { id: "weixiao-daweilai", name: "微笑大未來", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
-  { id: "jindian-yusuo", name: "金典寓所", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
-  { id: "yujing-renmei", name: "淯璟仁美", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2020", sources: ["owner"] },
-  { id: "caipan-yinfu", name: "采磐隱富", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "caipan-cangfu", name: "采磐藏富", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  /* ✅ 2026-09-08 回問過了：這案的建商是**中港皇璽**（上一次他確實是貼行時手滑打成案名）。
+     🔵 這條驗證了「建商欄看起來等於案名時，不要照收、回問一次」—— 一案是真的、一案是手滑。 */
+  { id: "fuyuan-yipin-6", name: "富園一品6期", builder: "中港皇璽", area: "梧棲市區", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "qiaoyi-iju", name: "僑邑i居", builder: "僑邑建設", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "guanyou-meishu", name: "冠佑美墅", builder: "宣佑建設", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "shengxi-yunding-jindian", name: "聖璽雲頂金店", builder: "聖璽建設", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "xinfuming-chunmei-2", name: "新富銘淳美2", builder: "新富銘建設", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "chunmei-diyizhang", name: "淳美第一章", builder: "新富銘建設", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "likun-yuanman-minan", name: "立坤圓滿(民安二街)", builder: "立坤建築", area: "梧棲市區", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "rimu-yijing", name: "日沐亦景", builder: "臻品建設", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "shengbang-lvyi-6", name: "勝邦綠邑6", builder: "勝邦開發建設", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "minan-yijing-huaxia", name: "民安易境華廈區", builder: "昱壬建設", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "likun-yuanman-11", name: "立坤圓滿11", builder: "立坤建築", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "huibao-dade", name: "輝堡大德", builder: "輝堡建設", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "weixiao-daweilai", name: "微笑大未來", builder: "國泉建設", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "jindian-yusuo", name: "金典寓所", builder: "福康開發建設", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "yujing-renmei", name: "淯璟仁美", builder: "淯璟建設", area: "梧棲市區", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "caipan-yinfu", name: "采磐隱富", builder: "采磐建設", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "caipan-cangfu", name: "采磐藏富", builder: "采磐建設", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
   { id: "yangguang-wish", name: "暘光Wish", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
   { id: "lantu-uni", name: "藍圖UNI", builder: "待確認", area: "梧棲市區", status: "newly", completion: "新成屋", sources: ["owner"] },
   { id: "xuemeishu", name: "學美墅", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
@@ -2244,7 +2245,7 @@ export const PROJECTS: Project[] = [
         前綴一模一樣 —— 但「案名前綴≠建商」這幾天已經被證明十幾次（德光四案就三家不同公司）。
         列為候選、等他點頭，不要因為看起來很像就填進去。 */
   { id: "guangwei-zhenpin", name: "光崴臻品", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "qiaoli-i-do", name: "喬立I DO", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "qiaoli-i-do", name: "喬立I DO", builder: "喬德建設", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
   { id: "tiankong-shu", name: "天空墅", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
   /* 2026-09-07 第五次補：品荃荷園9、荷園20、荷園19、仁里文園。建商／屋齡他都沒給。
      🔵 荷園系列現在是 15／17／18／19／20／21 ＋ 品荃荷園9。**荷園15 的建商是荷風建設**，
