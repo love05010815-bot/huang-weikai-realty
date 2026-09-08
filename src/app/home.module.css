@@ -1211,16 +1211,17 @@
   }
 }
 
-/* ---------- 品牌 banner（hero 上面那條，2026-09-08；同日第三版） ----------
-   他看過第二版後指定：「整個寬度縮小一半，把上面薄荷綠裡面的字結合到圖片裡，不需要有薄荷綠的
-   色塊了，單用圖片做延伸透明化，若需要色塊輔助用 #FFFAF4」。
-   → 沒有色塊：底是 #FFFAF4（他指定），字改深色（--ink），按鈕改主色實心。
-   → 文字＋寬圖收進 .bannerFrame（1080px，跟頁面其他內容同寬；他 2000px 的螢幕上約一半）。
-   → 寬圖的上緣與左右兩側用 .bannerArt::before 的同色漸層蓋過去、融進底色（「延伸透明化」）；
-     文字列往下壓 16px 疊在圖已經變成底色的天空上，讓字看起來長在圖裡。
+/* ---------- 品牌 banner（hero 上面那條，2026-09-08；同日第四版） ----------
+   他在截圖上畫的：「打 X 的地方移除（📍標籤、預約按鈕），4 平台資訊往下移，左邊文字改為置中，
+   圖片透明度再調低一點」。
+   → 上面只剩標題＋一句，置中；社群藥丸在圖的正上方靠右（他畫的位置），整列往下壓 14px
+     疊在圖已經融進底色的天空上；圖 opacity .85（「再淡一點」）。
+   → 底 #FFFAF4（第三版他指定的輔助色），文字深色；文字＋寬圖收進 .bannerFrame（1080px，
+     跟頁面其他內容同寬；他 2000px 的螢幕上約一半）。
+   → 寬圖的上緣與左右兩側用 .bannerArt::before 的同色漸層蓋過去、融進底色（「延伸透明化」）。
    ⚠️ 上緣漸層只吃圖最上面 13%：圖裡那句「不只是交易…」從 12% 就開始，拉長會洗淡那句話。
    ⚠️ 底色要跟漸層的顏色一致（都是 #FFFAF4），改底色兩邊要一起改，不然圖的邊緣會露出一圈色差。
-   860px 以下：一欄置中、藥丸排在按鈕下面；圖回到滿版、200px 高 cover 對準左邊 22%（留住一家人跟
+   860px 以下：藥丸置中排在一句下面；圖回到滿版、200px 高 cover 對準左邊 22%（留住一家人跟
    那句話，右邊的圖示與黃按鈕切掉不可惜），只留上緣漸層。 */
 .banner {
   background: #FFFAF4;
@@ -1237,30 +1238,12 @@
 .bannerInner {
   position: relative;
   z-index: 1;
-  margin: 0 0 -16px;
-  display: grid;
-  /* 右欄照藥丸的自然寬度（約 480px）給，左欄拿剩下的；用 fr 分右欄會差十幾 px 塞不下、藥丸折成兩行 */
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 24px 40px;
-  align-items: start;
-}
-
-.bannerText {
+  margin: 0 0 -14px;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 14px;
-}
-
-.bannerEyebrow {
-  display: inline-block;
-  background: rgba(47, 168, 148, 0.14);
-  color: var(--primary-dark);
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  padding: 6px 14px;
-  border-radius: 999px;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
 }
 
 .bannerTitle {
@@ -1277,36 +1260,14 @@
   font-size: 16px;
   line-height: 1.8;
   color: var(--muted);
-  max-width: 480px;
+  max-width: 600px;
 }
 
-.bannerCta {
-  display: inline-flex;
-  align-items: center;
-  margin-top: 6px;
-  background: var(--primary);
-  color: #fff;
-  font-weight: 800;
-  font-size: 15px;
-  padding: 12px 22px;
-  border-radius: 999px;
-  text-decoration: none;
-  box-shadow: 0 8px 20px rgba(1, 53, 77, 0.28);
-  transition: transform 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
-}
-
-.bannerCta:hover {
-  background: var(--primary-dark);
-  transform: translateY(-2px);
-  box-shadow: 0 12px 26px rgba(1, 53, 77, 0.32);
-}
-
-/* 社群藥丸的外框：右上角、跟左邊那顆「📍」標籤大致齊高。
+/* 社群藥丸的外框：圖的正上方靠右。
    SocialLinks 的 .barOuter 自帶 margin-bottom（它以前在 hero 用的），這裡歸零。 */
 .bannerSocial {
-  justify-self: end;
-  align-self: start;
-  margin-top: -6px;
+  align-self: flex-end;
+  margin-top: 8px;
 }
 
 .bannerSocial > div {
@@ -1335,6 +1296,8 @@
   width: 100%;
   height: auto;
   display: block;
+  /* 他要「透明度再調低一點」→ 整張淡到 85%，跟米白底融在一起 */
+  opacity: 0.85;
 }
 
 @media (max-width: 860px) {
@@ -1342,18 +1305,13 @@
     padding: 22px 16px 0;
   }
   .bannerInner {
-    grid-template-columns: 1fr;
-    gap: 18px;
-    text-align: center;
+    gap: 10px;
     margin-bottom: 10px;
   }
-  .bannerText {
-    align-items: center;
-  }
   .bannerSocial {
-    justify-self: center;
-    margin-top: 0;
+    align-self: center;
     width: 100%;
+    margin-top: 6px;
   }
   .bannerLead {
     font-size: 15px;

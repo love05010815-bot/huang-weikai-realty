@@ -236,13 +236,14 @@ export default async function HomePage() {
           放在 <header> 外面（header 的 backdrop-filter 會把 fixed 子元素關在 header 裡）。 */}
       <main id="top">
         {/* ---------------- 品牌 banner（2026-09-08 系統擁有者指定放在自我介紹的上方） ----------------
-            他要的是「強調我是服務台中海線的房產規劃專家」。同日改到第三版（每版都是他看過線上後指定）：
-            v1 左字右直式圖 → v2 藍綠色塊＋寬圖滿版貼底 → v3（現在）：
-            「整個寬度縮小一半，把上面薄荷綠裡面的字結合到圖片裡，不需要有薄荷綠的色塊了，
-              單用圖片做延伸透明化，若需要色塊輔助用 #FFFAF4」
-            → 沒有色塊了：底是他指定的 #FFFAF4，文字改深色；文字＋寬圖一起收進 1080px 的框
-              （跟頁面其他內容同寬，他 2000px 的螢幕上約一半）；寬圖的上緣與左右用同色漸層融進底色，
-              看起來像圖往上延伸、文字就長在圖的天空裡。
+            他要的是「強調我是服務台中海線的房產規劃專家」。同日改到第四版（每版都是他看過線上後指定）：
+            v1 左字右直式圖 → v2 藍綠色塊＋寬圖滿版貼底 → v3 拿掉色塊、收進 1080 框、底 #FFFAF4
+            → v4（現在，他在截圖上畫的）：「打 X 的地方移除（📍標籤、線上預約諮詢按鈕），
+              4 平台資訊往下移，左邊文字改為置中呈現，圖片透明度再調低一點」。
+            → 只剩標題＋一句，置中；社群藥丸移到圖的正上方、靠右（他畫的位置），下緣疊在圖已經
+              融進底色的天空上；圖整張 opacity .85（把「透明度再調低」當成「再淡一點」；
+              他若要的是相反，改 .bannerArtImg 的 opacity 就好）。
+            預約入口：banner 沒有了，header 右上的「線上預約」跟下面 hero 的按鈕都還在。
             圖檔 public/banner-wide.jpg（他給的寬版，2061×503，已切掉原圖上下白邊；圖上的字、
             四個圖示、黃按鈕都是畫上去的、不能點）。要換圖直接換檔：桌機在 1080 框裡等比，
             手機是 200px 高的 cover、對準左邊 22%。
@@ -251,22 +252,16 @@ export default async function HomePage() {
         <section className={styles.banner} aria-label="台中海線房產規劃專家">
           <div className={styles.bannerFrame}>
             <div className={styles.bannerInner}>
-              <div className={styles.bannerText}>
-                <span className={styles.bannerEyebrow}>📍 台中海線在地服務</span>
-                <p className={styles.bannerTitle}>
-                  台中海線的
-                  <br />
-                  房產規劃專家
-                </p>
-                <p className={styles.bannerLead}>
-                  沙鹿・梧棲・清水・龍井｜買房、賣房、資金配置、稅費，一次幫你規劃到位。
-                </p>
-                <Link className={styles.bannerCta} href="/card/booking">
-                  線上預約諮詢
-                </Link>
-              </div>
+              <p className={styles.bannerTitle}>
+                台中海線的
+                <br />
+                房產規劃專家
+              </p>
+              <p className={styles.bannerLead}>
+                沙鹿・梧棲・清水・龍井｜買房、賣房、資金配置、稅費，一次幫你規劃到位。
+              </p>
               {/* 社群藥丸（FB／IG／YT／TikTok）。文案在 SocialLinks.tsx、網址在 owner.ts，這裡只管位置。
-                  所有寬度都在第一屏：桌機右上角，860px 以下排在按鈕下面置中。 */}
+                  所有寬度都在第一屏：桌機在圖的正上方靠右，860px 以下置中。 */}
               <div className={styles.bannerSocial}>
                 <SocialLinks variant="bar" align="center" />
               </div>
