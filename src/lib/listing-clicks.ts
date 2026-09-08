@@ -44,7 +44,7 @@ import { db } from "@/lib/db";
 import { taipeiDay } from "@/lib/site-visits";
 
 /** 卡片上可以點的四種動作。⚠️ 新增動作要同步改 `isClickAction()` 與後台顯示 */
-export const LISTING_CLICK_ACTIONS = ["link", "video", "booking"] as const;
+export const LISTING_CLICK_ACTIONS = ["link", "video", "booking", "page"] as const;
 export type ListingClickAction = (typeof LISTING_CLICK_ACTIONS)[number];
 
 export function isClickAction(value: unknown): value is ListingClickAction {

@@ -84,6 +84,7 @@ export default function ListingsManager({
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<string | "new" | null>(null);
+  const [copiedSlug, setCopiedSlug] = useState("");
   const [form, setForm] = useState<FormState>(emptyForm);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -296,6 +297,22 @@ export default function ListingsManager({
                       </a>
                     </>
                   ) : null}
+                  {" ・ "}
+                  {/* 2026-09-08 單一物件頁上線：要傳給客戶的網址從這裡複製，不用自己拼 */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = window.location.origin + "/listings/" + row.slug;
+                      navigator.clipboard
+                        .writeText(url)
+                        .then(() => setCopiedSlug(row.slug))
+                        .catch(() => window.prompt("複製這個網址", url));
+                    }}
+                    title="複製這戶的單獨網址（/listings/…），傳給客戶時 LINE 預覽會是這戶的照片"
+                    style={{ background: "none", border: 0, padding: 0, font: "inherit", color: CIS.blueSoft, cursor: "pointer" }}
+                  >
+                    {copiedSlug === row.slug ? "已複製單戶網址 ✓" : "複製單戶網址"}
+                  </button>
                 </div>
 
                 {/* 👆 點擊統計。四種動作分開看 ——「有人想看影片」跟「有人想約看」
@@ -307,6 +324,7 @@ export default function ListingsManager({
                       ["物件資訊", stat?.actions.link.total ?? 0, stat?.actions.link.recent ?? 0, CIS.textSub],
                       ["影片賞析", stat?.actions.video.total ?? 0, stat?.actions.video.recent ?? 0, CIS.textSub],
                       ["預約看屋", stat?.actions.booking.total ?? 0, stat?.actions.booking.recent ?? 0, "#4ade80"],
+                      ["單戶頁被開", stat?.actions.page.total ?? 0, stat?.actions.page.recent ?? 0, CIS.textSub],
                     ];
                     return (
                       <>

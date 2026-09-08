@@ -430,3 +430,55 @@ export async function moveListing(id: string, direction: "up" | "down"): Promise
   await db.$executeRaw`UPDATE listing SET sort_order = ${index} WHERE id = ${b.id}`;
 }
 
+
+/** 單一物件頁查一戶的結果。missing ＝ slug 對不上任何一筆 */
+export type ListingLookup = { listing: Listing | null; status: "active" | "sold" | "missing" };
+
+/**
+ * 單一物件頁用：照 slug 找一戶，**含已下架的**。
+ *
+ * 傳出去的網址收不回來，下架後那頁要能說「已下架」，不能 404 —— 所以這裡不過濾 status，
+ * 由頁面自己看 status 決定長相。找不到 → listing null。
+ * 資料庫連不上時退回 config 的種子資料，跟 getPublicListings 同一個原則。
+ *
+ * withPrice 預設 true（頁面要顯示售價，走跟卡片同一支 fetchHouseolPrice、同一個一小時快取）；
+ * 只要區域＋標題的地方（預約表單那支 API）傳 false，不要多打一次愛屋。
+ */
+export async function getListingBySlug(
+  slug: string,
+  opts: { withPrice?: boolean } = {},
+): Promise<ListingLookup> {
+  const clean = slug.trim().toLowerCase();
+  if (!clean) return { listing: null, status: "missing" };
+
+  let record: Listing | null = null;
+  try {
+    await ensureListingTable();
+    const rows = await db.$queryRawUnsafe<Row[]>(
+      "SELECT id, slug, title, points, area, photos, photo, link_label, link_href, video_href, status, sort_order, updated_at FROM listing WHERE slug = ? LIMIT 1",
+      clean,
+    );
+    if (rows.length > 0) {
+      const r = toRecord(rows[0]);
+      record = {
+        slug: r.slug,
+        title: r.title,
+        points: r.points,
+        area: r.area,
+        photos: r.photos,
+        link: r.link,
+        video: r.video,
+        status: r.status,
+      };
+    }
+  } catch {
+    record = LISTINGS.find((item) => item.slug === clean) ?? null;
+  }
+
+  if (!record) return { listing: null, status: "missing" };
+
+  const withPrice = opts.withPrice ?? true;
+  const price =
+    withPrice && record.status === "active" && record.link ? await fetchHouseolPrice(record.link.href) : null;
+  return { listing: { ...record, price }, status: record.status };
+}

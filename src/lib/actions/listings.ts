@@ -26,6 +26,10 @@ type Result = { ok: boolean; error?: string };
 function revalidateAll(): void {
   revalidatePath("/");
   revalidatePath("/listings");
+  // 單一物件頁（/listings/<slug>）也要一起刷新 —— 後台下架了、傳出去的那一頁不能還顯示在售。
+  // 帶 "page" 是「這個動態路由底下全部的頁」一次刷掉；sitemap 列了每一戶，跟著刷。
+  revalidatePath("/listings/[slug]", "page");
+  revalidatePath("/sitemap.xml");
   revalidatePath("/admin/listings");
 }
 

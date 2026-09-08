@@ -138,6 +138,11 @@ export default async function ListingsPage() {
                           <li key={p}>{p}</li>
                         ))}
                       </ul>
+                      {/* 每戶自己的一頁（/listings/<slug>）：要傳給客戶的網址用那個，LINE 預覽才會是這戶的照片。
+                          這顆不掛 data-listing-*：單戶頁自己會記「被打開」，這裡再記一次就重複。 */}
+                      <Link href={"/listings/" + item.slug} className={lst.detailLink}>
+                        看這戶的完整介紹 →
+                      </Link>
                       {/* 外部連結（FB 影片／591）放在預約按鈕上面當次要動作 ——
                           先讓客戶看得更清楚，再引導到預約，順序不要顛倒。 */}
                       {/* 兩顆連結各自獨立：後台哪一欄留空，那顆就不出現。

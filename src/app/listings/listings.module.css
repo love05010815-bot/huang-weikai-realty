@@ -442,3 +442,19 @@
     margin: 0 0.22em;
   }
 }
+
+/* 卡片裡通往單一物件頁的連結。放在賣點下面、按鈕上面：
+   字級比賣點小一點、用主色，看得出可以點，但不搶「預約看屋」的戲。 */
+.detailLink {
+  display: inline-block;
+  align-self: flex-start;
+  margin: -6px 0 16px;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.detailLink:hover {
+  text-decoration: underline;
+}

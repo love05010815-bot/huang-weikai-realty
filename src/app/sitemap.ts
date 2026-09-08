@@ -7,25 +7,48 @@
  * 目前刻意不收：
  *   /card                 名片頁，隱私考量維持 noindex
  *   /card/booking/manage  網址帶 token，robots.txt 也擋掉了
+ *   /listings/<已下架>     那頁是 noindex（見 listings/[slug]/page.tsx），只列上架中的
+ *
+ * 2026-09-08 起每一戶的單一物件頁（/listings/<slug>）也列進來。
+ * 後台上下架時 server action 會 revalidatePath("/sitemap.xml")，名單跟著變。
+ * 讀資料庫失敗就只回固定那幾頁 —— sitemap 不能因為資料庫抽風就整個 500。
  *
  * 之後新增文章頁，記得回來補一筆，不然 Google 要靠自己爬、慢很多。
  */
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/config/owner";
+import { listAllListings } from "@/lib/listings";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date();
-  return [
+  const fixed: MetadataRoute.Sitemap = [
     { url: SITE_URL, lastModified, changeFrequency: "monthly", priority: 1 },
-    { url: `${SITE_URL}/card/booking`, lastModified, changeFrequency: "monthly", priority: 0.9 },
-    { url: `${SITE_URL}/about`, lastModified, changeFrequency: "monthly", priority: 0.8 },
-    { url: `${SITE_URL}/listings`, lastModified, changeFrequency: "weekly", priority: 0.8 },
+    { url: SITE_URL + "/card/booking", lastModified, changeFrequency: "monthly", priority: 0.9 },
+    { url: SITE_URL + "/about", lastModified, changeFrequency: "monthly", priority: 0.8 },
+    { url: SITE_URL + "/listings", lastModified, changeFrequency: "weekly", priority: 0.8 },
     // 稅費試算是很強的搜尋入口（「房地合一稅試算」搜尋量高），優先度給高一點
-    { url: `${SITE_URL}/tax`, lastModified, changeFrequency: "monthly", priority: 0.9 },
+    { url: SITE_URL + "/tax", lastModified, changeFrequency: "monthly", priority: 0.9 },
     // 2026-08-21 恢復。未核對的「土地使用分區」層已從該頁移除，
     // 現在是系統擁有者確認過的 39 個建案，可以收錄。
-    { url: `${SITE_URL}/map`, lastModified, changeFrequency: "weekly", priority: 0.8 },
+    { url: SITE_URL + "/map", lastModified, changeFrequency: "weekly", priority: 0.8 },
     // 影音。內容是系統擁有者自己拍的，Google 對「有原創影音的在地商家」評價較好
-    { url: `${SITE_URL}/videos`, lastModified, changeFrequency: "weekly", priority: 0.8 },
+    { url: SITE_URL + "/videos", lastModified, changeFrequency: "weekly", priority: 0.8 },
   ];
+
+  let listings: MetadataRoute.Sitemap = [];
+  try {
+    const rows = await listAllListings();
+    listings = rows
+      .filter((row) => row.status === "active")
+      .map((row) => ({
+        url: SITE_URL + "/listings/" + row.slug,
+        lastModified: row.updatedAt ?? lastModified,
+        changeFrequency: "weekly" as const,
+        priority: 0.7,
+      }));
+  } catch {
+    listings = [];
+  }
+
+  return [...fixed, ...listings];
 }

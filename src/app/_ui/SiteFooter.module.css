@@ -1,0 +1,27 @@
+/* 跟 home.module.css 的 .footer 同一個長相。
+   --footer 變數定義在 home.module.css 的 .page；放在 .page 外面時用後面的備用色。 */
+.footer {
+  background: var(--footer, #1b4b47);
+  color: rgba(255, 255, 255, 0.55);
+  padding: 28px 20px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.footer p {
+  margin: 4px 0;
+}
+
+.footer strong {
+  color: #fff;
+}
+
+.footer .legal {
+  margin: 14px 0 0;
+  font-size: 11.5px;
+  line-height: 1.8;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.38);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}

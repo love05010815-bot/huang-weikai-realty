@@ -288,6 +288,10 @@ export default function BookingForm() {
   const [urgency, setUrgency] = useState("");
   const [qualification, setQualification] = useState<Qualification>({});
   const [note, setNote] = useState("");
+  // ② 從單一物件頁「預約看這戶」帶進來的那一戶（/card/booking?listing=<slug>）。
+  //    畫面上顯示區域＋標題讓客戶確認；送出時寫進備註第一行，後台與通知信就看得到問的是哪戶。
+  //    不另開欄位、不動資料表 —— 備註本來就會一路流到後台、Email、日曆。
+  const [listingRef, setListingRef] = useState<{ slug: string; area: string; title: string; status: string } | null>(null);
   const [website, setWebsite] = useState("");
   // Turnstile：沒設 site key 時 widget 不渲染，這個值永遠是空字串，行為等同沒有人機驗證。
   const [turnstileToken, setTurnstileToken] = useState("");
@@ -371,6 +375,32 @@ export default function BookingForm() {
           ? requestedMode
           : "";
     if (initialMode) setBookingMode(initialMode);
+
+    // ② ?listing=<slug>：查那戶的區域＋標題（/api/listings/<slug>，只回公開欄位）。
+    //    沒另外指定 mode 的話直接進「房產諮詢 → 買房」，客戶少點兩下。
+    //    查不到就當沒帶 —— 表單照常能用，不能因為 slug 打錯就卡住。
+    const listingSlug = String(params.get("listing") || "")
+      .trim()
+      .toLowerCase();
+    if (/^[a-z0-9-]{1,120}$/.test(listingSlug)) {
+      if (!initialMode) {
+        setBookingMode("realtor");
+        setIntentKey("buy");
+      }
+      fetch(`/api/listings/${encodeURIComponent(listingSlug)}`, { cache: "no-store" })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data: { ok?: boolean; slug?: string; area?: string; title?: string; status?: string } | null) => {
+          if (data && data.ok && data.slug && data.title) {
+            setListingRef({
+              slug: data.slug,
+              area: String(data.area || ""),
+              title: data.title,
+              status: String(data.status || "active"),
+            });
+          }
+        })
+        .catch(() => {});
+    }
 
     try {
       const stored = JSON.parse(window.localStorage.getItem(PROFILE_KEY) || "{}") as Record<string, string>;
@@ -678,7 +708,10 @@ export default function BookingForm() {
           intent: [selectedIntent.apiIntent],
           urgency,
           qualification: qualificationPayload,
-          note: note.trim(),
+          // ② 有帶物件進來就寫在備註第一行；後台、通知信、日曆都是讀這個欄位
+          note:
+            (listingRef ? `【詢問物件】${listingRef.area} ${listingRef.title}（/listings/${listingRef.slug}）\n` : "") +
+            note.trim(),
           website,
           turnstileToken,
           funnelSessionId: trackingEnabled ? sessionId : "",
@@ -830,6 +863,17 @@ export default function BookingForm() {
           <p className={styles.lead}>先告訴我這次要談什麼，系統只會顯示適合的方式、時長與必要問題。</p>
           <Progress current={currentStep} />
         </header>
+
+        {/* ② 從單一物件頁進來的：先把那戶亮出來，客戶一眼確認「對，就是這戶」 */}
+        {listingRef ? (
+          <div className={styles.listingRef} role="status">
+            <span className={styles.listingRefTag}>您詢問的物件</span>
+            <span>
+              <strong>{listingRef.area}</strong>　{listingRef.title}
+              {listingRef.status === "sold" ? "（此戶已下架）" : ""}
+            </span>
+          </div>
+        ) : null}
 
         <form className={styles.form} onSubmit={submit} noValidate>
           <section className={styles.section}>

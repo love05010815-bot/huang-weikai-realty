@@ -1,0 +1,153 @@
+/* ---------- 單一物件頁 ----------
+   配色變數來自 home.module.css 的 .page（這頁一樣套那個 class）。
+   卡片元素（照片相簿、區域標籤、售價、賣點、按鈕）直接沿用 listings.module.css，
+   這裡只管「一戶一頁」特有的版面：左相簿右資訊、麵包屑、下架框、分享鈕。 */
+
+.wrap {
+  max-width: 1080px;
+}
+
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 18px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.crumbs a {
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.crumbs a:hover {
+  text-decoration: underline;
+}
+
+/* 左：相簿（略寬） 右：資訊。860px 以下改成上下。 */
+.detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 30px;
+  align-items: start;
+}
+
+/* 相簿外面借用清單的 .card 當外框（圓角、邊框、桌機左右箭頭靠 .card:hover 才出現），
+   但這頁不要卡片那個「滑鼠移上去浮起來」的效果 —— 這裡它不是清單裡的一張卡。
+   .wrap .mediaCard:hover 三層選擇器，蓋得過 listings.module.css 的 .card:hover。 */
+.wrap .mediaCard:hover {
+  transform: none;
+  border-color: var(--line-warm);
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.title {
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 900;
+  line-height: 1.35;
+  margin: 0 0 14px;
+  color: var(--ink);
+}
+
+/* 按鈕一顆一排。清單卡片的 .actionLink／.actionBtn 自帶 margin-top:auto 把自己推到卡片底，
+   這頁不需要，用 .actions > a 把 margin 歸零（0,1,1 贏過 0,1,0）。 */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.actions > a {
+  margin: 0;
+}
+
+.shareBtn {
+  align-self: flex-start;
+  margin-top: 16px;
+  border: 1.5px dashed var(--line-warm);
+  background: #fff;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.shareBtn:hover {
+  border-color: var(--accent);
+  color: var(--primary);
+}
+
+/* 已下架／找不到：一個置中的框，兩顆按鈕 */
+.soldBox {
+  text-align: center;
+  background: var(--soft);
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  padding: 48px 24px 40px;
+}
+
+.soldBox h1 {
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 900;
+  margin: 10px 0 12px;
+  color: var(--ink);
+}
+
+.soldBox p {
+  max-width: 560px;
+  margin: 0 auto 24px;
+  line-height: 1.85;
+  color: var(--muted);
+}
+
+.soldActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* 次要按鈕（白底外框），跟 home.module.css 的 .btnPrimary 並排用 */
+.btnAlt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 12px 22px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line-warm);
+  background: #fff;
+  color: var(--primary);
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.btnAlt:hover {
+  border-color: var(--accent);
+  background: var(--soft);
+}
+
+@media (max-width: 860px) {
+  .detail {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .soldActions a {
+    width: 100%;
+  }
+}
