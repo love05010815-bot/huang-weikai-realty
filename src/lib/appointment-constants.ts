@@ -296,10 +296,25 @@ export type OpenDay = { date: string; label: string; weekday: number; slots: Ope
 export function generateOpenSlots(
   now: Date,
   blockedIso: Set<string>,
-  options?: { leadHours?: number; minDurationMin?: number; durations?: readonly number[] },
+  options?: {
+    leadHours?: number;
+    minDurationMin?: number;
+    durations?: readonly number[];
+    /* 2026-09-08 起這幾個可以由後台「可預約時間」面板覆蓋（appointment-schedule-settings.ts）；
+       沒給就用上面寫死的 BOOKING_RULES，行為跟以前一樣 */
+    startMin?: number;
+    endMin?: number;
+    workDays?: readonly number[];
+    daysAhead?: number;
+    /** 休假日 "YYYY-MM-DD" 集合（整天不排） */
+    closedDates?: Set<string>;
+  },
 ): OpenDay[] {
   const days: OpenDay[] = [];
   const leadHours = options?.leadHours ?? BOOKING_RULES.leadHours;
+  const workDays: readonly number[] = options?.workDays?.length ? options.workDays : BOOKING_RULES.workDays;
+  const daysAhead = options?.daysAhead ?? BOOKING_RULES.daysAhead;
+  const closedDates = options?.closedDates;
   const minDurationMin = options?.minDurationMin ?? BOOKING_RULES.minDurationMin;
   const durations = options?.durations?.length ? options.durations : BOOKING_RULES.durations;
   const minTime = now.getTime() + leadHours * 3600_000;
@@ -309,17 +324,19 @@ export function generateOpenSlots(
   const baseD = tw.getUTCDate();
   const wdLabel = ["日", "一", "二", "三", "四", "五", "六"];
   const step = BOOKING_RULES.slotMinutes; // 15
-  const dayStartMin = BOOKING_RULES.startHour * 60; // 600
-  const dayEndMin = BOOKING_RULES.endHour * 60; // 1080
+  const dayStartMin = options?.startMin ?? BOOKING_RULES.startHour * 60; // 預設 600
+  const dayEndMin = options?.endMin ?? BOOKING_RULES.endHour * 60; // 預設 1080
   const maxDur = Math.max(...durations);
 
-  for (let d = 0; d <= BOOKING_RULES.daysAhead; d++) {
+  for (let d = 0; d <= daysAhead; d++) {
     const dayTw = new Date(Date.UTC(baseY, baseM, baseD + d));
     const wd = dayTw.getUTCDay();
-    if (!(BOOKING_RULES.workDays as readonly number[]).includes(wd)) continue; // 週末不排
+    if (!workDays.includes(wd)) continue; // 沒開放的星期不排
     const y = dayTw.getUTCFullYear();
     const m = dayTw.getUTCMonth();
     const dd = dayTw.getUTCDate();
+    const dateKey = `${y}-${String(m + 1).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
+    if (closedDates?.has(dateKey)) continue; // 休假日整天不排
     // 台灣「當天分鐘數」→ 真實 UTC ISO（台灣 = UTC+8，故 UTC 時 = 台灣時 - 8）
     const isoAt = (minOfDay: number) =>
       new Date(Date.UTC(y, m, dd, Math.floor(minOfDay / 60) - 8, minOfDay % 60, 0)).toISOString();
@@ -349,7 +366,7 @@ export function generateOpenSlots(
     }
     if (slots.length) {
       days.push({
-        date: `${y}-${String(m + 1).padStart(2, "0")}-${String(dd).padStart(2, "0")}`,
+        date: dateKey,
         label: `${m + 1}/${dd}（週${wdLabel[wd]}）`,
         weekday: wd,
         slots,

@@ -1,3 +1,4 @@
+import { getAppointmentScheduleSettings } from "@/lib/appointment-schedule";
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -256,6 +257,7 @@ export async function POST(req: NextRequest) {
     }
     validateBookingModeAndQualification({ bookingMode, intent, qualification });
     const { slotEndAt, policy } = validatePublicAppointmentSlot({
+      schedule: await getAppointmentScheduleSettings(),
       slotAt,
       durationMinutes,
       meetType,

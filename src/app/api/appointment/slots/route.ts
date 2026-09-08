@@ -12,6 +12,8 @@ import {
   getBookedSlots,
 } from "@/lib/appointment";
 import { GoogleCalendarUnavailableError, getBusyRangesStrict } from "@/lib/google-calendar";
+import { getAppointmentScheduleSettings } from "@/lib/appointment-schedule";
+import { expandClosedDates, type ScheduleMeetType } from "@/lib/appointment-schedule-settings";
 import { getClientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -35,9 +37,12 @@ export async function GET(req: NextRequest) {
     if (!MEET_TYPE_KEYS.includes(meetType)) {
       return NextResponse.json({ days: [], error: "見面方式不正確。" }, { status: 400 });
     }
-    const policy = appointmentMeetingPolicy(meetType);
+    const basePolicy = appointmentMeetingPolicy(meetType);
+    // 2026-09-08：開放日／時段／天數／提前時間由後台「可預約時間」面板決定（沒設過＝以前寫死的值）
+    const schedule = await getAppointmentScheduleSettings();
+    const policy = { ...basePolicy, leadHours: schedule.leadHours[meetType as ScheduleMeetType] ?? basePolicy.leadHours };
     const now = new Date();
-    const to = new Date(now.getTime() + (BOOKING_RULES.daysAhead + 2) * 86400_000);
+    const to = new Date(now.getTime() + (schedule.daysAhead + 2) * 86400_000);
     const step = BOOKING_RULES.slotMinutes * 60_000;
     const booked = await getBookedSlots(now, to);
     const blockedIso = new Set<string>(booked.map((date) => date.toISOString()));
@@ -57,6 +62,11 @@ export async function GET(req: NextRequest) {
       leadHours: policy.leadHours,
       minDurationMin: Math.min(...policy.publicDurations),
       durations: policy.publicDurations,
+      startMin: schedule.startMin,
+      endMin: schedule.endMin,
+      workDays: schedule.workDays,
+      daysAhead: schedule.daysAhead,
+      closedDates: expandClosedDates(schedule.closedDates),
     });
     return NextResponse.json({
       days,
@@ -66,7 +76,7 @@ export async function GET(req: NextRequest) {
         durations: policy.publicDurations,
         bufferBeforeMinutes: policy.bufferBeforeMin,
         bufferAfterMinutes: policy.bufferAfterMin,
-        daysAhead: BOOKING_RULES.daysAhead,
+        daysAhead: schedule.daysAhead,
       },
     });
   } catch (error) {

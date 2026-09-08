@@ -1,3 +1,4 @@
+import { getAppointmentScheduleSettings } from "@/lib/appointment-schedule";
 import { NextRequest, NextResponse } from "next/server";
 import {
   AppointmentSlotConflictError,
@@ -370,6 +371,7 @@ export async function POST(req: NextRequest) {
     const slotAt = new Date(String(body.slotIso || ""));
     try {
       const { slotEndAt, policy } = validatePublicAppointmentSlot({
+      schedule: await getAppointmentScheduleSettings(),
         slotAt,
         durationMinutes,
         meetType: appt.meet_type,

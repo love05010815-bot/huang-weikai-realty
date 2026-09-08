@@ -21,6 +21,8 @@ import type { AppointmentRow } from "@/lib/appointment-constants";
 import { isGoogleBound, isGoogleConfigured, getCalendarDisplaySettings } from "@/lib/google-calendar";
 import CalendarDisplayPanel from "./CalendarDisplayPanel";
 import RateLimitPanel from "./RateLimitPanel";
+import SchedulePanel from "./SchedulePanel";
+import { getAppointmentScheduleSettings } from "@/lib/appointment-schedule";
 import { appointmentMapsUrl, formatSlotRangeTw } from "@/lib/appointment-notify";
 import { CIS, CHIP, type ChipTone } from "@/app/admin/_components/cis";
 import { Icon, StatusDot } from "@/app/admin/_ui/icons";
@@ -349,12 +351,13 @@ export default async function AppointmentsAdminPage({
   const search = String(sp.q || "").trim().slice(0, 120);
   const now = new Date();
 
-  const [allRows, googleBound, calendarDisplay, rateSettings, rateLimitStats, orphanCheck] = await Promise.all([
+  const [allRows, googleBound, calendarDisplay, rateSettings, rateLimitStats, scheduleSettings, orphanCheck] = await Promise.all([
     listAppointments({ search, limit: 500 }),
     isGoogleBound(),
     getCalendarDisplaySettings(),
     getAppointmentRateLimitSettings(),
     getAppointmentRateLimitStats(),
+    getAppointmentScheduleSettings(),
     // 2026-08-06 系統擁有者：比對「資料庫說還在、Google 上卻已被刪掉」的預約。一次 API 呼叫。
     //   問不到 Google 時回 checked:false，**不會把所有預約都誤判成孤兒**。
     findOrphanedCalendarAppointments().catch(() => ({ checked: false, orphanIds: new Set<string>() })),
@@ -463,6 +466,9 @@ export default async function AppointmentsAdminPage({
             這次沒能問到 Google 日曆，所以<b>沒有做「事件是否還在」的比對</b>（不是代表沒問題，是這次不知道）。重新整理可以再試一次。
           </div>
         ) : null}
+
+        {/* 2026-09-08 系統擁有者：「我後臺要從哪邊控制可以選擇的時間」→ 開放日／時段／休假日從這裡調 */}
+        <SchedulePanel initial={scheduleSettings} borderColor={CIS.cardBorder} />
 
         {/* 2026-08-06 系統擁有者：三道防灌爆限制原本寫死，他自己測試時被鎖 1 小時測不下去 */}
         <RateLimitPanel

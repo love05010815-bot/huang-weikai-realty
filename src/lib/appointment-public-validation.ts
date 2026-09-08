@@ -1,3 +1,11 @@
+import {
+  DEFAULT_SCHEDULE_SETTINGS,
+  WEEKDAY_LABELS,
+  expandClosedDates,
+  minuteLabel,
+  type AppointmentScheduleSettings,
+  type ScheduleMeetType,
+} from "@/lib/appointment-schedule-settings";
 import { createHash } from "node:crypto";
 import type { NextRequest } from "next/server";
 import {
@@ -158,10 +166,16 @@ export function validatePublicAppointmentSlot(input: {
   durationMinutes: number;
   meetType: string;
   now?: Date;
+  /** 後台「可預約時間」設定（2026-09-08）。呼叫端要先 getAppointmentScheduleSettings() 再傳進來，
+      沒傳就用預設 —— 預設跟以前寫死的一樣，但那就等於後台的設定沒生效。 */
+  schedule?: AppointmentScheduleSettings;
 }): { slotEndAt: Date; policy: ReturnType<typeof appointmentMeetingPolicy> } {
   const { slotAt, durationMinutes, meetType } = input;
   const now = input.now || new Date();
-  const policy = appointmentMeetingPolicy(meetType);
+  const basePolicy = appointmentMeetingPolicy(meetType);
+  const schedule = input.schedule ?? DEFAULT_SCHEDULE_SETTINGS;
+  const scheduleLead = schedule.leadHours[meetType as ScheduleMeetType];
+  const policy = { ...basePolicy, leadHours: typeof scheduleLead === "number" ? scheduleLead : basePolicy.leadHours };
   if (!Number.isFinite(slotAt.getTime())) {
     throw new PublicAppointmentValidationError("預約時段格式錯誤。");
   }
@@ -187,9 +201,9 @@ export function validatePublicAppointmentSlot(input: {
     );
   }
   const dayDiff = Math.round((taiwanDateKey(slotAt) - taiwanDateKey(now)) / 86400_000);
-  if (dayDiff < 0 || dayDiff > BOOKING_RULES.daysAhead) {
+  if (dayDiff < 0 || dayDiff > schedule.daysAhead) {
     throw new PublicAppointmentValidationError(
-      `目前只開放未來 ${BOOKING_RULES.daysAhead} 天內的預約。`,
+      `目前只開放未來 ${schedule.daysAhead} 天內的預約。`,
       400,
       "outside_booking_window",
     );
@@ -200,12 +214,19 @@ export function validatePublicAppointmentSlot(input: {
   const weekday = twStart.getUTCDay();
   const startMinute = twStart.getUTCHours() * 60 + twStart.getUTCMinutes();
   const endMinute = startMinute + durationMinutes;
+  const dateKey = `${twStart.getUTCFullYear()}-${String(twStart.getUTCMonth() + 1).padStart(2, "0")}-${String(twStart.getUTCDate()).padStart(2, "0")}`;
+  if (expandClosedDates(schedule.closedDates).has(dateKey)) {
+    throw new PublicAppointmentValidationError("這一天不開放預約（休假日），請選別天。", 409, "closed_date");
+  }
   if (
-    !(BOOKING_RULES.workDays as readonly number[]).includes(weekday) ||
-    startMinute < BOOKING_RULES.startHour * 60 ||
-    endMinute > BOOKING_RULES.endHour * 60
+    !schedule.workDays.includes(weekday) ||
+    startMinute < schedule.startMin ||
+    endMinute > schedule.endMin
   ) {
-    throw new PublicAppointmentValidationError("請選擇平日 10:00 到 18:00 之間的開放時段。");
+    const days = schedule.workDays.map((d) => `週${WEEKDAY_LABELS[d]}`).join("、");
+    throw new PublicAppointmentValidationError(
+      `請選擇${days} ${minuteLabel(schedule.startMin)} 到 ${minuteLabel(schedule.endMin)} 之間的開放時段。`,
+    );
   }
   return { slotEndAt, policy };
 }
