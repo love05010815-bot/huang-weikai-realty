@@ -235,8 +235,47 @@ export default async function HomePage() {
           右緣再一條直排跟形象照擠在同一側。要放回來就 <SocialLinks variant="float" />，
           放在 <header> 外面（header 的 backdrop-filter 會把 fixed 子元素關在 header 裡）。 */}
       <main id="top">
+        {/* ---------------- 品牌 banner（2026-09-08 系統擁有者指定放在自我介紹的上方） ----------------
+            他要的是「強調我是服務台中海線的房產規劃專家」，圖用他給的那張（家人望著天際線，
+            圖上本來就寫著「不只是交易 而是人生的下一個家」）。圖是從桌面那張 3×3 的 AI 圖切第 8 格
+            放大 3 倍來的（原格只有 312×510），桌機看得出有點軟；他若給單張高解析度的，換掉
+            public/banner-family.jpg 就好，尺寸不用一樣（cover、靠上對齊）。
+            ⚠️ 這裡的標題刻意用 <p> 不用 <h1>／<h2>：頁面唯一的 h1 是下面 hero 的「房產找瑋凱」，
+               banner 在它前面放 h2 會讓大綱順序倒過來。 */}
+        <section className={styles.banner} aria-label="台中海線房產規劃專家">
+          <div className={styles.bannerInner}>
+            <div className={styles.bannerText}>
+              <span className={styles.bannerEyebrow}>📍 台中海線在地服務</span>
+              <p className={styles.bannerTitle}>
+                台中海線的
+                <br />
+                房產規劃專家
+              </p>
+              <p className={styles.bannerLead}>
+                沙鹿・梧棲・清水・龍井｜買房、賣房、資金配置、稅費，一次幫你規劃到位。
+              </p>
+              <Link className={styles.bannerCta} href="/card/booking">
+                線上預約諮詢
+              </Link>
+            </div>
+            <div className={styles.bannerPhoto}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                className={styles.bannerImg}
+                src="/banner-family.jpg"
+                alt="一家人望著台中的天際線——不只是交易，而是人生的下一個家"
+                width={936}
+                height={1530}
+                loading="eager"
+              />
+            </div>
+          </div>
+        </section>
+
         {/* ---------------- HERO ---------------- */}
-        <section className={styles.hero} aria-label={`${OWNER.name}個人形象介紹`}>
+        <section className={`${styles.hero} ${styles.band} ${styles.bandWhite}`} aria-label={`${OWNER.name}個人形象介紹`}>
+          {/* hero 頂端的白弧蓋在上面 banner 的底部（banner 的 padding-bottom ≥ 弧高 56px） */}
+          <SectionWave flip />
           {/* 社群連結放在 hero 最上面 —— 2026-09-01 系統擁有者要求「手機或網頁一點開就看得到」。
               ⚠️ **不能改放按鈕下面**：860px 以下 `.heroPhotoWrap` 是 `order: -1`，
                  形象照（260×320）排在所有文字前面，按鈕已經在手機第一屏以外了。

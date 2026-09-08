@@ -1211,6 +1211,124 @@
   }
 }
 
+/* ---------- 品牌 banner（hero 上面那條，2026-09-08） ----------
+   左字右圖。底是主色藍綠的漸層，字白；右邊那張是直式圖，固定高度用 cover、靠上對齊，
+   讓圖上手寫的那句「不只是交易 而是人生的下一個家」露出來。
+   860px 以下改一欄：圖在上（矮一點、還是靠上對齊）、字置中。
+   ⚠️ padding-bottom 至少要 ≥ 56px：下面 hero 頂端有一道白弧（SectionWave）蓋在這裡。 */
+.banner {
+  background: linear-gradient(135deg, #227f71 0%, #2fa894 55%, #7fd1c2 100%);
+  color: #fff;
+  padding: 44px 20px 76px;
+}
+
+.bannerInner {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 40px;
+  align-items: center;
+}
+
+.bannerText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.bannerEyebrow {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--primary-dark);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 6px 14px;
+  border-radius: 999px;
+}
+
+.bannerTitle {
+  margin: 0;
+  font-size: clamp(30px, 4vw, 44px);
+  font-weight: 900;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+}
+
+.bannerLead {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.92);
+  max-width: 480px;
+}
+
+.bannerCta {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 6px;
+  background: #fff;
+  color: var(--primary-dark);
+  font-weight: 800;
+  font-size: 15px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  text-decoration: none;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.bannerCta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
+}
+
+.bannerPhoto {
+  justify-self: center;
+  width: 100%;
+  max-width: 440px;
+  height: 460px;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 6px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+  background: #1a1310;
+}
+
+.bannerImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* 靠上：圖上方是手寫那句話與天際線，下面只是衣服 */
+  object-position: center top;
+  display: block;
+}
+
+@media (max-width: 860px) {
+  .banner {
+    padding: 22px 16px 60px;
+  }
+  .bannerInner {
+    grid-template-columns: 1fr;
+    gap: 22px;
+    text-align: center;
+  }
+  .bannerText {
+    align-items: center;
+  }
+  .bannerPhoto {
+    order: -1;
+    height: 300px;
+    max-width: 420px;
+  }
+  .bannerLead {
+    font-size: 15px;
+  }
+}
+
 /* ---------- Footer ---------- */
 .footer {
   /* 跟上面「預約諮詢」同一個色調、再深一階（--footer） */
