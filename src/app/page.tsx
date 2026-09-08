@@ -520,75 +520,63 @@ export default async function HomePage() {
           </section>
         ) : null}
 
-        {/* ---------------- 預約系統 ---------------- */}
+        {/* ---------------- 預約諮詢（2026-09-08 第二版：人像＋三步＋三顆按鈕） ----------------
+            系統擁有者：「把首頁最下方的預約諮詢改的再淺顯易懂，不要太複雜，並加上我的這張示意圖，重新編排規劃」。
+            之前是兩張卡（左：預約三步驟卡、右：電話／LINE／服務區域三列＋兩顆按鈕），字多又重複。
+            現在：左邊他給的人像（圖上手寫「每一個家的故事都有開始／而我，陪你找到答案／房產找瑋凱 安心不踩雷」，
+            那些字是畫在圖上的），右邊一句標題、一句說明、三步各一行、三顆按鈕（線上預約／加 LINE／打電話），
+            最底下一行服務區域＋LINE ID。860px 以下人像在上置中、文字置中、按鈕滿寬直排。
+            圖檔 public/booking-portrait.jpg（900×1402，從他貼的圖轉的）；換圖直接換檔，直式都行。
+            三步的字要跟 /card/booking 的流程對得上：挑時間 → 留姓名電話 → 送出成立；不要寫「幾秒完成」這種承諾。 */}
         <section id="booking" className={`${styles.section} ${styles.contact} ${styles.band}`}>
           <SectionWave />
-          <div className={`${styles.container} ${styles.center}`}>
-            <span className={styles.eyebrow}>BOOKING</span>
-            <h2 className={styles.sectionTitle}>預約諮詢</h2>
-            <p className={styles.sectionDesc}>
-              線上挑好時間直接成立預約，不用來回敲時間；或直接加LINE，馬上開始對話。
-            </p>
-          </div>
-          <div className={styles.container}>
-            <div className={styles.contactGrid}>
-              <div className={styles.bookingCard}>
-                <div className={styles.bookingIcon}>📅</div>
-                <h3>線上預約諮詢</h3>
-                <p>自己挑時段，送出就完成，省下來回敲時間的訊息。</p>
-                <ol className={styles.bookingSteps}>
-                  <li className={styles.bookingStep}>
-                    <span className={styles.bookingStepNum}>1</span>
-                    <span>選擇諮詢主題：買賣租賃、資金規劃、稅費、市場分析或裝潢</span>
-                  </li>
-                  <li className={styles.bookingStep}>
-                    <span className={styles.bookingStepNum}>2</span>
-                    <span>挑選方便的日期、時間與時長</span>
-                  </li>
-                  <li className={styles.bookingStep}>
-                    <span className={styles.bookingStepNum}>3</span>
-                    <span>留下聯絡方式，預約即刻成立</span>
-                  </li>
-                </ol>
-                <Link className={`${styles.btn} ${styles.btnPrimary}`} href="/card/booking">
-                  開始預約
+          <div className={`${styles.container} ${styles.bookingGrid}`}>
+            <div className={styles.bookingPhoto}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                className={styles.bookingPhotoImg}
+                src="/booking-portrait.jpg"
+                alt={`${OWNER.name}——每一個家的故事都有開始，而我，陪你找到答案。房產找瑋凱，安心不踩雷`}
+                width={900}
+                height={1402}
+                loading="lazy"
+              />
+            </div>
+            <div className={styles.bookingCopy}>
+              <span className={styles.eyebrow}>BOOKING</span>
+              <h2 className={styles.sectionTitle}>有房子的問題？約個時間聊聊</h2>
+              <p className={styles.bookingLead}>
+                買房、賣房、稅費、資金規劃都可以問。線上挑好時間、送出就完成，不用來回敲時間。
+              </p>
+              <ol className={styles.bookingSteps}>
+                <li className={styles.bookingStep}>
+                  <span className={styles.bookingStepNum}>1</span>
+                  挑一個你方便的時間
+                </li>
+                <li className={styles.bookingStep}>
+                  <span className={styles.bookingStepNum}>2</span>
+                  留下姓名和電話
+                </li>
+                <li className={styles.bookingStep}>
+                  <span className={styles.bookingStepNum}>3</span>
+                  送出就完成，時間到直接聊
+                </li>
+              </ol>
+              <div className={styles.bookingActions}>
+                <Link className={`${styles.btn} ${styles.bookingBtnMain}`} href="/card/booking">
+                  📅 線上預約
                 </Link>
-                <p className={styles.bookingNote}>不確定要談什麼？也可以先加LINE聊聊</p>
-              </div>
-
-              <div className={styles.contactCard}>
-                <div className={styles.contactRow}>
-                  <div className={styles.ic}>📞</div>
-                  <div>
-                    <div className={styles.contactLabel}>電話聯絡</div>
-                    <div className={styles.contactValue}>{OWNER.phone}</div>
-                  </div>
-                </div>
-                <div className={styles.contactRow}>
-                  <div className={styles.ic}>💬</div>
-                  <div>
-                    <div className={styles.contactLabel}>LINE 官方帳號</div>
-                    <div className={styles.contactValue}>@a8865</div>
-                  </div>
-                </div>
-                <div className={styles.contactRow}>
-                  <div className={styles.ic}>📍</div>
-                  <div>
-                    <div className={styles.contactLabel}>服務區域</div>
-                    <div className={styles.contactValue}>台中市海線：沙鹿・梧棲・清水・龍井</div>
-                  </div>
-                </div>
                 <a className={`${styles.btn} ${styles.btnLine}`} href={SOCIAL.line} target="_blank" rel="noopener noreferrer">
-                  立即加LINE，免費諮詢
+                  💬 加 LINE 聊聊
                 </a>
-                <a className={`${styles.btn} ${styles.btnOutline}`} href={`tel:${OWNER.phoneRaw}`} style={{ borderColor: "rgba(255,255,255,.5)", color: "#fff" }}>
-                  直接撥打電話
+                <a className={`${styles.btn} ${styles.bookingBtnGhost}`} href={`tel:${OWNER.phoneRaw}`}>
+                  📞 {OWNER.phone}
                 </a>
               </div>
+              <p className={styles.bookingFine}>服務區域：台中海線 沙鹿・梧棲・清水・龍井｜LINE @a8865</p>
             </div>
             {/* 2026-09-03 這裡原本還有一排社群底磚，系統擁有者拍板拿掉 ——
-                上面 banner 右上的藥丸已經夠了，
-                同一頁第三排是雜訊。要放回來就 <SocialLinks variant="tiles" />。 */}
+                上面 banner 的藥丸已經夠了，同一頁第三排是雜訊。要放回來就 <SocialLinks variant="tiles" />。 */}
           </div>
         </section>
       </main>
