@@ -873,9 +873,11 @@
 
 
 /* ---------- 稅費試算 ---------- */
-/* 用 flex 不用 grid —— 三張卡若固定兩欄，第三張會獨自佔滿整行第二排，
-   看起來像特別放大的卡片；flex 配 justify-content:center 讓最後一排置中。
-   跟 .serviceGrid 同一個道理，這裡卡片數也不是 2 的倍數。 */
+/* 2026-09-08 系統擁有者指定：四張卡排成 2×2 四宮格。
+   之前是「一排三張」（三張卡時代的寫法），加了第四張「新青安 3.0」後變成
+   三張在上、一張獨自置中在第二排，他看了不要。
+   仍然用 flex 不用 grid：卡片數哪天又變成奇數，最後一排會自動置中，
+   不會出現一張獨自撐滿整行的放大卡（跟 .serviceGrid 同一個道理）。 */
 .toolGrid {
   display: flex;
   flex-wrap: wrap;
@@ -887,9 +889,9 @@
 .toolCard {
   /* 這個專案沒有全域 box-sizing reset，有邊框又設寬度就得自己寫 */
   box-sizing: border-box;
-  /* 扣掉兩道 22px 間距後的三分之一，剛好一排三張 */
-  flex: 1 1 calc((100% - 44px) / 3);
-  max-width: calc((100% - 44px) / 3);
+  /* 扣掉一道 22px 間距後的一半，一排兩張；四張剛好 2×2 */
+  flex: 1 1 calc((100% - 22px) / 2);
+  max-width: calc((100% - 22px) / 2);
   display: block;
   background: #fff;
   border: 1px solid var(--line-warm);
