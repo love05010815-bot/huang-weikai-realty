@@ -15,6 +15,7 @@ import { Icon } from "@/app/admin/_ui/icons";
 import { MAX_PHOTOS } from "@/config/listings";
 import { findCopyRisks } from "@/lib/listing-copy-risk";
 import { photoDisplayName, resolvePhotoSrc } from "@/lib/photo-src";
+import { formatWan, houseolCaseId } from "@/lib/houseol-price";
 import { uploadPhotos } from "@/lib/photo-upload-client";
 import type { ListingInput, ListingRecord, ListingStatus } from "@/lib/listings";
 import type { ListingClickStats } from "@/lib/listing-clicks";
@@ -73,10 +74,13 @@ function toForm(row: ListingRecord): FormState {
 export default function ListingsManager({
   initial,
   clickStats = {},
+  prices = {},
 }: {
   initial: ListingRecord[];
   /** 每一筆物件被點過幾次。讀不到時是空物件，畫面顯示 0。 */
   clickStats?: ListingClickStats;
+  /** 每一筆的售價（萬），key 是 id；從愛屋型錄現抓、不在資料庫。null＝抓不到。 */
+  prices?: Record<string, number | null>;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<string | "new" | null>(null);
@@ -205,6 +209,9 @@ export default function ListingsManager({
         {initial.map((row, index) => {
           const risks = findCopyRisks(row.title, ...row.points);
           const sold = row.status === "sold";
+          const price = prices[row.id];
+          // 連的是愛屋型錄卻抓不到價 → 明講「抓不到」；連 591 或沒連結 → 本來就不會有價，不用提
+          const priceMissing = typeof price !== "number" && !!row.link && !!houseolCaseId(row.link.href);
           const chip = sold ? CHIP.neutral : CHIP.success;
 
           if (editing === row.id) {
@@ -268,6 +275,19 @@ export default function ListingsManager({
 
                 <div className={styles.rowMeta} style={{ color: CIS.textMute }}>
                   {row.area}
+                  {typeof price === "number" ? (
+                    <>
+                      {" ・ "}
+                      <span className={styles.price} style={{ color: CIS.text }}>
+                        {formatWan(price)}
+                      </span>
+                    </>
+                  ) : priceMissing ? (
+                    <>
+                      {" ・ "}
+                      <span title="型錄頁抓不到售價，可能是愛屋慢了或改版；最慢一小時會再試">售價抓不到</span>
+                    </>
+                  ) : null}
                   {row.link ? (
                     <>
                       {" ・ "}
@@ -724,7 +744,8 @@ function ListingForm({
             placeholder="https://www.591.com.tw/..."
           />
           <div className={styles.hint} style={{ color: CIS.textMute }}>
-            物件詳情頁，例如 591。**留空這顆按鈕就不會出現**，不會在卡片上留空位。
+            物件詳情頁。<b>貼愛屋型錄（es.houseol.com.tw）的話，前台卡片跟這裡的列表會自動顯示售價</b>
+            （從型錄現抓、最慢一小時更新）；連 591 就不會有售價。**留空這顆按鈕就不會出現**，不會在卡片上留空位。
           </div>
         </div>
 

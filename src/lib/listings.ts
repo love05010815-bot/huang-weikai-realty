@@ -250,6 +250,18 @@ async function withHouseolPrices(items: Listing[]): Promise<Listing[]> {
   );
 }
 
+/**
+ * 🏷️ 後台用：每一筆的售價（萬），key 是 id。跟前台走**同一支** `fetchHouseolPrice`，
+ * 同一個一小時快取 —— 後台多開幾次不會多打愛屋。抓不到的那一戶是 null。
+ * 2026-09-08 系統擁有者要後台也看得到價格（日後要拿它排序）。
+ */
+export async function houseolPriceMap(rows: ListingRecord[]): Promise<Record<string, number | null>> {
+  const entries = await Promise.all(
+    rows.map(async (row) => [row.id, row.link ? await fetchHouseolPrice(row.link.href) : null] as const),
+  );
+  return Object.fromEntries(entries);
+}
+
 // ---------------------------------------------------------------- 寫
 
 export function normalizeSlug(raw: string): string {

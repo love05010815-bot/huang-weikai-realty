@@ -13,7 +13,7 @@ import { adminEmails } from "@/auth";
 import { CIS } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
 import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
-import { listAllListings, type ListingRecord } from "@/lib/listings";
+import { houseolPriceMap, listAllListings, type ListingRecord } from "@/lib/listings";
 import { findCopyRisks } from "@/lib/listing-copy-risk";
 import { getListingClickStats, type ListingClickStats } from "@/lib/listing-clicks";
 import ListingsManager from "./ListingsManager";
@@ -46,6 +46,10 @@ export default async function ListingsAdminPage() {
   } catch (e) {
     console.error("[admin/listings] 點擊統計讀不到:", e);
   }
+
+  // 🏷️ 售價：跟前台同一支現抓（同一個一小時快取，後台多開不會多打愛屋）。
+  //    這是打愛屋不是打資料庫，跟連線池無關；抓不到就那一戶不顯示，永遠不 throw。
+  const prices = await houseolPriceMap(rows);
 
   const activeCount = rows.filter((row) => row.status === "active").length;
   const soldCount = rows.length - activeCount;
@@ -118,7 +122,7 @@ export default async function ListingsAdminPage() {
           賣掉的物件還掛在網站上是廣告不實，但整筆刪掉之後就查不到你曾經賣過什麼了。
         </div>
 
-        <ListingsManager initial={rows} clickStats={clickStats} />
+        <ListingsManager initial={rows} clickStats={clickStats} prices={prices} />
       </div>
     </main>
   );
