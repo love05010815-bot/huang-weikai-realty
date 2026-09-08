@@ -549,13 +549,19 @@ export default async function HomePage() {
 
       <footer className={styles.footer}>
         <p>
-          <strong>{OWNER.name}</strong>｜{OWNER.title}｜服務區域：台中市海線 沙鹿・梧棲・清水・龍井
+          <strong>{OWNER.name}</strong>｜{OWNER.title}
         </p>
-        <p>電話 {OWNER.phone}　｜　LINE @a8865</p>
+        <p>電話 {OWNER.phone}　LINE @a8865</p>
+        <p>地址 {OWNER.addressStreet}</p>
         <p>&copy; {new Date().getFullYear()} Huang Wei-Kai Realty. All rights reserved.</p>
         <div className={styles.footerVisits}>
           <VisitCounter />
         </div>
+        {/* 2026-09-08 系統擁有者指定放在頁面最底部：經紀業名稱與經紀人證號。
+            三個值都在 owner.ts，換經紀人只改那一個檔；/map 頁尾也放同一行。 */}
+        <p className={styles.footerLegal}>
+          {OWNER.brokerage}　不動產經紀人：{OWNER.brokerName}　{OWNER.brokerLicense}
+        </p>
       </footer>
 
       <a

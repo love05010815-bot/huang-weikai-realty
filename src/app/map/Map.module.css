@@ -517,6 +517,16 @@
   color: var(--muted);
 }
 
+/* 頁面最底部的經紀業揭露（跟首頁頁尾同一行字，樣式配這頁的淺底） */
+.footer .footerLegal {
+  margin: 10px 0 0;
+  font-size: 11.5px;
+  line-height: 1.8;
+  opacity: 0.75;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 .srOnly {
   position: absolute;
   width: 1px;

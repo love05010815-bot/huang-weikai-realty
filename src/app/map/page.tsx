@@ -356,6 +356,9 @@ export default async function MapPage() {
           <Link href="/listings">精選好案</Link>
           {"　"}
           <Link href="/card/booking">線上預約</Link>
+          <p className={styles.footerLegal}>
+            {OWNER.brokerage}　不動產經紀人：{OWNER.brokerName}　{OWNER.brokerLicense}
+          </p>
         </div>
       </footer>
     </main>

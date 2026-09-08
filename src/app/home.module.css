@@ -1281,6 +1281,19 @@
   line-height: 1.9;
 }
 
+/* 頁面最底部的經紀業揭露：比人氣計數器再淡一階、字更小。
+   上面「.footer p」有 margin:4px 的規則，這裡要寫成「.footer .footerLegal」才蓋得過它。
+   keep-all 讓這行只在全形空格處斷行，證號不會被拆成兩半。 */
+.footer .footerLegal {
+  margin: 14px 0 0;
+  font-size: 11.5px;
+  line-height: 1.8;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.38);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 /* ============================================================
    🎨 主題色帶（2026-09-07 系統擁有者指定「每個主題的分割用色塊處理」）
    ============================================================
