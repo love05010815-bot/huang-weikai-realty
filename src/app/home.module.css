@@ -1211,24 +1211,29 @@
   }
 }
 
-/* ---------- 品牌 banner（hero 上面那條，2026-09-08） ----------
-   左字右圖。底是主色藍綠的漸層，字白；右邊那張是直式圖，固定高度用 cover、靠上對齊，
-   讓圖上手寫的那句「不只是交易 而是人生的下一個家」露出來。
-   860px 以下改一欄：圖在上（矮一點、還是靠上對齊）、字置中。
-   ⚠️ padding-bottom 至少要 ≥ 56px：下面 hero 頂端有一道白弧（SectionWave）蓋在這裡。 */
+/* ---------- 品牌 banner（hero 上面那條，2026-09-08；同日第二版） ----------
+   上半：藍綠漸層底。左邊字（標籤／標題／一句／預約按鈕），右上角社群藥丸（SocialLinks bar）。
+   下半：他給的寬圖（2061×503）滿版鋪在最底下，上緣用 mask 漸層透明、融進藍綠底
+   （他說「放底部、透明化」）。下面 hero 頂端的白弧（56px）蓋在圖的最底下。
+   ⚠️ mask 的漸層只吃圖最上面 13%：圖裡那句「不只是交易…」從 12% 就開始，
+      漸層拉長會把那句話洗淡。要改「整張更透」請動 .bannerArtImg 的 opacity，不要拉長漸層。
+   860px 以下：一欄置中，藥丸排在按鈕下面；圖改成固定 200px 高的 cover、對準左邊 22% ——
+   讓一家人跟那句話留在畫面裡，右邊的圖示跟黃按鈕切掉不可惜。 */
 .banner {
   background: linear-gradient(135deg, #227f71 0%, #2fa894 55%, #7fd1c2 100%);
   color: #fff;
-  padding: 44px 20px 76px;
+  padding: 40px 20px 0;
+  overflow: hidden;
 }
 
 .bannerInner {
   max-width: 1080px;
-  margin: 0 auto;
+  margin: 0 auto 26px;
   display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  gap: 40px;
-  align-items: center;
+  /* 右欄照藥丸的自然寬度（約 480px）給，左欄拿剩下的；用 fr 分右欄會差十幾 px 塞不下、藥丸折成兩行 */
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px 40px;
+  align-items: start;
 }
 
 .bannerText {
@@ -1251,7 +1256,7 @@
 
 .bannerTitle {
   margin: 0;
-  font-size: clamp(30px, 4vw, 44px);
+  font-size: clamp(30px, 4vw, 42px);
   font-weight: 900;
   line-height: 1.25;
   letter-spacing: 0.02em;
@@ -1286,46 +1291,60 @@
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
 }
 
-.bannerPhoto {
-  justify-self: center;
-  width: 100%;
-  max-width: 440px;
-  height: 460px;
-  border-radius: 22px;
-  overflow: hidden;
-  border: 6px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
-  background: #1a1310;
+/* 社群藥丸的外框：右上角、跟左邊那顆「📍」標籤大致齊高。
+   SocialLinks 的 .barOuter 自帶 margin-bottom（它以前在 hero 用的），這裡歸零。 */
+.bannerSocial {
+  justify-self: end;
+  align-self: start;
+  margin-top: -6px;
 }
 
-.bannerImg {
+.bannerSocial > div {
+  margin: 0;
+}
+
+/* 寬圖：負 margin 蓋掉 .banner 的左右 padding 做成滿版；line-height 0 免得 img 底下多出一條基線空隙 */
+.bannerArt {
+  margin: 0 -20px;
+  line-height: 0;
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 6%, #000 13%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 6%, #000 13%);
+}
+
+.bannerArtImg {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  /* 靠上：圖上方是手寫那句話與天際線，下面只是衣服 */
-  object-position: center top;
+  height: auto;
   display: block;
 }
 
 @media (max-width: 860px) {
   .banner {
-    padding: 22px 16px 60px;
+    padding: 22px 16px 0;
   }
   .bannerInner {
     grid-template-columns: 1fr;
-    gap: 22px;
+    gap: 18px;
     text-align: center;
+    margin-bottom: 18px;
   }
   .bannerText {
     align-items: center;
   }
-  .bannerPhoto {
-    order: -1;
-    height: 300px;
-    max-width: 420px;
+  .bannerSocial {
+    justify-self: center;
+    margin-top: 0;
+    width: 100%;
   }
   .bannerLead {
     font-size: 15px;
+  }
+  .bannerArt {
+    margin: 0 -16px;
+  }
+  .bannerArtImg {
+    height: 200px;
+    object-fit: cover;
+    object-position: 22% center;
   }
 }
 

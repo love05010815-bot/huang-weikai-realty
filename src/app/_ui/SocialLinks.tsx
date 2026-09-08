@@ -65,7 +65,8 @@ type Props = {
   variant?: "float" | "bar" | "tiles";
   /** tiles 專用：dark＝白磚配深色區塊（預設）、light＝米色磚配淺色底（/card） */
   tone?: "dark" | "light";
-  /** bar 專用：桌機靠右（首頁 hero，配右邊的形象照）還是置中（子頁標題都置中）。860px 以下一律置中 */
+  /** bar 專用：桌機靠右（預設）還是置中（子頁標題都置中）。首頁自 2026-09-08 起放在品牌 banner 的右上角
+   *  （page.tsx 的 .bannerSocial 負責定位、這裡傳 align="center"）。860px 以下一律置中 */
   align?: "end" | "center";
   /** tiles 的標題；bar 的標題是長短兩句寫死在上面，傳這個會把兩句都換掉；float 不顯示標題 */
   title?: string;

@@ -231,15 +231,19 @@ export default async function HomePage() {
       </header>
 
       {/* 🚫 首頁不放右側固定的社群直排（子頁有）。2026-09-03 系統擁有者看過線上後指定：
-          「首頁的側邊條不出現，出現在子頁就好」—— 首頁 hero 右上已經有藥丸，
+          「首頁的側邊條不出現，出現在子頁就好」—— 首頁 banner 右上已經有藥丸，
           右緣再一條直排跟形象照擠在同一側。要放回來就 <SocialLinks variant="float" />，
           放在 <header> 外面（header 的 backdrop-filter 會把 fixed 子元素關在 header 裡）。 */}
       <main id="top">
         {/* ---------------- 品牌 banner（2026-09-08 系統擁有者指定放在自我介紹的上方） ----------------
-            他要的是「強調我是服務台中海線的房產規劃專家」，圖用他給的那張（家人望著天際線，
-            圖上本來就寫著「不只是交易 而是人生的下一個家」）。圖是從桌面那張 3×3 的 AI 圖切第 8 格
-            放大 3 倍來的（原格只有 312×510），桌機看得出有點軟；他若給單張高解析度的，換掉
-            public/banner-family.jpg 就好，尺寸不用一樣（cover、靠上對齊）。
+            他要的是「強調我是服務台中海線的房產規劃專家」。同日第二版（他看過第一版後指定）：
+            ① 圖換成他給的寬版（一家人望著天際線，圖上畫著「不只是交易 而是人生的下一個家」＋
+               四個服務圖示＋一顆黃按鈕；那些字跟按鈕都是畫上去的，不能點）。
+               「放底部、透明化」→ 整條滿版鋪在 banner 最底下，上緣用 mask 漸層透明、融進藍綠底色。
+            ② 社群四平台的藥丸從 hero 搬進來（「把四大平台移到 banner 處」）：桌機在右上角，
+               手機排在按鈕下面。hero 那顆「台中海線資產配置專家」標籤同時拿掉（跟這裡重複）。
+            圖檔 public/banner-wide.jpg（2061×503，已切掉原圖上下白邊）。要換圖直接換檔就好：
+            桌機是滿版等比（高度跟著寬度走），手機是 200px 高的 cover、對準左邊 22%。
             ⚠️ 這裡的標題刻意用 <p> 不用 <h1>／<h2>：頁面唯一的 h1 是下面 hero 的「房產找瑋凱」，
                banner 在它前面放 h2 會讓大綱順序倒過來。 */}
         <section className={styles.banner} aria-label="台中海線房產規劃專家">
@@ -258,33 +262,37 @@ export default async function HomePage() {
                 線上預約諮詢
               </Link>
             </div>
-            <div className={styles.bannerPhoto}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                className={styles.bannerImg}
-                src="/banner-family.jpg"
-                alt="一家人望著台中的天際線——不只是交易，而是人生的下一個家"
-                width={936}
-                height={1530}
-                loading="eager"
-              />
+            {/* 社群藥丸（FB／IG／YT／TikTok）。文案在 SocialLinks.tsx、網址在 owner.ts，這裡只管位置。
+                所有寬度都在第一屏：桌機右上角，860px 以下排在按鈕下面置中。 */}
+            <div className={styles.bannerSocial}>
+              <SocialLinks variant="bar" align="center" />
             </div>
+          </div>
+          {/* 滿版寬圖，貼在 banner 最底下；上緣透明漸層在 .bannerArt 的 mask。
+              下面 hero 頂端的白弧會蓋掉它最底下 56px（那裡只是樹叢，圖裡的黃按鈕在弧上面）。 */}
+          <div className={styles.bannerArt}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className={styles.bannerArtImg}
+              src="/banner-wide.jpg"
+              alt="一家人望著台中的天際線——不只是交易，而是人生的下一個家；專業・誠信・用心・陪你成家"
+              width={2061}
+              height={503}
+              loading="eager"
+              fetchPriority="high"
+            />
           </div>
         </section>
 
         {/* ---------------- HERO ---------------- */}
         <section className={`${styles.hero} ${styles.band} ${styles.bandWhite}`} aria-label={`${OWNER.name}個人形象介紹`}>
-          {/* hero 頂端的白弧蓋在上面 banner 的底部（banner 的 padding-bottom ≥ 弧高 56px） */}
+          {/* hero 頂端的白弧蓋在上面 banner 寬圖的最底下 56px */}
           <SectionWave flip />
-          {/* 社群連結放在 hero 最上面 —— 2026-09-01 系統擁有者要求「手機或網頁一點開就看得到」。
-              ⚠️ **不能改放按鈕下面**：860px 以下 `.heroPhotoWrap` 是 `order: -1`，
-                 形象照（260×320）排在所有文字前面，按鈕已經在手機第一屏以外了。
-                 這種錯法桌機看起來完全正常，只有手機看不到，而且不會有任何錯誤訊息。
-              所有寬度都顯示。首頁沒有右側直排（系統擁有者指定只給子頁），捲走就捲走。 */}
-          <SocialLinks variant="bar" />
+          {/* 社群藥丸 2026-09-08 搬到上面的 banner 了（系統擁有者：「把四大平台移到 banner 處」）。
+              它當初放在 hero 最上面的理由（手機第一屏一定要看得到）banner 一樣符合。
+              同日拿掉這裡的「台中海線資產配置專家」標籤 —— banner 已經在講同一件事，第二段再出現是重複。 */}
           <div className={styles.heroInner}>
             <div>
-              <span className={styles.eyebrow}>台中海線資產配置專家</span>
               <h1 className={styles.heroTitle}>
                 <span>房產找瑋凱</span> <span className={styles.accent}>安心不踩雷</span>
               </h1>
@@ -580,7 +588,7 @@ export default async function HomePage() {
               </div>
             </div>
             {/* 2026-09-03 這裡原本還有一排社群底磚，系統擁有者拍板拿掉 ——
-                上面 hero 頂端的藥丸已經夠了，
+                上面 banner 右上的藥丸已經夠了，
                 同一頁第三排是雜訊。要放回來就 <SocialLinks variant="tiles" />。 */}
           </div>
         </section>
