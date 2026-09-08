@@ -236,51 +236,55 @@ export default async function HomePage() {
           放在 <header> 外面（header 的 backdrop-filter 會把 fixed 子元素關在 header 裡）。 */}
       <main id="top">
         {/* ---------------- 品牌 banner（2026-09-08 系統擁有者指定放在自我介紹的上方） ----------------
-            他要的是「強調我是服務台中海線的房產規劃專家」。同日第二版（他看過第一版後指定）：
-            ① 圖換成他給的寬版（一家人望著天際線，圖上畫著「不只是交易 而是人生的下一個家」＋
-               四個服務圖示＋一顆黃按鈕；那些字跟按鈕都是畫上去的，不能點）。
-               「放底部、透明化」→ 整條滿版鋪在 banner 最底下，上緣用 mask 漸層透明、融進藍綠底色。
-            ② 社群四平台的藥丸從 hero 搬進來（「把四大平台移到 banner 處」）：桌機在右上角，
-               手機排在按鈕下面。hero 那顆「台中海線資產配置專家」標籤同時拿掉（跟這裡重複）。
-            圖檔 public/banner-wide.jpg（2061×503，已切掉原圖上下白邊）。要換圖直接換檔就好：
-            桌機是滿版等比（高度跟著寬度走），手機是 200px 高的 cover、對準左邊 22%。
+            他要的是「強調我是服務台中海線的房產規劃專家」。同日改到第三版（每版都是他看過線上後指定）：
+            v1 左字右直式圖 → v2 藍綠色塊＋寬圖滿版貼底 → v3（現在）：
+            「整個寬度縮小一半，把上面薄荷綠裡面的字結合到圖片裡，不需要有薄荷綠的色塊了，
+              單用圖片做延伸透明化，若需要色塊輔助用 #FFFAF4」
+            → 沒有色塊了：底是他指定的 #FFFAF4，文字改深色；文字＋寬圖一起收進 1080px 的框
+              （跟頁面其他內容同寬，他 2000px 的螢幕上約一半）；寬圖的上緣與左右用同色漸層融進底色，
+              看起來像圖往上延伸、文字就長在圖的天空裡。
+            圖檔 public/banner-wide.jpg（他給的寬版，2061×503，已切掉原圖上下白邊；圖上的字、
+            四個圖示、黃按鈕都是畫上去的、不能點）。要換圖直接換檔：桌機在 1080 框裡等比，
+            手機是 200px 高的 cover、對準左邊 22%。
             ⚠️ 這裡的標題刻意用 <p> 不用 <h1>／<h2>：頁面唯一的 h1 是下面 hero 的「房產找瑋凱」，
                banner 在它前面放 h2 會讓大綱順序倒過來。 */}
         <section className={styles.banner} aria-label="台中海線房產規劃專家">
-          <div className={styles.bannerInner}>
-            <div className={styles.bannerText}>
-              <span className={styles.bannerEyebrow}>📍 台中海線在地服務</span>
-              <p className={styles.bannerTitle}>
-                台中海線的
-                <br />
-                房產規劃專家
-              </p>
-              <p className={styles.bannerLead}>
-                沙鹿・梧棲・清水・龍井｜買房、賣房、資金配置、稅費，一次幫你規劃到位。
-              </p>
-              <Link className={styles.bannerCta} href="/card/booking">
-                線上預約諮詢
-              </Link>
+          <div className={styles.bannerFrame}>
+            <div className={styles.bannerInner}>
+              <div className={styles.bannerText}>
+                <span className={styles.bannerEyebrow}>📍 台中海線在地服務</span>
+                <p className={styles.bannerTitle}>
+                  台中海線的
+                  <br />
+                  房產規劃專家
+                </p>
+                <p className={styles.bannerLead}>
+                  沙鹿・梧棲・清水・龍井｜買房、賣房、資金配置、稅費，一次幫你規劃到位。
+                </p>
+                <Link className={styles.bannerCta} href="/card/booking">
+                  線上預約諮詢
+                </Link>
+              </div>
+              {/* 社群藥丸（FB／IG／YT／TikTok）。文案在 SocialLinks.tsx、網址在 owner.ts，這裡只管位置。
+                  所有寬度都在第一屏：桌機右上角，860px 以下排在按鈕下面置中。 */}
+              <div className={styles.bannerSocial}>
+                <SocialLinks variant="bar" align="center" />
+              </div>
             </div>
-            {/* 社群藥丸（FB／IG／YT／TikTok）。文案在 SocialLinks.tsx、網址在 owner.ts，這裡只管位置。
-                所有寬度都在第一屏：桌機右上角，860px 以下排在按鈕下面置中。 */}
-            <div className={styles.bannerSocial}>
-              <SocialLinks variant="bar" align="center" />
+            {/* 寬圖。上緣＋左右的漸層在 .bannerArt::before（同底色蓋過去，不是 mask）。
+                下面 hero 頂端的白弧會蓋掉它最底下 56px（那裡只是樹叢，圖裡的黃按鈕在弧上面）。 */}
+            <div className={styles.bannerArt}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                className={styles.bannerArtImg}
+                src="/banner-wide.jpg"
+                alt="一家人望著台中的天際線——不只是交易，而是人生的下一個家；專業・誠信・用心・陪你成家"
+                width={2061}
+                height={503}
+                loading="eager"
+                fetchPriority="high"
+              />
             </div>
-          </div>
-          {/* 滿版寬圖，貼在 banner 最底下；上緣透明漸層在 .bannerArt 的 mask。
-              下面 hero 頂端的白弧會蓋掉它最底下 56px（那裡只是樹叢，圖裡的黃按鈕在弧上面）。 */}
-          <div className={styles.bannerArt}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              className={styles.bannerArtImg}
-              src="/banner-wide.jpg"
-              alt="一家人望著台中的天際線——不只是交易，而是人生的下一個家；專業・誠信・用心・陪你成家"
-              width={2061}
-              height={503}
-              loading="eager"
-              fetchPriority="high"
-            />
           </div>
         </section>
 

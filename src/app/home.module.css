@@ -1211,24 +1211,33 @@
   }
 }
 
-/* ---------- 品牌 banner（hero 上面那條，2026-09-08；同日第二版） ----------
-   上半：藍綠漸層底。左邊字（標籤／標題／一句／預約按鈕），右上角社群藥丸（SocialLinks bar）。
-   下半：他給的寬圖（2061×503）滿版鋪在最底下，上緣用 mask 漸層透明、融進藍綠底
-   （他說「放底部、透明化」）。下面 hero 頂端的白弧（56px）蓋在圖的最底下。
-   ⚠️ mask 的漸層只吃圖最上面 13%：圖裡那句「不只是交易…」從 12% 就開始，
-      漸層拉長會把那句話洗淡。要改「整張更透」請動 .bannerArtImg 的 opacity，不要拉長漸層。
-   860px 以下：一欄置中，藥丸排在按鈕下面；圖改成固定 200px 高的 cover、對準左邊 22% ——
-   讓一家人跟那句話留在畫面裡，右邊的圖示跟黃按鈕切掉不可惜。 */
+/* ---------- 品牌 banner（hero 上面那條，2026-09-08；同日第三版） ----------
+   他看過第二版後指定：「整個寬度縮小一半，把上面薄荷綠裡面的字結合到圖片裡，不需要有薄荷綠的
+   色塊了，單用圖片做延伸透明化，若需要色塊輔助用 #FFFAF4」。
+   → 沒有色塊：底是 #FFFAF4（他指定），字改深色（--ink），按鈕改主色實心。
+   → 文字＋寬圖收進 .bannerFrame（1080px，跟頁面其他內容同寬；他 2000px 的螢幕上約一半）。
+   → 寬圖的上緣與左右兩側用 .bannerArt::before 的同色漸層蓋過去、融進底色（「延伸透明化」）；
+     文字列往下壓 16px 疊在圖已經變成底色的天空上，讓字看起來長在圖裡。
+   ⚠️ 上緣漸層只吃圖最上面 13%：圖裡那句「不只是交易…」從 12% 就開始，拉長會洗淡那句話。
+   ⚠️ 底色要跟漸層的顏色一致（都是 #FFFAF4），改底色兩邊要一起改，不然圖的邊緣會露出一圈色差。
+   860px 以下：一欄置中、藥丸排在按鈕下面；圖回到滿版、200px 高 cover 對準左邊 22%（留住一家人跟
+   那句話，右邊的圖示與黃按鈕切掉不可惜），只留上緣漸層。 */
 .banner {
-  background: linear-gradient(135deg, #227f71 0%, #2fa894 55%, #7fd1c2 100%);
-  color: #fff;
-  padding: 40px 20px 0;
+  background: #FFFAF4;
+  color: var(--ink);
+  padding: 36px 20px 0;
   overflow: hidden;
 }
 
-.bannerInner {
+.bannerFrame {
   max-width: 1080px;
-  margin: 0 auto 26px;
+  margin: 0 auto;
+}
+
+.bannerInner {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 -16px;
   display: grid;
   /* 右欄照藥丸的自然寬度（約 480px）給，左欄拿剩下的；用 fr 分右欄會差十幾 px 塞不下、藥丸折成兩行 */
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1245,7 +1254,7 @@
 
 .bannerEyebrow {
   display: inline-block;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(47, 168, 148, 0.14);
   color: var(--primary-dark);
   font-size: 13px;
   font-weight: 800;
@@ -1256,18 +1265,18 @@
 
 .bannerTitle {
   margin: 0;
+  color: var(--ink);
   font-size: clamp(30px, 4vw, 42px);
   font-weight: 900;
   line-height: 1.25;
   letter-spacing: 0.02em;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
 }
 
 .bannerLead {
   margin: 0;
   font-size: 16px;
   line-height: 1.8;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--muted);
   max-width: 480px;
 }
 
@@ -1275,20 +1284,21 @@
   display: inline-flex;
   align-items: center;
   margin-top: 6px;
-  background: #fff;
-  color: var(--primary-dark);
+  background: var(--primary);
+  color: #fff;
   font-weight: 800;
   font-size: 15px;
   padding: 12px 22px;
   border-radius: 999px;
   text-decoration: none;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 8px 20px rgba(1, 53, 77, 0.28);
+  transition: transform 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .bannerCta:hover {
+  background: var(--primary-dark);
   transform: translateY(-2px);
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 12px 26px rgba(1, 53, 77, 0.32);
 }
 
 /* 社群藥丸的外框：右上角、跟左邊那顆「📍」標籤大致齊高。
@@ -1303,12 +1313,22 @@
   margin: 0;
 }
 
-/* 寬圖：負 margin 蓋掉 .banner 的左右 padding 做成滿版；line-height 0 免得 img 底下多出一條基線空隙 */
+/* 寬圖；::before 是三道同底色的漸層（上、左、右），把圖的邊緣融進 #FFFAF4。
+   line-height 0 免得 img 底下多出一條基線空隙。 */
 .bannerArt {
-  margin: 0 -20px;
+  position: relative;
   line-height: 0;
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 6%, #000 13%);
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 6%, #000 13%);
+}
+
+.bannerArt::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, #FFFAF4 0%, rgba(255, 250, 244, 0.45) 6%, rgba(255, 250, 244, 0) 13%),
+    linear-gradient(to right, #FFFAF4 0%, rgba(255, 250, 244, 0) 8%),
+    linear-gradient(to left, #FFFAF4 0%, rgba(255, 250, 244, 0) 8%);
 }
 
 .bannerArtImg {
@@ -1325,7 +1345,7 @@
     grid-template-columns: 1fr;
     gap: 18px;
     text-align: center;
-    margin-bottom: 18px;
+    margin-bottom: 10px;
   }
   .bannerText {
     align-items: center;
@@ -1340,6 +1360,9 @@
   }
   .bannerArt {
     margin: 0 -16px;
+  }
+  .bannerArt::before {
+    background: linear-gradient(to bottom, #FFFAF4 0%, rgba(255, 250, 244, 0.45) 6%, rgba(255, 250, 244, 0) 13%);
   }
   .bannerArtImg {
     height: 200px;
