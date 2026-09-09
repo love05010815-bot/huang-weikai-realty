@@ -55,13 +55,16 @@ export const metadata: Metadata = {
       "112、113、114年連續三年年度千萬經紀人。深耕台中海線沙鹿、梧棲、清水、龍井，提供買賣租賃、資金配置規劃、稅費諮詢、市場分析、裝潢資源媒合一站式服務。",
     url: "/",
     siteName: `${OWNER.name}｜台中海線房仲`,
-    images: [{ url: "/profile-2026-09.jpg", width: 1029, height: 1543, alt: `${OWNER.name}形象照` }],
+    /* 分享預覽圖（LINE／FB／Threads 的連結卡）。2026-09-09 系統擁有者貼 Threads 的截圖：直式形象照被平台
+       橫裁成 1.91:1，頭整個不見。改成專門做的 1200×630：整個人置中、頭完整露出、兩側用同一張圖模糊補滿
+       （_photos_original 的原檔做的，不進 repo）。⚠️ 換圖一定要新檔名，平台會照網址快取好幾天。 */
+    images: [{ url: "/og-home-2026-09.jpg", width: 1200, height: 630, alt: `${OWNER.name}形象照（台中海線房仲）` }],
   },
   twitter: {
     card: "summary_large_image",
     title: `台中海線房仲${OWNER.name}｜買賣租賃・稅費諮詢・市場分析`,
     description: "112、113、114年連續三年年度千萬經紀人。深耕台中海線沙鹿、梧棲、清水、龍井。",
-    images: ["/profile-2026-09.jpg"],
+    images: ["/og-home-2026-09.jpg"],
   },
 };
 
