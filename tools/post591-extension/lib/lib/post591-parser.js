@@ -52,7 +52,7 @@ const one = (t, l, r) => {
 };
 /** 型錄上所有欄位標籤。用來擋「值抓到隔壁欄位標籤」 */
 const LABELS = [
-    "委託總價", "登記坪數", "含車位坪", "建物面積", "主 \\+附屬", "主建物坪", "附屬建物",
+    "委託總價", "租 ?金", "押 ?金", "登記坪數", "含車位坪", "含車位面積", "建物面積", "主 \\+附屬", "主建物坪", "附屬建物",
     "公設建坪", "公設比", "每坪單價", "土地登記", "主地坪", "公設地坪", "使用分區", "總基地坪", "樓別",
     "房 ?/ ?廳", "車位型式", "車位 ?/ ?編號", "類別", "類型", "物件座向", "面臨路寬", "社區", "管理費",
     "竣工日期", "屋 ?齡", "建物外觀", "建物結構", "鄰近公園", "鄰近市場", "鄰近學校", "生 ?活 ?圈",
@@ -66,7 +66,9 @@ function oneText(t, l, r) {
 }
 function empty(source) {
     return {
-        source, rawTitle: "", addr: "", no: "", price: null, regPing: null, parkPing: null,
+        source, deal: "sale", rent: null, deposit: "", mainAttPing: null,
+        rentCond: { noPets: null, cook: null, feeIncluded: false, parkIncluded: false, noSmoking: false },
+        rawTitle: "", addr: "", no: "", price: null, regPing: null, parkPing: null,
         mainPing: null, attPing: null, pubPing: null, landPing: null, floorRaw: "", floor: null,
         floorSub: "", total: null, room: null, hall: null, bath: null, parkType: "", parkNo: "",
         usage: "", kind: "", community: "", communityGuessed: false, fee: null, feeCycle: "月繳",
@@ -77,7 +79,7 @@ function empty(source) {
 }
 /** 貼進來的是型錄還是 LINE 文字 */
 export function detectSource(raw) {
-    return /不動產電子型錄|委託總價|登記坪數|樓別\s*[\/／]\s*樓高/.test(raw) ? "houseol" : "freeform";
+    return /不動產電子型錄|委託總價|登記坪數|樓別\s*[\/／]\s*樓高|租[\s　]*金/.test(raw) ? "houseol" : "freeform";
 }
 /* ───────── 愛屋型錄 ───────── */
 export function parseHouseol(raw) {
@@ -104,8 +106,21 @@ export function parseHouseol(raw) {
     d.addr = addrLine.replace(/(顯示|隱藏門牌|隱藏)\s*$/, "").trim();
     d.no = one(body, "物件編號", /([A-Z]{1,3}\d{5,})/);
     d.price = toNum(one(body, "委託總價", /([\d,]+(?:\.\d+)?)\s*萬/));
+    /*
+      出租型錄（2026-09-09 幸福成那份）：標題「租-…」，沒有「委託總價」而是「租　　金 2.5萬」「押　　金 2個月」，
+      「含車位坪」寫成「含車位面積」，通常也沒有竣工日期。租金可能寫「2.5萬」或「25,000元」。
+    */
+    const rentM = pick(body, "(?:^|\\n)租 ?金", /([\d,]+(?:\.\d+)?)\s*(萬|元)?/); // 行首才算欄位；「租金含管含車」那種特色行不是
+    if (rentM && rentM[0]) {
+        const n = toNum(rentM[0]);
+        d.rent = n == null ? null : rentM[1] === "萬" ? Math.round(n * 10000) : n;
+    }
+    d.deposit = oneText(body, "押 ?金", /([^\n]{1,12})/);
+    if (/^租-/.test(d.rawTitle) || d.rent != null)
+        d.deal = "rent";
+    d.mainAttPing = toNum(one(body, "主 \\+附屬", /([\d.]+)\s*坪/));
     d.regPing = toNum(one(body, "登記坪數", /([\d.]+)\s*坪/));
-    d.parkPing = toNum(one(body, "含車位坪", /([\d.]+)\s*坪/));
+    d.parkPing = toNum(one(body, "含車位(?:坪|面積)", /([\d.]+)\s*坪/));
     d.mainPing = toNum(one(body, "主建物坪", /([\d.]+)\s*坪/));
     d.attPing = toNum(one(body, "附屬建物", /([\d.]+)\s*坪/));
     d.pubPing = toNum(one(body, "公設建坪", /([\d.]+)\s*坪/));
@@ -161,17 +176,36 @@ export function parseHouseol(raw) {
     d.features = splitFeatureLines(fm ? fm[1] : "");
     /* 照片網址就藏在「更多照片」連結的 picstr 參數裡（型錄可能有不只一條這種連結） */
     d.photos = extractPhotoUrls(raw);
+    /* 出租：環境特色裡常有租住條件（「禁菸、寵」「租金含管含車」「可養寵物」「不可開伙」），讀出來給預設值用 */
+    if (d.deal === "rent")
+        d.rentCond = readRentCond([d.rawTitle, ...d.features].join("\n"));
     if (!d.total)
-        d.warnings.push("樓別/樓高沒抓到，出售總樓層要自己填");
-    if (!d.price)
-        d.warnings.push("委託總價沒抓到");
+        d.warnings.push(`樓別/樓高沒抓到，${d.deal === "rent" ? "出租" : "出售"}總樓層要自己填`);
+    if (d.deal === "rent" ? d.rent == null : !d.price)
+        d.warnings.push(d.deal === "rent" ? "租金沒抓到" : "委託總價沒抓到");
     if (!d.regPing)
         d.warnings.push("登記坪數沒抓到");
     if (!d.room)
         d.warnings.push("房/廳/衛沒抓到");
     if (!d.y)
-        d.warnings.push("竣工日期沒抓到，完工年要自己填");
+        d.warnings.push(d.deal === "rent" ? "型錄沒有竣工日期：591 會點「屋齡不詳」，知道完工年的話自己改" : "竣工日期沒抓到，完工年要自己填");
     return d;
+}
+/**
+ * 出租的租住條件：從標題＋環境特色的文字讀。只認明寫的，沒寫就 null（交給他拍板的預設值：可開伙、不可養寵物、租金不含）。
+ * 「禁菸、寵」＝禁菸也禁寵；「租金含管含車」＝含管理費、含車位。
+ */
+export function readRentCond(text) {
+    const t = text.replace(/\s+/g, "");
+    const noPets = /禁[^\n]{0,4}寵|不可養?寵|不能養?寵|謝絕寵物|不接受寵物/.test(t) ? true : /可養?寵|寵物可|接受寵物|歡迎寵物/.test(t) ? false : null;
+    const cook = /不可開伙|不能開伙|禁開伙|禁止開伙|不開伙/.test(t) ? false : /可開伙|能開伙|開伙可/.test(t) ? true : null;
+    return {
+        noPets,
+        cook,
+        feeIncluded: /含管(?:理費)?|管理費含|含管理/.test(t),
+        parkIncluded: /含車(?:位)?|車位含|附車位|含停車/.test(t),
+        noSmoking: /禁菸|禁煙|不可抽菸/.test(t),
+    };
 }
 /**
  * 特色文字逐行拆開，去掉 ✨ ① ▪ • 這類開頭符號與空行。
@@ -306,6 +340,14 @@ export function parseFreeform(raw) {
         d.addr = a.replace(/[,，]\s*$/, "");
     }
     d.price = toNum(one(t, "(?:售價|開價|總價)", /([\d,]+(?:\.\d+)?)\s*萬/));
+    /* LINE 文字的出租寫法：「租金：25,000」「租金：2.5萬」「押金：2個月」 */
+    const rentM = pick(t, "(?:月租|租金)", /([\d,]+(?:\.\d+)?)\s*(萬|元)?/);
+    if (rentM && rentM[0]) {
+        const n = toNum(rentM[0]);
+        d.rent = n == null ? null : rentM[1] === "萬" ? Math.round(n * 10000) : n;
+        d.deal = "rent";
+    }
+    d.deposit = one(t, "押金", /([^\n]{1,12})/);
     const lay = t.match(/(\d+)\s*房\s*[\/、,]\s*(\d+)\s*廳\s*[\/、,]\s*(\d+)\s*衛/);
     if (lay) {
         d.room = +lay[1];

@@ -85,8 +85,16 @@
     el.dispatchEvent(new Event("change", { bubbles: true }));
     el.dispatchEvent(new Event("blur", { bubbles: true }));
   }
-  /** 找到「文字等於 label」的標籤元素；找不到就退而求「開頭是 label、很短」的（591 的標籤常帶 (說明) 尾巴） */
+  /**
+   * 找到「文字等於 label」的標籤元素；找不到就退而求「開頭是 label、很短」的（591 的標籤常帶 (說明) 尾巴）。
+   * 先在表單列的標籤格（.ant-form-item-label）裡找 —— 出租表單有「水費」「管理費」既是列標籤又是別列的勾選框文字，
+   * 只掃 span/div 會先撞到勾選框，後面的「label 之後第 n 個控制項」就全錯位。
+   */
   function labelEl(text) {
+    const strip = (s) => s.replace(/\s*\(說明\)|\s*說明$/g, "").trim();
+    const forms = [...document.querySelectorAll(".ant-form-item-label")];
+    const formHit = forms.find((e) => strip(txt(e)) === text) || forms.find((e) => strip(txt(e)).startsWith(text));
+    if (formHit) return formHit;
     const cands = document.querySelectorAll("label, span, div");
     for (const e of cands) if (e.children.length <= 2 && txt(e) === text) return e;
     for (const e of cands) {
@@ -129,6 +137,16 @@
     const isRadio = L.classList.contains("ant-radio-wrapper");
     const checked = isRadio ? L.classList.contains("ant-radio-wrapper-checked") : L.classList.contains("ant-checkbox-wrapper-checked");
     if (checked !== want) L.click();
+    return true;
+  }
+  /** 在某個 label 後面的勾選群裡把文字為 text 的那顆勾成 want（出租的「租金包含」「身份要求」這種同名選項很多，一定要限定在那一列） */
+  function clickCheckAfter(label, text, want = true) {
+    const L = labelEl(label);
+    if (!L) return false;
+    const boxes = after(L, "label.ant-checkbox-wrapper", 12);
+    const B = boxes.find((b) => txt(b) === text) || boxes.find((b) => txt(b).startsWith(text));
+    if (!B) return false;
+    if (B.classList.contains("ant-checkbox-wrapper-checked") !== want) B.click();
     return true;
   }
   /** 在某個 label 後面的單選群裡點文字為 text 的那顆 */
@@ -305,14 +323,17 @@
       log(`點了「${text}」`, "ok");
       return true;
     }
-    if (!(await clickItem("出售"))) return;
-    if (!(await clickItem(p.first.legal))) return;
-    if (!(await clickItem(p.first.status))) return;
-    await clickItem(p.first.type); // 這一下 591 會整頁跳到第②頁，這支程式會在那頁重新跑（資料還在 background）
+    // 出售：出售 → 法定用途 → 現況 → 型態；出租：出租 → 類型 → 型態（沒有法定用途那步）
+    const seq = [p.first.adType || (p.deal === "rent" ? "出租" : "出售"), ...(p.first.legal ? [p.first.legal] : []), p.first.status, p.first.type];
+    for (let i = 0; i < seq.length; i++) {
+      if (!(await clickItem(seq[i]))) return;
+    }
+    // 最後一下 591 會整頁跳到第②頁，這支程式會在那頁重新跑（資料還在 background）
   }
 
   /* ───────── 第 ② 頁：填表 ───────── */
   async function runSecond(p) {
+    if (p.deal === "rent") return runRentSecond(p);
     const missing = [];
     const a = p.addr || {};
 
@@ -472,6 +493,184 @@
       log(`照片：開始上傳 ${p.photos.length} 張…`);
       const r = await uploadPhotos(p.photos, (d, n) => log(`照片 ${d}/${n}`));
       log(`照片完成 ${r.done} 張${r.failed ? `，失敗 ${r.failed} 張` : ""}`, r.failed ? "warn" : "ok");
+    } else {
+      missing.push("照片（自己上傳）");
+    }
+
+    showMissing(missing);
+    log("✅ 填完。請從上往下核對一遍，再自己按「保存資料，下一步」。", "ok");
+  }
+
+  /* ───────── 第 ② 頁：出租版（591 出租表單 2026-09-09 實測的格子） ───────── */
+  async function fillAddress(p, missing) {
+    const a = p.addr || {};
+    const addrLabel = labelEl("門牌地址") || labelEl("出售地址") || labelEl("出租地址");
+    const quick = [...document.querySelectorAll("input")].find((i) => /完整地址/.test(i.placeholder || ""));
+    const full = [a.city, a.town, a.road, a.lane ? `${a.lane}巷` : "", a.alley ? `${a.alley}弄` : "", a.no ? `${a.no}${a.sub ? `之${a.sub}` : ""}號` : ""].join("");
+    let imported = false;
+    if (quick && a.town && a.road) {
+      setNative(quick, full);
+      const btn = await waitFor(() => [...document.querySelectorAll("button")].find((b) => txt(b) === "匯入地址" && visible(b)), 5000);
+      if (btn) {
+        btn.click();
+        const yes = await waitFor(() => [...document.querySelectorAll(".ant-modal button")].find((b) => /確\s*定/.test(txt(b)) && visible(b)), 1500);
+        if (yes) yes.click();
+        imported = !!(await waitFor(() => [...document.querySelectorAll(".ant-select .ant-select-selection-item")].some((e) => txt(e) === a.town), 8000));
+        log(imported ? `地址匯入：${full}` : "地址匯入沒成功，改一格一格選", imported ? "ok" : "warn");
+      }
+    }
+    if (!imported) {
+      const sels = after(addrLabel, SEL, 3);
+      if (a.city && !(await pickSelect(sels[0], a.city))) log("縣市沒選到，請自己選", "bad");
+      await sleep(500);
+      if (a.town && !(await pickSelect(after(addrLabel, SEL, 3)[1], a.town))) log("鄉鎮沒選到，請自己選", "bad");
+      await sleep(500);
+      if (a.road) {
+        if (await pickStreet(after(addrLabel, SEL, 3)[2], a.road)) log(`地址：${a.city}${a.town}${a.road}`, "ok");
+        else log(`街道「${a.road}」沒選到，請自己選`, "bad");
+      }
+    }
+    const boxes = after(addrLabel, TXT, 14).filter((i) => /^(選填|必填)$/.test(i.placeholder || ""));
+    const [lane, no, sub, floor, floorSub] = boxes;
+    if (lane && a.lane && !lane.value) setNative(lane, a.lane);
+    if (no && a.no && no.value !== String(a.no)) setNative(no, a.no);
+    if (sub && a.sub && !sub.value) setNative(sub, a.sub);
+    const alley = after(addrLabel, NUM, 1)[0];
+    if (alley && a.alley) setNative(alley, a.alley);
+    if (!a.no) missing.push("門牌「號」（資料裡沒有）");
+    const f = p.floor || {};
+    if (floor && f.sell != null && f.sell !== "") setNative(floor, f.sell);
+    if (floorSub && f.sub) setNative(floorSub, f.sub);
+    if (f.sell == null || f.sell === "") missing.push("出租樓層");
+    if (a.hide) clickLabel("隱藏門號", true);
+  }
+
+  async function runRentSecond(p) {
+    const missing = [];
+    const r = p.rent || {};
+    const a = p.addr || {};
+    const cityModal = await waitFor(() => [...document.querySelectorAll(".ant-modal")].find((m) => /所屬縣市/.test(txt(m)) && visible(m)), 4000);
+    if (cityModal) {
+      const want = a.city || "台中市";
+      const item = [...cityModal.querySelectorAll("li, span, div")].find((e) => e.children.length === 0 && txt(e) === want);
+      if (item) {
+        item.click();
+        log(`縣市彈窗：選了 ${want}`, "ok");
+      } else log(`縣市彈窗裡找不到「${want}」，請自己點`, "bad");
+    }
+    const ready = await waitFor(() => labelEl("出租總樓層") && labelEl("出租地址"), 20000);
+    if (!ready) {
+      log("等不到出租表單，重新整理一次再試", "bad");
+      return;
+    }
+    log("第②頁（出租）：開始填");
+
+    try {
+      await fillAddress(p, missing);
+    } catch (e) {
+      log(`地址區出錯：${e.message}`, "bad");
+    }
+
+    /* 基礎資料 */
+    try {
+      if (p.floor && p.floor.total != null) setNumAfter("出租總樓層", [p.floor.total]);
+      else missing.push("出租總樓層");
+      if (r.elevator) clickRadioAfter("電梯", r.elevator);
+      setTxtAfter("社區名稱", p.community || "");
+      const L = p.layout || {};
+      setNumAfter("格局", [L.room, L.hall, L.bath, ""]);
+      if (r.usePing != null) setNumAfter("可使用坪數", [r.usePing]);
+      else missing.push("可使用坪數");
+      const A = p.area || {};
+      setNumAfter("權狀坪數", [A.reg]);
+      clickRadioAfter("車位", r.park ? "有" : "無");
+      if (r.park) {
+        // 點「有」會多一個型式下拉：平面式／機械式／平面式 + 機械式／其他（跟出售的名稱不一樣）
+        await sleep(400);
+        const pt = A.parkType || "";
+        const cands = [/平面.*機械|機械.*平面/.test(pt) ? "平面式 + 機械式" : "", /平面/.test(pt) ? "平面式" : "", /機械/.test(pt) ? "機械式" : "", pt ? "" : "其他"];
+        if (!(await pickSelect(after("車位", SEL, 1)[0], cands))) missing.push("車位型式（平面式／機械式）");
+      }
+      const D = p.done || {};
+      if (D.y != null) {
+        clickRadioAfter("建築完工時間", "成屋");
+        setNumAfter("建築完工時間", [D.y, D.m, D.d]);
+      } else {
+        clickRadioAfter("建築完工時間", "預售屋"); // 「預售屋／屋齡不詳」—— 租屋型錄沒竣工日
+        log("完工時間：型錄沒竣工日，點了「屋齡不詳」", "warn");
+      }
+      if (p.facing && !(await pickSelect(after("朝向", SEL, 1)[0], p.facing))) log(`朝向「${p.facing}」沒選到`, "warn");
+      if (r.decoTime) clickRadioAfter("裝潢時間", r.decoTime);
+      else missing.push("裝潢時間（半年內／1年內／3年內／3年以上）");
+      if (p.deco) clickRadioAfter("裝潢程度", p.deco);
+      else missing.push("裝潢程度（要你看過屋況再選）");
+      log("基礎資料填完", "ok");
+    } catch (e) {
+      log(`基礎資料出錯：${e.message}`, "bad");
+    }
+
+    /* 租住說明 */
+    try {
+      if (r.minTerm) clickRadioAfter("最短租期", r.minTerm);
+      if (r.moveInAny) clickCheckAfter("可遷入日", "隨時可遷入", true);
+      for (const who of ["學生", "上班族", "家庭"]) clickCheckAfter("身份要求", who, (r.identity || []).includes(who));
+      if (r.cook) clickRadioAfter("開伙", r.cook);
+      if (r.pets) clickRadioAfter("養寵物", r.pets);
+      missing.push("提供設備、提供家具（照照片勾）");
+      log("租住說明填完", "ok");
+    } catch (e) {
+      log(`租住說明出錯：${e.message}`, "bad");
+    }
+
+    /* 價格 */
+    try {
+      if (r.monthly != null) setTxtAfter("租金", r.monthly);
+      else missing.push("租金");
+      if (r.deposit) clickRadioAfter("押金", r.deposit);
+      const inc = r.includes || [];
+      if (inc.length) for (const x of inc) clickCheckAfter("租金包含", x, true);
+      else clickCheckAfter("租金包含", "無", true);
+      if (r.water) clickRadioAfter("水費", r.water);
+      if (r.power) clickRadioAfter("電費", r.power);
+      const F = p.fee || {};
+      if (F.amount != null) setTxtAfter("管理費", F.amount);
+      else if (F.has === false) clickCheckAfter("管理費", "無", true);
+      else missing.push("管理費金額（租金已含，591 仍會問；不知道就勾「無」）");
+      log("價格填完", "ok");
+    } catch (e) {
+      log(`價格區出錯：${e.message}`, "bad");
+    }
+
+    for (const item of p.life || []) clickLabel(item, true);
+
+    try {
+      setTxtAfter("廣告標題", p.title || "");
+      if (!p.title) missing.push("廣告標題");
+      if (p.desc) {
+        await setProseMirror(p.desc, p.descHtml);
+        log(p.descHtml ? "文案已貼入（版型＋字級顏色）" : "文案已貼入（版型）", "ok");
+      }
+    } catch (e) {
+      log(`文案出錯：${e.message}`, "bad");
+    }
+
+    try {
+      const C = p.contact || {};
+      const name = after("聯絡人", TXT, 1)[0];
+      if (name && C.name && name.value !== C.name) setNative(name, C.name);
+      if (C.contract) clickRadioAfter("委託書", C.contract);
+      if (r.ownership) clickRadioAfter("產權登記", r.ownership);
+      // 服務費：他說不動，照 591 自己的預設
+      clickLabel("我已閲讀並確認經紀業資料無誤", true) || clickLabel("我已閱讀並確認經紀業資料無誤", true);
+      log("聯絡資料填完", "ok");
+    } catch (e) {
+      log(`聯絡資料出錯：${e.message}`, "bad");
+    }
+
+    if (p.photos && p.photos.length) {
+      log(`照片：開始上傳 ${p.photos.length} 張…`);
+      const res = await uploadPhotos(p.photos, (d, n) => log(`照片 ${d}/${n}`));
+      log(`照片完成 ${res.done} 張${res.failed ? `，失敗 ${res.failed} 張` : ""}`, res.failed ? "warn" : "ok");
     } else {
       missing.push("照片（自己上傳）");
     }

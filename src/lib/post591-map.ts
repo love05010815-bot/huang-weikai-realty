@@ -13,7 +13,7 @@
 
 import { DESC_HEAD, DESC_STYLE, DESC_TAIL, POST591_DEFAULTS } from "@/config/post591-template";
 import { findCopyRisks, type CopyRisk } from "@/lib/listing-copy-risk";
-import type { Listing } from "@/lib/post591-parser";
+import type { Deal, Listing } from "@/lib/post591-parser";
 
 export interface AddressParts {
   city: string;
@@ -26,11 +26,19 @@ export interface AddressParts {
 }
 
 export interface Derived {
-  /** 第 ① 頁四連點 */
-  adType: "出售";
+  deal: Deal;
+  /** 第 ① 頁：出售四連點（出售→法定用途→現況→型態）；出租三連點（出租→類型→型態，沒有法定用途那步） */
+  adType: "出售" | "出租";
   legal: string;
   status: string;
   type: string;
+  /** ── 出租才用得到（2026-09-09 他拍板的預設） ── */
+  elevator: "有" | "無";
+  rentDeposit: string;
+  rentIncludes: string[];
+  cook: "可" | "不可";
+  pets: "可" | "不可";
+  usePing: number | null;
   /** 謄本用途（判斷依據，要攤給人看） */
   tengben: string;
   facing: string;
@@ -152,7 +160,7 @@ export function derive(d: Listing, nowYear: number = new Date().getFullYear()): 
   }
 
   const p = (d.parkType || "").replace(/[\s/／]/g, "");
-  const hasPark = !!(d.parkPing || (p && !/^無$|^無車位/.test(p)));
+  const hasPark = !!(d.parkPing || (p && !/^無$|^無車位/.test(p)) || d.rentCond.parkIncluded);
   /*
     591 電梯大樓表單「車位面積」旁的型式下拉，2026-09-04 實際只有四個選項：
     平面式停車位／機械式停車位／平面式+機械式／其他（不是坡道／升降那套）。
@@ -174,11 +182,29 @@ export function derive(d: Listing, nowYear: number = new Date().getFullYear()): 
   const fullAddr = (/^[一-龥]{2}[縣市]/.test(d.addr) ? "" : POST591_DEFAULTS.defaultCity) + (d.addr || "");
   if (!parts.city) parts.city = POST591_DEFAULTS.defaultCity;
 
+  /*
+    出租（2026-09-09）：591 出租第①頁是 出租 → 類型（整層住家／獨立套房…）→ 型態（公寓／別墅／透天厝／電梯大樓），
+    沒有華廈這個選項 → 華廈當電梯大樓。租住條件照他拍板的預設：押金 2 個月、可開伙、不可養寵物、租金不含；
+    型錄環境特色有明寫（「禁寵」「含管」「含車」）就照型錄。
+  */
+  const rent = d.deal === "rent";
+  const rentType = rent && type === "華廈" ? "電梯大樓" : type;
+  const c = d.rentCond;
+  const depositM = (d.deposit || "").match(/免押|(\d)\s*個月|面議/);
+  const rentDeposit = !depositM ? "2個月" : /免押/.test(depositM[0]) ? "免押金" : /面議/.test(depositM[0]) ? "面議" : depositM[1] === "1" ? "1個月" : depositM[1] === "2" ? "2個月" : "其他";
+
   return {
-    adType: "出售",
-    legal,
-    status: /套房/.test(k) ? "套房" : "住宅",
-    type,
+    deal: d.deal,
+    adType: rent ? "出租" : "出售",
+    legal: rent ? "" : legal,
+    status: rent ? (/套房/.test(k) ? "獨立套房" : "整層住家") : /套房/.test(k) ? "套房" : "住宅",
+    type: rentType,
+    elevator: /電梯大樓|華廈/.test(rentType) ? "有" : "無",
+    rentDeposit,
+    rentIncludes: c.feeIncluded ? ["管理費"] : [],
+    cook: c.cook === false ? "不可" : "可",
+    pets: c.noPets === false ? "可" : "不可",
+    usePing: d.mainAttPing ?? (d.mainPing != null || d.attPing != null ? Math.round(((d.mainPing || 0) + (d.attPing || 0)) * 100) / 100 : null),
     tengben,
     facing,
     rocY,
@@ -201,6 +227,7 @@ export function derive(d: Listing, nowYear: number = new Date().getFullYear()): 
 const s = (v: unknown): string => (v === null || v === undefined ? "" : String(v));
 
 export function buildRows(d: Listing, o: Derived): Row[] {
+  if (d.deal === "rent") return buildRentRows(d, o);
   const rows: Row[] = [];
   const grp = (title: string) => rows.push({ group: title, label: "", value: "" });
   const f = (label: string, value: unknown, opt: Omit<Row, "label" | "value"> = {}) =>
@@ -299,6 +326,95 @@ export function buildRows(d: Listing, o: Derived): Row[] {
   return rows;
 }
 
+/**
+ * 出租的確認表（591 出租第②頁 2026-09-09 實測的格子）。
+ * 他拍板的預設：押金 2 個月、最短租期 1 年、身份三個都勾、可開伙／不可養寵物、租金不含、台水台電繳費；
+ * 服務費不動（591 自己的預設）；設備／家具他看照片自己勾，所以標紅留給他。
+ */
+function buildRentRows(d: Listing, o: Derived): Row[] {
+  const rows: Row[] = [];
+  const grp = (title: string) => rows.push({ group: title, label: "", value: "" });
+  const f = (label: string, value: unknown, opt: Omit<Row, "label" | "value"> = {}) =>
+    rows.push({ label, value: s(value), ...opt });
+  const c = d.rentCond;
+
+  grp("出租地址（前三格是下拉，用選的；號旁邊的「隱藏門號」預設勾）");
+  f("縣市", o.parts.city, { pick: true, req: true, note: d.addr && !/^[一-龥]{2}[縣市]/.test(d.addr) ? "資料沒寫縣市，先給台中市" : "" });
+  f("鄉鎮", o.parts.town, { pick: true, req: true, need: !o.parts.town });
+  f("街道", o.parts.road, { pick: true, req: true, need: !o.parts.road, note: "下拉裡找一模一樣的" });
+  f("巷", o.parts.lane, { note: o.parts.lane ? "" : "沒有就留空" });
+  f("弄", o.parts.alley, { note: o.parts.alley ? "" : "沒有就留空" });
+  f("號", o.parts.no, { req: true, need: !o.parts.no, note: o.parts.no ? "" : "門牌被藏起來了，要自己打" });
+  f("之", o.parts.sub, { note: o.parts.sub ? "" : "沒有就留空" });
+  f("整串地址", o.fullAddr, { note: "表單上方有「填寫地址」框時貼這串按「匯入地址」" });
+  f("出租樓層", o.sellFloor, { req: true, need: o.sellFloor === "", note: o.sellFloorNote });
+  if (d.floorSub) f("樓 之", d.floorSub, { note: "樓層旁邊的「之」" });
+
+  grp("基礎資料");
+  f("出租總樓層", d.total, { req: true, need: !d.total, note: "層" });
+  f("電梯", o.elevator, { pick: true, note: `照型態「${o.type}」給的` });
+  f("社區名稱", d.community, { note: d.community ? "" : "沒有就留空" });
+  f("格局 房", d.room, { req: true, need: !d.room });
+  f("格局 廳", d.hall);
+  f("格局 衛", d.bath);
+  f("可使用坪數", o.usePing, { req: true, need: o.usePing == null, note: d.mainAttPing != null ? "型錄的「主+附屬」" : "主建物＋附屬建物" });
+  f("權狀坪數", d.regPing, { req: true, need: !d.regPing, note: "型錄的「登記坪數」" });
+  f("車位", o.hasPark ? "有" : "無", { pick: true, note: c.parkIncluded ? "型錄寫「含車」" : d.parkNo ? `型錄車位 ${d.parkNo}` : "" });
+  f("完工 民國年", o.rocY, {
+    req: true,
+    need: false,
+    note: d.y ? `西元 ${d.y}/${d.m}/${d.dd}` : "租屋型錄沒竣工日：留空就點「屋齡不詳」，知道的話填民國年",
+  });
+  if (d.y) {
+    f("完工 月", d.m);
+    f("完工 日", d.dd);
+  }
+  if (o.facing) f("朝向", o.facing, { pick: true, note: `資料寫「${d.facing}」` });
+
+  grp("租住說明");
+  f("最短租期", "1年", { pick: true });
+  f("可遷入日", "隨時可遷入", { pick: true });
+  f("提供設備", "", { pick: true, need: true, note: "洗衣機／冰箱／電視／冷氣／熱水器／網路／第四台／天然瓦斯 —— 你看照片自己勾" });
+  f("提供家具", "", { pick: true, need: true, note: "床／衣櫃／沙發／桌子／椅子 —— 你看照片自己勾" });
+  f("身份要求", "學生、上班族、家庭", { pick: true });
+  f("開伙", o.cook, { pick: true, note: c.cook == null ? "型錄沒寫，預設可" : "照型錄" });
+  f("養寵物", o.pets, { pick: true, note: c.noPets == null ? "型錄沒寫，預設不可" : c.noPets ? "型錄寫禁寵" : "型錄寫可養" });
+  f("裝潢時間", "？", { pick: true, need: true, note: "半年內／1年內／3年內／3年以上，591 要選一個" });
+  f("裝潢程度", "？", { pick: true, need: true, note: "尚未／簡易／中檔／高檔，你看過屋況再選" });
+
+  grp("房屋價格");
+  f("租金", d.rent, { req: true, need: d.rent == null, note: "元／月" });
+  f("押金", o.rentDeposit, { pick: true, note: d.deposit ? `型錄寫「${d.deposit}」` : "型錄沒寫，預設 2 個月" });
+  f("租金包含", o.rentIncludes.join("、") || "無", { pick: true, note: c.feeIncluded ? "型錄寫「含管」" : "預設不含，要含的話改成 管理費、水費… 用、隔開" });
+  f("水費", "台水繳費", { pick: true });
+  f("電費", "台電繳費", { pick: true });
+  f("管理費", d.fee, { note: d.fee != null ? "元／月" : c.feeIncluded ? "租金已含，591 仍會問金額，知道就填" : "有的話填每月金額（元），沒有留空" });
+
+  grp("生活機能（用勾的）");
+  f("勾選這些", o.life.join("、") || "（資料沒明寫，不勾）", { pick: true, note: "只列資料明寫的「鄰近OO」，其他自己勾" });
+
+  grp("聯絡資料");
+  f("聯絡人", "黃瑋凱", { note: "591 名片預設會帶「黃先生」，要改" });
+  f("委託書", POST591_DEFAULTS.contract, { pick: true, req: true, note: "專任約的話自己改" });
+  f("產權登記", "已辦產", { pick: true, req: true, note: "未辦產的話自己改" });
+  f("服務費", "（不動，照 591 的）", { ref: true });
+  f("經紀人資料", "☑ 打勾", { pick: true, req: true });
+
+  const refs: [string, string, string?][] = [
+    ["物件編號", d.no],
+    ["類型／現況", d.kind],
+    ["車位／編號", d.parkNo],
+    ["租住條件（型錄原文）", [c.noSmoking ? "禁菸" : "", c.noPets ? "禁寵" : "", c.feeIncluded ? "含管理費" : "", c.parkIncluded ? "含車位" : ""].filter(Boolean).join("、")],
+    ["建物結構", d.struct],
+  ];
+  const refRows = refs.filter(([, v]) => v);
+  if (refRows.length) {
+    grp("資料有、但 591 沒這格（不用填，給你對照）");
+    for (const [label, value, note] of refRows) f(label, value, { ref: true, note });
+  }
+  return rows;
+}
+
 /* ───────── 標題／描述／風險 ───────── */
 
 export function titleCheck(title: string): { ok: boolean; len: number; msg: string } {
@@ -383,7 +499,27 @@ export function post591Risks(...texts: string[]): CopyRisk[] {
  */
 export interface Post591Payload {
   v: 1;
-  first: { legal: string; status: string; type: string };
+  /** 出售（預設）或出租；外掛依此決定開哪個第②頁、填哪一套格子 */
+  deal?: Deal;
+  first: { adType: "出售" | "出租"; legal: string; status: string; type: string };
+  /** 出租才有 */
+  rent?: {
+    monthly: number | null;
+    deposit: string;
+    minTerm: string;
+    moveInAny: boolean;
+    identity: string[];
+    cook: string;
+    pets: string;
+    includes: string[];
+    water: string;
+    power: string;
+    elevator: string;
+    park: boolean;
+    usePing: number | null;
+    ownership: string;
+    decoTime: string;
+  };
   addr: AddressParts & { hide: boolean };
   floor: { sell: number | ""; sub: string; total: number | null };
   community: string;
@@ -417,10 +553,34 @@ export function buildPayload(d: Listing, o: Derived, rows: Row[], title: string,
   for (const r of rows) if (!r.group) e.set(r.label.replace(/^\s*└\s*/, "").trim(), r.value);
   const deco = strOr(e.get("裝潢程度"), "");
   const feeHasRaw = strOr(e.get("管理費有無"), d.fee != null ? "有" : d.source === "houseol" ? "無" : "？");
-  const sellRaw = strOr(e.get("出售樓層"), o.sellFloor === "" ? "" : String(o.sellFloor));
+  const sellRaw = strOr(e.get(d.deal === "rent" ? "出租樓層" : "出售樓層"), o.sellFloor === "" ? "" : String(o.sellFloor));
+  const list = (v: string | undefined, fallback: string[]) =>
+    (v === undefined ? fallback : v.split(/[、,，]/).map((x) => x.trim()).filter(Boolean)).filter((x) => x !== "無" && !/^（/.test(x));
+  const rent =
+    d.deal === "rent"
+      ? {
+          monthly: numOrNull(e.get("租金"), d.rent),
+          deposit: strOr(e.get("押金"), o.rentDeposit),
+          minTerm: strOr(e.get("最短租期"), "1年"),
+          moveInAny: strOr(e.get("可遷入日"), "隨時可遷入") === "隨時可遷入",
+          identity: list(e.get("身份要求"), ["學生", "上班族", "家庭"]),
+          cook: strOr(e.get("開伙"), o.cook),
+          pets: strOr(e.get("養寵物"), o.pets),
+          includes: list(e.get("租金包含"), o.rentIncludes),
+          water: strOr(e.get("水費"), "台水繳費"),
+          power: strOr(e.get("電費"), "台電繳費"),
+          elevator: strOr(e.get("電梯"), o.elevator),
+          park: strOr(e.get("車位"), o.hasPark ? "有" : "無") === "有",
+          usePing: numOrNull(e.get("可使用坪數"), o.usePing),
+          ownership: strOr(e.get("產權登記"), "已辦產"),
+          decoTime: strOr(e.get("裝潢時間"), "").replace("？", ""),
+        }
+      : undefined;
   return {
     v: 1,
-    first: { legal: o.legal, status: o.status, type: o.type },
+    deal: d.deal,
+    first: { adType: o.adType, legal: o.legal, status: o.status, type: o.type },
+    rent,
     addr: {
       city: strOr(e.get("縣市"), o.parts.city),
       town: strOr(e.get("鄉鎮"), o.parts.town),
@@ -452,7 +612,7 @@ export function buildPayload(d: Listing, o: Derived, rows: Row[], title: string,
     },
     price: { total: numOrNull(e.get("售價"), d.price), inclPark: o.hasPark, down: numOrNull(e.get("自備款"), o.down) },
     fee: {
-      has: feeHasRaw === "有" ? true : feeHasRaw === "無" ? false : null,
+      has: d.deal === "rent" ? (numOrNull(e.get("管理費"), d.fee) != null ? true : d.rentCond.feeIncluded ? null : false) : feeHasRaw === "有" ? true : feeHasRaw === "無" ? false : null,
       amount: numOrNull(e.get("管理費"), d.fee),
       cycle: strOr(e.get("繳費週期"), d.feeCycle),
     },

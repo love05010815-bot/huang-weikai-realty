@@ -174,20 +174,27 @@ export default function Post591Manager() {
           )}
 
           <section className={styles.card}>
-            <h2 className={styles.h2}>② 591 第①頁：照這樣點四下</h2>
+            <h2 className={styles.h2}>② 591 第①頁：照這樣點{derived.deal === "rent" ? "三" : "四"}下</h2>
             <div className={styles.steps}>
-              {[derived.adType, derived.legal, derived.status, derived.type].map((st, i) => (
+              {[derived.adType, derived.legal, derived.status, derived.type].filter(Boolean).map((st, i) => (
                 <span key={st} className={styles.stepWrap}>
                   {i > 0 && <span className={styles.arrow}>→</span>}
                   <span className={styles.step}>{st}</span>
                 </span>
               ))}
             </div>
-            <p className={styles.hint}>
-              依據：謄本用途「<b>{derived.tengben || "資料沒有，先當住家用"}</b>」→ 法定用途「{derived.legal}」；
-              類型「<b>{listing.kind || "—"}</b>」＋樓高 {listing.total ?? "—"} 層 → 型態「{derived.type}」。
-              {derived.tengben === "集合住宅" && " 591 清單裡也有「集合住宅」，住宅大樓一般選住家用，你要改也可以。"}
-            </p>
+            {derived.deal === "rent" ? (
+              <p className={styles.hint}>
+                這是<b>出租</b>（標題「租-」開頭或有租金欄）：591 出租沒有法定用途那一步；類型「<b>{listing.kind || "—"}</b>」→ 型態「{derived.type}」
+                {listing.kind && /華廈/.test(listing.kind) && "（出租沒有華廈，用電梯大樓）"}。
+              </p>
+            ) : (
+              <p className={styles.hint}>
+                依據：謄本用途「<b>{derived.tengben || "資料沒有，先當住家用"}</b>」→ 法定用途「{derived.legal}」；
+                類型「<b>{listing.kind || "—"}</b>」＋樓高 {listing.total ?? "—"} 層 → 型態「{derived.type}」。
+                {derived.tengben === "集合住宅" && " 591 清單裡也有「集合住宅」，住宅大樓一般選住家用，你要改也可以。"}
+              </p>
+            )}
           </section>
 
           <section className={styles.card}>

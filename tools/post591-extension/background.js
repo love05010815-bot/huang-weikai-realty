@@ -18,8 +18,15 @@ const KIND = { 住宅: 9 };
 const SHAPE = { 電梯大樓: 2, 透天厝: 3, 華廈: 5 }; // 2026-09-05 從他真實上架的網址學到華廈=5
 const PURPOSE = { 住家用: 3, 住商用: 4 };
 
+const KIND_RENT = { 整層住家: 1 }; // 2026-09-09 從第①頁點出來的網址學到：出租 kind=1 整層住家、shape 同出售
+
 function launchUrl(p) {
   const f = (p && p.first) || {};
+  if (p && p.deal === "rent") {
+    const rk = KIND_RENT[f.status], rs = SHAPE[f.type];
+    if (rk && rs) return "https://user.591.com.tw/post/two/rent?is_use_first=1&kind=" + rk + "&shape=" + rs + "&purpose=&purpose_custom=";
+    return "https://user.591.com.tw/post/first";
+  }
   const k = KIND[f.status], s = SHAPE[f.type], u = PURPOSE[f.legal];
   if (k && s && u) return "https://user.591.com.tw/post/two/sale?is_use_first=1&kind=" + k + "&shape=" + s + "&purpose=" + u + "&purpose_custom=";
   return "https://user.591.com.tw/post/first";
