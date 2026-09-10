@@ -1227,13 +1227,13 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
   {
-    id: "huangjia-zuoan", name: "皇家左岸", builder: "皇家建設體系", area: "鹿寮萬家福",
+    id: "huangjia-zuoan", name: "皇家左岸", builder: "中港皇家建設", area: "鹿寮萬家福",
     status: "completed", completion: "成屋",
     streets: "沙鹿區 鹿寮家樂福生活圈",
     sources: ["owner"],
   },
   {
-    id: "huangjia-jiguang", name: "皇家極光", builder: "皇家建設體系", area: "鹿寮萬家福",
+    id: "huangjia-jiguang", name: "皇家極光", builder: "中港皇家建設", area: "鹿寮萬家福",
     status: "newly", completion: "新成屋",
     street: "光華路", streets: "沙鹿區 光華路 391 巷 55 號一帶",
     sources: ["owner"],
@@ -1246,7 +1246,7 @@ export const PROJECTS: Project[] = [
     sources: ["owner"],
   },
   {
-    id: "huangjia-huangpin-2", name: "皇家皇品2", builder: "皇家建設體系", area: "鹿寮萬家福",
+    id: "huangjia-huangpin-2", name: "皇家皇品2", builder: "中港皇家建設", area: "鹿寮萬家福",
     status: "completed", completion: "成屋", units: 13,
     street: "福田北街", streets: "沙鹿區 福田北街 487 號一帶",
     layout: "透天住宅", siteAreaPing: 765,
@@ -2076,7 +2076,7 @@ export const PROJECTS: Project[] = [
   { id: "zhonggang-zhenzuan", name: "中港真鑽", builder: "廣潤欣開發建設", area: "梧棲市區", status: "completed", completion: "約 2020", sources: ["owner"] },
   { id: "lingxiu-tianxia", name: "領袖天廈", builder: "中港建設", area: "梧棲市區", status: "completed", completion: "約 1993", sources: ["owner"] },
   { id: "renai-luoma-shangye", name: "仁愛羅馬商業", builder: "私人建設", area: "梧棲市區", status: "completed", completion: "約 1993", sources: ["owner"] },
-  { id: "guoji-shangye", name: "國際商業大樓", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "guoji-shangye", name: "國際商業大樓", builder: "私人建設", area: "梧棲市區", status: "completed", completion: "約 1993", sources: ["owner"] },
   { id: "zhonggang-tianxia", name: "中港天廈", builder: "中港建設", area: "梧棲市區", status: "completed", completion: "約 1992", sources: ["owner"] },
   { id: "zhonggang-yunding-2", name: "中港雲頂2", builder: "聖璽建設", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
   { id: "shengxi-zonghe", name: "聖璽綜合大樓", builder: "聖璽建設", area: "梧棲市區", status: "completed", completion: "約 2000", sources: ["owner"] },
@@ -2097,7 +2097,7 @@ export const PROJECTS: Project[] = [
   { id: "chunmei-diyizhang", name: "淳美第一章", builder: "新富銘建設", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "likun-yuanman-minan", name: "立坤圓滿(民安二街)", builder: "立坤建築", area: "梧棲市區", status: "completed", completion: "約 2023", sources: ["owner"] },
   { id: "rimu-yijing", name: "日沐亦景", builder: "臻品建設", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
-  { id: "shengbang-lvyi-6", name: "勝邦綠邑6", builder: "勝邦開發建設", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shengbang-lvyi-6", name: "勝邦綠邑6", builder: "勝邦開發建設", area: "梧棲市區", status: "newly", completion: "新成屋", sources: ["owner"] },
   { id: "minan-yijing-huaxia", name: "民安易境華廈區", builder: "昱壬建設", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
   { id: "likun-yuanman-11", name: "立坤圓滿11", builder: "立坤建築", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
   { id: "huibao-dade", name: "輝堡大德", builder: "輝堡建設", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
@@ -2119,10 +2119,9 @@ export const PROJECTS: Project[] = [
   { id: "jiachang-xiyan-6", name: "佳昌喜硯6", builder: "佳昌建設", area: "梧棲市區", status: "completed", completion: "約 2020", sources: ["owner"] },
   { id: "lifeng-dahe", name: "麗豐大和", builder: "麗豐建設", area: "梧棲市區", status: "completed", completion: "約 2020", sources: ["owner"] },
   { id: "ruihan-jingcai", name: "瑞漢精彩", builder: "瑞漢建設", area: "梧棲市區", status: "completed", completion: "約 2016", sources: ["owner"] },
-  /* ⚠️ 2026-09-09 屋齡有兩個說法對不上，**維持原本的「約 2023」、沒有蓋掉**：
-     9/5 那批他給 3 年（＝約 2023），9/9 補建商時順手寫 4 年（＝約 2022）。差一年，已回問。
-     🔵 這是「他重寫的數字要先比對、不要默默覆蓋」那條的第一個真的對不上的案例 ——
-     前面三批他重寫的 13 個屋齡全部一致。 */
+  /* ✅ 2026-09-10 他答「3 年」，跟這裡的「約 2023」一致 —— **當初沒有照 9/9 那個 4 年蓋掉是對的**。
+     🔵 這是「他重寫的數字要先比對、不要默默覆蓋」唯一一次真的對不上的案例，
+        而且比對的結果證明**先存的那個才對**。 */
   { id: "zhenxiang-wuju", name: "臻詳吾居", builder: "臻詳建設", area: "梧棲市區", status: "completed", completion: "約 2023", sources: ["owner"] },
   { id: "puyue-dunhe-2", name: "璞悅敦和2", builder: "鉦立建設", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
   { id: "renli-qingmei", name: "仁里晴美", builder: "仁里建設", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
@@ -2134,7 +2133,7 @@ export const PROJECTS: Project[] = [
   { id: "dadao-zhixing", name: "大道之星", builder: "承玳營造", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "yushujia-19", name: "御墅家19", builder: "御墅家建設", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
   { id: "wanshi-ruyi", name: "萬事如邑", builder: "金安建設", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
-  { id: "lvhuo-casa", name: "綠活CASA", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "lvhuo-casa", name: "綠活CASA", builder: "大居建設", area: "梧棲市區", status: "completed", completion: "約 2015", sources: ["owner"] },
   { id: "yunlei-ruian-1", name: "雲磊瑞安一號別墅", builder: "雲磊建設", area: "梧棲市區", status: "completed", completion: "約 2023", sources: ["owner"] },
   { id: "puyue-dunhe", name: "璞悅敦和", builder: "鉦立建設", area: "梧棲市區", status: "completed", completion: "約 2020", sources: ["owner"] },
   /* ⚠️ 2026-09-09 他寫的是「村懋建設」，這裡存成**「村懋建設體系」對齊既有寫法**
@@ -2183,7 +2182,9 @@ export const PROJECTS: Project[] = [
      **這次沒有對齊**，照原文存 —— 跟村懋／敬益那兩次不一樣：那兩次只差「體系」兩個字、
      一定是同一家；這次是「開發」vs「建設」，在台灣常是兩家分開登記的公司。
      🔵 判準：**只差「體系」→ 對齊；換了一個詞（建設／開發／營造）→ 照原文存並回問。**
-     對齊錯是把兩家併成一家（事實錯），不對齊錯只是清單多一組（版面錯）。已回問。 */
+     對齊錯是把兩家併成一家（事實錯），不對齊錯只是清單多一組（版面錯）。
+     ⚠️ **2026-09-10 他回「聖揚晴空3 尚未公布建造資訊，先不管這案」** ——
+     所以兩個寫法都留著、都不要動；晴空3 現在掛的「聖揚建設體系」是 9/1 那批的舊值。 */
   { id: "shengyang-qingkong-2", name: "聖揚晴空2", builder: "聖揚開發", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
   { id: "liuyi-wodejia-8", name: "六億我的家8", builder: "六億建設", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
   { id: "yuanman-boai", name: "圓滿博愛", builder: "立坤建築", area: "梧棲市區", status: "newly", completion: "新成屋", sources: ["owner"] },
@@ -2191,11 +2192,12 @@ export const PROJECTS: Project[] = [
   { id: "wuai-wuqi", name: "吾愛吾棲", builder: "華育建設", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
   { id: "xinjun-chuyun", name: "新竣初耘", builder: "新竣建設", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
   { id: "gongyuan-shouxi-2", name: "公園首席2", builder: "瑞盈建設", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
-  /* ⚠️ 2026-09-10 他建商欄寫的是「澄灃開日新開發」，看起來像兩個名字黏在一起
-     （澄灃開發？日新開發？）——**只收了屋齡 10 年，建商維持待確認**，已回問。
-     🔵 同「中港皇璽／富園一品6期」那次的做法：建商欄看起來不對勁就回問一次，不要照收。 */
-  { id: "chengfeng-cangzhen", name: "澄灃藏臻", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2016", sources: ["owner"] },
-  { id: "shu-huayuan", name: "墅花園", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  /* ✅ 2026-09-10 謎底：那行「澄灃開日新開發」是**兩列黏在一起**——
+     澄灃藏臻＝澄灃開發有限公司、墅花園＝日新開發。回問一次就解開了。
+     🔵 這一則跟中港皇璽（真的是建商名）、富園一品6期／荷園19（真的是手滑打成案名）合起來看：
+        **建商欄看起來不對勁時，三種可能都有，照收一定會錯一個。回問的成本是一句話。** */
+  { id: "chengfeng-cangzhen", name: "澄灃藏臻", builder: "澄灃開發有限公司", area: "梧棲市區", status: "completed", completion: "約 2016", sources: ["owner"] },
+  { id: "shu-huayuan", name: "墅花園", builder: "日新開發", area: "梧棲市區", status: "completed", completion: "約 2016", sources: ["owner"] },
   { id: "heyuan-18", name: "荷園18", builder: "荷園建設", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
   { id: "yanmei-banfu-8", name: "彥美班芙8", builder: "彥美建設", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
   { id: "shiji-xiongwei-3", name: "世紀雄偉3", builder: "博士居建設", area: "梧棲市區", status: "newly", completion: "新成屋", sources: ["owner"] },
@@ -2245,7 +2247,8 @@ export const PROJECTS: Project[] = [
         他點完座標之後，記得回頭量一次它是不是真的落在清水市區色塊裡。 */
   /* ⚠️ 2026-09-10 他寫「新富銘建設」，但鹿寮的青樸院是「新富筑建設」——**筑 vs 銘，
      兩家在全站都真的存在**（新富筑 3 案、新富銘 5 案），所以不是打錯字就能斷定。
-     照他寫的存，已回問。⚠️ 這兩案同系列不同區（清水市區 vs 鹿寮萬家福），本來就可能不同建商。 */
+     ✅ **2026-09-10 他確認「青樸院2 是新富銘」** —— 同系列不同區（清水市區 vs 鹿寮萬家福）
+     真的是兩家不同建商，不是打錯字。不要再把它們併起來。 */
   { id: "qingpu-yuan-2", name: "青樸院2", builder: "新富銘建設", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "jiuwang-yipinju-2", name: "久旺一品居2", builder: "久旺建設", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
   { id: "shibao-xiangchen", name: "世堡祥宸", builder: "世堡營造", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
@@ -2265,7 +2268,7 @@ export const PROJECTS: Project[] = [
   { id: "shenghuo-jia", name: "生活家", builder: "興峰建設", area: "梧棲市區", status: "completed", completion: "約 1995", sources: ["owner"] },
   /* ⚠️ 2026-09-10 他只給屋齡 28 年（約 1998），**建商欄留空** —— 跟 9/7 的判斷一致：
      這看起來是公部門的案子，**不准自己填國宅處或縣政府**，維持待確認。 */
-  { id: "wenhua-guozhai", name: "文化國宅", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 1998", sources: ["owner"] },
+  { id: "wenhua-guozhai", name: "文化國宅", builder: "台灣省政府住宅及都市發展局", area: "梧棲市區", status: "completed", completion: "約 1998", sources: ["owner"] },
   /* 2026-09-07 第二次補：聖璽皇邸大樓。全站已經有聖璽藝術大樓／聖璽綜合大樓／聖璽雲頂金店，
      這是第四棟「聖璽」，不是打錯 —— 沒有跟任何一棟同名。建商／屋齡他沒給。 */
   { id: "shengxi-huangdi", name: "聖璽皇邸大樓", builder: "聖璽建設", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
@@ -2288,10 +2291,10 @@ export const PROJECTS: Project[] = [
   { id: "pinquan-heyuan-9", name: "品荃荷園9", builder: "品荃建設", area: "梧棲市區", status: "completed", completion: "約 2008", sources: ["owner"] },
   { id: "heyuan-20", name: "荷園20", builder: "荷風建設", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
   /* ⚠️ 2026-09-10 他建商欄打的是「荷園19」＝案名本身（同富園一品6期那次的手滑）。
-     **只收屋齡 2 年，建商維持待確認**，已回問。
+     當時只收屋齡 2 年；**2026-09-10 他答「荷風建設」，已填**。
      🔵 荷園這個系列不是同一家：荷園15＝荷風建設、荷園17／18／21＝荷園建設、
         荷園20＝荷風建設（他這次給的）—— 所以荷園19 不能照鄰居猜。 */
-  { id: "heyuan-19", name: "荷園19", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "heyuan-19", name: "荷園19", builder: "荷風建設", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
   { id: "renli-wenyuan", name: "仁里文園", builder: "仁里建設", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
 
   { id: "deyi-chengyi-2", name: "德邑澄邑2", builder: "德邑建設", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
