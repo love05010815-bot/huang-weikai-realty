@@ -2214,10 +2214,11 @@ export const PROJECTS: Project[] = [
   { id: "songtao-yan-1", name: "松濤硯1章", builder: "新富筑建設", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
   { id: "songtao-yan-2", name: "松濤硯2章", builder: "新富筑建設", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
   { id: "yunding-jinzuan-3", name: "雲頂金鑽3", builder: "中港雲頂開發", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
-  /* 🔴 2026-09-10 **他在同一次貼上裡把同一個系列寫成兩種**：
-     竣吉大心＝「竣吉開發建設」、竣吉大心2＝「竣吉建設」。兩個都是新的、沒有既有寫法可以對齊，
-     **所以照原文存、沒有自己挑一個**，已回問。他回哪一個就把另一個改過來（竣吉大心3 也一起填）。
-     ⚠️ 在那之前清單上「竣吉」會顯示成兩組，那是刻意的，不是漏對齊。 */
+  /* 🔴 2026-09-10 **同一個系列他寫過兩種**：竣吉大心＝「竣吉開發建設」、竣吉大心2＝「竣吉建設」。
+     兩個都是新的、沒有既有寫法可以對齊，**照原文存、沒有自己挑一個**。
+     🔵 同日稍晚他補竣吉大心3，寫的也是「竣吉開發建設」—— **現在 2:1**，
+     所以竣吉大心2 那個「竣吉建設」很可能只是少打「開發」兩字。**但他還沒明講，所以沒有動。**
+     他回一句就把 竣吉大心2 統一過來。⚠️ 在那之前清單上「竣吉」會顯示成兩組，是刻意的。 */
   { id: "junji-daxin", name: "竣吉大心", builder: "竣吉開發建設", area: "梧棲市區", status: "completed", completion: "約 2020", sources: ["owner"] },
   { id: "junji-daxin-2", name: "竣吉大心2", builder: "竣吉建設", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "zhongxiao-shouxi", name: "忠孝首席", builder: "瑞品建設", area: "梧棲市區", status: "newly", completion: "新成屋", sources: ["owner"] },
@@ -2227,32 +2228,32 @@ export const PROJECTS: Project[] = [
   { id: "heyuan-17", name: "荷園17", builder: "荷園建設", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
   { id: "hafo-xueyuan", name: "哈佛學苑", builder: "清泓開發", area: "梧棲市區", status: "completed", completion: "約 2007", sources: ["owner"] },
   { id: "dingji-rongyuan", name: "鼎濟融圓", builder: "鼎濟建設", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
-  { id: "shiji-xiongwei-2", name: "世紀雄偉2", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
-  { id: "wuju-wushu", name: "吾居吾墅", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
-  { id: "huangjia-xinyu", name: "皇家新寓", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
-  { id: "yuqing-fengge", name: "餘慶豐閣", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
-  { id: "huamao-fangting", name: "樺懋芳庭", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
-  { id: "junji-daxin-3", name: "竣吉大心3", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
-  { id: "xinfuyu-fengsui-10", name: "鑫富裕豐穗10", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
-  { id: "muguang-zhan", name: "沐光湛", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
-  { id: "ziran-yangzhen", name: "自然養真", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
-  { id: "jiuchuan-mumuxin", name: "九川木目心", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "shiji-xiongwei-2", name: "世紀雄偉2", builder: "博士居建設", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "wuju-wushu", name: "吾居吾墅", builder: "磐岠建設", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "huangjia-xinyu", name: "皇家新寓", builder: "中港皇家建設", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "yuqing-fengge", name: "餘慶豐閣", builder: "餘慶堂建設", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "huamao-fangting", name: "樺懋芳庭", builder: "樺懋建設", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "junji-daxin-3", name: "竣吉大心3", builder: "竣吉開發建設", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "xinfuyu-fengsui-10", name: "鑫富裕豐穗10", builder: "鑫富裕建設", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "muguang-zhan", name: "沐光湛", builder: "三和圓建設", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "ziran-yangzhen", name: "自然養真", builder: "天崴建設", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "jiuchuan-mumuxin", name: "九川木目心", builder: "九川建築企業", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
   /* 2026-09-07 他拍板：青樸院2 從梧棲市區改到清水市區。
      🔵 這也把「三組跨區同系列」的最後一組結掉了：青樸院2（清水市區）vs 青樸院（鹿寮萬家福，新富筑建設）
         **仍是兩個不同區的不同案，分開存、不要合併**。
      ⚠️ 這案還沒有座標，所以這次的改區**沒有辦法用圖釘驗證**（前兩組是量出 2,569 m／704 m 才確定的）。
         他點完座標之後，記得回頭量一次它是不是真的落在清水市區色塊裡。 */
   { id: "qingpu-yuan-2", name: "青樸院2", builder: "待確認", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
-  { id: "jiuwang-yipinju-2", name: "久旺一品居2", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
-  { id: "shibao-xiangchen", name: "世堡祥宸", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
-  { id: "jingshangsen-2", name: "井上森2", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "shulifang", name: "墅立方", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2020", sources: ["owner"] },
-  { id: "baizhan-baisheng-2", name: "百戰百勝2", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
-  { id: "heyuan-21", name: "荷園21", builder: "待確認", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
-  { id: "lihuan-yuehao", name: "立桓閱好書房", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
-  { id: "chenyou-senguan", name: "晨右森觀", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
-  { id: "jiachuan-yushu-3", name: "家川御墅3", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
-  { id: "tianmu-zhongyang", name: "天睦中央親鄰", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "jiuwang-yipinju-2", name: "久旺一品居2", builder: "久旺建設", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "shibao-xiangchen", name: "世堡祥宸", builder: "世堡營造", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "jingshangsen-2", name: "井上森2", builder: "品邑建設", area: "梧棲市區", status: "newly", completion: "新成屋", sources: ["owner"] },
+  { id: "shulifang", name: "墅立方", builder: "譯晟實業", area: "梧棲市區", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "baizhan-baisheng-2", name: "百戰百勝2", builder: "百貹建設", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "heyuan-21", name: "荷園21", builder: "荷園建設", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "lihuan-yuehao", name: "立桓閱好書房", builder: "杰奇建設", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "chenyou-senguan", name: "晨右森觀", builder: "晨右建設", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "jiachuan-yushu-3", name: "家川御墅3", builder: "家川建設", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "tianmu-zhongyang", name: "天睦中央親鄰", builder: "天睦建設", area: "梧棲市區", status: "newly", completion: "新成屋", sources: ["owner"] },
   { id: "dingshang-fuyi-2", name: "鼎上富邑2", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
 
   /* 2026-09-07 他說「梧棲市區補 亞太企業家、生活家、文化國宅」。
