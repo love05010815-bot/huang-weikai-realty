@@ -2243,7 +2243,10 @@ export const PROJECTS: Project[] = [
         **仍是兩個不同區的不同案，分開存、不要合併**。
      ⚠️ 這案還沒有座標，所以這次的改區**沒有辦法用圖釘驗證**（前兩組是量出 2,569 m／704 m 才確定的）。
         他點完座標之後，記得回頭量一次它是不是真的落在清水市區色塊裡。 */
-  { id: "qingpu-yuan-2", name: "青樸院2", builder: "待確認", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  /* ⚠️ 2026-09-10 他寫「新富銘建設」，但鹿寮的青樸院是「新富筑建設」——**筑 vs 銘，
+     兩家在全站都真的存在**（新富筑 3 案、新富銘 5 案），所以不是打錯字就能斷定。
+     照他寫的存，已回問。⚠️ 這兩案同系列不同區（清水市區 vs 鹿寮萬家福），本來就可能不同建商。 */
+  { id: "qingpu-yuan-2", name: "青樸院2", builder: "新富銘建設", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "jiuwang-yipinju-2", name: "久旺一品居2", builder: "久旺建設", area: "梧棲市區", status: "completed", completion: "約 2018", sources: ["owner"] },
   { id: "shibao-xiangchen", name: "世堡祥宸", builder: "世堡營造", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
   { id: "jingshangsen-2", name: "井上森2", builder: "品邑建設", area: "梧棲市區", status: "newly", completion: "新成屋", sources: ["owner"] },
@@ -2254,38 +2257,44 @@ export const PROJECTS: Project[] = [
   { id: "chenyou-senguan", name: "晨右森觀", builder: "晨右建設", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
   { id: "jiachuan-yushu-3", name: "家川御墅3", builder: "家川建設", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
   { id: "tianmu-zhongyang", name: "天睦中央親鄰", builder: "天睦建設", area: "梧棲市區", status: "newly", completion: "新成屋", sources: ["owner"] },
-  { id: "dingshang-fuyi-2", name: "鼎上富邑2", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "dingshang-fuyi-2", name: "鼎上富邑2", builder: "鼎上建設", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
 
   /* 2026-09-07 他說「梧棲市區補 亞太企業家、生活家、文化國宅」。
      ⚠️ **亞太企業家 9/5 那批已經建立過了**（就在上面），這裡只新建另外兩案，沒有做出第二筆同名的。
      建商／屋齡他都沒給 —— 「文化國宅」看起來是公部門的案子，但**不准自己填國宅處或縣政府**。 */
-  { id: "shenghuo-jia", name: "生活家", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "wenhua-guozhai", name: "文化國宅", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shenghuo-jia", name: "生活家", builder: "興峰建設", area: "梧棲市區", status: "completed", completion: "約 1995", sources: ["owner"] },
+  /* ⚠️ 2026-09-10 他只給屋齡 28 年（約 1998），**建商欄留空** —— 跟 9/7 的判斷一致：
+     這看起來是公部門的案子，**不准自己填國宅處或縣政府**，維持待確認。 */
+  { id: "wenhua-guozhai", name: "文化國宅", builder: "待確認", area: "梧棲市區", status: "completed", completion: "約 1998", sources: ["owner"] },
   /* 2026-09-07 第二次補：聖璽皇邸大樓。全站已經有聖璽藝術大樓／聖璽綜合大樓／聖璽雲頂金店，
      這是第四棟「聖璽」，不是打錯 —— 沒有跟任何一棟同名。建商／屋齡他沒給。 */
-  { id: "shengxi-huangdi", name: "聖璽皇邸大樓", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shengxi-huangdi", name: "聖璽皇邸大樓", builder: "聖璽建設", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
   /* 2026-09-07 第三次補：世紀雄偉5、品德聖母會。建商／屋齡他都沒給。
      🔵 世紀雄偉這個系列現在是 1／2／3／5 —— **沒有 4**。台灣建案跳過 4 很常見，
         不是漏打；他要是真的有 4，補進來就好。 */
-  { id: "shiji-xiongwei-5", name: "世紀雄偉5", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "pinde-shengmuhui", name: "品德聖母會", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "shiji-xiongwei-5", name: "世紀雄偉5", builder: "博士居建設", area: "梧棲市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "pinde-shengmuhui", name: "品德聖母會", builder: "品德建設", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
   /* 2026-09-07 第四次補：光崴臻品、喬立I DO、天空墅。建商／屋齡他都沒給。
      🔴 **喬立I DO 的建商不要填。** 全站已經有「喬立ME TOWN＝喬立建設」（新光田），
         前綴一模一樣 —— 但「案名前綴≠建商」這幾天已經被證明十幾次（德光四案就三家不同公司）。
         列為候選、等他點頭，不要因為看起來很像就填進去。 */
-  { id: "guangwei-zhenpin", name: "光崴臻品", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "qiaoli-i-do", name: "喬立I DO", builder: "喬德建設", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
-  { id: "tiankong-shu", name: "天空墅", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "guangwei-zhenpin", name: "光崴臻品", builder: "光崴建設", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "qiaoli-i-do", name: "喬立I DO", builder: "喬德建設事業", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "tiankong-shu", name: "天空墅", builder: "伊吉邦建設", area: "梧棲市區", status: "completed", completion: "約 2019", sources: ["owner"] },
   /* 2026-09-07 第五次補：品荃荷園9、荷園20、荷園19、仁里文園。建商／屋齡他都沒給。
      🔵 荷園系列現在是 15／17／18／19／20／21 ＋ 品荃荷園9。**荷園15 的建商是荷風建設**，
         其餘全部「待確認」—— 同前綴不代表同一家，等他一家一家點頭。
      🔵 同一批他說「移除仁愛羅馬金融名廈」，已刪（那筆沒有座標、沒有任何其他引用）。 */
-  { id: "pinquan-heyuan-9", name: "品荃荷園9", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "heyuan-20", name: "荷園20", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "heyuan-19", name: "荷園19", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
-  { id: "renli-wenyuan", name: "仁里文園", builder: "待確認", area: "梧棲市區", status: "unknown", completion: "待確認", sources: ["owner"] },
+  { id: "pinquan-heyuan-9", name: "品荃荷園9", builder: "品荃建設", area: "梧棲市區", status: "completed", completion: "約 2008", sources: ["owner"] },
+  { id: "heyuan-20", name: "荷園20", builder: "荷風建設", area: "梧棲市區", status: "newly", completion: "約 2025", sources: ["owner"] },
+  /* ⚠️ 2026-09-10 他建商欄打的是「荷園19」＝案名本身（同富園一品6期那次的手滑）。
+     **只收屋齡 2 年，建商維持待確認**，已回問。
+     🔵 荷園這個系列不是同一家：荷園15＝荷風建設、荷園17／18／21＝荷園建設、
+        荷園20＝荷風建設（他這次給的）—— 所以荷園19 不能照鄰居猜。 */
+  { id: "heyuan-19", name: "荷園19", builder: "待確認", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "renli-wenyuan", name: "仁里文園", builder: "仁里建設", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
 
-  { id: "deyi-chengyi-2", name: "德邑澄邑2", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "deyi-chengyi-2", name: "德邑澄邑2", builder: "德邑建設", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
 ];
 
 /* ─────────────── 座標 ─────────────── */
