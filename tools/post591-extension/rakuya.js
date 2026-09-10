@@ -235,7 +235,11 @@
       if (r.ageYears != null) setText("findate", r.ageYears);
       else setCheck("findateUnknow", null, true);
       if (p.facing) await setSelect("direction", p.facing);
-      clickRadio("lifts", /電梯大廈|華廈/.test(r.typecode || "") ? "有" : "無");
+      // 電梯：出售表單是 radio、出租表單是 select，兩種都接
+      const liftWant = /電梯大廈|華廈/.test(r.typecode || "") ? "有" : "無";
+      const liftEl = byName("lifts");
+      if (liftEl && liftEl.tagName === "SELECT") await setSelect("lifts", liftWant);
+      else clickRadio("lifts", liftWant);
       if (rent) clickRadio("parkings", r.parkStatus === "無車位" ? "無車位" : "自有");
       else {
         clickRadio("parkings", r.parkStatus || "無車位");
