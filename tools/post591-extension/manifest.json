@@ -1,32 +1,23 @@
 {
   "manifest_version": 3,
   "name": "591 刊登助手",
-  "version": "1.3.0",
-  "description": "貼上愛屋型錄或物件文字，一鍵把物件資料、文案、照片填進 591 出售／出租刊登表單。保存與付款仍由你自己按。",
-  "permissions": [
-    "storage"
-  ],
-  "host_permissions": [
-    "https://*.houseol.com.tw/*",
-    "https://*.591.com.tw/*"
-  ],
-  "action": {
-    "default_title": "591 刊登助手：貼資料 → 上架"
-  },
-  "background": {
-    "service_worker": "background.js"
-  },
+  "version": "1.4.0",
+  "description": "貼上愛屋型錄或物件文字，一鍵把物件資料、文案、照片填進 591 與樂屋網的出售／出租刊登表單。保存與付款仍由你自己按。",
+  "permissions": ["storage"],
+  "host_permissions": ["https://*.houseol.com.tw/*", "https://*.591.com.tw/*", "https://member.rakuya.com.tw/*"],
+  "action": { "default_title": "591／樂屋 刊登助手：貼資料 → 上架" },
+  "background": { "service_worker": "background.js" },
   "content_scripts": [
     {
-      "matches": [
-        "https://user.591.com.tw/post/*"
-      ],
-      "js": [
-        "content.js"
-      ],
-      "css": [
-        "panel.css"
-      ],
+      "matches": ["https://user.591.com.tw/post/*"],
+      "js": ["content.js"],
+      "css": ["panel.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://member.rakuya.com.tw/sell/post/*", "https://member.rakuya.com.tw/rent/post/*"],
+      "js": ["rakuya.js"],
+      "css": ["panel.css"],
       "run_at": "document_idle"
     },
     {
@@ -36,9 +27,7 @@
         "https://huang-weikai-realty.vercel.app/admin/post591*",
         "http://localhost:3000/admin/post591*"
       ],
-      "js": [
-        "bridge.js"
-      ],
+      "js": ["bridge.js"],
       "run_at": "document_idle"
     }
   ]

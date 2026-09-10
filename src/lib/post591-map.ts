@@ -14,6 +14,7 @@
 import { DESC_HEAD, DESC_STYLE, DESC_TAIL, POST591_DEFAULTS } from "@/config/post591-template";
 import { findCopyRisks, type CopyRisk } from "@/lib/listing-copy-risk";
 import type { Deal, Listing } from "@/lib/post591-parser";
+import type { RakuyaExtra } from "@/lib/rakuya-map";
 
 export interface AddressParts {
   city: string;
@@ -499,6 +500,10 @@ export function post591Risks(...texts: string[]): CopyRisk[] {
  */
 export interface Post591Payload {
   v: 1;
+  /** 要上哪個平台：591（預設）或樂屋；外掛依此開不同網站，兩邊的 content script 只認自己的 */
+  target?: "591" | "rakuya";
+  /** 樂屋要選的字（rakuya-map.ts 算的），target 是 rakuya 時才有 */
+  rakuya?: RakuyaExtra;
   /** 出售（預設）或出租；外掛依此決定開哪個第②頁、填哪一套格子 */
   deal?: Deal;
   first: { adType: "出售" | "出租"; legal: string; status: string; type: string };

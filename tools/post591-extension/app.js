@@ -12,6 +12,7 @@
 // 一律相對路徑：外掛頁面的 CSP 會擋 inline importmap（2026-09-05 同事機器上整頁沒反應就是這個）
 import { parseListing, photoLinkReport, extractPhotosFromHtml, listingNoFromUrl } from "./lib/lib/post591-parser.js";
 import { derive, buildRows, titleCheck, post591Risks, buildPayload } from "./lib/lib/post591-map.js";
+import { buildRakuya } from "./lib/lib/rakuya-map.js";
 import { DESC_HEAD, DESC_TAIL, POST591_DEFAULTS } from "./lib/config/post591-template.js";
 
 const $ = (id) => document.getElementById(id);
@@ -215,27 +216,34 @@ function refreshPhotoLink() {
 }
 
 /* ───────── 上架 ───────── */
-async function launch() {
+async function launch(target = "591") {
   if (!listing || !derived) return;
   if (!settingsReady()) {
     $("settings").hidden = false;
     $("settings").scrollIntoView({ behavior: "smooth" });
-    flash($("launch-msg"), "先到上面「⚙ 我的資料」填姓名和手機（591 聯絡人、文案都會用到），再按一次。", "bad");
+    flash($("launch-msg"), "先到上面「⚙ 我的資料」填姓名和手機（聯絡人、文案都會用到），再按一次。", "bad");
     return;
   }
   const payload = buildPayload(listing, derived, rows, $("title").value.trim(), $("desc").value);
   payload.contact.name = settings.name;
   const extra = extraPhotos();
   if (!payload.photos.length && extra.length) payload.photos = extra;
+  const site = target === "rakuya" ? "樂屋" : "591";
+  if (target === "rakuya") {
+    payload.target = "rakuya";
+    payload.rakuya = buildRakuya(listing, derived, payload);
+    payload.rakuya.contactName = settings.name;
+    payload.rakuya.contactPhone = settings.phone;
+  }
   if (!hasChrome) {
     flash($("launch-msg"), "這一頁要從 Chrome 外掛圖示打開才能上架（現在只是預覽）。", "bad");
     return;
   }
-  flash($("launch-msg"), "正在開 591 分頁…", "");
+  flash($("launch-msg"), `正在開${site}分頁…`, "");
   chrome.runtime.sendMessage({ type: "p591:launch", payload }, (r) => {
     const err = chrome.runtime.lastError;
     if (err || !r || !r.ok) flash($("launch-msg"), `外掛沒回應：${(err && err.message) || (r && r.error) || "未知錯誤"}。到 chrome://extensions 按這個外掛的 ↻ 再試。`, "bad");
-    else flash($("launch-msg"), "591 分頁已開好，外掛正在填。到那個分頁等右下角「✅ 填完」，從上往下核對，再自己按「保存資料，下一步」。", "ok");
+    else flash($("launch-msg"), `${site}分頁已開好，外掛正在填。到那個分頁等右下角「✅ 填完」，從上往下核對，再自己按${target === "rakuya" ? "「庫存」或「上架」" : "「保存資料，下一步」"}。`, "ok");
   });
 }
 
@@ -258,7 +266,8 @@ $("clear").onclick = () => {
 $("title").addEventListener("input", refreshTitle);
 $("desc").addEventListener("input", refreshDesc);
 $("photo-link").addEventListener("input", refreshPhotoLink);
-$("launch").onclick = launch;
+$("launch").onclick = () => launch("591");
+$("launch-rakuya").onclick = () => launch("rakuya");
 
 loadSettings().then(() => {
   if (!settingsReady()) $("settings").hidden = false; // 第一次用：先填自己的資料

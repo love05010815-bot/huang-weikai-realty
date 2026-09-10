@@ -22,6 +22,7 @@ const KIND_RENT = { 整層住家: 1 }; // 2026-09-09 從第①頁點出來的網
 
 function launchUrl(p) {
   const f = (p && p.first) || {};
+  if (p && p.target === "rakuya") return p.deal === "rent" ? "https://member.rakuya.com.tw/rent/post/add" : "https://member.rakuya.com.tw/sell/post/add"; // 樂屋一頁式，沒有第①頁
   if (p && p.deal === "rent") {
     const rk = KIND_RENT[f.status], rs = SHAPE[f.type];
     if (rk && rs) return "https://user.591.com.tw/post/two/rent?is_use_first=1&kind=" + rk + "&shape=" + rs + "&purpose=&purpose_custom=";

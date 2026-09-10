@@ -9,6 +9,7 @@ register("./alias-hooks.mjs", import.meta.url);
 const { combinePhotos, detectSource, extractPhotoUrls, extractPhotosFromHtml, isHouseolPage, listingNoFromUrl, parseListing, photoLinkReport, splitFeatureLines } = await import("../src/lib/post591-parser.ts");
 const { buildDescription, buildPayload, buildRows, derive, descToHtml, encodePayload, photoCommand, post591Risks, splitAddress, titleCheck } =
   await import("../src/lib/post591-map.ts");
+const { buildRakuya, rakuyaParkKind, RAKUYA_TITLE_MAX } = await import("../src/lib/rakuya-map.ts");
 
 let pass = true;
 const ok = (cond, label, got, want) => {
@@ -417,6 +418,34 @@ ZZ0000003
   eq("管理費：含管但金額不明", p.fee.has + "/" + p.fee.amount, "null/null");
   const line = parseListing("「測試出租三房」\n地址：梧棲區測試路10號5樓\n租金：18,000元\n押金：2個月\n格局：3房/2廳/2衛\n總建坪：35坪\n✨近學校");
   eq("LINE 文字也認得出租", line.deal + "/" + line.rent + "/" + line.deposit, "rent/18000/2個月");
+}
+/* ───── J. 樂屋對應（2026-09-10 實測 member.rakuya.com.tw 出售／出租表單） ───── */
+{
+  console.log("J. 樂屋對應");
+  const d = parseListing(型錄大樓); const o = derive(d, 2026);
+  const p = buildPayload(d, o, buildRows(d, o), "這個標題故意寫得很長很長超過二十五個字看會不會被截掉喔喔喔", buildDescription(d.features));
+  const rk = buildRakuya(d, o, p, 2026);
+  eq("法定用途", rk.legal, "住家用");
+  eq("現況型式／類型", rk.usecode + "/" + rk.typecode, "住宅/電梯大廈");
+  eq("屋齡", rk.ageYears, 1);
+  eq("新屋（≤3 年）", rk.ageType, "新屋");
+  eq("單層", rk.floorsType + "/" + rk.floorsMax, "單層/null");
+  eq("有社區", rk.isCommunity, true);
+  eq("有管理費 → 管理員", rk.manage + "/" + rk.manageFee, "管理員(警衛)/2342");
+  eq("車位", rk.parkStatus + "/" + rk.parkKind, "有車位/坡道平面式");
+  eq("標題截 25 字", [...rk.title25].length + "/" + rk.titleTruncated, "25/true");
+  eq("周圍環境帶學校", rk.env.elementary, d.school);
+  eq("聯絡人", rk.contactName, "黃瑋凱");
+  eq("沒有出租段", rk.rent, undefined);
+  const d2 = parseListing(型錄透天); const o2 = derive(d2, 2026);
+  const rk2 = buildRakuya(d2, o2, buildPayload(d2, o2, buildRows(d2, o2), "透天標題六個字", "x"), 2026);
+  eq("透天 → 多層 1～總樓層", rk2.typecode + "/" + rk2.floorsType + "/" + rk2.floorsMax, "透天厝/多層/2");
+  eq("透天沒車位", rk2.parkStatus, "無車位");
+  eq("中古屋", rk2.ageType, "中古屋");
+  eq("法定用途 住商用", rk2.legal, "住商用");
+  eq("車位字：升降機械", rakuyaParkKind("升降/機械"), "昇降機械式");
+  eq("車位字：平面", rakuyaParkKind("平面"), "平面式車位");
+  eq("上限常數", RAKUYA_TITLE_MAX, 25);
 }
 console.log("");
 console.log(pass ? "✅ 591 刊登助手：辨識器與對應規則全部一致" : "❌ 有差異，不要往下做");

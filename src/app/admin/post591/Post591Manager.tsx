@@ -32,6 +32,7 @@ import {
   type Row,
 } from "@/lib/post591-map";
 import { POST591_DEFAULTS } from "@/config/post591-template";
+import { RAKUYA_TITLE_MAX, buildRakuya } from "@/lib/rakuya-map";
 import styles from "./post591.module.css";
 
 export default function Post591Manager() {
@@ -98,16 +99,21 @@ export default function Post591Manager() {
     setRows((prev) => prev.map((r, j) => (j === i ? { ...r, value } : r)));
   }
 
-  /** 把資料包交給 Chrome 外掛（bridge.js 在這頁監聽 postMessage），由它開 591 分頁填表。 */
-  async function launch() {
+  /** 把資料包交給 Chrome 外掛（bridge.js 在這頁監聽 postMessage），由它開 591 或樂屋的分頁填表。 */
+  async function launch(target: "591" | "rakuya" = "591") {
     if (!listing || !derived) return;
     const payload = buildPayload(listing, derived, rows, title, desc);
     if (!payload.photos.length && extraPhotos.length) payload.photos = extraPhotos;
+    const site = target === "rakuya" ? "樂屋" : "591";
+    if (target === "rakuya") {
+      payload.target = "rakuya";
+      payload.rakuya = buildRakuya(listing, derived, payload);
+    }
     if (!document.documentElement.getAttribute("data-p591-ext")) {
       setLaunchMsg("沒偵測到外掛：請按 F5 把這一頁重新整理，再按一次（這頁開得比外掛早、或外掛剛更新過都會這樣）。還沒裝外掛的話，照下面的裝法裝好再來。");
       return;
     }
-    setLaunchMsg("已交給外掛，正在開 591 分頁…");
+    setLaunchMsg(`已交給外掛，正在開${site}分頁…`);
     const ok = await new Promise<boolean>((resolve) => {
       const timer = setTimeout(() => {
         window.removeEventListener("message", onMsg);
@@ -124,7 +130,9 @@ export default function Post591Manager() {
     });
     setLaunchMsg(
       ok
-        ? "591 分頁已開好，外掛正在填。到那個分頁從上往下核對，再自己按「保存資料，下一步」。"
+        ? target === "rakuya"
+          ? "樂屋分頁已開好，外掛正在填。到那個分頁從上往下核對，再自己按「庫存」或「上架」。"
+          : "591 分頁已開好，外掛正在填。到那個分頁從上往下核對，再自己按「保存資料，下一步」。"
         : "外掛沒回應。到 chrome://extensions 按那張卡片的 ↻ 重新載入，回來重新整理這頁再按一次。",
     );
   }
@@ -242,6 +250,11 @@ export default function Post591Manager() {
               </button>
             </div>
             <p className={tc.ok ? styles.okText : styles.badText}>{tc.msg}</p>
+            {[...title.trim()].length > RAKUYA_TITLE_MAX && (
+              <p className={styles.badText}>
+                樂屋物件名稱上限 {RAKUYA_TITLE_MAX} 字，上架樂屋時會自動截成「{[...title.trim()].slice(0, RAKUYA_TITLE_MAX).join("")}」，要自己改也可以。
+              </p>
+            )}
 
             <label className={styles.lbl}>現況特色描述（你的固定版型，只有 ✨ 那幾行是這戶的）</label>
             <textarea className={`${styles.ta} ${styles.taDesc}`} value={desc} onChange={(e) => setDesc(e.target.value)} spellCheck={false} />
@@ -309,15 +322,19 @@ export default function Post591Manager() {
           </section>
 
           <section className={`${styles.card} ${styles.handoffCard}`}>
-            <h2 className={styles.h2}>⑥ 上架到 591</h2>
+            <h2 className={styles.h2}>⑥ 上架到 591／樂屋</h2>
             <p className={styles.hint}>
-              紅底的格子先補完，再按這顆。會開一個 591 刊登分頁，<b>你 Chrome 裡的「591 刊登助手」外掛</b>
-              會把四連點、每一格、文案、照片全部填好，右下角面板列出還缺什麼。
-              填完你自己核對，再按 591 的「保存資料，下一步」和「立即支付」——那兩顆永遠是你按。
+              紅底的格子先補完，再按。會開一個刊登分頁，<b>你 Chrome 裡的「591 刊登助手」外掛</b>
+              會把每一格、文案、照片全部填好，右下角面板列出還缺什麼。
+              填完你自己核對，再按 591 的「保存資料，下一步」和「立即支付」、或樂屋的「庫存」「上架」——那幾顆永遠是你按。
+              兩個平台分開按，先後順序隨你。
             </p>
             <div className={styles.btnrow}>
-              <button className={styles.run} onClick={launch}>
+              <button className={styles.run} onClick={() => launch("591")}>
                 🚀 上架到 591
+              </button>
+              <button className={styles.run} onClick={() => launch("rakuya")}>
+                🏠 上架到樂屋
               </button>
               {rows.some((r) => r.need) && (
                 <span className={styles.badText}>還有 {rows.filter((r) => r.need).length} 格紅底沒補（外掛會把它們列在面板上）</span>

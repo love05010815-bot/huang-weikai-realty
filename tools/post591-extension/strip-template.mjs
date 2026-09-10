@@ -43,6 +43,7 @@ const SPECIFIERS = [
   ["from \"@/lib/listing-copy-risk\"", "from \"./listing-copy-risk.js\""],
   ["from \"@/lib/post591-parser\"", "from \"./post591-parser.js\""],
   ["from \"@/lib/post591-map\"", "from \"./post591-map.js\""],
+  ["from \"@/lib/rakuya-map\"", "from \"./rakuya-map.js\""],
 ];
 let touched = 0;
 for (const f of fs.readdirSync(path.join(lib, "lib"))) {

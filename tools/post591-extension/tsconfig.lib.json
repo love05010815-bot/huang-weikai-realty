@@ -15,6 +15,7 @@
   "files": [
     "../../src/lib/post591-parser.ts",
     "../../src/lib/post591-map.ts",
+    "../../src/lib/rakuya-map.ts",
     "../../src/lib/listing-copy-risk.ts",
     "../../src/config/post591-template.ts"
   ],

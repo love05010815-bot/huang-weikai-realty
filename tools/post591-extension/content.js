@@ -684,6 +684,7 @@
     const r = await msg("p591:get");
     const p = r && r.ok ? r.payload : null;
     if (!p || p.v !== 1) return; // 不是從後台來的，什麼都不做
+    if (p.target && p.target !== "591") return; // 給樂屋的資料包，這裡不動
     ensurePanel();
     if (document.hidden) log("這個分頁在背景，Chrome 會把它放慢；請點回這個分頁等它填完", "warn");
     if (/\/post\/first/.test(path)) await runFirst(p);
