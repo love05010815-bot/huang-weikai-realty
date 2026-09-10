@@ -16,6 +16,19 @@ import type { Derived, Post591Payload } from "@/lib/post591-map";
 
 export const RAKUYA_TITLE_MAX = 25;
 
+/**
+ * 樂屋文案在這一行之前停（2026-09-10 他說的）：版型尾段的「貼心提醒」講的是 591 的問答訊息與【我的店舖】，
+ * 樂屋沒有這些東西，所以整段不要。只看行首，他在後台文案格改過幾個字也照樣認。
+ */
+export const RAKUYA_DESC_STOP = /^貼心提醒/;
+
+/** 樂屋版文案：從「貼心提醒」那一行起整段拿掉、尾巴的空行修掉；沒有那一行就原樣回傳（同事版尾段是空的）。 */
+export function rakuyaDesc(desc: string): string {
+  const lines = desc.split("\n");
+  const stop = lines.findIndex((l) => RAKUYA_DESC_STOP.test(l.trim()));
+  return (stop < 0 ? desc : lines.slice(0, stop).join("\n")).trimEnd();
+}
+
 export interface RakuyaExtra {
   /** 法定用途（樂屋清單跟 591 幾乎同名；591 的「一般事務所」樂屋沒有 → 住家用） */
   legal: string;

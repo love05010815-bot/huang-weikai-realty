@@ -26,13 +26,14 @@ import {
   buildPayload,
   buildRows,
   derive,
+  descToHtml,
   photoCommand,
   post591Risks,
   titleCheck,
   type Row,
 } from "@/lib/post591-map";
 import { POST591_DEFAULTS } from "@/config/post591-template";
-import { RAKUYA_TITLE_MAX, buildRakuya } from "@/lib/rakuya-map";
+import { RAKUYA_TITLE_MAX, buildRakuya, rakuyaDesc } from "@/lib/rakuya-map";
 import styles from "./post591.module.css";
 
 export default function Post591Manager() {
@@ -107,6 +108,9 @@ export default function Post591Manager() {
     const site = target === "rakuya" ? "樂屋" : "591";
     if (target === "rakuya") {
       payload.target = "rakuya";
+      // 樂屋的文案不要「貼心提醒」那段（講的是 591 的問答訊息、我的店舖），字級顏色照套
+      payload.desc = rakuyaDesc(desc);
+      payload.descHtml = descToHtml(payload.desc) || undefined;
       payload.rakuya = buildRakuya(listing, derived, payload);
     }
     if (!document.documentElement.getAttribute("data-p591-ext")) {

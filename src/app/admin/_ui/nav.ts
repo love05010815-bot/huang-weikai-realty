@@ -37,8 +37,9 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { href: "/admin/videos", label: "影音", icon: "video" },
       // 貼上 591 同社區在賣的物件，產出可以傳給屋主的競品分析。純前端、不進資料庫。
       { href: "/admin/compare", label: "競品分析", icon: "radar" },
-      // 貼上愛屋型錄／LINE 物件文字，產出 591 每一格要填什麼＋交接摘要給 Claude 填。純前端、不進資料庫。
-      { href: "/admin/post591", label: "591 刊登助手", icon: "edit" },
+      // 貼上愛屋型錄／LINE 物件文字，一鍵交給 Chrome 外掛填進 591／樂屋網的刊登表單。純前端、不進資料庫。
+      // 2026-09-10 他改名「廣告刊登助手」（不只 591 了）；網址 /admin/post591 不動。
+      { href: "/admin/post591", label: "廣告刊登助手", icon: "edit" },
       { href: "/admin/line", label: "LINE 機器人", icon: "mobile" },
       { href: "/admin/inbox", label: "留言收件匣", icon: "chat" },
     ],

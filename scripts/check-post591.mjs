@@ -9,7 +9,7 @@ register("./alias-hooks.mjs", import.meta.url);
 const { combinePhotos, detectSource, extractPhotoUrls, extractPhotosFromHtml, isHouseolPage, listingNoFromUrl, parseListing, photoLinkReport, splitFeatureLines } = await import("../src/lib/post591-parser.ts");
 const { buildDescription, buildPayload, buildRows, derive, descToHtml, encodePayload, photoCommand, post591Risks, splitAddress, titleCheck } =
   await import("../src/lib/post591-map.ts");
-const { buildRakuya, rakuyaParkKind, RAKUYA_TITLE_MAX } = await import("../src/lib/rakuya-map.ts");
+const { buildRakuya, rakuyaDesc, rakuyaParkKind, RAKUYA_TITLE_MAX } = await import("../src/lib/rakuya-map.ts");
 
 let pass = true;
 const ok = (cond, label, got, want) => {
@@ -446,6 +446,14 @@ ZZ0000003
   eq("車位字：升降機械", rakuyaParkKind("升降/機械"), "昇降機械式");
   eq("車位字：平面", rakuyaParkKind("平面"), "平面式車位");
   eq("上限常數", RAKUYA_TITLE_MAX, 25);
+  // 2026-09-10 他說的：樂屋文案不要「貼心提醒」那段（講的是 591 的問答訊息、我的店舖）；591 那邊照舊
+  const full = buildDescription(d.features);
+  const cut = rakuyaDesc(full);
+  ok(full.includes("貼心提醒") && p.desc.includes("貼心提醒"), "591 文案照舊帶貼心提醒", "有", "有");
+  ok(!cut.includes("貼心提醒") && !cut.includes("最適合的家"), "樂屋文案砍掉貼心提醒整段", cut.slice(-24), "…依正式謄本為準▲▲▲");
+  ok(cut.endsWith("▲▲▲房屋刊登資料若有誤，依正式謄本為準▲▲▲"), "樂屋文案停在謄本那行、尾巴沒空行", JSON.stringify(cut.slice(-6)), "\"謄本為準▲▲▲\"");
+  ok(cut.startsWith("☆主推特色介紹:") && cut.includes("✨"), "樂屋文案前面的版型與 ✨ 行都在", "在", "在");
+  eq("沒有貼心提醒就原樣（同事版尾段是空的）", rakuyaDesc("☆主推特色介紹:\n\n✨甲\n✨乙"), "☆主推特色介紹:\n\n✨甲\n✨乙");
 }
 console.log("");
 console.log(pass ? "✅ 591 刊登助手：辨識器與對應規則全部一致" : "❌ 有差異，不要往下做");

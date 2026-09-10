@@ -1,5 +1,5 @@
 /**
- * /admin/post591 —— 591 刊登助手
+ * /admin/post591 —— 廣告刊登助手（591＋樂屋網；2026-09-10 他從「591 刊登助手」改名，網址不動）
  *
  * 貼上愛屋型錄（Ctrl+A 整頁）或 LINE 上的物件文字，產出 591 刊登表單每一格要填什麼：
  * 第①頁四連點、地址拆好、坪數價格、民國年、生活機能、廣告標題、固定版型的現況特色描述、
@@ -38,7 +38,7 @@ export default async function Post591Page() {
     <div className={styles.page} style={COMPARE_THEME}>
       <header className={styles.head}>
         <h1 className={styles.h1}>
-          <Icon name="edit" size={22} /> 591 刊登助手
+          <Icon name="edit" size={22} /> 廣告刊登助手
         </h1>
         <p className={styles.lede}>
           貼上愛屋型錄整頁、或你 LINE 上打的物件文字，產出 591 每一格要填什麼＋固定版型文案。
