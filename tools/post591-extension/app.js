@@ -78,8 +78,8 @@ async function saveSettings() {
   }
 }
 const settingsReady = () => settings.name && settings.phone;
-function fillTail(tail) {
-  return tail.replace(/\{\{name\}\}/g, settings.name || "（姓名）").replace(/\{\{phone\}\}/g, settings.phone || "（手機）").replace(/\{\{line\}\}/g, settings.line || "（LINE ID）");
+function fillTail(tail, who = settings) {
+  return tail.replace(/\{\{name\}\}/g, who.name || "（姓名）").replace(/\{\{phone\}\}/g, who.phone || "（手機）").replace(/\{\{line\}\}/g, who.line || "（LINE ID）");
 }
 function buildDesc(features) {
   const lines = features.map((l) => l.replace(/^✨\s*/, "")).filter(Boolean).map((l) => `✨${l}`);
@@ -121,7 +121,8 @@ function renderTailStyle() {
 }
 function previewTail() {
   const box = $("ts-preview");
-  const text = fillTail($("s-tail").value.trim());
+  // 預覽用「現在打在欄位裡的」姓名手機 LINE，還沒按儲存也看得到成品長什麼樣
+  const text = fillTail($("s-tail").value.trim(), { name: $("s-name").value.trim(), phone: $("s-phone").value.trim(), line: $("s-line").value.trim() });
   if (!text) {
     box.innerHTML = `<span class="hint">（固定尾段是空的，沒東西可預覽）</span>`;
     return;
@@ -377,7 +378,7 @@ $("s-reset").onclick = () => {
   previewTail();
   flash($("s-msg"), "已清空固定尾段（預設就是不帶固定文案），記得按儲存", "");
 };
-$("s-tail").addEventListener("input", previewTail);
+for (const id of ["s-tail", "s-name", "s-phone", "s-line"]) $(id).addEventListener("input", previewTail);
 for (const id of ["ts-size", "ts-bold", "ts-underline"]) $(id).addEventListener("change", previewTail);
 for (const id of ["ts-color", "ts-bg"]) {
   $(id).addEventListener("click", (e) => {
