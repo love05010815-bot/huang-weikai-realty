@@ -14,6 +14,7 @@
  * ⚠️ **全部在瀏覽器裡算完，沒有 server action、沒有 API、不進資料庫。**
  *    貼進來的東西含屋主門牌，關掉分頁就沒了 —— 這是刻意的（repo 公開、個資不落地）。
  */
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAdminCheckArgs, isCurrentUserAdmin } from "@/lib/admin-check";
 import { adminEmails } from "@/auth";
@@ -44,6 +45,9 @@ export default async function Post591Page() {
           貼上愛屋型錄整頁、或你 LINE 上打的物件文字，產出 591 每一格要填什麼＋固定版型文案。
           最後按「複製交接摘要」貼給 Claude，它會用 Chrome 幫你填到第③步。資料只留在這個分頁，
           <b>不會上傳、不會存檔</b>。
+        </p>
+        <p className={styles.lede}>
+          <Link href="/admin/post591/keys">🔑 同事授權碼</Link>：同事版外掛（1.5.0 起）要有授權碼才能用，在那裡新增、停用、解除綁定、延長（預設 2026-09-20 到期）。
         </p>
       </header>
       <Post591Manager />

@@ -1,0 +1,31 @@
+/* /admin/post591/keys —— 同事授權碼。
+ * 🔴 不硬寫色碼：變數沿用 compare/theme.ts 的 --cmp-*（page.tsx 用 COMPARE_THEME 傳下來），跟 post591 那頁同一套。
+ */
+.formRow { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--cmp-sub); min-width: 180px; }
+
+.createdBox { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--cmp-ok-bd); background: var(--cmp-ok-bg); border-radius: 12px; }
+.createdKey {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 26px; font-weight: 700; letter-spacing: 2px; color: var(--cmp-ok-fg);
+}
+.msgPre {
+  white-space: pre-wrap; font-family: inherit; font-size: 13px; line-height: 1.7; margin: 8px 0; padding: 10px 12px;
+  border-radius: 8px; background: var(--cmp-card); color: var(--cmp-text); border: 1px solid var(--cmp-border);
+}
+
+.tableWrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th { text-align: left; color: var(--cmp-mute); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--cmp-border); white-space: nowrap; }
+.table td { padding: 8px; border-bottom: 1px solid var(--cmp-divider); vertical-align: top; color: var(--cmp-text); }
+.rowOff td { opacity: 0.6; }
+.key { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; letter-spacing: 1px; color: var(--cmp-text); }
+
+.ok { color: var(--cmp-ok-fg); }
+.bad { color: var(--cmp-bad-fg); }
+.mute { color: var(--cmp-mute); }
+
+.dateRow { display: flex; gap: 6px; align-items: center; }
+.dateRow input { width: 150px; }
+.actions { white-space: nowrap; }
+.actions button { margin-right: 6px; }

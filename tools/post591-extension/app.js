@@ -18,6 +18,7 @@ import { DESC_HEAD, DESC_TAIL, POST591_DEFAULTS } from "./lib/config/post591-tem
 const $ = (id) => document.getElementById(id);
 const hasChrome = typeof chrome !== "undefined" && !!(chrome.runtime && chrome.runtime.sendMessage);
 const SETTINGS_KEY = "p591:settings";
+const LICENSE_KEY = "p591:licenseKey"; // 跟 background.js／license.js 同一把（這裡只讀來顯示，改一律經背景程式）
 
 /* ───────── 個人設定 ───────── */
 /** 預設不帶固定文案（lib 裡的 DESC_TAIL 在同事版已被清成空字串，這裡再保險一次） */
@@ -28,8 +29,9 @@ let settings = { ...DEFAULT_SETTINGS };
 async function loadSettings() {
   try {
     if (hasChrome && chrome.storage && chrome.storage.local) {
-      const o = await chrome.storage.local.get(SETTINGS_KEY);
+      const o = await chrome.storage.local.get([SETTINGS_KEY, LICENSE_KEY]);
       if (o[SETTINGS_KEY]) settings = { ...DEFAULT_SETTINGS, ...o[SETTINGS_KEY] };
+      $("s-key").value = o[LICENSE_KEY] || "";
     } else {
       const raw = localStorage.getItem(SETTINGS_KEY);
       if (raw) settings = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
@@ -58,6 +60,8 @@ async function saveSettings() {
   } catch (e) {
     flash($("s-msg"), `存不進去：${e.message}`, "bad");
   }
+  // 授權碼交給背景程式存＋立刻驗（同事版 2026-09-11 起）
+  if (hasChrome) await setLicenseKey($("s-key").value.trim());
   if (listing) {
     // 聯絡人／委託書／文案跟著新設定變
     const c = rows.find((r) => r.label === "聯絡人");
@@ -84,10 +88,69 @@ function flash(el, text, cls) {
   if (cls === "ok") setTimeout(() => (el.textContent === text ? (el.textContent = "") : 0), 2500);
 }
 
+/* ───────── 授權碼（同事版 2026-09-11 起：9/20 後失效、綁定不可外流）───────── */
+/** 授權狀態；由背景程式（license.js）驗，這裡只顯示與擋按鈕 */
+let license = { ok: false, reason: "no_key_set" };
+const send = (m) =>
+  new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage(m, (r) => resolve(chrome.runtime.lastError ? { ok: false, error: chrome.runtime.lastError.message } : r || { ok: false, error: "no response" }));
+    } catch (e) {
+      resolve({ ok: false, error: String(e) });
+    }
+  });
+function renderLicense() {
+  let text, cls;
+  if (!hasChrome) {
+    text = "這一頁要從 Chrome 工具列的外掛圖示打開，才能驗證授權碼。";
+    cls = "bad";
+  } else if (license.ok) {
+    text = `✅ 授權有效：${license.name || ""}，到 ${license.expiresText || "？"} 為止${license.offline ? "（暫時連不上伺服器，先用上次的驗證結果）" : ""}`;
+    cls = "ok";
+  } else {
+    text = `🔒 ${license.message || "還沒有有效的授權碼"}`;
+    cls = "bad";
+  }
+  for (const id of ["lic-top", "lic-msg"]) {
+    $(id).textContent = text;
+    $(id).className = `msg ${cls}`;
+  }
+  updateParse();
+}
+const NO_REPLY = "外掛沒回應，到 chrome://extensions 按 ↻ 重新載入";
+async function refreshLicense(force) {
+  if (!hasChrome) {
+    license = { ok: false, reason: "no_chrome" };
+    renderLicense();
+    return;
+  }
+  const r = await send({ type: "p591:license-check", force: !!force });
+  license = r && r.ok && r.license ? { ...r.license, message: r.message } : { ok: false, reason: "offline", message: (r && r.error) || NO_REPLY };
+  renderLicense();
+}
+async function setLicenseKey(key) {
+  if (!hasChrome) return;
+  const r = await send({ type: "p591:license-set", key });
+  license = r && r.ok && r.license ? { ...r.license, message: r.message } : { ok: false, reason: "offline", message: (r && r.error) || NO_REPLY };
+  renderLicense();
+}
+/** 解析按鈕：要有字、也要有有效授權 */
+const updateParse = () => ($("parse").disabled = !license.ok || !$("raw").value.trim());
+/** 沒有有效授權：把「我的資料」打開、在 where 顯示原因，回 false */
+function requireLicense(where) {
+  if (license.ok) return true;
+  renderLicense();
+  $("settings").hidden = false;
+  $("settings").scrollIntoView({ behavior: "smooth" });
+  if (where) flash(where, `🔒 ${license.message || "還沒有有效的授權碼"}`, "bad");
+  return false;
+}
+
 /* ───────── 解析結果 ───────── */
 let listing = null, derived = null, rows = [];
 
 function run() {
+  if (!requireLicense(null)) return;
   listing = parseListing($("raw").value);
   derived = derive(listing);
   rows = buildRows(listing, derived);
@@ -218,6 +281,7 @@ function refreshPhotoLink() {
 /* ───────── 上架 ───────── */
 async function launch(target = "591") {
   if (!listing || !derived) return;
+  if (!requireLicense($("launch-msg"))) return;
   if (!settingsReady()) {
     $("settings").hidden = false;
     $("settings").scrollIntoView({ behavior: "smooth" });
@@ -242,6 +306,14 @@ async function launch(target = "591") {
   flash($("launch-msg"), `正在開${site}分頁…`, "");
   chrome.runtime.sendMessage({ type: "p591:launch", payload }, (r) => {
     const err = chrome.runtime.lastError;
+    if (r && r.license && !r.ok) {
+      // 背景程式擋下來：沒有有效授權碼（到期、停用、綁在別台…），把原因亮出來
+      license = { ...r.license, message: r.error };
+      renderLicense();
+      $("settings").hidden = false;
+      flash($("launch-msg"), `🔒 ${r.error}`, "bad");
+      return;
+    }
     if (err || !r || !r.ok) flash($("launch-msg"), `外掛沒回應：${(err && err.message) || (r && r.error) || "未知錯誤"}。到 chrome://extensions 按這個外掛的 ↻ 再試。`, "bad");
     else flash($("launch-msg"), `${site}分頁已開好，外掛正在填。到那個分頁等右下角「✅ 填完」，從上往下核對，再自己按${target === "rakuya" ? "「庫存」或「上架」" : "「保存資料，下一步」"}。`, "ok");
   });
@@ -255,7 +327,7 @@ $("s-reset").onclick = () => {
   $("s-tail").value = defaultTail();
   flash($("s-msg"), "已清空固定尾段（預設就是不帶固定文案），記得按儲存", "");
 };
-$("raw").addEventListener("input", () => ($("parse").disabled = !$("raw").value.trim()));
+$("raw").addEventListener("input", updateParse);
 $("parse").onclick = run;
 $("clear").onclick = () => {
   $("raw").value = "";
@@ -269,6 +341,7 @@ $("photo-link").addEventListener("input", refreshPhotoLink);
 $("launch").onclick = () => launch("591");
 $("launch-rakuya").onclick = () => launch("rakuya");
 
-loadSettings().then(() => {
-  if (!settingsReady()) $("settings").hidden = false; // 第一次用：先填自己的資料
+loadSettings().then(async () => {
+  await refreshLicense(); // 同事版：沒有有效授權碼，解析與上架都不開
+  if (!settingsReady() || !license.ok) $("settings").hidden = false; // 第一次用：先貼授權碼、填自己的資料
 });

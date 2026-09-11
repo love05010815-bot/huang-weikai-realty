@@ -17,13 +17,18 @@
 <header class="top">
   <div>
     <h1>591 刊登助手</h1>
-    <p class="sub">貼上愛屋型錄或物件文字 → 解析 → 按「上架到 591」，外掛幫你把 591 刊登表單填好。<b>保存與付款仍由你自己按。</b></p>
+    <p class="sub">貼上愛屋型錄或物件文字 → 解析 → 按「上架到 591」或「上架到樂屋」，外掛幫你把刊登表單填好。<b>保存與付款仍由你自己按。</b></p>
+    <p id="lic-top" class="msg"></p>
   </div>
   <button id="toggle-settings" class="ghost" type="button">⚙ 我的資料</button>
 </header>
 
 <section id="settings" class="card" hidden>
   <h2>⚙ 我的資料（存在你自己的 Chrome，只要填一次）</h2>
+  <label class="block">授權碼（黃瑋凱給的，一人一組、只能在這台 Chrome 用；沒有有效授權碼，「解析」和「上架」都不會動）
+    <input id="s-key" placeholder="例：WK-ABCD-EFGH-JKLM" spellcheck="false" autocomplete="off" />
+  </label>
+  <p id="lic-msg" class="msg"></p>
   <div class="grid2">
     <label>姓名（591 聯絡人）<input id="s-name" placeholder="例：王小明" /></label>
     <label>手機<input id="s-phone" placeholder="例：0912-345-678" /></label>

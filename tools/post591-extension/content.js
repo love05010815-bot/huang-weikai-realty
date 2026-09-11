@@ -685,6 +685,16 @@
     const p = r && r.ok ? r.payload : null;
     if (!p || p.v !== 1) return; // 不是從後台來的，什麼都不做
     if (p.target && p.target !== "591") return; // 給樂屋的資料包，這裡不動
+    if (p.via === "app") {
+      // 同事版（外掛頁面來的）：填表前再驗一次授權；後台來的（bridge）不用，那是他自己
+      const lic = await msg("p591:license-check");
+      if (!lic || !lic.ok || !lic.license || !lic.license.ok) {
+        ensurePanel();
+        log(`🔒 授權無效：${(lic && (lic.message || lic.error)) || "無法驗證"}`, "bad");
+        await msg("p591:clear");
+        return;
+      }
+    }
     ensurePanel();
     if (document.hidden) log("這個分頁在背景，Chrome 會把它放慢；請點回這個分頁等它填完", "warn");
     if (/\/post\/first/.test(path)) await runFirst(p);
