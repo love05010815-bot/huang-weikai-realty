@@ -1990,3 +1990,234 @@
   white-space: nowrap;
   cursor: pointer;
 }
+
+/* ═══════════ 物件比較（2026-09-10 系統擁有者指定）═══════════
+   卡片上的「＋ 比較」／「✓ 已加入比較」＋浮在畫面底下的比較列（CompareBar.tsx）。
+   比較表本身在 /map/compare，樣式在 compare/compare.module.css，這裡只有地圖頁那一半。
+   ⚠️ 這段刻意放在檔案最後：只有新類名，不會跟上面任何 base 規則搶權重。 */
+.cmpHelp {
+  margin: -4px 0 10px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.cmpBtn,
+.cmpBtnOn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.cmpBtn {
+  border: 1px dashed var(--primary);
+  background: #fff;
+  color: var(--primary);
+}
+
+.cmpBtn:hover {
+  border-style: solid;
+  background: var(--accent-soft);
+}
+
+.cmpBtn:disabled {
+  border: 1px solid var(--line);
+  background: #f4f6f7;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.cmpBtnOn {
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #fff;
+}
+
+.cmpBtnOn:hover {
+  background: #3a4d5c;
+  border-color: #3a4d5c;
+}
+
+/* 比較列浮在最下面，會蓋住最後一張卡的按鈕 —— 有勾選時整個 explorer 多留底部空間 */
+.explorerWithBar {
+  padding-bottom: 120px;
+}
+
+.cmpBar {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  /* sticky header 是 30、Leaflet 的控制項被 .lmMap 的 z-index:0 關在自己的堆疊裡，40 蓋得過所有東西 */
+  z-index: 40;
+  width: min(980px, calc(100vw - 24px));
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(34, 50, 63, 0.96);
+  color: #fff;
+  box-shadow: 0 14px 40px rgba(34, 50, 63, 0.35);
+}
+
+.cmpBarHead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 132px;
+}
+
+.cmpCount {
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.cmpHint {
+  font-size: 12px;
+  opacity: 0.78;
+  white-space: nowrap;
+}
+
+.cmpChips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.cmpChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 6px 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.cmpChipProject {
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.cmpChipTitle {
+  font-weight: 700;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cmpChipX {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 11px;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.cmpChipX:hover {
+  background: var(--accent);
+  color: var(--ink);
+}
+
+.cmpBarBtns {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.cmpStart,
+.cmpStartOff,
+.cmpClear {
+  display: inline-block;
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 800;
+  font-family: inherit;
+  line-height: 1.4;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.cmpStart {
+  background: var(--accent);
+  color: var(--ink);
+}
+
+.cmpStart:hover {
+  background: #f19a5e;
+}
+
+.cmpStartOff {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+}
+
+.cmpClear {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.cmpClear:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+@media (max-width: 900px) {
+  .cmpBar {
+    bottom: 8px;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .cmpBarBtns {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .cmpStart,
+  .cmpStartOff,
+  .cmpClear {
+    flex: 1;
+    text-align: center;
+  }
+
+  .cmpChipTitle {
+    max-width: 140px;
+  }
+
+  .explorerWithBar {
+    padding-bottom: 180px;
+  }
+}

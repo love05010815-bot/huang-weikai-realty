@@ -25,7 +25,7 @@
  *    只有「物件介紹」與「預約諮詢」兩顆。`/listings` 那邊仍然兩顆外連都放。
  */
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ZONES } from "@/data/port-zones";
 import {
@@ -47,6 +47,9 @@ import LeafletMap from "./LeafletMap";
 //    那份是跟 /listings 共用的。要調相簿外觀請改元件本身，不要在這裡硬蓋 ——
 //    CSS Modules 的類名是雜湊的，從外面根本選不到。
 import PhotoCarousel from "../listings/PhotoCarousel";
+import CompareBar, { type CompareItem } from "./CompareBar";
+import { useCompare } from "./useCompare";
+import { COMPARE_MAX } from "@/lib/map-compare";
 import styles from "./Map.module.css";
 
 type AreaFilter = "all" | ProjectArea;
@@ -238,6 +241,33 @@ export default function ProjectExplorer({
   const onSelect = useCallback((p: Project) => setSelectedId(p.id), []);
 
   /**
+   * 🔀 物件比較（2026-09-10 系統擁有者指定）：卡片上「＋ 比較」勾起來、畫面底下浮一條比較列、
+   * 「開始比較」開新分頁 /map/compare。勾選狀態在 useCompare（sessionStorage）。
+   *
+   * 比較列要顯示建案名＋標題，所以先把 listings 攤成 id → 那一戶。
+   * sessionStorage 裡若留著已下架的 id（別的分頁勾的、之後成交了），這裡對不到就自動剔除，
+   * 「已選 N 件」才不會把看不見的那戶也算進去。
+   */
+  const compare = useCompare();
+  const listingIndex = useMemo(() => {
+    const m = new Map<string, CompareItem>();
+    for (const [projectId, list] of Object.entries(listings)) {
+      const project = PROJECTS.find((p) => p.id === projectId)?.name ?? "";
+      for (const l of list) m.set(l.id, { id: l.id, title: l.title, project });
+    }
+    return m;
+  }, [listings]);
+  const compareItems = useMemo(
+    () => compare.ids.map((id) => listingIndex.get(id)).filter((x): x is CompareItem => x !== undefined),
+    [compare.ids, listingIndex],
+  );
+  const { replace: replaceCompare } = compare;
+  const staleCompare = compareItems.length !== compare.ids.length;
+  useEffect(() => {
+    if (staleCompare) replaceCompare(compareItems.map((x) => x.id));
+  }, [staleCompare, compareItems, replaceCompare]);
+
+  /**
    * 左側清單依區域分組（2026-09-04 系統擁有者拿另一家的互動地圖當範本：
    * 左邊長條清單、右上地圖、右下物件資訊）。順序照 AREA_FILTERS，0 案的區不出現。
    * 組內順序就是 `rows` 的順序（建商→系列→戶數），編號只是視覺上的序號，不是 id。
@@ -265,7 +295,8 @@ export default function ProjectExplorer({
   }, []);
 
   return (
-    <div className={styles.explorer}>
+    // 比較列浮在畫面底下時多留一段底部空間，最後一張卡的按鈕才不會被它蓋住
+    <div className={compareItems.length > 0 ? `${styles.explorer} ${styles.explorerWithBar}` : styles.explorer}>
       {/* 概況統計列（39個建案／19家建商／…）2026-08-27 系統擁有者指定拿掉。
           `stats` 本身沒有刪 —— 下面的篩選膠囊還在用它顯示各階段案數。 */}
 
@@ -540,6 +571,9 @@ export default function ProjectExplorer({
               {selectedListings.length > 0 ? (
                 <div className={styles.mineBlock}>
                   <h4 className={styles.mineTitle}>{`我在 ${selected.name} 的在售物件`}</h4>
+                  <p className={styles.cmpHelp}>
+                    {`想把幾戶放在一起看？按「＋ 比較」勾起來（最多 ${COMPARE_MAX} 件，可跨建案），再按畫面底下的「開始比較」。`}
+                  </p>
                   {/* 橫條式：照片在左、文字在右（2026-08-26 系統擁有者拍板）。
                       右欄只有約 476px 可用，/listings 那種直式卡片塞進來，
                       標題會變成一行 4 個字。
@@ -589,6 +623,17 @@ export default function ProjectExplorer({
                             >
                               預約諮詢
                             </Link>
+                            {/* 🔀 加入比較。滿 4 件時其他戶的按鈕變灰，要先在底下的比較列移除一件 */}
+                            <button
+                              type="button"
+                              className={compare.has(item.id) ? styles.cmpBtnOn : styles.cmpBtn}
+                              onClick={() => compare.toggle(item.id)}
+                              disabled={!compare.has(item.id) && compare.full}
+                              aria-pressed={compare.has(item.id)}
+                              title={!compare.has(item.id) && compare.full ? `最多比 ${COMPARE_MAX} 件，先移除一件` : undefined}
+                            >
+                              {compare.has(item.id) ? "✓ 已加入比較" : compare.full ? `已滿 ${COMPARE_MAX} 件` : "＋ 比較"}
+                            </button>
                           </div>
                         </div>
                       </article>
@@ -619,6 +664,9 @@ export default function ProjectExplorer({
           )}
         </section>
       </div>
+
+      {/* 🔀 浮在畫面底下的比較列（position: fixed，放哪裡都一樣；勾了才出現） */}
+      <CompareBar items={compareItems} onRemove={compare.remove} onClear={compare.clear} />
     </div>
   );
 }

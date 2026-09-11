@@ -75,10 +75,12 @@ export function parseHouseolPrice(html: string): number | null {
 }
 
 /**
- * 這顆「物件資訊」連結對應的售價（萬）。
- * 不是愛屋型錄、逾時、非 200、解析不到、數字離譜 → 全部 null，**永遠不 throw**。
+ * 把型錄頁的 HTML 抓回來。售價（這支檔）與物件比較表（lib/houseol-facts.ts）共用 ——
+ * 兩邊傳同一個網址、同一組 fetch 選項，Next 的 data cache 就是同一筆，一小時內只抓一次，
+ * 比較表不會讓愛屋多挨一次請求。
+ * 不是愛屋型錄、逾時、非 200 → null，**永遠不 throw**。
  */
-export async function fetchHouseolPrice(href: string): Promise<number | null> {
+export async function fetchHouseolHtml(href: string): Promise<string | null> {
   if (!houseolCaseId(href)) return null;
   try {
     const res = await fetch(href, {
@@ -91,10 +93,19 @@ export async function fetchHouseolPrice(href: string): Promise<number | null> {
       next: { revalidate: 3600 },
     });
     if (!res.ok) return null;
-    return parseHouseolPrice(await res.text());
+    return await res.text();
   } catch {
     return null;
   }
+}
+
+/**
+ * 這顆「物件資訊」連結對應的售價（萬）。
+ * 不是愛屋型錄、逾時、非 200、解析不到、數字離譜 → 全部 null，**永遠不 throw**。
+ */
+export async function fetchHouseolPrice(href: string): Promise<number | null> {
+  const html = await fetchHouseolHtml(href);
+  return html ? parseHouseolPrice(html) : null;
 }
 
 /** 1128 → 「1,128 萬」；1128.5 → 「1,128.5 萬」。給卡片顯示用。 */

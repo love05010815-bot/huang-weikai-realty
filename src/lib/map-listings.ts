@@ -201,6 +201,40 @@ export async function getMapListingsByProject(): Promise<Map<string, PublicMapLi
   return out;
 }
 
+/**
+ * 比較表用（/map/compare）：照給的 id 順序回**上架中**的物件，連同所屬建案 id。
+ *
+ * 找不到、已下架的直接略過（客戶手上的比較網址收不回來，其中一戶成交了其他戶還是要比得動）；
+ * 資料庫連不上回空陣列，頁面會顯示「沒有可以比較的物件」而不是開天窗。
+ * id 由 `parseCompareIds` 先過濾過（UUID 格式、最多 COMPARE_MAX 個），這裡再擋一次以防別人直接呼叫。
+ */
+export async function getPublicMapListingsByIds(
+  ids: string[],
+): Promise<Array<PublicMapListing & { projectId: string }>> {
+  const clean = [...new Set(ids.map((s) => s.trim().toLowerCase()).filter((s) => /^[0-9a-f-]{36}$/.test(s)))].slice(0, 8);
+  if (clean.length === 0) return [];
+
+  const out: Array<PublicMapListing & { projectId: string }> = [];
+  try {
+    await ensureMapListingTable();
+    const rows = await db.$queryRawUnsafe<Row[]>(
+      `SELECT id, project_id, title, address, points, photos, link_href, status, sort_order, updated_at
+         FROM map_listing
+        WHERE status = 'active' AND id IN (${clean.map(() => "?").join(",")})`,
+      ...clean,
+    );
+    const byId = new Map(rows.map((row) => [row.id.toLowerCase(), toRecord(row)]));
+    for (const id of clean) {
+      const r = byId.get(id);
+      if (!r) continue;
+      out.push({ id: r.id, projectId: r.projectId, title: r.title, points: r.points, photos: r.photos, linkHref: r.linkHref });
+    }
+  } catch {
+    // 讀不到就當作沒有物件
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- 驗證
 
 export function validateMapListing(
