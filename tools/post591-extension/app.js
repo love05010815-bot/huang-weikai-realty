@@ -115,6 +115,9 @@ function renderLicense() {
     $(id).textContent = text;
     $(id).className = `msg ${cls}`;
   }
+  // 解析按鈕旁也講一次：使用者貼完資料早就捲到下面，頁首那行看不到（2026-09-11 他自己就這樣卡住）
+  $("parse-lock").textContent = license.ok ? "" : "🔒 先到最上面「⚙ 我的資料」貼授權碼、按儲存，解析和上架才會開。";
+  $("parse-lock").className = "msg bad";
   updateParse();
 }
 const NO_REPLY = "外掛沒回應，到 chrome://extensions 按 ↻ 重新載入";
@@ -134,8 +137,8 @@ async function setLicenseKey(key) {
   license = r && r.ok && r.license ? { ...r.license, message: r.message } : { ok: false, reason: "offline", message: (r && r.error) || NO_REPLY };
   renderLicense();
 }
-/** 解析按鈕：要有字、也要有有效授權 */
-const updateParse = () => ($("parse").disabled = !license.ok || !$("raw").value.trim());
+/** 解析按鈕：有字就能按。沒授權不鎖死按鈕 —— 鎖死了沒人知道為什麼；按下去會跳到「我的資料」把原因講清楚 */
+const updateParse = () => ($("parse").disabled = !$("raw").value.trim());
 /** 沒有有效授權：把「我的資料」打開、在 where 顯示原因，回 false */
 function requireLicense(where) {
   if (license.ok) return true;
@@ -150,7 +153,7 @@ function requireLicense(where) {
 let listing = null, derived = null, rows = [];
 
 function run() {
-  if (!requireLicense(null)) return;
+  if (!requireLicense($("parse-lock"))) return;
   listing = parseListing($("raw").value);
   derived = derive(listing);
   rows = buildRows(listing, derived);
