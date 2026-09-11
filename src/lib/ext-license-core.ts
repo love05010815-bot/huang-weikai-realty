@@ -1,10 +1,11 @@
 /**
  * 同事版外掛授權碼 —— 純邏輯（不碰資料庫），給 ext-license.ts 與 scripts/check-ext-license.mjs 共用。
  *
- * 2026-09-11 他說的：「提供給同事的檔案請設定在 9/20 後失效，我要綁定不可以外流」。
- * 做法：一人一組授權碼（後台 /admin/post591/keys 產生），外掛啟動與上架前向 weikaihouse.com 驗證；
- * 第一次驗證成功就綁在那台 Chrome 的安裝編號上，別台 Chrome 拿同一組碼會被擋（bound_elsewhere）。
- * 到期日預設 2026-09-20（台灣時間當天結束），後台可延長／停用／解除綁定（同事換電腦或重裝時）。
+ * 2026-09-11 他說的：「提供給同事的檔案請設定在 9/20 後失效，我要綁定不可以外流」；同一天下午改口：
+ * 「這批的同事一起使用同一個授權碼就好，不用紀錄是誰下載，我只要知道有幾個人使用授權碼並刊登」。
+ * 所以現在是：**一組碼一批人共用**。每台 Chrome 第一次驗證成功就登記一台（安裝編號＝外掛端 crypto.randomUUID()），
+ * 一組碼有「電腦數上限」（預設 20，後台可改），超過就擋（seat_limit）—— 這是防外流的閘，不記名字。
+ * 後台看的是：這組碼有幾台電腦在用、其中幾台上架過、上架幾次。到期日預設 2026-09-20（台灣時間當天結束），後台可延長／停用。
  *
  * ⚠️ 擋的是「檔案轉傳就能用」，不是防駭：外掛是明碼 JS，懂程式的人拆得掉；對象是不會寫程式的同事。
  * ⚠️ 1.4.0 以前發出去的 zip 沒有這道檢查、也不會連伺服器，收不回來 —— 要請同事換新版。
@@ -12,6 +13,9 @@
 
 /** 第一批的到期日（台灣日期）。「9/20 後失效」＝ 9/21 00:00 台灣時間起擋 */
 export const LICENSE_DEFAULT_EXPIRES = "2026-09-20";
+
+/** 一組碼預設能登記幾台 Chrome。他說一批同事共用，上限只是防外流的閘（後台每組可改） */
+export const LICENSE_DEFAULT_MAX_INSTALLS = 20;
 
 /**
  * 新增授權碼時表單預設的到期日：9/20 還沒到就一律 9/20（第一批統一截止）；
@@ -31,16 +35,19 @@ export const LICENSE_KEY_RE = /^WK-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/;
 export type LicenseRecord = {
   id: string;
   key: string;
-  /** 同事姓名（後台看得懂是誰就好，不是聯絡人欄位） */
+  /** 這組碼的名稱（例：9 月第一批）—— 不是人名，他說不用記是誰 */
   name: string;
-  /** 綁定的 Chrome 安裝編號（外掛端 crypto.randomUUID()）；null = 還沒啟用 */
-  installId: string | null;
-  boundAt: Date | null;
+  /** 已登記的 Chrome 台數（ext_license_install 的筆數） */
+  installs: number;
+  /** 其中按過上架的台數 */
+  launchedInstalls: number;
+  /** 電腦數上限，超過就擋 seat_limit */
+  maxInstalls: number;
   lastSeenAt: Date | null;
   lastVersion: string | null;
   /** 伺服器成功驗證的次數（開外掛頁、上架、填表前都可能驗；快取 6 小時，所以不是精確的操作數） */
   verifyCount: number;
-  /** 按「上架到 591／樂屋」的次數：外掛按上架時一定回報一次（event=launch），這才是「有沒有在用」的數字 */
+  /** 按「上架到 591／樂屋」的總次數：外掛按上架時一定回報一次（event=launch），這才是「有沒有在用」的數字 */
   launchCount: number;
   lastLaunchAt: Date | null;
   expiresAt: Date;
@@ -48,8 +55,8 @@ export type LicenseRecord = {
   createdAt: Date;
 };
 
-export type LicenseReason = "no_key" | "revoked" | "expired" | "bound_elsewhere";
-export type LicenseDecision = { ok: true; bind: boolean } | { ok: false; reason: LicenseReason };
+export type LicenseReason = "no_key" | "revoked" | "expired" | "seat_limit";
+export type LicenseDecision = { ok: true; register: boolean } | { ok: false; reason: LicenseReason };
 
 /** 產一組授權碼。rand 由呼叫端給（正式用 crypto.randomBytes，測試用固定值） */
 export function generateLicenseKey(rand: (n: number) => Uint8Array): string {
@@ -89,15 +96,22 @@ export function isValidInstallId(s: string): boolean {
   return /^[A-Za-z0-9-]{8,64}$/.test(s);
 }
 
+/** 電腦數上限：1～999 的整數，其他回 null */
+export function normalizeMaxInstalls(n: unknown): number | null {
+  const v = Number(n);
+  return Number.isInteger(v) && v >= 1 && v <= 999 ? v : null;
+}
+
 /**
- * 判定。順序有意義：停用優先於過期，過期優先於綁定 ——
- * 一組被停用又綁在別台的碼，同事看到的理由應該是「停用」，不是「綁在別台」。
+ * 判定。順序有意義：停用優先於過期，過期優先於台數 ——
+ * 一組被停用又滿額的碼，同事看到的理由應該是「停用」，不是「已達上限」。
+ * known＝這台 Chrome 已經登記過：登記過的永遠放行、不再佔名額（上限是擋「新的一台」）。
  */
-export function decideLicense(row: LicenseRecord | null, installId: string, now: Date = new Date()): LicenseDecision {
+export function decideLicense(row: LicenseRecord | null, known: boolean, now: Date = new Date()): LicenseDecision {
   if (!row) return { ok: false, reason: "no_key" };
   if (row.revokedAt) return { ok: false, reason: "revoked" };
   if (now.getTime() > row.expiresAt.getTime()) return { ok: false, reason: "expired" };
-  if (!row.installId) return { ok: true, bind: true };
-  if (row.installId === installId) return { ok: true, bind: false };
-  return { ok: false, reason: "bound_elsewhere" };
+  if (known) return { ok: true, register: false };
+  if (row.installs >= row.maxInstalls) return { ok: false, reason: "seat_limit" };
+  return { ok: true, register: true };
 }

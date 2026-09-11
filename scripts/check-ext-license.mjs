@@ -21,7 +21,7 @@ const ok = (cond, label, got, want) => {
 const eq = (label, got, want) => ok(got === want, label, JSON.stringify(got), JSON.stringify(want));
 const END_0920 = new Date("2026-09-20T15:59:59.000Z");
 function row(over) {
-  return { id: "1", key: "WK-ABCD-EFGH-JKLM", name: "測試", installId: null, boundAt: null, lastSeenAt: null, lastVersion: null, expiresAt: END_0920, revokedAt: null, createdAt: new Date("2026-09-11T00:00:00Z"), ...over };
+  return { id: "1", key: "WK-ABCD-EFGH-JKLM", name: "測試", installs: 0, launchedInstalls: 0, maxInstalls: 20, lastSeenAt: null, lastVersion: null, verifyCount: 0, launchCount: 0, lastLaunchAt: null, expiresAt: END_0920, revokedAt: null, createdAt: new Date("2026-09-11T00:00:00Z"), ...over };
 }
 
 console.log("A. 授權碼格式");
@@ -43,8 +43,8 @@ console.log("B. 台灣日期");
   const end = core.taiwanDateEnd("2026-09-20");
   eq("9/20 結束 = UTC 15:59:59", end.toISOString(), "2026-09-20T15:59:59.000Z");
   eq("顯示回台灣日期", core.taiwanDate(end), "2026-09-20");
-  eq("9/21 00:00 台灣：過期", core.decideLicense(row(), "A", new Date("2026-09-20T16:00:00Z")).ok, false);
-  eq("9/20 23:59 台灣：還有效", core.decideLicense(row(), "A", new Date("2026-09-20T15:59:00Z")).ok, true);
+  eq("9/21 00:00 台灣：過期", core.decideLicense(row(), false, new Date("2026-09-20T16:00:00Z")).ok, false);
+  eq("9/20 23:59 台灣：還有效", core.decideLicense(row(), false, new Date("2026-09-20T15:59:00Z")).ok, true);
   eq("無效日期回 null", core.taiwanDateEnd("2026-02-30"), null);
   eq("格式錯回 null", core.taiwanDateEnd("9/20"), null);
   eq("新增預設：9/20 前一律 9/20", core.defaultExpiresDate(new Date("2026-09-11T02:00:00Z")), "2026-09-20");
@@ -55,12 +55,16 @@ console.log("B. 台灣日期");
 console.log("C. 判定順序");
 {
   const now = new Date("2026-09-12T00:00:00Z");
-  eq("找不到 → no_key", core.decideLicense(null, "A", now).reason, "no_key");
-  eq("沒綁 → ok 並綁定", JSON.stringify(core.decideLicense(row(), "A", now)), JSON.stringify({ ok: true, bind: true }));
-  eq("同一台 → ok 不再綁", JSON.stringify(core.decideLicense(row({ installId: "A" }), "A", now)), JSON.stringify({ ok: true, bind: false }));
-  eq("別台 → bound_elsewhere", core.decideLicense(row({ installId: "A" }), "B", now).reason, "bound_elsewhere");
-  eq("停用優先於綁定", core.decideLicense(row({ installId: "A", revokedAt: now }), "B", now).reason, "revoked");
-  eq("過期優先於綁定", core.decideLicense(row({ installId: "A" }), "B", new Date("2026-10-01T00:00:00Z")).reason, "expired");
+  eq("找不到 → no_key", core.decideLicense(null, false, now).reason, "no_key");
+  eq("新的一台、還有名額 → ok 並登記", JSON.stringify(core.decideLicense(row(), false, now)), JSON.stringify({ ok: true, register: true }));
+  eq("登記過的 → ok 不再登記（就算滿額）", JSON.stringify(core.decideLicense(row({ installs: 20 }), true, now)), JSON.stringify({ ok: true, register: false }));
+  eq("滿額、新的一台 → seat_limit", core.decideLicense(row({ installs: 20 }), false, now).reason, "seat_limit");
+  eq("差一台才滿 → 還能登記", core.decideLicense(row({ installs: 19 }), false, now).ok, true);
+  eq("上限改小於已登記數：舊的照用、新的擋", core.decideLicense(row({ installs: 5, maxInstalls: 3 }), true, now).ok + "/" + core.decideLicense(row({ installs: 5, maxInstalls: 3 }), false, now).reason, "true/seat_limit");
+  eq("停用優先於滿額", core.decideLicense(row({ installs: 20, revokedAt: now }), false, now).reason, "revoked");
+  eq("過期優先於滿額", core.decideLicense(row({ installs: 20 }), false, new Date("2026-10-01T00:00:00Z")).reason, "expired");
+  eq("上限只收 1～999 整數", [core.normalizeMaxInstalls(20), core.normalizeMaxInstalls("5"), core.normalizeMaxInstalls(0), core.normalizeMaxInstalls(1000), core.normalizeMaxInstalls("x")].map(String).join("/"), "20/5/null/null/null");
+  eq("預設上限", core.LICENSE_DEFAULT_MAX_INSTALLS, 20);
   eq("安裝編號：UUID 可", core.isValidInstallId("3b2f0c4e-1d2a-4f6b-9c8d-0a1b2c3d4e5f"), true);
   eq("安裝編號：亂碼不可", core.isValidInstallId("<script>"), false);
 }
@@ -83,7 +87,7 @@ function makeExt(serverQueue, startIso = "2026-09-12T00:00:00Z") {
 }
 const H = 60 * 60 * 1000, D = 24 * H;
 {
-  const { lic, calls, tick } = makeExt([{ body: OKBODY }, { body: OKBODY }, { body: { ok: false, reason: "bound_elsewhere" } }]);
+  const { lic, calls, tick } = makeExt([{ body: OKBODY }, { body: OKBODY }, { body: { ok: false, reason: "seat_limit" } }]);
   eq("沒填碼 → no_key_set", (await lic.check()).reason, "no_key_set");
   const r1 = await lic.setKey("wk-abcd-efgh-jklm");
   eq("填碼後立刻驗：ok", r1.ok + "/" + r1.name + "/" + r1.expiresText, "true/測試/2026-09-20");
@@ -95,7 +99,7 @@ const H = 60 * 60 * 1000, D = 24 * H;
   const r2l = await lic.check({ event: "launch" });
   eq("上架：快取還新也一定回報（event=launch）", r2l.ok + "/" + !r2l.cached + "/" + calls[1].event + "/" + calls.length, "true/true/launch/2");
   const r2f = await lic.check({ force: true });
-  eq("force：重新驗（伺服器說綁在別台）", r2f.ok + "/" + r2f.reason + "/" + calls.length, "false/bound_elsewhere/3");
+  eq("force：重新驗（伺服器說台數已滿）", r2f.ok + "/" + r2f.reason + "/" + calls.length, "false/seat_limit/3");
   const r3 = await lic.check();
   eq("不 ok 不快取：再問（沒伺服器 → offline）", r3.ok + "/" + r3.reason, "false/offline");
 }
@@ -152,7 +156,7 @@ const H = 60 * 60 * 1000, D = 24 * H;
 }
 
 console.log("E. 訊息");
-for (const reason of ["no_key_set", "no_key", "revoked", "expired", "bound_elsewhere", "offline", "server_error", "bad_request", "rate_limited"]) {
+for (const reason of ["no_key_set", "no_key", "revoked", "expired", "seat_limit", "bound_elsewhere", "offline", "server_error", "bad_request", "rate_limited"]) {
   const m = L.message({ ok: false, reason });
   ok(m.length > 5, `有中文說明：${reason}`, m.slice(0, 22) + "…", "");
 }
