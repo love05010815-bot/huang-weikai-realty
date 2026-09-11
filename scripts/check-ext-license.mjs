@@ -47,6 +47,9 @@ console.log("B. 台灣日期");
   eq("9/20 23:59 台灣：還有效", core.decideLicense(row(), "A", new Date("2026-09-20T15:59:00Z")).ok, true);
   eq("無效日期回 null", core.taiwanDateEnd("2026-02-30"), null);
   eq("格式錯回 null", core.taiwanDateEnd("9/20"), null);
+  eq("新增預設：9/20 前一律 9/20", core.defaultExpiresDate(new Date("2026-09-11T02:00:00Z")), "2026-09-20");
+  eq("新增預設：9/20 當天起今天＋30", core.defaultExpiresDate(new Date("2026-09-20T02:00:00Z")), "2026-10-20");
+  eq("新增預設：用台灣日期算（UTC 9/19 16:30＝台灣 9/20）", core.defaultExpiresDate(new Date("2026-09-19T16:30:00Z")), "2026-10-20");
 }
 
 console.log("C. 判定順序");

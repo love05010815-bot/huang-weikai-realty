@@ -11,7 +11,7 @@ import { getAdminCheckArgs, isCurrentUserAdmin } from "@/lib/admin-check";
 import { adminEmails } from "@/auth";
 import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
 import { COMPARE_THEME } from "@/app/admin/compare/theme";
-import { LICENSE_DEFAULT_EXPIRES, listLicenses, taiwanDate } from "@/lib/ext-license";
+import { defaultExpiresDate, listLicenses, taiwanDate } from "@/lib/ext-license";
 import KeysManager, { type LicenseView } from "./KeysManager";
 import styles from "../post591.module.css";
 
@@ -29,6 +29,7 @@ export default async function LicenseKeysPage() {
   // 資料庫連不上不要丟 500 白畫面 —— 講清楚是資料庫的問題（跟影音後台同一個原則）
   let rows: LicenseView[] = [];
   let loadError: string | null = null;
+  const defaultExpires = defaultExpiresDate(); // 9/20 前一律 9/20，之後今天＋30 天
   try {
     const now = Date.now();
     rows = (await listLicenses()).map((r) => ({
@@ -54,13 +55,14 @@ export default async function LicenseKeysPage() {
         <h1 className={styles.h1}>🔑 同事授權碼</h1>
         <p className={styles.lede}>
           給同事的外掛（1.5.0 起）要有授權碼才能用：<b>一人一組</b>，第一次啟用就綁在那台 Chrome，別台電腦拿同一組碼會被擋。
-          預設 <b>{LICENSE_DEFAULT_EXPIRES}</b> 到期（台灣時間當天結束），要延長就改到期日、按存。
+          新增時預設到期日 <b>{defaultExpires}</b>（第一批統一到 2026-09-20，過了以後預設給 30 天；都是台灣時間當天結束），要改就先改日期再新增。
+          <b>到期了不用換檔案</b>：改那一列的到期日、按「存」，同事重新打開外掛頁就恢復。
           同事換電腦或重裝 Chrome：按「解除綁定」再讓他填一次；要收回：按「停用」。
           {" "}
           <Link href="/admin/post591">← 回廣告刊登助手</Link>
         </p>
       </header>
-      <KeysManager rows={rows} loadError={loadError} defaultExpires={LICENSE_DEFAULT_EXPIRES} />
+      <KeysManager rows={rows} loadError={loadError} defaultExpires={defaultExpires} />
     </div>
   );
 }

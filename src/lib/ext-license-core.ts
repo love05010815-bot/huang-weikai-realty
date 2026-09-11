@@ -10,8 +10,19 @@
  * ⚠️ 1.4.0 以前發出去的 zip 沒有這道檢查、也不會連伺服器，收不回來 —— 要請同事換新版。
  */
 
-/** 預設到期日（台灣日期）。「9/20 後失效」＝ 9/21 00:00 台灣時間起擋 */
+/** 第一批的到期日（台灣日期）。「9/20 後失效」＝ 9/21 00:00 台灣時間起擋 */
 export const LICENSE_DEFAULT_EXPIRES = "2026-09-20";
+
+/**
+ * 新增授權碼時表單預設的到期日：9/20 還沒到就一律 9/20（第一批統一截止）；
+ * 9/20 當天起改成「今天＋30 天」—— 不然表單預設一個過去的日期，他忘了改就會發出一組當場到期的碼。
+ * 他在後台可以改成任何日期；到期後不用換檔案，改那一列的到期日就好。
+ */
+export function defaultExpiresDate(now: Date = new Date()): string {
+  const today = taiwanDate(now);
+  if (today < LICENSE_DEFAULT_EXPIRES) return LICENSE_DEFAULT_EXPIRES;
+  return taiwanDate(new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000));
+}
 
 /** 授權碼長相 WK-XXXX-XXXX-XXXX；字母表去掉 0/O/1/I，用 LINE 傳、用唸的都不會搞混 */
 export const LICENSE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
