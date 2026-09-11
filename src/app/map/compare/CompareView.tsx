@@ -73,9 +73,14 @@ const ROWS: Array<{ key: string; label: string; cell: (e: CompareEntry) => Cell 
     cell: (e) => ({ main: formatFloor(e.facts?.floor ?? null) ?? e.facts?.floorRaw ?? null }),
   },
   {
-    key: "main",
-    label: "主建物坪數",
-    cell: (e) => ({ main: formatPing(e.facts?.mainPing ?? null) }),
+    // 2026-09-11 系統擁有者拍板：這一列從「主建物坪數」改成「登記坪數」（權狀坪；型錄的登記坪數含車位坪）。
+    // 有車位的戶用小字標出車位佔幾坪，客戶才不會拿含車位的 45 坪去跟沒車位的 22 坪硬比。
+    key: "reg",
+    label: "登記坪數",
+    cell: (e) => ({
+      main: formatPing(e.facts?.regPing ?? null),
+      sub: e.facts?.parkPing != null && e.facts.parkPing > 0 ? `含車位 ${formatPing(e.facts.parkPing)}` : null,
+    }),
   },
   {
     key: "mainAtt",
