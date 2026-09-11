@@ -60,8 +60,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (!msg.payload || msg.payload.v !== 1) throw new Error("資料格式不對");
       const viaApp = fromAppPage(sender);
       if (viaApp) {
-        // 同事版：沒有有效授權碼就不開分頁；把 license 一起回去，外掛頁才能顯示原因
-        const lic = await license.check();
+        // 同事版：沒有有效授權碼就不開分頁；把 license 一起回去，外掛頁才能顯示原因。
+        // event=launch → 這一次一定問伺服器並記一次上架（後台的使用人次）
+        const lic = await license.check({ event: "launch" });
         if (!lic.ok) return { ok: false, error: self.P591License.message(lic), license: lic };
       }
       msg.payload.via = viaApp ? "app" : "bridge"; // content.js／rakuya.js 據此決定填表前要不要再驗一次

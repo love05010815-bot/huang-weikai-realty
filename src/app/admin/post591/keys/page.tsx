@@ -40,6 +40,8 @@ export default async function LicenseKeysPage() {
       boundAt: r.boundAt ? r.boundAt.toISOString() : null,
       lastSeenAt: r.lastSeenAt ? r.lastSeenAt.toISOString() : null,
       lastVersion: r.lastVersion,
+      launchCount: r.launchCount,
+      lastLaunchAt: r.lastLaunchAt ? r.lastLaunchAt.toISOString() : null,
       expiresDate: taiwanDate(r.expiresAt),
       expired: r.expiresAt.getTime() < now,
       revoked: !!r.revokedAt,

@@ -1,7 +1,7 @@
 /**
  * 🔑 同事版外掛的授權碼驗證（2026-09-11 起）
  *
- *   POST /api/post591-ext/verify   body: { key, installId, version }
+ *   POST /api/post591-ext/verify   body: { key, installId, version, event? }   event="launch"＝按上架那一次（記上架次數）
  *   → { ok: true, name, expiresAt, expiresText, bound } 或 { ok: false, reason }
  *
  * 誰打：Chrome 外掛的背景程式（tools/post591-extension/license.js），開外掛頁、按上架、填表前各驗一次，
@@ -46,10 +46,11 @@ export async function POST(req: NextRequest) {
   const key = String(body.key ?? "").slice(0, 40);
   const installId = String(body.installId ?? "").slice(0, 64);
   const version = String(body.version ?? "").slice(0, 16);
+  const event = String(body.event ?? "").slice(0, 16); // "launch"＝按上架那一次，其他值不理
   if (!key || !installId) return json({ ok: false, reason: "bad_request" }, 400);
 
   try {
-    return json(await verifyLicense({ key, installId, version }));
+    return json(await verifyLicense({ key, installId, version, event }));
   } catch (error) {
     console.error("[post591-ext/verify] 驗證失敗:", error);
     return json({ ok: false, reason: "server_error" }, 503);

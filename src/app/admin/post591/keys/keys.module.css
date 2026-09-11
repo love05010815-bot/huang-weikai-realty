@@ -14,6 +14,9 @@
   border-radius: 8px; background: var(--cmp-card); color: var(--cmp-text); border: 1px solid var(--cmp-border);
 }
 
+.summary { margin: 0 0 6px; font-size: 14px; color: var(--cmp-sub); line-height: 1.8; }
+.summary b { color: var(--cmp-text); font-size: 16px; }
+
 .tableWrap { overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .table th { text-align: left; color: var(--cmp-mute); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--cmp-border); white-space: nowrap; }

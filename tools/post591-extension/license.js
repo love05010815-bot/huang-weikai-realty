@@ -6,7 +6,7 @@
  *   - 授權碼存 chrome.storage.local（p591:licenseKey）；安裝編號第一次用時 crypto.randomUUID() 產一個存起來，
  *     這台 Chrome 就靠它綁定（重裝／換資料夾載入會變成新的一台，要請黃瑋凱解除綁定）。
  *   - 向 https://weikaihouse.com/api/post591-ext/verify 驗；伺服器說 ok 就快取 6 小時，不 ok 不快取（下次再問，
- *     後台改了立刻生效）。
+ *     後台改了立刻生效）。按「上架」那一次帶 event=launch 一定打伺服器，伺服器順便記上架次數（後台看使用人次用）。
  *   - 連不上伺服器（沒網路、伺服器掛、限流）：上次驗證回來的到期日已過 → 擋；3 天內驗過 ok → 先放行；否則擋。
  *     所以離線用不會超過到期日，資料庫短暫掛掉也不會讓大家一起停擺。
  *   - 後台（weikaihouse.com）來的資料包不驗 —— 那是他自己，後台已經有 Google 登入白名單。
@@ -46,7 +46,9 @@
       return check({ force: true });
     }
     async function check(opts) {
-      const force = !!(opts && opts.force);
+      // event="launch"：按上架那一次一定打伺服器（不用快取），伺服器順便記一次上架 —— 後台「有幾個人在用」看的就是這個
+      const event = opts && typeof opts.event === "string" ? opts.event : "";
+      const force = !!(opts && opts.force) || !!event;
       const id = await installId();
       const key = await getKey();
       if (!key) return { ok: false, reason: "no_key_set", installId: id };
@@ -62,7 +64,7 @@
         const res = await fetchFn(VERIFY_URL, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ key, installId: id, version }),
+          body: JSON.stringify({ key, installId: id, version, event }),
           credentials: "omit",
         });
         if (res.status === 429 || res.status >= 500) throw new Error("HTTP " + res.status);

@@ -38,6 +38,11 @@ export type LicenseRecord = {
   boundAt: Date | null;
   lastSeenAt: Date | null;
   lastVersion: string | null;
+  /** 伺服器成功驗證的次數（開外掛頁、上架、填表前都可能驗；快取 6 小時，所以不是精確的操作數） */
+  verifyCount: number;
+  /** 按「上架到 591／樂屋」的次數：外掛按上架時一定回報一次（event=launch），這才是「有沒有在用」的數字 */
+  launchCount: number;
+  lastLaunchAt: Date | null;
   expiresAt: Date;
   revokedAt: Date | null;
   createdAt: Date;

@@ -23,6 +23,9 @@ export type LicenseView = {
   boundAt: string | null;
   lastSeenAt: string | null;
   lastVersion: string | null;
+  /** 按「上架」的次數（外掛按上架時回報一次）與最近一次 */
+  launchCount: number;
+  lastLaunchAt: string | null;
   /** 台灣日期 YYYY-MM-DD */
   expiresDate: string;
   expired: boolean;
@@ -155,6 +158,14 @@ export default function KeysManager({ rows, loadError, defaultExpires }: { rows:
 
       <section className={styles.card}>
         <h2 className={styles.h2}>已發出的授權碼（{rows.length}）</h2>
+        <p className={k.summary}>
+          發出 <b>{rows.length}</b> 組 ｜ 已啟用 <b>{rows.filter((r) => r.bound).length}</b> 人 ｜ 7 天內有上架{" "}
+          <b>{rows.filter((r) => r.lastLaunchAt && Date.parse(r.lastLaunchAt) > Date.now() - 7 * 24 * 60 * 60 * 1000).length}</b> 人 ｜ 上架總計{" "}
+          <b>{rows.reduce((sum, r) => sum + r.launchCount, 0)}</b> 次
+        </p>
+        <p className={styles.hint}>
+          「下載次數」沒得算（壓縮檔是你用 LINE 傳的，沒經過網站）。這裡算的是<b>貼了授權碼的人</b>和<b>按過上架的次數</b>；上架次數從外掛 1.5.1 起才會記。
+        </p>
         {loadError && <p className={styles.badText}>清單讀不到：{loadError}</p>}
         {!loadError && rows.length === 0 && <p className={styles.hint}>還沒有任何授權碼。</p>}
         {rows.length > 0 && (
@@ -166,7 +177,8 @@ export default function KeysManager({ rows, loadError, defaultExpires }: { rows:
                   <th>授權碼</th>
                   <th>狀態</th>
                   <th>到期日（台灣）</th>
-                  <th>上次使用</th>
+                  <th>上架次數</th>
+                  <th>最近連線</th>
                   <th>動作</th>
                 </tr>
               </thead>
@@ -199,6 +211,10 @@ export default function KeysManager({ rows, loadError, defaultExpires }: { rows:
                             </button>
                           )}
                         </div>
+                      </td>
+                      <td>
+                        <b>{r.launchCount}</b> 次
+                        {r.lastLaunchAt && <div className={styles.note}>最近 {fmt(r.lastLaunchAt)}</div>}
                       </td>
                       <td>
                         {fmt(r.lastSeenAt)}

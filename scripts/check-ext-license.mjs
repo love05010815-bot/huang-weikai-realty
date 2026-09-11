@@ -78,22 +78,24 @@ function makeExt(serverQueue, startIso = "2026-09-12T00:00:00Z") {
     if (!next || next.throw) throw new Error("network");
     return { status: next.status || 200, json: async () => next.body };
   };
-  const lic = L.create({ storage, fetch: fetchFn, now: () => t, uuid: () => "uuid-1", version: "1.5.0" });
+  const lic = L.create({ storage, fetch: fetchFn, now: () => t, uuid: () => "uuid-1", version: "1.5.0" }); // 版本字串只是傳過去，不用跟 manifest 一樣
   return { lic, calls, store, tick: (ms) => (t += ms) };
 }
 const H = 60 * 60 * 1000, D = 24 * H;
 {
-  const { lic, calls, tick } = makeExt([{ body: OKBODY }, { body: { ok: false, reason: "bound_elsewhere" } }]);
+  const { lic, calls, tick } = makeExt([{ body: OKBODY }, { body: OKBODY }, { body: { ok: false, reason: "bound_elsewhere" } }]);
   eq("沒填碼 → no_key_set", (await lic.check()).reason, "no_key_set");
   const r1 = await lic.setKey("wk-abcd-efgh-jklm");
   eq("填碼後立刻驗：ok", r1.ok + "/" + r1.name + "/" + r1.expiresText, "true/測試/2026-09-20");
   eq("送出的碼原樣（整理在伺服器）", calls[0].key, "wk-abcd-efgh-jklm");
-  eq("帶安裝編號與版本", calls[0].installId + "/" + calls[0].version, "uuid-1/1.5.0");
+  eq("帶安裝編號與版本、沒 event", calls[0].installId + "/" + calls[0].version + "/" + JSON.stringify(calls[0].event), "uuid-1/1.5.0/\"\"");
   tick(1 * H);
   const r2 = await lic.check();
   eq("1 小時內：用快取不打伺服器", r2.cached + "/" + calls.length, "true/1");
+  const r2l = await lic.check({ event: "launch" });
+  eq("上架：快取還新也一定回報（event=launch）", r2l.ok + "/" + !r2l.cached + "/" + calls[1].event + "/" + calls.length, "true/true/launch/2");
   const r2f = await lic.check({ force: true });
-  eq("force：重新驗（伺服器說綁在別台）", r2f.ok + "/" + r2f.reason + "/" + calls.length, "false/bound_elsewhere/2");
+  eq("force：重新驗（伺服器說綁在別台）", r2f.ok + "/" + r2f.reason + "/" + calls.length, "false/bound_elsewhere/3");
   const r3 = await lic.check();
   eq("不 ok 不快取：再問（沒伺服器 → offline）", r3.ok + "/" + r3.reason, "false/offline");
 }
@@ -221,9 +223,10 @@ console.log("F. background.js 在假 Chrome 裡跑一遍（importScripts、sende
     eq("驗證帶安裝編號與版本", bg.calls[0].installId + "/" + bg.calls[0].version + "/" + bg.calls[0].key, "uuid-bg/1.5.0/WK-ABCD-EFGH-JKLM");
     const r3 = await bg.ask({ type: "p591:launch", payload: payload() }, APP);
     eq("外掛頁上架、有授權 → 開樂屋出租分頁", r3.ok + "/" + bg.created[0], "true/https://member.rakuya.com.tw/rent/post/add");
+    eq("上架那一次回報伺服器 event=launch", bg.calls.length + "/" + bg.calls[1].event, "2/launch");
     eq("資料包標記 via=app", bg.sessionStore["p591:payload"].via, "app");
     const r4 = await bg.ask({ type: "p591:license-check" }, CS);
-    eq("填表前 content script 問授權 → 快取 ok", r4.ok + "/" + r4.license.ok + "/" + !!r4.license.cached + "/" + bg.calls.length, "true/true/true/1");
+    eq("填表前 content script 問授權 → 快取 ok", r4.ok + "/" + r4.license.ok + "/" + !!r4.license.cached + "/" + bg.calls.length, "true/true/true/2");
     const r5 = await bg.ask({ type: "p591:get" }, CS);
     eq("content script 拿得到資料包", r5.ok + "/" + r5.payload.target, "true/rakuya");
     await bg.ask({ type: "p591:clear" }, CS);
