@@ -455,6 +455,26 @@ ZZ0000003
   ok(cut.startsWith("☆主推特色介紹:") && cut.includes("✨"), "樂屋文案前面的版型與 ✨ 行都在", "在", "在");
   eq("沒有貼心提醒就原樣（同事版尾段是空的）", rakuyaDesc("☆主推特色介紹:\n\n✨甲\n✨乙"), "☆主推特色介紹:\n\n✨甲\n✨乙");
 }
+
+/* ───── K. 同事版固定尾段的樣式（2026-09-11 他說的：像 591 編輯器那排，只套在固定尾段） ───── */
+{
+  console.log("K. 固定尾段樣式");
+  const T = await import("../tools/post591-extension/tail-style.js");
+  eq("整理：沒給就全關", JSON.stringify(T.normalizeTailStyle(null)), JSON.stringify({ size: "", bold: false, underline: false, color: "", bg: "" }));
+  eq("整理：色碼要 #rrggbb、字級只收 16/18", JSON.stringify(T.normalizeTailStyle({ size: "20px", color: "red", bg: "#FFFF00", bold: 1 })), JSON.stringify({ size: "", bold: true, underline: false, color: "", bg: "#ffff00" }));
+  const desc = "☆主推特色介紹:\n\n✨近學校\n✨採光好\n\n※歡迎來電 0912\n官方LINE:@abc";
+  eq("沒設樣式 → 空字串（貼純文字）", T.buildTailDescHtml(desc, "※歡迎來電 0912", {}), "");
+  const html = T.buildTailDescHtml(desc, "※歡迎來電 0912", { size: "18px", bold: true, underline: true, color: "#c00000", bg: "#ffff00" });
+  ok(html.startsWith("<p>☆主推特色介紹:</p><p><br></p><p>✨近學校</p>"), "前面的行純文字、空行 <p><br></p>", html.slice(0, 48), "…");
+  ok(html.includes('<p><span style="background-color:#ffff00"><span style="font-size:18px"><span style="color:#c00000"><strong><u>※歡迎來電 0912</u></strong></span></span></span></p>'), "固定尾段第一行套全部（底色＞字級＞顏色＞粗體＞底線）", html.slice(-120), "…");
+  ok(html.endsWith("<strong><u>官方LINE:@abc</u></strong></span></span></span></p>"), "固定尾段最後一行也套", html.slice(-60), "…");
+  eq("✨ 行不套", (html.match(/<p>✨[^<]*<\/p>/g) || []).length, 2);
+  const edited = "☆主推特色介紹:\n\n✨近學校\n\n※歡迎來電看屋 0912\n官方LINE:@abc";
+  ok(T.buildTailDescHtml(edited, "※歡迎來電 0912", { bold: true }).includes("<p><strong>※歡迎來電看屋 0912</strong></p><p><strong>官方LINE:@abc</strong></p>"), "④ 改過字找不到第一行 → 從最後一個 ✨ 行之後起", "ok", "ok");
+  eq("只有 ✨ 沒尾段 → 空字串", T.buildTailDescHtml("☆主推特色介紹:\n\n✨近學校", "", { bold: true }), "");
+  ok(T.buildTailDescHtml("✨a\n<b>x</b>", "<b>x</b>", { bold: true }).includes("<strong>&lt;b&gt;x&lt;/b&gt;</strong>"), "尖括號會轉義", "ok", "ok");
+  eq("預覽 CSS", T.tailStyleCss({ size: "16px", underline: true, color: "#0070c0" }), "font-size:16px;text-decoration:underline;color:#0070c0");
+}
 console.log("");
 console.log(pass ? "✅ 591 刊登助手：辨識器與對應規則全部一致" : "❌ 有差異，不要往下做");
 process.exit(pass ? 0 : 1);

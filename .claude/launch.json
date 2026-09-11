@@ -13,6 +13,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["next", "start", "-p", "3100"],
       "port": 3100
+    },
+    {
+      "name": "post591-ext-preview",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/preview-post591-ext.mjs"],
+      "port": 8591
     }
   ]
 }

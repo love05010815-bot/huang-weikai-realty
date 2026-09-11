@@ -14,6 +14,7 @@ import { parseListing, photoLinkReport, extractPhotosFromHtml, listingNoFromUrl 
 import { derive, buildRows, titleCheck, post591Risks, buildPayload } from "./lib/lib/post591-map.js";
 import { buildRakuya } from "./lib/lib/rakuya-map.js";
 import { DESC_HEAD, DESC_TAIL, POST591_DEFAULTS } from "./lib/config/post591-template.js";
+import { TAIL_COLORS, buildTailDescHtml, escapeHtml, normalizeTailStyle, tailStyleCss } from "./tail-style.js";
 
 const $ = (id) => document.getElementById(id);
 const hasChrome = typeof chrome !== "undefined" && !!(chrome.runtime && chrome.runtime.sendMessage);
@@ -23,7 +24,7 @@ const LICENSE_KEY = "p591:licenseKey"; // 跟 background.js／license.js 同一�
 /* ───────── 個人設定 ───────── */
 /** 預設不帶固定文案（lib 裡的 DESC_TAIL 在同事版已被清成空字串，這裡再保險一次） */
 const defaultTail = () => "";
-const DEFAULT_SETTINGS = { name: "", phone: "", line: "", contract: POST591_DEFAULTS.contract, tail: defaultTail() };
+const DEFAULT_SETTINGS = { name: "", phone: "", line: "", contract: POST591_DEFAULTS.contract, tail: defaultTail(), tailStyle: normalizeTailStyle(null) };
 let settings = { ...DEFAULT_SETTINGS };
 
 async function loadSettings() {
@@ -39,11 +40,13 @@ async function loadSettings() {
   } catch {
     /* 讀不到就用預設 */
   }
+  settings.tailStyle = normalizeTailStyle(settings.tailStyle);
   $("s-name").value = settings.name;
   $("s-phone").value = settings.phone;
   $("s-line").value = settings.line;
   $("s-contract").value = settings.contract;
   $("s-tail").value = settings.tail;
+  renderTailStyle();
 }
 async function saveSettings() {
   settings = {
@@ -52,6 +55,7 @@ async function saveSettings() {
     line: $("s-line").value.trim(),
     contract: $("s-contract").value,
     tail: $("s-tail").value,
+    tailStyle: readTailStyle(),
   };
   try {
     if (hasChrome && chrome.storage && chrome.storage.local) await chrome.storage.local.set({ [SETTINGS_KEY]: settings });
@@ -86,6 +90,44 @@ function flash(el, text, cls) {
   el.textContent = text;
   el.className = `msg ${cls || ""}`;
   if (cls === "ok") setTimeout(() => (el.textContent === text ? (el.textContent = "") : 0), 2500);
+}
+
+/* ───────── 固定尾段的樣式（2026-09-11 他說的：像 591 編輯器那排，字級／粗體／底線／文字顏色／底色）───────── */
+function renderSwatches(id, cur) {
+  const box = $(id);
+  box.dataset.v = cur || "";
+  box.innerHTML = [`<button type="button" class="sw none${cur ? "" : " sel"}" data-v="" title="不設定">無</button>`]
+    .concat(TAIL_COLORS.map((c) => `<button type="button" class="sw${c === cur ? " sel" : ""}" data-v="${c}" style="background:${c}" title="${c}"></button>`))
+    .concat([`<label class="sw-custom" title="自訂顏色">自訂<input type="color" value="${cur || "#000000"}" /></label>`])
+    .join("");
+}
+/** 點色塊或用自訂色：只換選取狀態、不重畫（重畫會把正在拖的色盤關掉） */
+function selectSwatch(id, v) {
+  $(id).dataset.v = v || "";
+  for (const b of $(id).querySelectorAll("button.sw")) b.classList.toggle("sel", (b.dataset.v || "") === (v || ""));
+  previewTail();
+}
+function readTailStyle() {
+  return normalizeTailStyle({ size: $("ts-size").value, bold: $("ts-bold").checked, underline: $("ts-underline").checked, color: $("ts-color").dataset.v, bg: $("ts-bg").dataset.v });
+}
+function renderTailStyle() {
+  const s = settings.tailStyle;
+  $("ts-size").value = s.size;
+  $("ts-bold").checked = s.bold;
+  $("ts-underline").checked = s.underline;
+  renderSwatches("ts-color", s.color);
+  renderSwatches("ts-bg", s.bg);
+  previewTail();
+}
+function previewTail() {
+  const box = $("ts-preview");
+  const text = fillTail($("s-tail").value.trim());
+  if (!text) {
+    box.innerHTML = `<span class="hint">（固定尾段是空的，沒東西可預覽）</span>`;
+    return;
+  }
+  const css = tailStyleCss(readTailStyle());
+  box.innerHTML = text.split("\n").map((l) => `<div style="${css}">${escapeHtml(l) || "&nbsp;"}</div>`).join("");
 }
 
 /* ───────── 授權碼（同事版 2026-09-11 起：9/20 後失效、綁定不可外流）───────── */
@@ -293,6 +335,10 @@ async function launch(target = "591") {
   }
   const payload = buildPayload(listing, derived, rows, $("title").value.trim(), $("desc").value);
   payload.contact.name = settings.name;
+  // 同事自己設的固定尾段樣式：只套在固定尾段那幾行、✨ 行維持純文字；沒設就跟以前一樣貼純文字（591 與樂屋都吃這個 HTML）
+  const tailFilled = fillTail((settings.tail || "").trim());
+  const styledHtml = buildTailDescHtml($("desc").value, tailFilled.split("\n")[0], settings.tailStyle);
+  if (styledHtml) payload.descHtml = styledHtml;
   const extra = extraPhotos();
   if (!payload.photos.length && extra.length) payload.photos = extra;
   const site = target === "rakuya" ? "樂屋" : "591";
@@ -328,8 +374,20 @@ $("toggle-settings").onclick = () => ($("settings").hidden = !$("settings").hidd
 $("s-save").onclick = saveSettings;
 $("s-reset").onclick = () => {
   $("s-tail").value = defaultTail();
+  previewTail();
   flash($("s-msg"), "已清空固定尾段（預設就是不帶固定文案），記得按儲存", "");
 };
+$("s-tail").addEventListener("input", previewTail);
+for (const id of ["ts-size", "ts-bold", "ts-underline"]) $(id).addEventListener("change", previewTail);
+for (const id of ["ts-color", "ts-bg"]) {
+  $(id).addEventListener("click", (e) => {
+    const b = e.target.closest("button.sw");
+    if (b) selectSwatch(id, b.dataset.v);
+  });
+  $(id).addEventListener("input", (e) => {
+    if (e.target.type === "color") selectSwatch(id, e.target.value);
+  });
+}
 $("raw").addEventListener("input", updateParse);
 $("parse").onclick = run;
 $("clear").onclick = () => {

@@ -39,6 +39,21 @@
     <code>{{name}}</code> <code>{{phone}}</code> <code>{{line}}</code> 會自動換成上面填的。
     <textarea id="s-tail" rows="8" spellcheck="false" placeholder="例：※歡迎來電預約看屋※{{phone}} 【{{name}}】　官方LINE:{{line}}"></textarea>
   </label>
+  <div id="tail-style" class="tstyle">
+    <div class="tstyle-row">
+      <b>固定尾段的樣式</b><span class="tstyle-lab">（跟 591 編輯器那排一樣：字級、粗體、底線、文字顏色、底色。只套在固定尾段，型錄的 ✨ 行維持原樣；上架時才套上）</span>
+    </div>
+    <div class="tstyle-row">
+      <label class="inline">字級
+        <select id="ts-size"><option value="">不設定</option><option value="16px">16px</option><option value="18px">18px</option></select>
+      </label>
+      <label class="inline"><input type="checkbox" id="ts-bold" /> <b>B</b> 粗體</label>
+      <label class="inline"><input type="checkbox" id="ts-underline" /> <u>U</u> 底線</label>
+    </div>
+    <div class="tstyle-row"><span class="tstyle-lab">文字顏色</span><div id="ts-color" class="swatches"></div></div>
+    <div class="tstyle-row"><span class="tstyle-lab">底色</span><div id="ts-bg" class="swatches"></div></div>
+    <div class="tstyle-row"><span class="tstyle-lab">預覽</span><div id="ts-preview" class="tstyle-preview"></div></div>
+  </div>
   <div class="row-btns">
     <button id="s-save" class="primary" type="button">儲存</button>
     <button id="s-reset" class="ghost" type="button">清空固定尾段</button>
@@ -80,7 +95,7 @@
     <h2>④ 廣告標題與現況特色描述</h2>
     <label class="block">廣告標題（6～30 字）<input id="title" /></label>
     <p id="title-msg" class="msg"></p>
-    <label class="block">現況特色描述（型錄的 ✨ 特色行；有填固定尾段才會接在後面，可以直接改字）<textarea id="desc" rows="10" spellcheck="false"></textarea></label>
+    <label class="block">現況特色描述（型錄的 ✨ 特色行；有填固定尾段才會接在後面，可以直接改字。固定尾段的字級／顏色在「⚙ 我的資料」設，上架時才套上，這裡看的是純文字）<textarea id="desc" rows="10" spellcheck="false"></textarea></label>
     <p id="desc-msg" class="msg"></p>
     <div id="risks" class="risk" hidden></div>
   </section>
