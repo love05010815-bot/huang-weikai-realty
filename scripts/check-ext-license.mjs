@@ -3,6 +3,10 @@
  * （tools/post591-extension/license.js）。不碰資料庫、不連網。
  * 用法：node --experimental-strip-types scripts/check-ext-license.mjs
  */
+import fs from "node:fs";
+import path from "node:path";
+import vm from "node:vm";
+import { fileURLToPath } from "node:url";
 import { register } from "node:module";
 register("./alias-hooks.mjs", import.meta.url);
 const core = await import("../src/lib/ext-license-core.ts");
@@ -149,6 +153,86 @@ for (const reason of ["no_key_set", "no_key", "revoked", "expired", "bound_elsew
 }
 eq("到期帶日期", L.message({ ok: false, reason: "expired", expiresText: "2026-09-20" }), "授權已於 2026-09-20 到期，請找黃瑋凱延長。");
 eq("ok 沒訊息", L.message({ ok: true }), "");
+
+console.log("F. background.js 在假 Chrome 裡跑一遍（importScripts、sender 判斷、開分頁）");
+{
+  const extDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "tools", "post591-extension");
+  /** 用 node 的 vm 開一個假的 service worker 環境：假 chrome.*、假 fetch、importScripts 讀真檔 */
+  function bootBackground(serverQueue) {
+    const listeners = {};
+    const created = [];
+    const calls = [];
+    const sessionStore = {};
+    const localStore = {};
+    const getMany = (store) => async (k) => (Array.isArray(k) ? Object.fromEntries(k.map((x) => [x, store[x]])) : { [k]: store[k] });
+    const chrome = {
+      runtime: {
+        getManifest: () => ({ version: "1.5.0" }),
+        getURL: (p) => "chrome-extension://abc/" + p,
+        onMessage: { addListener: (fn) => (listeners.message = fn) },
+      },
+      action: { onClicked: { addListener: (fn) => (listeners.click = fn) } },
+      tabs: { create: async (o) => void created.push(o.url) },
+      storage: {
+        session: { get: getMany(sessionStore), set: async (o) => void Object.assign(sessionStore, o), remove: async (k) => void delete sessionStore[k] },
+        local: { get: getMany(localStore), set: async (o) => void Object.assign(localStore, o) },
+      },
+    };
+    const sandbox = {
+      chrome,
+      console,
+      URL,
+      btoa,
+      crypto: { randomUUID: () => "uuid-bg" },
+      fetch: async (_url, opts) => {
+        calls.push(JSON.parse(opts.body));
+        const next = serverQueue.shift();
+        if (!next) throw new Error("network");
+        return { status: 200, json: async () => next };
+      },
+    };
+    sandbox.self = sandbox;
+    sandbox.importScripts = (f) => vm.runInContext(fs.readFileSync(path.join(extDir, f), "utf8"), ctx, { filename: f });
+    const ctx = vm.createContext(sandbox);
+    vm.runInContext(fs.readFileSync(path.join(extDir, "background.js"), "utf8"), ctx, { filename: "background.js" });
+    const ask = (msg, sender) =>
+      new Promise((resolve) => {
+        const ret = listeners.message(msg, sender, resolve);
+        if (ret !== true) resolve({ sync: true, ret });
+      });
+    return { ask, created, calls, sessionStore, listeners };
+  }
+  const APP = { url: "chrome-extension://abc/app.html" };
+  const BRIDGE = { url: "https://weikaihouse.com/admin/post591", tab: { id: 1 } };
+  const CS = { url: "https://member.rakuya.com.tw/rent/post/add", tab: { id: 2 } };
+  const payload = () => ({ v: 1, target: "rakuya", deal: "rent", first: {} });
+  {
+    const bg = bootBackground([OKBODY, OKBODY]);
+    ok(typeof bg.listeners.click === "function" && typeof bg.listeners.message === "function", "背景程式載入、監聽都掛上", "ok", "ok");
+    const r0 = await bg.ask({ type: "p591:launch", payload: payload() }, APP);
+    eq("外掛頁上架、沒授權碼 → 擋、不開分頁", r0.ok + "/" + (r0.license && r0.license.reason) + "/" + bg.created.length, "false/no_key_set/0");
+    const r1 = await bg.ask({ type: "p591:license-set", key: "WK-ABCD-EFGH-JKLM" }, CS);
+    eq("content script 不能改授權碼", r1.ok + "/" + r1.error, "false/只有外掛頁面能改授權碼");
+    const r2 = await bg.ask({ type: "p591:license-set", key: "WK-ABCD-EFGH-JKLM" }, APP);
+    eq("外掛頁存授權碼 → 立刻驗 ok", r2.ok + "/" + r2.license.ok + "/" + r2.message, "true/true/");
+    eq("驗證帶安裝編號與版本", bg.calls[0].installId + "/" + bg.calls[0].version + "/" + bg.calls[0].key, "uuid-bg/1.5.0/WK-ABCD-EFGH-JKLM");
+    const r3 = await bg.ask({ type: "p591:launch", payload: payload() }, APP);
+    eq("外掛頁上架、有授權 → 開樂屋出租分頁", r3.ok + "/" + bg.created[0], "true/https://member.rakuya.com.tw/rent/post/add");
+    eq("資料包標記 via=app", bg.sessionStore["p591:payload"].via, "app");
+    const r4 = await bg.ask({ type: "p591:license-check" }, CS);
+    eq("填表前 content script 問授權 → 快取 ok", r4.ok + "/" + r4.license.ok + "/" + !!r4.license.cached + "/" + bg.calls.length, "true/true/true/1");
+    const r5 = await bg.ask({ type: "p591:get" }, CS);
+    eq("content script 拿得到資料包", r5.ok + "/" + r5.payload.target, "true/rakuya");
+    await bg.ask({ type: "p591:clear" }, CS);
+    eq("填完清掉", (await bg.ask({ type: "p591:get" }, CS)).payload, null);
+  }
+  {
+    const bg = bootBackground([]);
+    const r = await bg.ask({ type: "p591:launch", payload: { ...payload(), target: "591", deal: "sale", first: { status: "住宅", type: "電梯大樓", legal: "住家用" } } }, BRIDGE);
+    eq("後台 bridge 上架、沒授權碼 → 照開（他自己）", r.ok + "/" + bg.calls.length + "/" + bg.created[0], "true/0/https://user.591.com.tw/post/two/sale?is_use_first=1&kind=9&shape=2&purpose=3&purpose_custom=");
+    eq("資料包標記 via=bridge", bg.sessionStore["p591:payload"].via, "bridge");
+  }
+}
 
 console.log("");
 console.log(pass ? "✅ 授權碼：規則全部一致" : "❌ 有差異，不要往下做");
