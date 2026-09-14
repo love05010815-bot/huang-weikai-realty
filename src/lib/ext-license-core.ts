@@ -5,7 +5,7 @@
  * 「這批的同事一起使用同一個授權碼就好，不用紀錄是誰下載，我只要知道有幾個人使用授權碼並刊登」。
  * 所以現在是：**一組碼一批人共用**。每台 Chrome 第一次驗證成功就登記一台（安裝編號＝外掛端 crypto.randomUUID()），
  * 一組碼有「電腦數上限」（預設 20，後台可改），超過就擋（seat_limit）—— 這是防外流的閘，不記名字。
- * 後台看的是：這組碼有幾台電腦在用、其中幾台上架過、上架幾次。到期日預設 2026-09-20（台灣時間當天結束），後台可延長／停用。
+ * 後台看的是：這組碼有幾台電腦在用、其中幾台上架過、上架幾次。到期日預設看批次（LICENSE_BATCH_EXPIRES，台灣時間當天結束），後台可延長／停用。
  *
  * ⚠️ 擋的是「檔案轉傳就能用」，不是防駭：外掛是明碼 JS，懂程式的人拆得掉；對象是不會寫程式的同事。
  * ⚠️ 1.4.0 以前發出去的 zip 沒有這道檢查、也不會連伺服器，收不回來 —— 要請同事換新版。
@@ -14,17 +14,21 @@
 /** 第一批的到期日（台灣日期）。「9/20 後失效」＝ 9/21 00:00 台灣時間起擋 */
 export const LICENSE_DEFAULT_EXPIRES = "2026-09-20";
 
+/** 各批的截止日（台灣日期），他一批一批說的：第一批 9/20、第二批 9/30（2026-09-14 說的）。再有新批次往後加 */
+export const LICENSE_BATCH_EXPIRES = ["2026-09-20", "2026-09-30"];
+
 /** 一組碼預設能登記幾台 Chrome。他說一批同事共用，上限只是防外流的閘（後台每組可改） */
 export const LICENSE_DEFAULT_MAX_INSTALLS = 20;
 
 /**
- * 新增授權碼時表單預設的到期日：9/20 還沒到就一律 9/20（第一批統一截止）；
- * 9/20 當天起改成「今天＋30 天」—— 不然表單預設一個過去的日期，他忘了改就會發出一組當場到期的碼。
+ * 新增授權碼時表單預設的到期日：還沒過的批次裡**最晚**的那個（現在發的就是最新一批；9/14 起預設 9/30）；
+ * 批次全過了就「今天＋30 天」—— 不然表單預設一個過去的日期，他忘了改就會發出一組當場到期的碼。
  * 他在後台可以改成任何日期；到期後不用換檔案，改那一列的到期日就好。
  */
 export function defaultExpiresDate(now: Date = new Date()): string {
   const today = taiwanDate(now);
-  if (today < LICENSE_DEFAULT_EXPIRES) return LICENSE_DEFAULT_EXPIRES;
+  const upcoming = LICENSE_BATCH_EXPIRES.filter((d) => today < d);
+  if (upcoming.length) return upcoming[upcoming.length - 1];
   return taiwanDate(new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000));
 }
 

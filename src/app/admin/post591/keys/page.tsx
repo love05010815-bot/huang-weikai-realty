@@ -74,7 +74,7 @@ export default async function LicenseKeysPage() {
         <p className={styles.lede}>
           給同事的外掛（1.5.0 起）要有授權碼才能用：<b>一組碼這批同事共用</b>，每台 Chrome 第一次驗證會登記一台，超過「電腦數上限」（預設 {LICENSE_DEFAULT_MAX_INSTALLS} 台，可改）就擋，
           這是防外流的閘，不記是誰。這裡看得到每組碼<b>幾台電腦在用、其中幾台上架過、上架幾次</b>。
-          新增時預設到期日 <b>{defaultExpires}</b>（第一批統一到 2026-09-20，過了以後預設給 30 天；都是台灣時間當天結束）。
+          新增時預設到期日 <b>{defaultExpires}</b>（照批次：第一批 9/20、第二批 9/30；批次都過了就預設今天＋30 天；都是台灣時間當天結束）。
           <b>到期了不用換檔案</b>：改那一列的到期日、按「存」，同事重新打開外掛頁就恢復。要收回：按「停用」。
           {" "}
           <Link href="/admin/post591">← 回廣告刊登助手</Link>

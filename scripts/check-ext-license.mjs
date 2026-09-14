@@ -47,9 +47,11 @@ console.log("B. 台灣日期");
   eq("9/20 23:59 台灣：還有效", core.decideLicense(row(), false, new Date("2026-09-20T15:59:00Z")).ok, true);
   eq("無效日期回 null", core.taiwanDateEnd("2026-02-30"), null);
   eq("格式錯回 null", core.taiwanDateEnd("9/20"), null);
-  eq("新增預設：9/20 前一律 9/20", core.defaultExpiresDate(new Date("2026-09-11T02:00:00Z")), "2026-09-20");
-  eq("新增預設：9/20 當天起今天＋30", core.defaultExpiresDate(new Date("2026-09-20T02:00:00Z")), "2026-10-20");
-  eq("新增預設：用台灣日期算（UTC 9/19 16:30＝台灣 9/20）", core.defaultExpiresDate(new Date("2026-09-19T16:30:00Z")), "2026-10-20");
+  eq("批次截止日：9/20、9/30", core.LICENSE_BATCH_EXPIRES.join("|"), "2026-09-20|2026-09-30");
+  eq("新增預設：9/14 → 最新一批 9/30", core.defaultExpiresDate(new Date("2026-09-14T02:00:00Z")), "2026-09-30");
+  eq("新增預設：9/20 當天還是 9/30", core.defaultExpiresDate(new Date("2026-09-20T02:00:00Z")), "2026-09-30");
+  eq("新增預設：9/30 當天起今天＋30", core.defaultExpiresDate(new Date("2026-09-30T02:00:00Z")), "2026-10-30");
+  eq("新增預設：用台灣日期算（UTC 9/29 16:30＝台灣 9/30）", core.defaultExpiresDate(new Date("2026-09-29T16:30:00Z")), "2026-10-30");
 }
 
 console.log("C. 判定順序");
