@@ -375,18 +375,24 @@ async function launch(target = "591") {
   const extra = extraPhotos();
   if (!payload.photos.length && extra.length) payload.photos = extra;
   const site = target === "rakuya" ? "樂屋" : "591";
-  if (target === "rakuya") {
-    payload.target = "rakuya";
-    payload.rakuya = buildRakuya(listing, derived, payload);
-    payload.rakuya.contactName = settings.name;
-    payload.rakuya.contactPhone = settings.phone;
-  }
+  /** 樂屋的資料包：同一份再加樂屋的翻譯，聯絡人用同事自己填的姓名手機 */
+  const forRakuya = (p) => {
+    const r = { ...p, target: "rakuya" };
+    r.rakuya = buildRakuya(listing, derived, r);
+    r.rakuya.contactName = settings.name;
+    r.rakuya.contactPhone = settings.phone;
+    return r;
+  };
+  let send = payload;
+  if (target === "rakuya") send = forRakuya(payload);
+  // 一起上架（2026-09-14 他要同事版也有）：591 的資料包帶著樂屋的（chain），背景程式先開 591、591 填完自動開樂屋
+  if (target === "both") send = { ...payload, chain: forRakuya(payload) };
   if (!hasChrome) {
     flash($("launch-msg"), "這一頁要從 Chrome 外掛圖示打開才能上架（現在只是預覽）。", "bad");
     return;
   }
   flash($("launch-msg"), `正在開${site}分頁…`, "");
-  chrome.runtime.sendMessage({ type: "p591:launch", payload }, (r) => {
+  chrome.runtime.sendMessage({ type: "p591:launch", payload: send }, (r) => {
     const err = chrome.runtime.lastError;
     if (r && r.license && !r.ok) {
       // 背景程式擋下來：沒有有效授權碼（到期、停用、綁在別台…），把原因亮出來
@@ -397,6 +403,7 @@ async function launch(target = "591") {
       return;
     }
     if (err || !r || !r.ok) flash($("launch-msg"), `外掛沒回應：${(err && err.message) || (r && r.error) || "未知錯誤"}。到 chrome://extensions 按這個外掛的 ↻ 再試。`, "bad");
+    else if (target === "both") flash($("launch-msg"), "591 分頁已開好，外掛正在填；591 填完後會自動開樂屋分頁接著填。兩邊都等右下角「✅ 填完」、從上往下核對：591 按「保存資料，下一步」、樂屋按「庫存」或「上架」，都是你按。", "ok");
     else flash($("launch-msg"), `${site}分頁已開好，外掛正在填。到那個分頁等右下角「✅ 填完」，從上往下核對，再自己按${target === "rakuya" ? "「庫存」或「上架」" : "「保存資料，下一步」"}。`, "ok");
   });
 }
@@ -441,6 +448,7 @@ $("desc").addEventListener("input", refreshDesc);
 $("photo-link").addEventListener("input", refreshPhotoLink);
 $("launch").onclick = () => launch("591");
 $("launch-rakuya").onclick = () => launch("rakuya");
+$("launch-both").onclick = () => launch("both");
 
 loadSettings().then(async () => {
   await refreshLicense(); // 同事版：沒有有效授權碼，解析與上架都不開

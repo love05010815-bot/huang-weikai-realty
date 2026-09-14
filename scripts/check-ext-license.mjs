@@ -216,7 +216,7 @@ console.log("F. background.js 在假 Chrome 裡跑一遍（importScripts、sende
   const CS = { url: "https://member.rakuya.com.tw/rent/post/add", tab: { id: 2 } };
   const payload = () => ({ v: 1, target: "rakuya", deal: "rent", first: {} });
   {
-    const bg = bootBackground([OKBODY, OKBODY]);
+    const bg = bootBackground([OKBODY, OKBODY, OKBODY]); // 存碼、上架、最後的一起上架各驗一次
     ok(typeof bg.listeners.click === "function" && typeof bg.listeners.message === "function", "背景程式載入、監聽都掛上", "ok", "ok");
     const r0 = await bg.ask({ type: "p591:launch", payload: payload() }, APP);
     eq("外掛頁上架、沒授權碼 → 擋、不開分頁", r0.ok + "/" + (r0.license && r0.license.reason) + "/" + bg.created.length, "false/no_key_set/0");
@@ -235,6 +235,9 @@ console.log("F. background.js 在假 Chrome 裡跑一遍（importScripts、sende
     eq("content script 拿得到資料包", r5.ok + "/" + r5.payload.target, "true/rakuya");
     await bg.ask({ type: "p591:clear" }, CS);
     eq("填完清掉", (await bg.ask({ type: "p591:get" }, CS)).payload, null);
+    // 同事版也有「一起上架」（2026-09-14）：外掛頁來的 chain 一樣先開 591、樂屋排隊，via 都是 app（填表前會再驗授權）
+    const rb = await bg.ask({ type: "p591:launch", payload: { ...payload(), target: "591", deal: "sale", first: { status: "住宅", type: "華廈", legal: "住家用" }, chain: { ...payload(), target: "rakuya", deal: "sale" } } }, APP);
+    eq("外掛頁一起上架：只開 591、樂屋排隊、via=app", rb.ok + "/" + rb.chained + "/" + bg.created.length + "/" + bg.sessionStore["p591:payload:rakuya"].queued + "/" + bg.sessionStore["p591:payload:rakuya"].via, "true/true/2/true/app");
   }
   {
     // 2026-09-14「591＋樂屋一起上架」：591 的資料包帶 chain（樂屋的），先只開 591；591 填完 clear 時才開樂屋
