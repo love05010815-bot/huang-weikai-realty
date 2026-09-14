@@ -156,9 +156,10 @@ function previewTail() {
   }
   const style = readTailStyle();
   let k = 0;
+  // 樣式包在 <span> 上、不是整行的 <div>：底色只會在字的後面，跟 591 貼上去一樣（他說「沒有字的地方不要整個都框底色」）
   box.innerHTML = text
     .split("\n")
-    .map((l) => (l.trim() ? `<div style="${lineStyleCss(style, k++)}">${escapeHtml(l)}</div>` : "<div>&nbsp;</div>"))
+    .map((l) => (l.trim() ? `<div><span style="${lineStyleCss(style, k++)}">${escapeHtml(l)}</span></div>` : "<div>&nbsp;</div>"))
     .join("");
 }
 
