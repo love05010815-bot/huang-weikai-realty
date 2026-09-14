@@ -73,20 +73,27 @@ export const escapeHtml = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&
  * 找不到就從最後一個 ✨ 行的下一行起。沒設樣式、或找不到起點、起點之後沒字 → 回空字串，外掛就貼純文字（跟以前一樣）。
  * 巢狀順序跟後台 descToHtml 一樣（底色＞字級＞顏色＞粗體＞底線），ProseMirror 貼上實測留得住。
  */
+/**
+ * 固定尾段從描述的第幾行開始：先找跟 tailFirstLine 一樣的那一行；找不到就從最後一個 ✨ 行的下一行起；連 ✨ 行都沒有回 -1。
+ * 上架（buildTailDescHtml）跟外掛頁 ④ 的預覽共用這條，兩邊看到的範圍才會一樣。
+ */
+export function tailStartIndex(lines, tailFirstLine) {
+  const first = String(tailFirstLine || "").trim();
+  const byFirst = first ? lines.findIndex((l) => l.trim() === first) : -1;
+  if (byFirst >= 0) return byFirst;
+  let lastFeature = -1;
+  lines.forEach((l, i) => {
+    if (/^\s*✨/.test(l)) lastFeature = i;
+  });
+  return lastFeature < 0 ? -1 : lastFeature + 1;
+}
+
 export function buildTailDescHtml(desc, tailFirstLine, style) {
   const s = normalizeTailStyle(style);
   if (!tailStyleActive(s)) return "";
   const lines = String(desc || "").replace(/\r/g, "").split("\n");
-  const first = String(tailFirstLine || "").trim();
-  let start = first ? lines.findIndex((l) => l.trim() === first) : -1;
-  if (start < 0) {
-    let lastFeature = -1;
-    lines.forEach((l, i) => {
-      if (/^\s*✨/.test(l)) lastFeature = i;
-    });
-    if (lastFeature < 0) return "";
-    start = lastFeature + 1;
-  }
+  const start = tailStartIndex(lines, tailFirstLine);
+  if (start < 0) return "";
   if (!lines.slice(start).some((l) => l.trim())) return "";
   let k = 0;
   return lines

@@ -14,7 +14,7 @@ import { parseListing, photoLinkReport, extractPhotosFromHtml, listingNoFromUrl,
 import { derive, buildRows, titleCheck, post591Risks, buildPayload } from "./lib/lib/post591-map.js";
 import { buildRakuya } from "./lib/lib/rakuya-map.js";
 import { DESC_HEAD, DESC_TAIL, POST591_DEFAULTS } from "./lib/config/post591-template.js";
-import { TAIL_COLORS, buildTailDescHtml, escapeHtml, lineStyleCss, normalizeLineStyle, normalizeTailStyle } from "./tail-style.js";
+import { TAIL_COLORS, buildTailDescHtml, escapeHtml, lineStyleCss, normalizeLineStyle, normalizeTailStyle, tailStartIndex } from "./tail-style.js";
 
 const $ = (id) => document.getElementById(id);
 const hasChrome = typeof chrome !== "undefined" && !!(chrome.runtime && chrome.runtime.sendMessage);
@@ -358,6 +358,33 @@ function refreshDesc() {
   const len = [...$("desc").value].length;
   flash($("desc-msg"), `${len} 字／上限 ${POST591_DEFAULTS.descMax}`, len > POST591_DEFAULTS.descMax ? "bad" : "");
   refreshRisks();
+  refreshDescPreview();
+}
+/**
+ * ④ 底下「上架時長這樣」：描述照行印出來，固定尾段那幾行套「⚙ 我的資料」**存好的**樣式（跟上架用的是同一份設定、同一條找起點的規則）。
+ * 2026-09-14 他看 ④ 是純文字就以為顏色沒更新 —— 所以顏色一定要在這裡看得到。
+ */
+function refreshDescPreview() {
+  const box = $("desc-preview");
+  if (!box) return;
+  const desc = $("desc").value.replace(/\r/g, "");
+  if (!desc.trim()) {
+    box.hidden = true;
+    return;
+  }
+  const lines = desc.split("\n");
+  const start = tailStartIndex(lines, fillTail((settings.tail || "").trim()).split("\n")[0]);
+  const style = settings.tailStyle;
+  let k = 0;
+  box.hidden = false;
+  box.innerHTML = lines
+    .map((l, i) => {
+      const t = l.trim();
+      if (!t) return "<div>&nbsp;</div>";
+      if (start >= 0 && i >= start) return `<div><span style="${lineStyleCss(style, k++)}">${escapeHtml(t)}</span></div>`;
+      return `<div>${escapeHtml(t)}</div>`;
+    })
+    .join("");
 }
 function refreshRisks() {
   const risks = post591Risks($("title").value, $("desc").value);
