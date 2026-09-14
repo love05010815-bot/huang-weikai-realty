@@ -15,7 +15,18 @@
  *   /post/two/sale?is_use_first=1&kind=<現況>&shape=<型態>&purpose=<法定用途>&purpose_custom=
  *   認得的組合直接開第②頁、跳過第①頁；不認得的才開第①頁用點的。
  */
-const KEY = "p591:payload";
+/**
+ * 資料包一個平台一格（2026-09-14 起，為了「591＋樂屋一起上架」）：
+ *   p591:payload:591／p591:payload:rakuya。content.js 在 591 頁、rakuya.js 在樂屋頁，各拿各的格，
+ *   兩個分頁同時開也不會搶到對方的資料包。
+ * 「一起上架」＝ 591 的資料包裡帶 chain（樂屋的資料包）：先存進樂屋那格並標 queued、只開 591 分頁；
+ *   591 填完 content.js 來 p591:clear 時，看到樂屋那格還在排隊就順手開樂屋分頁 —— 兩個分頁輪流在前景填，
+ *   不會有一個一直在背景被 Chrome 放慢。
+ */
+const LEGACY_KEY = "p591:payload";
+const slotOf = (target) => "p591:payload:" + (target === "rakuya" ? "rakuya" : "591");
+/** content script 在哪個平台：看 sender 的網址 */
+const targetOfSender = (sender) => (sender && sender.url && /rakuya\.com\.tw/.test(sender.url) ? "rakuya" : "591");
 
 importScripts("license.js"); // 同事版授權：規則、快取、離線處理都在那支
 const license = self.P591License.create({
@@ -65,21 +76,48 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const lic = await license.check({ event: "launch" });
         if (!lic.ok) return { ok: false, error: self.P591License.message(lic), license: lic };
       }
-      msg.payload.via = viaApp ? "app" : "bridge"; // content.js／rakuya.js 據此決定填表前要不要再驗一次
-      await chrome.storage.session.set({ [KEY]: msg.payload });
+      const via = viaApp ? "app" : "bridge"; // content.js／rakuya.js 據此決定填表前要不要再驗一次
+      const chain = msg.payload.chain && typeof msg.payload.chain === "object" ? msg.payload.chain : null;
+      delete msg.payload.chain;
+      msg.payload.via = via;
+      const store = { [slotOf(msg.payload.target)]: msg.payload };
+      if (chain) {
+        // 一起上架：樂屋的資料包先排隊，等 591 那邊填完（p591:clear）再開分頁
+        chain.via = via;
+        chain.target = "rakuya";
+        chain.queued = true;
+        store[slotOf("rakuya")] = chain;
+      }
+      await chrome.storage.session.set(store);
+      await chrome.storage.session.remove(LEGACY_KEY);
       await chrome.tabs.create({ url: launchUrl(msg.payload) });
-      return { ok: true };
+      return { ok: true, chained: !!chain };
     });
   }
   if (msg.type === "p591:get") {
     return reply(async () => {
-      const o = await chrome.storage.session.get(KEY);
-      return { ok: true, payload: o[KEY] || null };
+      const key = slotOf(targetOfSender(sender));
+      const o = await chrome.storage.session.get(key);
+      const p = o[key] || null;
+      return { ok: true, payload: p && !p.queued ? p : null }; // 還在排隊的樂屋資料包不給（分頁還沒輪到它）
     });
   }
   if (msg.type === "p591:clear") {
     return reply(async () => {
-      await chrome.storage.session.remove(KEY);
+      const target = targetOfSender(sender);
+      await chrome.storage.session.remove(slotOf(target));
+      if (target === "591") {
+        // 591 填完了：樂屋那格若還在排隊，現在開它的分頁（會變成前景分頁，接著填）
+        const rk = slotOf("rakuya");
+        const o = await chrome.storage.session.get(rk);
+        if (o[rk] && o[rk].queued) {
+          const p = { ...o[rk] };
+          delete p.queued;
+          await chrome.storage.session.set({ [rk]: p });
+          await chrome.tabs.create({ url: launchUrl(p) });
+          return { ok: true, opened: "rakuya" };
+        }
+      }
       return { ok: true };
     });
   }
@@ -88,7 +126,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return reply(async () => {
       const u = new URL(String(msg.url || ""));
       if (!(u.hostname === "houseol.com.tw" || u.hostname.endsWith(".houseol.com.tw"))) throw new Error("只掃愛屋型錄頁");
-      const res = await fetch(u.href, { credentials: "omit" });
+      // 帶 cookie（2026-09-14 起）：登入愛屋的型錄頁才有「顯示」門牌那顆按鈕（完整地址在它的 alt），匿名頁只印路名。
+      // 只會用在使用者自己貼的那一頁愛屋型錄，而且只是讀。
+      const res = await fetch(u.href, { credentials: "include" });
       if (!res.ok) throw new Error("HTTP " + res.status);
       const html = await res.text();
       return { ok: true, html: html.slice(0, 2000000) };

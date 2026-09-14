@@ -6,7 +6,7 @@
 // 專案內部用 @/ 別名，node 不讀 tsconfig，所以先掛上 resolver 再動態載入（同 check-rival-analysis）
 import { register } from "node:module";
 register("./alias-hooks.mjs", import.meta.url);
-const { combinePhotos, detectSource, extractPhotoUrls, extractPhotosFromHtml, isHouseolPage, listingNoFromUrl, parseListing, photoLinkReport, splitFeatureLines } = await import("../src/lib/post591-parser.ts");
+const { combinePhotos, detectSource, extractPhotoUrls, extractPhotosFromHtml, houseolHtmlToText, isHouseolCatalogHtml, isHouseolPage, listingNoFromUrl, parseListing, photoLinkReport, splitFeatureLines } = await import("../src/lib/post591-parser.ts");
 const { buildDescription, buildPayload, buildRows, derive, descToHtml, encodePayload, photoCommand, post591Risks, splitAddress, titleCheck } =
   await import("../src/lib/post591-map.ts");
 const { buildRakuya, rakuyaDesc, rakuyaParkKind, RAKUYA_TITLE_MAX } = await import("../src/lib/rakuya-map.ts");
@@ -477,6 +477,65 @@ ZZ0000003
   ok(T.buildTailDescHtml("✨a\n<b>x</b>", "<b>x</b>", { bold: true }).includes("<strong>&lt;b&gt;x&lt;/b&gt;</strong>"), "尖括號會轉義", "ok", "ok");
   eq("預覽 CSS：第 0 段", T.lineStyleCss({ size: "16px", underline: true, lines: [{ color: "#0070c0", bg: "#ffff00" }] }, 0), "font-size:16px;text-decoration:underline;color:#0070c0;background-color:#ffff00");
   eq("預覽 CSS：沒設顏色的段只有共用的", T.lineStyleCss({ size: "16px", lines: [{ color: "#0070c0" }] }, 1), "font-size:16px");
+}
+/* ───── L. 型錄頁 HTML → 文字（2026-09-14 他說的：貼愛屋網址就自動抓回來解析；版面照他自己一戶實測的骨架） ───── */
+{
+  console.log("L. 型錄頁 HTML → 文字");
+  const 型錄HTML = `<html><body>
+<div id="page_wrapper"><div id="date"><section><h2>不動產電子型錄</h2><h3>2026/09/14 印</h3></section></div>
+<header><h1><img src="https://hq.houseol.com.tw/images/StoreSub/4817_3.jpg"></h1>
+<div class="title"><div class="title"><h2>不動產電子型錄<h3 style="font-family:微軟正黑體 Light;">測試花園三房配B1平車</h3></h2></div></div></header>
+<dl id="content"><dt><div id="VarArea" class="TableBox style01">
+<div class="caption">測試區測試路 <span id="addr">測試區測試路</span> <span id="showaddr" class="showaddrBnt" alt="測試區測試路三段734巷56號" fla="測試區測試路">顯示</span></div>
+<div class="t-tr"><div class="t-th">委託總價</div><div class="t-td">
+  <div class="title">委託總價</div>
+  <p id="Price" class="red size22">1128萬</p></div>
+<div class="t-th">登記坪數</div><div class="t-td"><div class="title">登記坪數</div><p class="blue size22" style="font-size:18px;">44.98 坪</p></div>
+<div class="t-th">(含車位面積</div><div class="t-td"><div class="title">(含車位面積</div><p>10.95坪)</p></div>
+<div class="t-th">主&ensp;+附屬</div><div class="t-td"><div class="title">主&ensp;+附屬</div><p>22.805 坪</p></div>
+<div class="t-th">主建物坪</div><div class="t-td"><div class="title">主建物坪</div><p>20.818 坪</p></div>
+<div class="t-th">附屬建物</div><div class="t-td"><div class="title">附屬建物</div><p>1.987 坪</p></div>
+<div class="t-th">公設建坪</div><div class="t-td"><div class="title">公設建坪</div><p>11.23 坪</p></div>
+<div class="t-th">土地登記</div><div class="t-td"><div class="title">土地登記</div><p>7.31 坪</p></div>
+<div class="t-th">樓別/樓高</div><div class="t-td"><div class="title">樓別/樓高</div><p>6        /15   </p></div>
+<div class="t-th">房/廳/衛</div><div class="t-td"><div class="title">房/廳/衛</div><p>3/ 2/ 2</p></div>
+<div class="t-th">車位型式</div><div class="t-td"><div class="title">車位型式</div><p>坡道/平面</p></div>
+<div class="t-th">車位/編號</div><div class="t-td"><div class="title">車位/編號</div><p>公設車位/B1-15</p></div>
+<div class="t-th">現況類別/謄本用途</div><div class="t-td"><div class="title">現況類別/謄本用途</div><p>住家/集合住宅</p></div>
+<div class="t-th">類型/現況</div><div class="t-td"><div class="title">類型/現況</div><p>大樓  /空屋</p></div>
+<div class="t-th">社區</div><div class="t-td"><div class="title">社區</div><p>測試花園</p></div>
+<div class="t-th">管理費用</div><div class="t-td"><div class="title">管理費用</div><p>2342元/月繳</p></div>
+<div class="t-th">竣工日期</div><div class="t-td"><div class="title">竣工日期</div><p>2025/10/15</p></div>
+<div class="t-th">屋　　齡</div><div class="t-td"><div class="title">屋　　齡</div><p>未滿一年</p></div>
+<div class="t-th">鄰近學校</div><div class="t-td"><div class="title">鄰近學校</div><p>市立測試國小</p></div>
+<div class="t-th">鄰近市場</div><div class="t-td"><div class="title">鄰近市場</div><p></p></div>
+<div class="t-th">物件編號</div><div class="t-td"><div class="title">物件編號</div><p>ZZ0000001</p></div>
+<div class="t-th mobile">環境特色</div></div>
+<div class="t-tr"><div class="t-td"><div id="GoodDiv" class="hidden"><div id="GoodSpan"><div class='points_m'><strong>✨測試花園，一層四戶雙梯。</strong></div> <div class='points_m'><strong>✨近測試國小。</strong></div></div></div></div></div></div>
+<div class="menu"><a id="otherfunc2" href="https://es.houseol.com.tw/EInfos.aspx?type=2&amp;google=24.2,120.5" target="_blank">街景</a>
+<a id="otherfunc3" href="https://es.houseol.com.tw/EInfos.aspx?type=3&amp;google=24.2,120.5&amp;picstr=https://hq.houseol.com.tw/images/pictures/H229ZZ0000001f.jpg,https://hq.houseol.com.tw/images/pictures/H229ZZ0000001g.jpg" target="_blank">更多照片</a></div></dt>
+<dd><ul><li><img id="Image1" src="https://hq.houseol.com.tw/images/pictures/H229ZZ0000001a.jpg?Rnd=1"></li><li><img id="Image2" src="https://hq.houseol.com.tw/images/pictures/H229ZZ0000001d.jpg?Rnd=1"></li></ul>
+<div id="personal_div" class="personal"><h1><img src="x"></h1><h2 style="font-family:微軟正黑體 Light;">經紀人員：測試<br />電話：0900-000-000</h2></div></dd></dl>
+<div id="footer" style="font-size: 12px;">僅供參考詳細內容以謄本記載為準	經紀證照:測試 101年中市經證字第00000號</div></div></body></html>`;
+  ok(isHouseolCatalogHtml(型錄HTML) && !isHouseolCatalogHtml("<html><body>請先登入</body></html>"), "認得型錄頁、擋掉登入頁", "ok", "ok");
+  const text = houseolHtmlToText(型錄HTML);
+  const lines = text.split("\n");
+  eq("第一行是型錄標記、第二行標題、第三行完整門牌（登入頁的 showaddr alt）", lines.slice(0, 3).join("|"), "不動產電子型錄|測試花園三房配B1平車|測試區測試路三段734巷56號");
+  ok(text.includes("(含車位面積\n10.95坪)") && text.includes("主 +附屬\n22.805 坪") && text.includes("樓別/樓高\n6 /15"), "欄位一格一格：標籤換行值、&ensp; 變空白、多餘空白收斂", lines.slice(3, 12).join("|"), "…");
+  ok(text.includes("鄰近市場\n\n物件編號"), "空欄位留一個空行（跟 Ctrl+A 一樣，不會吃到下一格）", "ok", "ok");
+  ok(text.includes("環境特色\n✨測試花園，一層四戶雙梯。\n✨近測試國小。\n[地圖]"), "環境特色一條一行、原文照留", "ok", "ok");
+  ok(/\[更多照片\]\(https:\/\/es\.houseol\.com\.tw\/EInfos\.aspx\?type=3&google=24\.2,120\.5&picstr=https:\/\/hq/.test(text), "更多照片連結解掉 &amp;、picstr 撈得到", "ok", "ok");
+  const d = parseListing(text);
+  eq("解析：來源／標題／門牌", d.source + "|" + d.rawTitle + "|" + d.addr, "houseol|測試花園三房配B1平車|測試區測試路三段734巷56號");
+  eq("解析：總價／登記坪／含車位／主+附屬", [d.price, d.regPing, d.parkPing, d.mainAttPing].join("/"), "1128/44.98/10.95/22.805");
+  eq("解析：樓別／總樓／房廳衛／車位／類型／社區", [d.floorRaw, d.total, `${d.room}${d.hall}${d.bath}`, d.parkType, d.kind, d.community].join("|"), "6|15|322|坡道/平面|大樓 /空屋|測試花園");
+  eq("解析：管理費／竣工／學校／市場空／編號", [d.fee, d.feeCycle, d.y + "-" + d.m + "-" + d.dd, d.school, JSON.stringify(d.market), d.no].join("|"), "2342|月繳|2025-10-15|市立測試國小|\"\"|ZZ0000001");
+  eq("解析：特色兩條、更多照片兩張", d.features.length + "/" + d.photos.length, "2/2");
+  eq("警告：沒有", d.warnings.join("|"), "");
+  const 匿名 = 型錄HTML.replace(/<span id="addr">[\s\S]*?<\/span> <span id="showaddr"[^>]*>顯示<\/span>/, "");
+  const d2 = parseListing(houseolHtmlToText(匿名));
+  eq("匿名頁只有路名：門牌沒有、其他照抓", d2.addr + "|" + d2.price + "|" + d2.no, "測試區測試路|1128|ZZ0000001");
+  eq("頁面照片用 extractPhotosFromHtml 撈：嵌的 a、d ＋更多照片連結裡的 f、g（後台上架前會跟 picstr 的去重）", extractPhotosFromHtml(型錄HTML, "ZZ0000001").length, 4);
 }
 console.log("");
 console.log(pass ? "✅ 591 刊登助手：辨識器與對應規則全部一致" : "❌ 有差異，不要往下做");

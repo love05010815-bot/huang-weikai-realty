@@ -543,6 +543,8 @@ export interface Post591Payload {
   descHtml?: string;
   contact: { name: string; contract: string; serviceFee: boolean };
   photos: string[];
+  /** 「591＋樂屋一起上架」：591 的資料包帶著樂屋的；外掛先開 591，591 填完再自動開樂屋（background.js 排隊） */
+  chain?: Post591Payload;
 }
 
 const numOrNull = (v: string | undefined, fallback: number | null): number | null => {

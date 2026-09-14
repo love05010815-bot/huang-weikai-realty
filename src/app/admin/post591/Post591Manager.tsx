@@ -19,7 +19,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/app/admin/_ui/icons";
-import { extractPhotosFromHtml, listingNoFromUrl, parseListing, photoLinkReport, type Listing } from "@/lib/post591-parser";
+import { extractPhotosFromHtml, houseolHtmlToText, isHouseolCatalogHtml, isHouseolPage, listingNoFromUrl, parseListing, photoLinkReport, type Listing } from "@/lib/post591-parser";
 import {
   buildDescription,
   buildHandoff,
@@ -30,6 +30,7 @@ import {
   photoCommand,
   post591Risks,
   titleCheck,
+  type Post591Payload,
   type Row,
 } from "@/lib/post591-map";
 import { POST591_DEFAULTS } from "@/config/post591-template";
@@ -45,6 +46,10 @@ export default function Post591Manager() {
   const [photoFolder, setPhotoFolder] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
   const [launchMsg, setLaunchMsg] = useState("");
+  /** ① 貼的是型錄頁網址時：抓取狀態的文字；fetchNonce 讓「重新抓」可以再抓一次同一條 */
+  const [fetchMsg, setFetchMsg] = useState("");
+  const [fetchNonce, setFetchNonce] = useState(0);
+  const fetchingRef = useRef<string | null>(null);
 
   const derived = useMemo(() => (listing ? derive(listing) : null), [listing]);
   /** ⑤ 那格貼的若是型錄「更多照片」連結（picstr=網址,網址…），就拆成照片網址交給外掛；貼資料夾路徑就只是備註 */
@@ -75,16 +80,71 @@ export default function Post591Manager() {
     return () => clearTimeout(timer);
   }, [pendingKey]);
 
-  function run() {
-    const d = parseListing(text);
+  /** 解析（貼文字、或從型錄頁抓回來的文字都走這裡）。sourceUrl＝從型錄頁網址抓來的，⑤ 直接帶那條網址（頁面上嵌的照片） */
+  function runWith(raw: string, sourceUrl?: string): Listing {
+    const d = parseListing(raw);
     const o = derive(d);
     setListing(d);
     setRows(buildRows(d, o));
     setTitle(d.rawTitle);
     setDesc(buildDescription(d.features));
-    setPhotoFolder(d.photos.length ? `D:\\Agent-os\\591-poster\\photos_${d.no || "listing"}` : "");
+    setPhotoFolder(sourceUrl || (d.photos.length ? `D:\\Agent-os\\591-poster\\photos_${d.no || "listing"}` : ""));
+    setLaunchMsg("");
     setTimeout(() => document.getElementById("p591-result")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    return d;
   }
+  function run() {
+    runWith(text);
+  }
+
+  /** ① 貼的是愛屋型錄頁的網址（整格只有那一條）→ 不用按解析，請外掛把那一頁抓回來、轉成文字、直接解析（2026-09-14 他說的） */
+  const pastedUrl = useMemo(() => {
+    const t = text.trim();
+    return /^https?:\/\/\S+$/.test(t) && isHouseolPage(t) ? t : "";
+  }, [text]);
+  useEffect(() => {
+    if (!pastedUrl) {
+      setFetchMsg("");
+      return;
+    }
+    if (!document.documentElement.getAttribute("data-p591-ext")) {
+      setFetchMsg("要自動抓型錄頁得先有外掛：按 F5 把這一頁重新整理再貼一次；還沒裝外掛就照下面的裝法裝好，或改用 Ctrl+A 貼整頁。");
+      return;
+    }
+    const url = pastedUrl;
+    fetchingRef.current = url;
+    setFetchMsg("正在把型錄頁抓回來…");
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const done = () => {
+      clearTimeout(timer);
+      window.removeEventListener("message", onMsg);
+      if (fetchingRef.current === url) fetchingRef.current = null;
+    };
+    const timer = setTimeout(() => {
+      done();
+      setFetchMsg("外掛沒回應。到 chrome://extensions 按那張卡片的 ↻，回來重新整理這頁再貼一次。");
+    }, 20000);
+    function onMsg(ev: MessageEvent) {
+      if (ev.source !== window || !ev.data || ev.data.type !== "p591:scan-result" || ev.data.id !== id) return;
+      done();
+      const html = String(ev.data.html || "");
+      if (!ev.data.ok || !isHouseolCatalogHtml(html)) {
+        setFetchMsg(`抓不到型錄頁${ev.data.error ? `（${ev.data.error}）` : ""}。確認貼的是型錄頁的網址（Ecatalog.aspx），或改用 Ctrl+A 貼整頁。`);
+        return;
+      }
+      setScanned((prev) => ({ ...prev, [url]: extractPhotosFromHtml(html, listingNoFromUrl(url)) }));
+      const d = runWith(houseolHtmlToText(html), url);
+      setFetchMsg(
+        /號/.test(d.addr)
+          ? "型錄抓回來了、已解析，門牌有帶到。下面核對一遍，再按上架。"
+          : "型錄抓回來了、已解析。⚠️ 門牌沒帶到（這一頁只印到路名，完整門牌要登入愛屋的頁面才有）：③ 的門牌自己補，或改用 Ctrl+A 貼整頁。",
+      );
+    }
+    window.addEventListener("message", onMsg);
+    window.postMessage({ type: "p591:scan", id, url }, window.location.origin);
+    return done;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pastedUrl, fetchNonce]);
 
   async function copy(value: string, key: string) {
     try {
@@ -100,23 +160,51 @@ export default function Post591Manager() {
     setRows((prev) => prev.map((r, j) => (j === i ? { ...r, value } : r)));
   }
 
-  /** 把資料包交給 Chrome 外掛（bridge.js 在這頁監聽 postMessage），由它開 591 或樂屋的分頁填表。 */
-  async function launch(target: "591" | "rakuya" = "591") {
-    if (!listing || !derived) return;
-    const payload = buildPayload(listing, derived, rows, title, desc);
-    if (!payload.photos.length && extraPhotos.length) payload.photos = extraPhotos;
-    const site = target === "rakuya" ? "樂屋" : "591";
-    if (target === "rakuya") {
-      payload.target = "rakuya";
-      // 樂屋的文案不要「貼心提醒」那段（講的是 591 的問答訊息、我的店舖），字級顏色照套
-      payload.desc = rakuyaDesc(desc);
-      payload.descHtml = descToHtml(payload.desc) || undefined;
-      payload.rakuya = buildRakuya(listing, derived, payload);
+  /** 外掛版本夠不夠（data-p591-ext 放的是 manifest 的版本字串） */
+  function extAtLeast(ver: string, want: string): boolean {
+    const a = ver.split(".").map(Number);
+    const b = want.split(".").map(Number);
+    for (let i = 0; i < 3; i++) {
+      const x = a[i] || 0;
+      const y = b[i] || 0;
+      if (x !== y) return x > y;
     }
-    if (!document.documentElement.getAttribute("data-p591-ext")) {
+    return true;
+  }
+
+  /**
+   * 把資料包交給 Chrome 外掛（bridge.js 在這頁監聽 postMessage），由它開 591 或樂屋的分頁填表。
+   * both＝「一起上架」（2026-09-14 他說的）：591 的資料包帶著樂屋的（chain），外掛先開 591、591 填完自動開樂屋。
+   */
+  async function launch(target: "591" | "rakuya" | "both" = "591") {
+    if (!listing || !derived) return;
+    const ext = document.documentElement.getAttribute("data-p591-ext") || "";
+    if (!ext) {
       setLaunchMsg("沒偵測到外掛：請按 F5 把這一頁重新整理，再按一次（這頁開得比外掛早、或外掛剛更新過都會這樣）。還沒裝外掛的話，照下面的裝法裝好再來。");
       return;
     }
+    if (target === "both" && !extAtLeast(ext, "1.5.5")) {
+      setLaunchMsg(`「一起上架」要外掛 1.5.5 以上（你的是 ${ext}）：到 chrome://extensions 按那張卡片的 ↻，回來重新整理這頁再按。`);
+      return;
+    }
+    const payload = buildPayload(listing, derived, rows, title, desc);
+    // 照片：資料裡「更多照片」的（picstr）＋ ⑤ 抓到的（型錄頁上嵌的那幾張），去重、照順序
+    const seen = new Set<string>();
+    payload.photos = [...payload.photos, ...extraPhotos].filter((u) => {
+      const k = u.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    // 樂屋的資料包：文案不要「貼心提醒」那段（講的是 591 的問答訊息、我的店舖），字級顏色照套
+    const forRakuya = (p: Post591Payload): Post591Payload => {
+      const r: Post591Payload = { ...p, target: "rakuya", desc: rakuyaDesc(desc) };
+      r.descHtml = descToHtml(r.desc) || undefined;
+      r.rakuya = buildRakuya(listing, derived, r);
+      return r;
+    };
+    const send: Post591Payload = target === "rakuya" ? forRakuya(payload) : target === "both" ? { ...payload, chain: forRakuya(payload) } : payload;
+    const site = target === "rakuya" ? "樂屋" : "591";
     setLaunchMsg(`已交給外掛，正在開${site}分頁…`);
     const ok = await new Promise<boolean>((resolve) => {
       const timer = setTimeout(() => {
@@ -130,16 +218,43 @@ export default function Post591Manager() {
         resolve(!!ev.data.ok);
       }
       window.addEventListener("message", onMsg);
-      window.postMessage({ type: "p591:launch", payload }, window.location.origin);
+      window.postMessage({ type: "p591:launch", payload: send }, window.location.origin);
     });
     setLaunchMsg(
       ok
         ? target === "rakuya"
           ? "樂屋分頁已開好，外掛正在填。到那個分頁從上往下核對，再自己按「庫存」或「上架」。"
-          : "591 分頁已開好，外掛正在填。到那個分頁從上往下核對，再自己按「保存資料，下一步」。"
+          : target === "both"
+            ? "591 分頁已開好，外掛正在填；591 填完後會自動開樂屋分頁接著填。兩邊都從上往下核對：591 按「保存資料，下一步」、樂屋按「庫存」或「上架」，都是你按。"
+            : "591 分頁已開好，外掛正在填。到那個分頁從上往下核對，再自己按「保存資料，下一步」。"
         : "外掛沒回應。到 chrome://extensions 按那張卡片的 ↻ 重新載入，回來重新整理這頁再按一次。",
     );
   }
+
+  /** 三顆上架鈕＋回應訊息：解析完的最上面（⓪）和最下面（⑥）各放一份，長表單不用捲到底 */
+  const launchBar = (
+    <>
+      <div className={styles.btnrow}>
+        <button className={styles.run} onClick={() => launch("591")}>
+          🚀 上架到 591
+        </button>
+        <button className={styles.run} onClick={() => launch("rakuya")}>
+          🏠 上架到樂屋
+        </button>
+        <button className={styles.run} onClick={() => launch("both")}>
+          🚀🏠 591＋樂屋一起上架
+        </button>
+        {rows.some((r) => r.need) && (
+          <span className={styles.badText}>還有 {rows.filter((r) => r.need).length} 格紅底沒補（外掛會把它們列在面板上）</span>
+        )}
+      </div>
+      {launchMsg && (
+        <p className={styles.hint} style={{ marginTop: 8 }}>
+          <b>{launchMsg}</b>
+        </p>
+      )}
+    </>
+  );
 
   const tc = titleCheck(title);
   const risks = useMemo(() => post591Risks(title, desc), [title, desc]);
@@ -152,28 +267,44 @@ export default function Post591Manager() {
       <section className={styles.card}>
         <h2 className={styles.h2}>① 貼上資料</h2>
         <p className={styles.hint}>
-          愛屋型錄：打開型錄頁先把地址旁的「<b>顯示</b>」點開（門牌才會帶進來）→ Ctrl+A → Ctrl+C。
+          愛屋型錄：<b>直接貼型錄頁的網址</b>（一行就好），會自動抓回來解析、照片一起帶，不用按解析。
+          門牌若沒帶到（有些頁只印到路名），③ 的門牌自己補；或照舊：型錄頁把地址旁的「<b>顯示</b>」點開 → Ctrl+A → Ctrl+C 貼進來。
           LINE 文字：照你平常的格式（「標題」／地址：／售價：／格局：／總建坪…／✨ 特色行）貼進來就好。
         </p>
         <textarea
           className={styles.ta}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="貼在這裡…"
+          placeholder="貼型錄頁網址，或貼整頁文字…"
           spellCheck={false}
         />
         <div className={styles.runbar}>
-          <button className={styles.run} onClick={run} disabled={!text.trim()}>
-            <Icon name="edit" size={18} aria-label="解析" /> 解析
-          </button>
-          <button className={styles.ghost} onClick={() => { setText(""); setListing(null); setRows([]); }}>
+          {pastedUrl ? (
+            <button className={styles.run} onClick={() => setFetchNonce((n) => n + 1)} disabled={fetchingRef.current === pastedUrl}>
+              <Icon name="edit" size={18} aria-label="重新抓" /> 重新抓型錄
+            </button>
+          ) : (
+            <button className={styles.run} onClick={run} disabled={!text.trim()}>
+              <Icon name="edit" size={18} aria-label="解析" /> 解析
+            </button>
+          )}
+          <button className={styles.ghost} onClick={() => { setText(""); setListing(null); setRows([]); setFetchMsg(""); }}>
             清空
           </button>
         </div>
+        {fetchMsg && <p className={/沒帶到|抓不到|沒回應|先有外掛/.test(fetchMsg) ? styles.badText : styles.okText}>{fetchMsg}</p>}
       </section>
 
       {listing && derived && (
         <div id="p591-result">
+          <section className={`${styles.card} ${styles.handoffCard}`}>
+            <h2 className={styles.h2}>⓪ 直接上架</h2>
+            <p className={styles.hint}>
+              ③ 有紅底的格先補完再按（沒補外掛也照填，缺的會列在面板上）。三顆都是開刊登分頁自動填；
+              保存、付款、庫存、上架那幾顆永遠是你按。
+            </p>
+            {launchBar}
+          </section>
           {listing.warnings.length > 0 && (
             <section className={`${styles.card} ${styles.warnCard}`}>
               <h2 className={styles.h2}>⚠ 辨識時的提醒</h2>
@@ -331,24 +462,9 @@ export default function Post591Manager() {
               紅底的格子先補完，再按。會開一個刊登分頁，<b>你 Chrome 裡的「591 刊登助手」外掛</b>
               會把每一格、文案、照片全部填好，右下角面板列出還缺什麼。
               填完你自己核對，再按 591 的「保存資料，下一步」和「立即支付」、或樂屋的「庫存」「上架」——那幾顆永遠是你按。
-              兩個平台分開按，先後順序隨你。
+              分開按或「一起上架」都可以：一起上架會先填 591，591 填完自動開樂屋分頁接著填。
             </p>
-            <div className={styles.btnrow}>
-              <button className={styles.run} onClick={() => launch("591")}>
-                🚀 上架到 591
-              </button>
-              <button className={styles.run} onClick={() => launch("rakuya")}>
-                🏠 上架到樂屋
-              </button>
-              {rows.some((r) => r.need) && (
-                <span className={styles.badText}>還有 {rows.filter((r) => r.need).length} 格紅底沒補（外掛會把它們列在面板上）</span>
-              )}
-            </div>
-            {launchMsg && (
-              <p className={styles.hint} style={{ marginTop: 8 }}>
-                <b>{launchMsg}</b>
-              </p>
-            )}
+            {launchBar}
             <p className={styles.hint} style={{ marginTop: 10 }}>
               沒裝外掛？裝法在 <code>booking-system\tools\post591-extension\README.md</code>（chrome://extensions → 開發人員模式 → 載入未封裝項目 → 選那個資料夾）。
               裝不了或想交給 Claude 填，就用下面的交接摘要。

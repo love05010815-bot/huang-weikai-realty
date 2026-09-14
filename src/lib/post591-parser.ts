@@ -379,6 +379,79 @@ export function extractPhotosFromHtml(html: string, listingNo?: string | null): 
   return out;
 }
 
+/* ───────── 愛屋型錄頁的 HTML → 跟 Ctrl+A 貼進來一樣的文字（2026-09-14 他說的：貼網址就好） ───────── */
+
+/** HTML 實體 → 字元。型錄頁會用 &ensp;（「主&ensp;+附屬」）、&nbsp;、&amp;、&#39; */
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&(?:ensp|emsp|thinsp|nbsp);/g, " ")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&quot;/g, '"')
+    .replace(/&(?:#39|apos);/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
+/** 去標籤、解實體、空白收斂（<br> 當換行） */
+function stripTags(s: string): string {
+  return decodeEntities(s.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, ""))
+    .replace(/[ \t ]+/g, " ")
+    .replace(/ *\n */g, "\n")
+    .trim();
+}
+
+/** 這份 HTML 是不是愛屋的電子型錄頁（不是登入頁、不是錯誤頁） */
+export function isHouseolCatalogHtml(html: string): boolean {
+  return /不動產電子型錄/.test(html) && /class="t-td"/.test(html);
+}
+
+/**
+ * 型錄頁 HTML → parseHouseol() 吃的文字。**不是**把整頁轉純文字（標籤印兩次會讓文字欄位抓到第二個標籤），
+ * 而是照版面一格一格重組成「標籤\n值」——跟使用者 Ctrl+A 貼進來的長相一樣，辨識規則一套就好。
+ *
+ * 版面（2026-09-14 拿他自己一戶實測）：
+ *   ・標題：header 的 <h2>不動產電子型錄<h3>標題</h3>
+ *   ・地址：登入愛屋的頁面有「顯示」按鈕（#showaddr），完整門牌在它的 alt 屬性；匿名頁只有 <div class="caption">路名</div>
+ *   ・欄位：<div class="title">標籤</div> 之後第一個 <p>值</p>（header 那個 div.title 包著 <h2>，不會被當欄位）
+ *   ・環境特色：#GoodSpan 裡每個 <div class='points_m'> 一條（原文照留，含 🔱✨ 這類開頭符號）
+ *   ・「更多照片」：<a id="otherfunc3" href="…EInfos.aspx?type=3&…&picstr=…">，寫成 [更多照片](網址) 讓 extractPhotoUrls 撈得到
+ *   ・尾巴：<h2>經紀人員：姓名</h2>、<div id="footer">僅供參考…</div>（parseHouseol 用來切掉雜訊）
+ */
+export function houseolHtmlToText(html: string): string {
+  const out: string[] = ["不動產電子型錄"];
+  const title = html.match(/不動產電子型錄\s*<h3[^>]*>([\s\S]*?)<\/h3>/);
+  if (title) out.push(stripTags(title[1]).replace(/\n/g, " "));
+  const show = html.match(/<[^>]*\bid=["']?showaddr["']?[^>]*\balt=["']([^"']+)["']/i) || html.match(/<[^>]*\balt=["']([^"']+)["'][^>]*\bid=["']?showaddr["']?/i);
+  const caption = html.match(/<div class="caption">([\s\S]*?)<\/div>/);
+  const addr = show ? decodeEntities(show[1]).replace(/\s+/g, " ").trim() : caption ? stripTags(caption[1]).replace(/\n/g, " ") : "";
+  if (addr) out.push(addr);
+  for (const m of html.matchAll(/<div class="title">([^<]+)<\/div>\s*<p\b[^>]*>([\s\S]*?)<\/p>/g)) {
+    const label = decodeEntities(m[1]).replace(/[ \t]+/g, " ").trim();
+    if (!label) continue;
+    out.push(label);
+    out.push(stripTags(m[2]).replace(/\n/g, " "));
+  }
+  // 環境特色的範圍：從 #GoodSpan 到下一個區塊（功能列 .menu／</dt>／經紀人區）為止，不用數 </div>（數錯一個就少一條）
+  let scope = html;
+  const gs = html.search(/id=["']GoodSpan["']/);
+  if (gs >= 0) {
+    scope = html.slice(gs);
+    const end = scope.search(/class=["']menu["']|<\/dt>|id=["']personal_div["']/);
+    if (end > 0) scope = scope.slice(0, end);
+  }
+  const points = [...scope.matchAll(/<div class=['"]points_m['"]>([\s\S]*?)<\/div>/g)].map((p) => stripTags(p[1]).replace(/\n/g, " ")).filter(Boolean);
+  if (points.length) out.push("環境特色", ...points);
+  const more = html.match(/href=["']([^"']*EInfos\.aspx\?[^"']*picstr=[^"']+)["']/i);
+  out.push(`[地圖](x) [街景](x)${more ? ` [更多照片](${decodeEntities(more[1])})` : ""} [成交行情](x)`);
+  const agent = html.match(/經紀人員[:：]\s*([^<\n]{1,20})/);
+  if (agent) out.push(`經紀人員：${agent[1].trim()}`);
+  const footer = html.match(/<div id="footer"[^>]*>([\s\S]*?)<\/div>/);
+  if (footer) out.push(stripTags(footer[1]).replace(/\n/g, " "));
+  return out.join("\n");
+}
+
 /**
  * 把貼進來的每條連結變成照片清單，照貼的順序、去重（大小寫不分）。
  * `scanned` 是外掛把型錄頁抓回來後算出的照片（key = 那條連結）；還沒掃到的型錄頁先算 0 張。

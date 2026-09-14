@@ -228,7 +228,7 @@ console.log("F. background.js 在假 Chrome 裡跑一遍（importScripts、sende
     const r3 = await bg.ask({ type: "p591:launch", payload: payload() }, APP);
     eq("外掛頁上架、有授權 → 開樂屋出租分頁", r3.ok + "/" + bg.created[0], "true/https://member.rakuya.com.tw/rent/post/add");
     eq("上架那一次回報伺服器 event=launch", bg.calls.length + "/" + bg.calls[1].event, "2/launch");
-    eq("資料包標記 via=app", bg.sessionStore["p591:payload"].via, "app");
+    eq("資料包標記 via=app（存在樂屋那一格）", bg.sessionStore["p591:payload:rakuya"].via, "app");
     const r4 = await bg.ask({ type: "p591:license-check" }, CS);
     eq("填表前 content script 問授權 → 快取 ok", r4.ok + "/" + r4.license.ok + "/" + !!r4.license.cached + "/" + bg.calls.length, "true/true/true/2");
     const r5 = await bg.ask({ type: "p591:get" }, CS);
@@ -237,10 +237,32 @@ console.log("F. background.js 在假 Chrome 裡跑一遍（importScripts、sende
     eq("填完清掉", (await bg.ask({ type: "p591:get" }, CS)).payload, null);
   }
   {
+    // 2026-09-14「591＋樂屋一起上架」：591 的資料包帶 chain（樂屋的），先只開 591；591 填完 clear 時才開樂屋
+    const bg = bootBackground([]);
+    const CS591 = { url: "https://user.591.com.tw/post/two/sale?is_use_first=1", tab: { id: 3 } };
+    const both = { ...payload(), target: "591", deal: "sale", first: { status: "住宅", type: "電梯大樓", legal: "住家用" }, chain: { ...payload(), target: "rakuya", deal: "sale" } };
+    const r = await bg.ask({ type: "p591:launch", payload: both }, BRIDGE);
+    eq("一起上架：只先開 591 分頁", r.ok + "/" + r.chained + "/" + bg.created.length + "/" + bg.created[0], "true/true/1/https://user.591.com.tw/post/two/sale?is_use_first=1&kind=9&shape=2&purpose=3&purpose_custom=");
+    const g591 = await bg.ask({ type: "p591:get" }, CS591);
+    eq("591 頁拿到的是 591 的資料包、chain 已拿掉", g591.payload.target + "/" + ("chain" in g591.payload), "591/false");
+    eq("樂屋頁這時還拿不到（排隊中）", (await bg.ask({ type: "p591:get" }, CS)).payload, null);
+    const c = await bg.ask({ type: "p591:clear" }, CS591);
+    eq("591 填完 clear → 自動開樂屋分頁", c.opened + "/" + bg.created.length + "/" + bg.created[1], "rakuya/2/https://member.rakuya.com.tw/sell/post/add");
+    const grk = await bg.ask({ type: "p591:get" }, CS);
+    eq("樂屋頁拿到樂屋的資料包（via 跟著 591 的）", grk.payload.target + "/" + grk.payload.via + "/" + ("queued" in grk.payload), "rakuya/bridge/false");
+    await bg.ask({ type: "p591:clear" }, CS);
+    eq("樂屋 clear 不會再開任何分頁", bg.created.length + "/" + (await bg.ask({ type: "p591:get" }, CS)).payload, "2/null");
+    // 分開上架時兩格互不干擾
+    await bg.ask({ type: "p591:launch", payload: { ...payload(), target: "rakuya", deal: "rent" } }, BRIDGE);
+    await bg.ask({ type: "p591:launch", payload: { ...payload(), target: "591", deal: "sale", first: { status: "住宅", type: "華廈", legal: "住家用" } } }, BRIDGE);
+    eq("各自的格：591 頁拿 591、樂屋頁拿樂屋", (await bg.ask({ type: "p591:get" }, CS591)).payload.first.type + "/" + (await bg.ask({ type: "p591:get" }, CS)).payload.deal, "華廈/rent");
+    eq("591 clear 時樂屋那格沒排隊 → 不開分頁", (await bg.ask({ type: "p591:clear" }, CS591)).opened + "/" + bg.created.length, "undefined/4");
+  }
+  {
     const bg = bootBackground([]);
     const r = await bg.ask({ type: "p591:launch", payload: { ...payload(), target: "591", deal: "sale", first: { status: "住宅", type: "電梯大樓", legal: "住家用" } } }, BRIDGE);
     eq("後台 bridge 上架、沒授權碼 → 照開（他自己）", r.ok + "/" + bg.calls.length + "/" + bg.created[0], "true/0/https://user.591.com.tw/post/two/sale?is_use_first=1&kind=9&shape=2&purpose=3&purpose_custom=");
-    eq("資料包標記 via=bridge", bg.sessionStore["p591:payload"].via, "bridge");
+    eq("資料包標記 via=bridge（存在 591 那一格）", bg.sessionStore["p591:payload:591"].via, "bridge");
   }
 }
 
