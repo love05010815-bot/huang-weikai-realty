@@ -70,4 +70,12 @@ button.ghost { color: var(--muted); }
 .sw-custom { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
 .sw-custom input { width: 28px; height: 24px; padding: 0; border: 1px solid var(--line); border-radius: 6px; }
 .tstyle-preview { flex: 1; min-width: 240px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; line-height: 1.6; }
+.ts-lines { display: grid; gap: 6px; margin: 2px 0 8px; }
+.ts-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.ts-line-text { flex: 1 1 220px; min-width: 200px; font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ts-line-picks { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.swg { display: inline-flex; align-items: center; gap: 3px; }
+.sw.mini { width: 16px; height: 16px; border-radius: 4px; }
+.sw.mini.none { width: auto; height: 18px; padding: 0 5px; font-size: 11px; line-height: 16px; }
+.swg .sw-custom input { width: 22px; height: 18px; }
 code { background: #f1f2f4; padding: 0 4px; border-radius: 4px; }

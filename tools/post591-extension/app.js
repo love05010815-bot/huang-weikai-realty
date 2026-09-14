@@ -14,7 +14,7 @@ import { parseListing, photoLinkReport, extractPhotosFromHtml, listingNoFromUrl 
 import { derive, buildRows, titleCheck, post591Risks, buildPayload } from "./lib/lib/post591-map.js";
 import { buildRakuya } from "./lib/lib/rakuya-map.js";
 import { DESC_HEAD, DESC_TAIL, POST591_DEFAULTS } from "./lib/config/post591-template.js";
-import { TAIL_COLORS, buildTailDescHtml, escapeHtml, normalizeTailStyle, tailStyleCss } from "./tail-style.js";
+import { TAIL_COLORS, buildTailDescHtml, escapeHtml, lineStyleCss, normalizeLineStyle, normalizeTailStyle } from "./tail-style.js";
 
 const $ = (id) => document.getElementById(id);
 const hasChrome = typeof chrome !== "undefined" && !!(chrome.runtime && chrome.runtime.sendMessage);
@@ -92,43 +92,74 @@ function flash(el, text, cls) {
   if (cls === "ok") setTimeout(() => (el.textContent === text ? (el.textContent = "") : 0), 2500);
 }
 
-/* ───────── 固定尾段的樣式（2026-09-11 他說的：像 591 編輯器那排，字級／粗體／底線／文字顏色／底色）───────── */
-function renderSwatches(id, cur) {
-  const box = $(id);
-  box.dataset.v = cur || "";
-  box.innerHTML = [`<button type="button" class="sw none${cur ? "" : " sel"}" data-v="" title="不設定">無</button>`]
-    .concat(TAIL_COLORS.map((c) => `<button type="button" class="sw${c === cur ? " sel" : ""}" data-v="${c}" style="background:${c}" title="${c}"></button>`))
-    .concat([`<label class="sw-custom" title="自訂顏色">自訂<input type="color" value="${cur || "#000000"}" /></label>`])
+/* ───────── 固定尾段的樣式（2026-09-11 他說的：像 591 編輯器那排；字級／粗體／底線共用，文字顏色／底色一行一行各自選）───────── */
+/** 正在編的每一行顏色（按儲存才寫進 settings）；第 k 筆對應固定尾段第 k 個有字的行 */
+let draftLines = [];
+/** 現在欄位裡的姓名手機 LINE（預覽用，還沒按儲存也看得到成品） */
+const draftWho = () => ({ name: $("s-name").value.trim(), phone: $("s-phone").value.trim(), line: $("s-line").value.trim() });
+/** 固定尾段裡有字的行（原文，含 {{name}} 這種佔位字） */
+const tailLines = () => $("s-tail").value.replace(/\r/g, "").split("\n").map((l) => l.trim()).filter(Boolean);
+
+function swatchGroupHtml(kind, k, cur) {
+  return (
+    `<span class="swg" data-kind="${kind}" data-k="${k}">` +
+    `<button type="button" class="sw mini none${cur ? "" : " sel"}" data-v="" title="不設定">無</button>` +
+    TAIL_COLORS.map((c) => `<button type="button" class="sw mini${c === cur ? " sel" : ""}" data-v="${c}" style="background:${c}" title="${c}"></button>`).join("") +
+    `<label class="sw-custom" title="自訂顏色"><input type="color" value="${cur || "#000000"}" /></label></span>`
+  );
+}
+/** 固定尾段每一行一列：這一行的字＋「文字」「底色」兩組色塊 */
+function renderTailLines() {
+  const box = $("ts-lines");
+  const lines = tailLines();
+  if (!lines.length) {
+    box.innerHTML = `<span class="hint">（固定尾段還是空的，先在上面打字，每一行會出現在這裡讓你選顏色）</span>`;
+    return;
+  }
+  const who = draftWho();
+  box.innerHTML = lines
+    .map((raw, k) => {
+      const l = normalizeLineStyle(draftLines[k]);
+      return (
+        `<div class="ts-line"><div class="ts-line-text" title="${escapeHtml(fillTail(raw, who))}">${k + 1}. ${escapeHtml(fillTail(raw, who))}</div>` +
+        `<div class="ts-line-picks"><span class="tstyle-lab">文字</span>${swatchGroupHtml("color", k, l.color)}<span class="tstyle-lab">底色</span>${swatchGroupHtml("bg", k, l.bg)}</div></div>`
+      );
+    })
     .join("");
 }
-/** 點色塊或用自訂色：只換選取狀態、不重畫（重畫會把正在拖的色盤關掉） */
-function selectSwatch(id, v) {
-  $(id).dataset.v = v || "";
-  for (const b of $(id).querySelectorAll("button.sw")) b.classList.toggle("sel", (b.dataset.v || "") === (v || ""));
+/** 點色塊或用自訂色：只換那一組的選取狀態、不重畫整排（重畫會把正在拖的色盤關掉） */
+function pickLineColor(group, v) {
+  const k = Number(group.dataset.k);
+  const kind = group.dataset.kind;
+  draftLines[k] = { ...normalizeLineStyle(draftLines[k]), [kind]: v || "" };
+  for (const b of group.querySelectorAll("button.sw")) b.classList.toggle("sel", (b.dataset.v || "") === (v || ""));
   previewTail();
 }
 function readTailStyle() {
-  return normalizeTailStyle({ size: $("ts-size").value, bold: $("ts-bold").checked, underline: $("ts-underline").checked, color: $("ts-color").dataset.v, bg: $("ts-bg").dataset.v });
+  return normalizeTailStyle({ size: $("ts-size").value, bold: $("ts-bold").checked, underline: $("ts-underline").checked, lines: draftLines.slice(0, tailLines().length) });
 }
 function renderTailStyle() {
   const s = settings.tailStyle;
   $("ts-size").value = s.size;
   $("ts-bold").checked = s.bold;
   $("ts-underline").checked = s.underline;
-  renderSwatches("ts-color", s.color);
-  renderSwatches("ts-bg", s.bg);
+  draftLines = s.lines.map(normalizeLineStyle);
+  renderTailLines();
   previewTail();
 }
 function previewTail() {
   const box = $("ts-preview");
-  // 預覽用「現在打在欄位裡的」姓名手機 LINE，還沒按儲存也看得到成品長什麼樣
-  const text = fillTail($("s-tail").value.trim(), { name: $("s-name").value.trim(), phone: $("s-phone").value.trim(), line: $("s-line").value.trim() });
+  const text = fillTail($("s-tail").value.trim(), draftWho());
   if (!text) {
     box.innerHTML = `<span class="hint">（固定尾段是空的，沒東西可預覽）</span>`;
     return;
   }
-  const css = tailStyleCss(readTailStyle());
-  box.innerHTML = text.split("\n").map((l) => `<div style="${css}">${escapeHtml(l) || "&nbsp;"}</div>`).join("");
+  const style = readTailStyle();
+  let k = 0;
+  box.innerHTML = text
+    .split("\n")
+    .map((l) => (l.trim() ? `<div style="${lineStyleCss(style, k++)}">${escapeHtml(l)}</div>` : "<div>&nbsp;</div>"))
+    .join("");
 }
 
 /* ───────── 授權碼（同事版 2026-09-11 起：9/20 後失效、綁定不可外流）───────── */
@@ -375,20 +406,27 @@ $("toggle-settings").onclick = () => ($("settings").hidden = !$("settings").hidd
 $("s-save").onclick = saveSettings;
 $("s-reset").onclick = () => {
   $("s-tail").value = defaultTail();
+  renderTailLines();
   previewTail();
   flash($("s-msg"), "已清空固定尾段（預設就是不帶固定文案），記得按儲存", "");
 };
-for (const id of ["s-tail", "s-name", "s-phone", "s-line"]) $(id).addEventListener("input", previewTail);
-for (const id of ["ts-size", "ts-bold", "ts-underline"]) $(id).addEventListener("change", previewTail);
-for (const id of ["ts-color", "ts-bg"]) {
-  $(id).addEventListener("click", (e) => {
-    const b = e.target.closest("button.sw");
-    if (b) selectSwatch(id, b.dataset.v);
-  });
-  $(id).addEventListener("input", (e) => {
-    if (e.target.type === "color") selectSwatch(id, e.target.value);
+// 固定尾段或姓名手機 LINE 改了：每一行的列表跟預覽一起重畫（每行的顏色照第幾行記著，不會掉）
+for (const id of ["s-tail", "s-name", "s-phone", "s-line"]) {
+  $(id).addEventListener("input", () => {
+    renderTailLines();
+    previewTail();
   });
 }
+for (const id of ["ts-size", "ts-bold", "ts-underline"]) $(id).addEventListener("change", previewTail);
+$("ts-lines").addEventListener("click", (e) => {
+  const b = e.target.closest("button.sw");
+  const g = b && b.closest(".swg");
+  if (g) pickLineColor(g, b.dataset.v);
+});
+$("ts-lines").addEventListener("input", (e) => {
+  const g = e.target.type === "color" && e.target.closest(".swg");
+  if (g) pickLineColor(g, e.target.value);
+});
 $("raw").addEventListener("input", updateParse);
 $("parse").onclick = run;
 $("clear").onclick = () => {

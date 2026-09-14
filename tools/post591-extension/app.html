@@ -41,7 +41,7 @@
   </label>
   <div id="tail-style" class="tstyle">
     <div class="tstyle-row">
-      <b>固定尾段的樣式</b><span class="tstyle-lab">（跟 591 編輯器那排一樣：字級、粗體、底線、文字顏色、底色。只套在固定尾段，型錄的 ✨ 行維持原樣；上架時才套上）</span>
+      <b>固定尾段的樣式</b><span class="tstyle-lab">（跟 591 編輯器那排一樣。字級、粗體、底線整段共用；文字顏色和底色<b>一行一行各自選</b>。只套在固定尾段，型錄的 ✨ 行維持原樣；上架時才套上）</span>
     </div>
     <div class="tstyle-row">
       <label class="inline">字級
@@ -50,8 +50,8 @@
       <label class="inline"><input type="checkbox" id="ts-bold" /> <b>B</b> 粗體</label>
       <label class="inline"><input type="checkbox" id="ts-underline" /> <u>U</u> 底線</label>
     </div>
-    <div class="tstyle-row"><span class="tstyle-lab">文字顏色</span><div id="ts-color" class="swatches"></div></div>
-    <div class="tstyle-row"><span class="tstyle-lab">底色</span><div id="ts-bg" class="swatches"></div></div>
+    <div class="tstyle-row"><span class="tstyle-lab">每一行的顏色</span><span class="tstyle-lab">上面固定尾段每一行是一段，各自點「文字」和「底色」；沒點的維持預設。</span></div>
+    <div id="ts-lines" class="ts-lines"></div>
     <div class="tstyle-row"><span class="tstyle-lab">預覽</span><div id="ts-preview" class="tstyle-preview"></div></div>
   </div>
   <div class="row-btns">

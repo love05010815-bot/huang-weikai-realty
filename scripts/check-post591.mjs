@@ -460,20 +460,23 @@ ZZ0000003
 {
   console.log("K. 固定尾段樣式");
   const T = await import("../tools/post591-extension/tail-style.js");
-  eq("整理：沒給就全關", JSON.stringify(T.normalizeTailStyle(null)), JSON.stringify({ size: "", bold: false, underline: false, color: "", bg: "" }));
-  eq("整理：色碼要 #rrggbb、字級只收 16/18", JSON.stringify(T.normalizeTailStyle({ size: "20px", color: "red", bg: "#FFFF00", bold: 1 })), JSON.stringify({ size: "", bold: true, underline: false, color: "", bg: "#ffff00" }));
-  const desc = "☆主推特色介紹:\n\n✨近學校\n✨採光好\n\n※歡迎來電 0912\n官方LINE:@abc";
+  eq("整理：沒給就全關", JSON.stringify(T.normalizeTailStyle(null)), JSON.stringify({ size: "", bold: false, underline: false, lines: [] }));
+  eq("整理：色碼要 #rrggbb、字級只收 16/18、每段各自的顏色", JSON.stringify(T.normalizeTailStyle({ size: "20px", bold: 1, lines: [{ bg: "#FFFF00" }, { color: "red" }, null] })), JSON.stringify({ size: "", bold: true, underline: false, lines: [{ color: "", bg: "#ffff00" }, { color: "", bg: "" }, { color: "", bg: "" }] }));
+  const desc = "☆主推特色介紹:\n\n✨近學校\n✨採光好\n\n※歡迎來電 0912\n\n官方LINE:@abc\n◇店名◇";
   eq("沒設樣式 → 空字串（貼純文字）", T.buildTailDescHtml(desc, "※歡迎來電 0912", {}), "");
-  const html = T.buildTailDescHtml(desc, "※歡迎來電 0912", { size: "18px", bold: true, underline: true, color: "#c00000", bg: "#ffff00" });
+  const html = T.buildTailDescHtml(desc, "※歡迎來電 0912", { size: "18px", bold: true, underline: true, lines: [{ bg: "#ffff00" }, { color: "#c00000" }] });
   ok(html.startsWith("<p>☆主推特色介紹:</p><p><br></p><p>✨近學校</p>"), "前面的行純文字、空行 <p><br></p>", html.slice(0, 48), "…");
-  ok(html.includes('<p><span style="background-color:#ffff00"><span style="font-size:18px"><span style="color:#c00000"><strong><u>※歡迎來電 0912</u></strong></span></span></span></p>'), "固定尾段第一行套全部（底色＞字級＞顏色＞粗體＞底線）", html.slice(-120), "…");
-  ok(html.endsWith("<strong><u>官方LINE:@abc</u></strong></span></span></span></p>"), "固定尾段最後一行也套", html.slice(-60), "…");
+  ok(html.includes('<p><span style="background-color:#ffff00"><span style="font-size:18px"><strong><u>※歡迎來電 0912</u></strong></span></span></p>'), "第 1 段只有底色（底色＞字級＞粗體＞底線）", html, "…");
+  ok(html.includes('<p><span style="font-size:18px"><span style="color:#c00000"><strong><u>官方LINE:@abc</u></strong></span></span></p>'), "第 2 段只有文字顏色（中間的空行不算一段）", html, "…");
+  ok(html.endsWith('<p><span style="font-size:18px"><strong><u>◇店名◇</u></strong></span></p>'), "第 3 段沒選顏色：只有共用的字級粗體底線", html.slice(-90), "…");
   eq("✨ 行不套", (html.match(/<p>✨[^<]*<\/p>/g) || []).length, 2);
+  eq("只選一段底色也算有設樣式", T.tailStyleActive({ lines: [{ bg: "#ffff00" }] }), true);
   const edited = "☆主推特色介紹:\n\n✨近學校\n\n※歡迎來電看屋 0912\n官方LINE:@abc";
   ok(T.buildTailDescHtml(edited, "※歡迎來電 0912", { bold: true }).includes("<p><strong>※歡迎來電看屋 0912</strong></p><p><strong>官方LINE:@abc</strong></p>"), "④ 改過字找不到第一行 → 從最後一個 ✨ 行之後起", "ok", "ok");
   eq("只有 ✨ 沒尾段 → 空字串", T.buildTailDescHtml("☆主推特色介紹:\n\n✨近學校", "", { bold: true }), "");
   ok(T.buildTailDescHtml("✨a\n<b>x</b>", "<b>x</b>", { bold: true }).includes("<strong>&lt;b&gt;x&lt;/b&gt;</strong>"), "尖括號會轉義", "ok", "ok");
-  eq("預覽 CSS", T.tailStyleCss({ size: "16px", underline: true, color: "#0070c0" }), "font-size:16px;text-decoration:underline;color:#0070c0");
+  eq("預覽 CSS：第 0 段", T.lineStyleCss({ size: "16px", underline: true, lines: [{ color: "#0070c0", bg: "#ffff00" }] }, 0), "font-size:16px;text-decoration:underline;color:#0070c0;background-color:#ffff00");
+  eq("預覽 CSS：沒設顏色的段只有共用的", T.lineStyleCss({ size: "16px", lines: [{ color: "#0070c0" }] }, 1), "font-size:16px");
 }
 console.log("");
 console.log(pass ? "✅ 591 刊登助手：辨識器與對應規則全部一致" : "❌ 有差異，不要往下做");
