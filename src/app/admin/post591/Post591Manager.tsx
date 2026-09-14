@@ -58,6 +58,16 @@ export default function Post591Manager() {
   const scanningRef = useRef(new Set<string>());
   const photoReport = useMemo(() => photoLinkReport(photoFolder, scanned), [photoFolder, scanned]);
   const extraPhotos = photoReport.photos;
+  /** 上架真正會上傳的照片：資料裡「更多照片」的（picstr）＋ ⑤ 連結抓到的（型錄頁上嵌的），去重、照順序 */
+  const allPhotos = useMemo(() => {
+    const seen = new Set<string>();
+    return [...(listing ? listing.photos : []), ...extraPhotos].filter((u) => {
+      const k = u.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }, [listing, extraPhotos]);
   const pendingPages = photoReport.pages.filter((p) => !(p in scanned) && !scanningRef.current.has(p));
   const pendingKey = pendingPages.join("\n");
   useEffect(() => {
@@ -188,14 +198,7 @@ export default function Post591Manager() {
       return;
     }
     const payload = buildPayload(listing, derived, rows, title, desc);
-    // 照片：資料裡「更多照片」的（picstr）＋ ⑤ 抓到的（型錄頁上嵌的那幾張），去重、照順序
-    const seen = new Set<string>();
-    payload.photos = [...payload.photos, ...extraPhotos].filter((u) => {
-      const k = u.toLowerCase();
-      if (seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    });
+    payload.photos = allPhotos; // 資料裡「更多照片」的＋ ⑤ 連結抓到的，去重
     // 樂屋的資料包：文案不要「貼心提醒」那段（講的是 591 的問答訊息、我的店舖），字級顏色照套
     const forRakuya = (p: Post591Payload): Post591Payload => {
       const r: Post591Payload = { ...p, target: "rakuya", desc: rakuyaDesc(desc) };
@@ -418,7 +421,7 @@ export default function Post591Manager() {
 
           <section className={styles.card}>
             <h2 className={styles.h2}>⑤ 照片</h2>
-            {listing.photos.length ? (
+            {listing.photos.length > 0 && photoReport.links.length === 0 ? (
               <>
                 <p className={styles.hint}>
                   型錄裡有 <b>{listing.photos.length} 張</b>。複製下面這行 → 開 PowerShell → 貼上 → Enter，
@@ -433,7 +436,8 @@ export default function Post591Manager() {
             ) : (
               <>
                 <p className={styles.hint}>
-                  這份資料沒有照片網址。把型錄頁的網址、和「<b>更多照片</b>」的連結（右鍵 → 複製連結網址）都貼在這裡，幾條都可以：
+                  {listing.photos.length ? "資料裡有「更多照片」的清單。" : "這份資料沒有照片網址。"}
+                  把型錄頁的網址、和「<b>更多照片</b>」的連結（右鍵 → 複製連結網址）都貼在這裡，幾條都可以：
                   型錄頁上顯示的照片會由外掛把那一頁抓回來找，更多照片的清單直接讀；或填照片資料夾路徑，只會寫進交接摘要。
                 </p>
                 <input
@@ -449,7 +453,8 @@ export default function Post591Manager() {
                       .map((l, i) => `第 ${i + 1} 條 ${photoReport.pages.includes(l) && !(l in scanned) ? "掃描中…" : `${photoReport.perLink[i]} 張`}`)
                       .join("、")}
                     ），共抓到 {extraPhotos.length} 張照片網址
-                    {extraPhotos.length ? "，按「上架到 591」會一起上傳。" : pendingPages.length ? "" : "。要的是型錄頁或「更多照片」的連結。"}
+                    {listing.photos.length ? `；加上資料裡「更多照片」的 ${listing.photos.length} 張，去重後共 ${allPhotos.length} 張` : ""}
+                    {allPhotos.length ? "，按上架會一起上傳。" : pendingPages.length ? "" : "。要的是型錄頁或「更多照片」的連結。"}
                   </p>
                 )}
               </>
