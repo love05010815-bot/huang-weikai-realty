@@ -237,7 +237,7 @@ export default function Post591Manager() {
     );
   }
 
-  /** 三顆上架鈕＋回應訊息：解析完的最上面（⓪）和最下面（⑥）各放一份，長表單不用捲到底 */
+  /** 三顆上架鈕＋回應訊息（只放在 ⑥；2026-09-14 曾在解析結果最上面多放一份「⓪ 直接上架」，他說拿掉） */
   const launchBar = (
     <>
       <div className={styles.btnrow}>
@@ -303,14 +303,6 @@ export default function Post591Manager() {
 
       {listing && derived && (
         <div id="p591-result">
-          <section className={`${styles.card} ${styles.handoffCard}`}>
-            <h2 className={styles.h2}>⓪ 直接上架</h2>
-            <p className={styles.hint}>
-              ③ 有紅底的格先補完再按（沒補外掛也照填，缺的會列在面板上）。三顆都是開刊登分頁自動填；
-              保存、付款、庫存、上架那幾顆永遠是你按。
-            </p>
-            {launchBar}
-          </section>
           {listing.warnings.length > 0 && (
             <section className={`${styles.card} ${styles.warnCard}`}>
               <h2 className={styles.h2}>⚠ 辨識時的提醒</h2>
