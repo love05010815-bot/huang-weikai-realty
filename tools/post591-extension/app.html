@@ -63,14 +63,16 @@
 
 <section class="card">
   <h2>① 貼上資料</h2>
-  <p class="hint">愛屋型錄：打開型錄頁先把地址旁的「<b>顯示</b>」點開 → Ctrl+A → Ctrl+C → 貼在這裡。
+  <p class="hint">愛屋型錄：<b>直接貼型錄頁的網址</b>（一行就好），會自動抓回來解析，照片也自動帶、上架時自動上傳，不用按解析、不用再貼連結。
+    門牌若沒帶到（有些頁只印到路名），③ 的門牌自己補；或照舊：型錄頁把地址旁的「<b>顯示</b>」點開 → Ctrl+A → Ctrl+C → 貼在這裡。
     也可以貼自己打的物件文字（「標題」／地址：／售價：／格局：／總建坪…／✨ 特色行）。</p>
-  <textarea id="raw" rows="10" placeholder="貼在這裡…" spellcheck="false"></textarea>
+  <textarea id="raw" rows="10" placeholder="貼型錄頁網址，或貼整頁文字…" spellcheck="false"></textarea>
   <div class="row-btns">
     <button id="parse" class="primary" type="button" disabled>解析</button>
     <button id="clear" class="ghost" type="button">清空</button>
     <span id="parse-lock" class="msg"></span>
   </div>
+  <p id="fetch-msg" class="msg"></p>
 </section>
 
 <div id="result" hidden>

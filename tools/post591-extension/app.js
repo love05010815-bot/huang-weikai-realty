@@ -10,7 +10,7 @@
  * 想固定接一段（電話、LINE、店名）的人自己在「⚙ 我的資料」填，{{name}} {{phone}} {{line}} 會自動代入。
  */
 // 一律相對路徑：外掛頁面的 CSP 會擋 inline importmap（2026-09-05 同事機器上整頁沒反應就是這個）
-import { parseListing, photoLinkReport, extractPhotosFromHtml, listingNoFromUrl } from "./lib/lib/post591-parser.js";
+import { parseListing, photoLinkReport, extractPhotosFromHtml, listingNoFromUrl, houseolHtmlToText, isHouseolCatalogHtml, isHouseolPage } from "./lib/lib/post591-parser.js";
 import { derive, buildRows, titleCheck, post591Risks, buildPayload } from "./lib/lib/post591-map.js";
 import { buildRakuya } from "./lib/lib/rakuya-map.js";
 import { DESC_HEAD, DESC_TAIL, POST591_DEFAULTS } from "./lib/config/post591-template.js";
@@ -212,8 +212,11 @@ async function setLicenseKey(key) {
   license = r && r.ok && r.license ? { ...r.license, message: r.message } : { ok: false, reason: "offline", message: (r && r.error) || NO_REPLY };
   renderLicense();
 }
-/** 解析按鈕：有字就能按。沒授權不鎖死按鈕 —— 鎖死了沒人知道為什麼；按下去會跳到「我的資料」把原因講清楚 */
-const updateParse = () => ($("parse").disabled = !$("raw").value.trim());
+/** 解析按鈕：有字就能按。沒授權不鎖死按鈕 —— 鎖死了沒人知道為什麼；按下去會跳到「我的資料」把原因講清楚。貼的是型錄頁網址時變成「重新抓型錄」 */
+const updateParse = () => {
+  $("parse").disabled = !$("raw").value.trim();
+  $("parse").textContent = pastedUrl() ? "重新抓型錄" : "解析";
+};
 /** 沒有有效授權：把「我的資料」打開、在 where 顯示原因，回 false */
 function requireLicense(where) {
   if (license.ok) return true;
@@ -227,9 +230,9 @@ function requireLicense(where) {
 /* ───────── 解析結果 ───────── */
 let listing = null, derived = null, rows = [];
 
-function run() {
-  if (!requireLicense($("parse-lock"))) return;
-  listing = parseListing($("raw").value);
+/** 解析（貼文字、或從型錄頁抓回來的文字都走這裡）。sourceUrl＝從型錄頁網址抓來的：⑤ 直接帶那條網址（頁面上嵌的照片一起抓） */
+function runWith(raw, sourceUrl) {
+  listing = parseListing(raw);
   derived = derive(listing);
   rows = buildRows(listing, derived);
   const c = rows.find((r) => r.label === "聯絡人");
@@ -251,12 +254,61 @@ function run() {
   refreshTitle();
   $("desc").value = buildDesc(listing.features);
   refreshDesc();
-  $("photos-msg").textContent = listing.photos.length ? `型錄裡有 ${listing.photos.length} 張照片，上架時會一起上傳。` : "這份資料沒有照片網址（LINE 文字、或型錄複製時沒帶到「更多照片」）。";
-  $("photo-link").value = "";
+  $("photos-msg").textContent = sourceUrl
+    ? `型錄「更多照片」有 ${listing.photos.length} 張，型錄頁上的幾張也一起抓了，上架時全部自動上傳，不用再貼連結。`
+    : listing.photos.length
+      ? `型錄裡有 ${listing.photos.length} 張照片，上架時會一起上傳。`
+      : "這份資料沒有照片網址（LINE 文字、或型錄複製時沒帶到「更多照片」）。";
+  $("photo-link").value = sourceUrl || "";
   refreshPhotoLink();
   $("launch-msg").textContent = "";
   refreshNeed();
   setTimeout(() => $("result").scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+}
+function run() {
+  if (!requireLicense($("parse-lock"))) return;
+  runWith($("raw").value, "");
+}
+
+/* ───────── 貼型錄頁網址就自動抓回來解析（2026-09-14 他要同事版也有；跟後台同一套：抓那一頁 → 重組成文字 → 同一個解析器）───────── */
+const pastedUrl = () => {
+  const t = $("raw").value.trim();
+  return /^https?:\/\/\S+$/.test(t) && isHouseolPage(t) ? t : "";
+};
+let fetching = "";
+let fetchTimer = null;
+const setFetchMsg = (text, cls) => {
+  $("fetch-msg").textContent = text;
+  $("fetch-msg").className = `msg ${cls || ""}`;
+};
+async function fetchCatalog(force) {
+  const url = pastedUrl();
+  if (!url) return;
+  if (!force && fetching === url) return;
+  if (!requireLicense($("fetch-msg"))) return;
+  if (!hasChrome) {
+    setFetchMsg("這一頁要從 Chrome 外掛圖示打開，才能替你抓型錄頁（現在只是預覽）。改用 Ctrl+A 貼整頁也可以。", "bad");
+    return;
+  }
+  fetching = url;
+  setFetchMsg("正在把型錄頁抓回來…", "");
+  const r = await msgBg("p591:scan", { url });
+  if (pastedUrl() !== url) return; // 等的時候他又改了內容
+  fetching = "";
+  const html = (r && r.ok && r.html) || "";
+  if (!html || !isHouseolCatalogHtml(html)) {
+    setFetchMsg(`抓不到型錄頁${r && r.error ? `（${r.error}）` : ""}。確認貼的是型錄頁的網址（Ecatalog.aspx），或改用 Ctrl+A 貼整頁。`, "bad");
+    return;
+  }
+  scanned[url] = extractPhotosFromHtml(html, listingNoFromUrl(url)); // 同一份 HTML 順便把頁面上嵌的照片撈好，不用再抓第二次
+  runWith(houseolHtmlToText(html), url);
+  const gotNumber = /號/.test(listing.addr || "");
+  setFetchMsg(
+    gotNumber
+      ? "型錄抓回來了、已解析，門牌有帶到。下面核對一遍，再按上架。"
+      : "型錄抓回來了、已解析。⚠️ 門牌沒帶到（這一頁只印到路名，完整門牌要登入愛屋的頁面才有）：③ 的門牌自己補，或改用 Ctrl+A 貼整頁。",
+    gotNumber ? "ok" : "bad",
+  );
 }
 
 function renderRows() {
@@ -372,8 +424,14 @@ async function launch(target = "591") {
   const tailFilled = fillTail((settings.tail || "").trim());
   const styledHtml = buildTailDescHtml($("desc").value, tailFilled.split("\n")[0], settings.tailStyle);
   if (styledHtml) payload.descHtml = styledHtml;
-  const extra = extraPhotos();
-  if (!payload.photos.length && extra.length) payload.photos = extra;
+  // 照片：資料裡「更多照片」的（picstr）＋ ⑤ 連結抓到的（型錄頁上嵌的那幾張），去重、照順序
+  const seen = new Set();
+  payload.photos = [...payload.photos, ...extraPhotos()].filter((u) => {
+    const k = u.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
   const site = target === "rakuya" ? "樂屋" : "591";
   /** 樂屋的資料包：同一份再加樂屋的翻譯，聯絡人用同事自己填的姓名手機 */
   const forRakuya = (p) => {
@@ -435,13 +493,20 @@ $("ts-lines").addEventListener("input", (e) => {
   const g = e.target.type === "color" && e.target.closest(".swg");
   if (g) pickLineColor(g, e.target.value);
 });
-$("raw").addEventListener("input", updateParse);
-$("parse").onclick = run;
+$("raw").addEventListener("input", () => {
+  updateParse();
+  clearTimeout(fetchTimer);
+  fetchTimer = setTimeout(() => fetchCatalog(false), 500); // 貼上是一次事件；用打的等他打完整條
+});
+$("parse").onclick = () => (pastedUrl() ? fetchCatalog(true) : run());
 $("clear").onclick = () => {
   $("raw").value = "";
   $("parse").disabled = true;
+  $("parse").textContent = "解析";
   $("result").hidden = true;
   listing = null;
+  fetching = "";
+  setFetchMsg("", "");
 };
 $("title").addEventListener("input", refreshTitle);
 $("desc").addEventListener("input", refreshDesc);
