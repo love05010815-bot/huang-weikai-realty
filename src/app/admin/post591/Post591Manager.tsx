@@ -50,6 +50,8 @@ export default function Post591Manager() {
   const [fetchMsg, setFetchMsg] = useState("");
   const [fetchNonce, setFetchNonce] = useState(0);
   const fetchingRef = useRef<string | null>(null);
+  /** 這一戶是從型錄頁網址抓來的（照片全自動，⑤ 不用再貼任何連結）；貼文字解析的就是空字串 */
+  const [sourceUrl, setSourceUrl] = useState("");
 
   const derived = useMemo(() => (listing ? derive(listing) : null), [listing]);
   /** ⑤ 那格貼的若是型錄「更多照片」連結（picstr=網址,網址…），就拆成照片網址交給外掛；貼資料夾路徑就只是備註 */
@@ -99,6 +101,7 @@ export default function Post591Manager() {
     setTitle(d.rawTitle);
     setDesc(buildDescription(d.features));
     setPhotoFolder(sourceUrl || (d.photos.length ? `D:\\Agent-os\\591-poster\\photos_${d.no || "listing"}` : ""));
+    setSourceUrl(sourceUrl || "");
     setLaunchMsg("");
     setTimeout(() => document.getElementById("p591-result")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
     return d;
@@ -270,7 +273,7 @@ export default function Post591Manager() {
       <section className={styles.card}>
         <h2 className={styles.h2}>① 貼上資料</h2>
         <p className={styles.hint}>
-          愛屋型錄：<b>直接貼型錄頁的網址</b>（一行就好），會自動抓回來解析、照片一起帶，不用按解析。
+          愛屋型錄：<b>直接貼型錄頁的網址</b>（一行就好），會自動抓回來解析，不用按解析；照片（型錄頁上的＋「更多照片」的）也自動帶、上架時自動上傳，<b>不用再貼任何連結</b>。
           門牌若沒帶到（有些頁只印到路名），③ 的門牌自己補；或照舊：型錄頁把地址旁的「<b>顯示</b>」點開 → Ctrl+A → Ctrl+C 貼進來。
           LINE 文字：照你平常的格式（「標題」／地址：／售價：／格局：／總建坪…／✨ 特色行）貼進來就好。
         </p>
@@ -291,7 +294,7 @@ export default function Post591Manager() {
               <Icon name="edit" size={18} aria-label="解析" /> 解析
             </button>
           )}
-          <button className={styles.ghost} onClick={() => { setText(""); setListing(null); setRows([]); setFetchMsg(""); }}>
+          <button className={styles.ghost} onClick={() => { setText(""); setListing(null); setRows([]); setFetchMsg(""); setSourceUrl(""); }}>
             清空
           </button>
         </div>
@@ -421,7 +424,26 @@ export default function Post591Manager() {
 
           <section className={styles.card}>
             <h2 className={styles.h2}>⑤ 照片</h2>
-            {listing.photos.length > 0 && photoReport.links.length === 0 ? (
+            {sourceUrl ? (
+              <>
+                <p className={allPhotos.length ? styles.okText : pendingPages.length ? styles.hint : styles.badText}>
+                  {pendingPages.length
+                    ? "正在從型錄頁抓照片…"
+                    : allPhotos.length
+                      ? `已從型錄自動抓到 ${allPhotos.length} 張（型錄頁上的 ${Math.max(0, allPhotos.length - listing.photos.length)} 張＋「更多照片」的 ${listing.photos.length} 張），按上架會全部自動上傳，不用再貼任何連結。`
+                      : "型錄頁上沒抓到照片。要上傳的話，展開下面把「更多照片」的連結貼進去。"}
+                </p>
+                <details>
+                  <summary className={styles.hintInline}>要補別的照片連結再展開</summary>
+                  <input
+                    className={styles.input}
+                    value={photoFolder}
+                    onChange={(e) => setPhotoFolder(e.target.value)}
+                    placeholder="型錄頁網址、「更多照片」連結，幾條都可以"
+                  />
+                </details>
+              </>
+            ) : listing.photos.length > 0 && photoReport.links.length === 0 ? (
               <>
                 <p className={styles.hint}>
                   型錄裡有 <b>{listing.photos.length} 張</b>。複製下面這行 → 開 PowerShell → 貼上 → Enter，
