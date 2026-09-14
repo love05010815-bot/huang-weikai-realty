@@ -7,8 +7,9 @@
  *   變成一顆「收下名片」的小按鈕，跟著頁面捲動（position: fixed）；點小按鈕可再打開。
  *
  * 行為細節：
- *   ・只有首頁放（page.tsx），每次整頁載入都會跳（沒有「看過就不再跳」的記憶，他要的是一打開就看到）。
- *     ⚠️ 若之後嫌煩要改成「一個瀏覽階段只跳一次」，用 sessionStorage 擋在 useEffect 那裡就好。
+ *   ・只有首頁放（page.tsx）。**同一次瀏覽只跳一次**（2026-09-14 他拍板）：跳過就在 sessionStorage 記一筆，
+ *     同一個分頁裡換頁再回首頁、或重新整理，都只剩右上角的小按鈕、不再跳；分頁關掉就重置，下次再開會再跳。
+ *     ⚠️ 他測試時要看第二次跳出：關掉分頁重開，或在 DevTools 清掉 sessionStorage。
  *   ・倒數只在**自動跳出的那一次**跑；客戶自己按小按鈕打開的，不會再自動收（是他要看的）。
  *   ・點名片本體可暫停／繼續倒數（參考站的「點名片可暫停」）。
  *   ・×、點名片外面、Esc 都是收起（收成右上角的小按鈕，不是消失）。
@@ -33,6 +34,9 @@ const OPEN_DELAY_MS = 500;
 /** 收起動畫（縮到右上角）的長度，要跟 CSS 的 shrink 動畫一致 */
 const SHRINK_MS = 380;
 
+/** sessionStorage 的鍵：這次瀏覽已經跳過名片了。改名片行為想讓大家再看一次，換個版號就好 */
+const SEEN_KEY = "card-popup-seen-v1";
+
 const CARD_SRC = "/card/business-card-2026-09.jpg";
 const CARD_ALT =
   `${OWNER.name}的名片：${OWNER.company} 海線幸福房仲團隊 副店長，2023–2025 連續三年仟萬經紀人員；` +
@@ -55,9 +59,27 @@ export default function CardPopup() {
     setPhase((p) => (p === "open" ? "closing" : p));
   }, []);
 
-  // 載入後延遲跳出
+  // 載入後延遲跳出 —— 這次瀏覽已經跳過的話，直接放小按鈕就好（不倒數、不跳）
   useEffect(() => {
-    const t = setTimeout(() => setPhase("open"), OPEN_DELAY_MS);
+    let seen = false;
+    try {
+      seen = sessionStorage.getItem(SEEN_KEY) === "1";
+    } catch {
+      /* 無痕／封鎖儲存：當作沒看過，照跳 */
+    }
+    if (seen) {
+      setAuto(false);
+      setPhase("chip");
+      return;
+    }
+    const t = setTimeout(() => {
+      setPhase("open");
+      try {
+        sessionStorage.setItem(SEEN_KEY, "1");
+      } catch {
+        /* 存不進去就每次都跳，沒別的壞處 */
+      }
+    }, OPEN_DELAY_MS);
     return () => clearTimeout(t);
   }, []);
 
