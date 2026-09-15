@@ -1,10 +1,11 @@
 /**
  * 📰 房產新聞 —— 資料層與「每天抓一次」的流程。
  *
- * 三張表，第一次用到時自己建（跟 site_video 同一套，撞到 1146 才建）：
+ * 四張表，第一次用到時自己建（跟 site_video 同一套，撞到 1146 才建）：
  *   news_item  抓進來的新聞：標題、網址、來源、地區、摘要、全文、處理狀態
  *   news_run   每次抓取的紀錄：哪一天、誰觸發、抓到幾則、新增幾則、過程 log
  *   news_task  「待產文案」：他按「拿去做」選的線（知識文章／短影音），一則新聞一條線一筆
+ *   news_draft 「派工寫稿」：ChatGPT 替某一題寫出來的文案，每按一次多一筆（舊版留著可以比）
  *
  * news_item.status 只是 news_task 的快取（沒排＝new、有待做＝picked、全做完＝done），
  * 每次動 news_task 都用 syncNewsStatus() 重算，不要在別處直接改它。
@@ -117,6 +118,23 @@ export type NewsTaskRecord = {
 export type NewsTaskCounts = {
   todo: Record<NewsLine, number>;
   done: number;
+};
+
+/** 派工寫稿的一版文案。 */
+export type NewsDraftRecord = {
+  id: string;
+  taskId: string;
+  line: NewsLine;
+  model: string;
+  content: string;
+  /** 生成花了幾毫秒 */
+  ms: number;
+  tokensIn: number;
+  tokensOut: number;
+  /** 被 token 上限截斷，結尾可能不完整 */
+  truncated: boolean;
+  /** 台北時間 `YYYY-MM-DD HH:MM:SS` */
+  createdAt: string;
 };
 
 export type NewsRunStatus = "running" | "success" | "error";
@@ -233,6 +251,22 @@ export async function ensureNewsTables(): Promise<void> {
       PRIMARY KEY (id),
       UNIQUE KEY uq_news_task_line (news_id, line),
       KEY idx_news_task_status (status, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS news_draft (
+      id         VARCHAR(36) NOT NULL,
+      task_id    VARCHAR(36) NOT NULL,
+      line       VARCHAR(16) NOT NULL,
+      model      VARCHAR(64) NOT NULL,
+      content    MEDIUMTEXT  NOT NULL,
+      ms         INT         NOT NULL DEFAULT 0,
+      tokens_in  INT         NOT NULL DEFAULT 0,
+      tokens_out INT         NOT NULL DEFAULT 0,
+      truncated  TINYINT     NOT NULL DEFAULT 0,
+      created_at VARCHAR(19) NOT NULL,
+      PRIMARY KEY (id),
+      KEY idx_news_draft_task (task_id, created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 }
@@ -426,10 +460,11 @@ export async function setNewsTaskStatus(taskId: string, status: NewsTaskStatus):
   await syncNewsStatus(newsId);
 }
 
-/** 「退回」：這條線刪掉。新聞沒有別條線就回到「還沒排」。 */
+/** 「退回」：這條線刪掉（連同替它寫過的文案）。新聞沒有別條線就回到「還沒排」。 */
 export async function removeNewsTask(taskId: string): Promise<void> {
   const newsId = await taskNewsId(taskId);
   if (!newsId) return;
+  await withSchema(() => db.$executeRawUnsafe("DELETE FROM news_draft WHERE task_id = ?", taskId));
   await withSchema(() => db.$executeRawUnsafe("DELETE FROM news_task WHERE id = ?", taskId));
   await syncNewsStatus(newsId);
 }
@@ -506,6 +541,83 @@ export async function countNewsTasks(): Promise<NewsTaskCounts> {
     else if (isNewsLine(r.line)) counts.todo[r.line] += Number(r.n);
   }
   return counts;
+}
+
+// ---------------------------------------------------------------- 派工寫稿（news_draft）
+
+type DraftRow = {
+  id: string;
+  task_id: string;
+  line: string;
+  model: string;
+  content: string;
+  ms: unknown;
+  tokens_in: unknown;
+  tokens_out: unknown;
+  truncated: unknown;
+  created_at: string;
+};
+
+const DRAFT_COLUMNS = "id, task_id, line, model, content, ms, tokens_in, tokens_out, truncated, created_at";
+
+function toDraft(r: DraftRow): NewsDraftRecord {
+  return {
+    id: r.id,
+    taskId: r.task_id,
+    line: isNewsLine(r.line) ? r.line : "article",
+    model: r.model,
+    content: r.content,
+    ms: Number(r.ms),
+    tokensIn: Number(r.tokens_in),
+    tokensOut: Number(r.tokens_out),
+    truncated: Number(r.truncated) === 1,
+    createdAt: r.created_at,
+  };
+}
+
+export type NewDraftInput = Omit<NewsDraftRecord, "id" | "createdAt">;
+
+/** 存一版文案，回傳存進去的那筆。 */
+export async function insertNewsDraft(input: NewDraftInput): Promise<NewsDraftRecord> {
+  const id = randomUUID();
+  const createdAt = taipeiStamp();
+  await withSchema(() =>
+    db.$executeRawUnsafe(
+      "INSERT INTO news_draft (id, task_id, line, model, content, ms, tokens_in, tokens_out, truncated, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      id,
+      input.taskId,
+      input.line,
+      input.model.slice(0, 64),
+      input.content,
+      Math.round(input.ms),
+      input.tokensIn,
+      input.tokensOut,
+      input.truncated ? 1 : 0,
+      createdAt,
+    ),
+  );
+  return { ...input, id, createdAt };
+}
+
+/** 這幾題的所有文案，最新的在前。一次最多問 100 題，超過就分批。 */
+export async function listNewsDraftsForTasks(taskIds: string[]): Promise<NewsDraftRecord[]> {
+  const out: NewsDraftRecord[] = [];
+  for (let i = 0; i < taskIds.length; i += 100) {
+    const batch = taskIds.slice(i, i + 100);
+    if (batch.length === 0) continue;
+    const rows = await withSchema(() =>
+      db.$queryRawUnsafe<DraftRow[]>(
+        `SELECT ${DRAFT_COLUMNS} FROM news_draft WHERE task_id IN (${batch.map(() => "?").join(",")}) ORDER BY created_at DESC, id`,
+        ...batch,
+      ),
+    );
+    out.push(...rows.map(toDraft));
+  }
+  return out;
+}
+
+export async function removeNewsDraft(draftId: string): Promise<void> {
+  await withSchema(() => db.$executeRawUnsafe("DELETE FROM news_draft WHERE id = ?", draftId));
 }
 
 function sha1(text: string): string {

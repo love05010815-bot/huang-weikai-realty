@@ -7,13 +7,18 @@
  */
 import { revalidatePath } from "next/cache";
 import { isCurrentUserAdmin } from "@/lib/admin-check";
+import { COPYWRITER } from "@/config/copywriter";
+import { generateCopy, isCopywriterConfigured } from "@/lib/copywriter";
 import {
   addNewsTask,
+  getNewsTask,
+  insertNewsDraft,
   isNewsLine,
   isNewsTaskStatus,
   removeNewsTask,
   runDailyNewsFetch,
   setNewsTaskStatus,
+  type NewsDraftRecord,
   type NewsLine,
   type NewsTaskStatus,
 } from "@/lib/news";
@@ -78,6 +83,46 @@ export async function setNewsTaskStatusAction(taskId: string, status: NewsTaskSt
   }
   revalidateNewsPages();
   return { ok: true };
+}
+
+/**
+ * 待產文案：「派工寫稿」。把這一題的原文交給 ChatGPT，照 src/config/copywriter.ts 的規則寫，
+ * 寫好存成一版 news_draft 回給畫面。每按一次多一版，舊的留著可以比。
+ */
+export async function generateDraftAction(taskId: string): Promise<Result & { draft?: NewsDraftRecord }> {
+  if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
+  if (typeof taskId !== "string" || !taskId) return { ok: false, error: "參數不對" };
+  if (!isCopywriterConfigured()) {
+    return { ok: false, error: "還沒接上 ChatGPT：到 Vercel 的環境變數加 OPENAI_API_KEY（platform.openai.com 的 API 金鑰），重新部署後再按。" };
+  }
+  try {
+    const task = await getNewsTask(taskId);
+    if (!task) return { ok: false, error: "找不到這一題，可能已經被退回了。" };
+    const text = (task.news.content || task.news.summary || "").trim();
+    if (!text) return { ok: false, error: "這則只有標題、沒抓到內文，寫不出東西。請開原文自己看。" };
+
+    const r = await generateCopy(task.line, {
+      title: task.news.title,
+      source: task.news.source,
+      publishedAt: task.news.publishedAt,
+      url: task.news.url,
+      text: text.slice(0, COPYWRITER.MAX_SOURCE_CHARS),
+    });
+    const draft = await insertNewsDraft({
+      taskId,
+      line: task.line,
+      model: r.model,
+      content: r.text,
+      ms: r.ms,
+      tokensIn: r.tokensIn,
+      tokensOut: r.tokensOut,
+      truncated: r.truncated,
+    });
+    revalidatePath("/admin/content");
+    return { ok: true, draft };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
 }
 
 /** 待產文案：退回。這條線刪掉，新聞沒有別條線就回到「房產新聞」的還沒排。 */
