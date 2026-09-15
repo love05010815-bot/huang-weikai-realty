@@ -16,6 +16,7 @@
     "check:post591": "node --experimental-strip-types scripts/check-post591.mjs",
     "check:ext-license": "node --experimental-strip-types scripts/check-ext-license.mjs",
     "check:houseol": "node --experimental-strip-types scripts/check-houseol-facts.mjs",
+    "check:news": "node --experimental-strip-types scripts/check-news-fetch.mjs",
     "build:post591-ext": "tsc -p tools/post591-extension/tsconfig.lib.json && node tools/post591-extension/strip-template.mjs"
   },
   "dependencies": {

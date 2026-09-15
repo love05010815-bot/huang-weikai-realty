@@ -48,3 +48,14 @@ jobs:
 
           echo "❌ 三次都失敗，網站或資料庫可能真的有問題"
           exit 1
+
+      # 每天早上抓房產新聞（後台 /admin/news）。端點自己會判斷該不該跑：
+      # 台北時間過 09:00 後、今天還沒成功過才真的抓，其餘時候只是一個 SELECT 就回來。
+      # 所以每 10 分鐘來一次沒有成本，也不需要任何密鑰。抓一次最多 60 秒。
+      # 這一步失敗不能讓保溫變紅 —— 它跟保溫是兩件事。
+      - name: Trigger daily news fetch (self-limiting)
+        if: always()
+        continue-on-error: true
+        run: |
+          curl -sS --max-time 90 "https://weikaihouse.com/api/news/daily" || echo "（新聞抓取這次沒回應，端點下次會再判斷）"
+          echo ""
