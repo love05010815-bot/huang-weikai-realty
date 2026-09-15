@@ -537,6 +537,46 @@ ZZ0000003
   eq("匿名頁只有路名：門牌沒有、其他照抓", d2.addr + "|" + d2.price + "|" + d2.no, "測試區測試路|1128|ZZ0000001");
   eq("頁面照片用 extractPhotosFromHtml 撈：嵌的 a、d ＋更多照片連結裡的 f、g（後台上架前會跟 picstr 的去重）", extractPhotosFromHtml(型錄HTML, "ZZ0000001").length, 4);
 }
+/* ───── M. 愛屋 2026-09-15 換版：抬頭變圖片、特色改 class='points'、門牌 alt 是全形數字 ───── */
+{
+  console.log("M. 型錄頁 HTML（2026-09-15 新版：一個「不動產電子型錄」的字都沒有）");
+  const 新版HTML = `<html><body>
+<div id="page_wrapper"><div id="date"><section><h2></h2><h3>2026/09/15 印</h3>
+<h3><a id='print_url' href='https://es.houseol.com.tw/Ecatalog.aspx?UID=SP123'>列印本頁</a></h3></section></div>
+<div id="container"><header><h1><img id="Logo" src="https://hq.houseol.com.tw/images/StoreSub/x.jpg" style="height:56px;" /></h1>
+<h2><img src="https://hq.houseol.com.tw/images/ecatalog_title.png" /></h2>
+<div class="title"><div class="title"><h2></h2><h3 style="font-family:微軟正黑體 Light;">測試成雙採光四房平車</h3></div></div>
+<div class="clean"></div><!--clean--></header>
+<dl id="content"><dt><div id="VarArea" class="TableBox style01">
+<div class="caption"><span id='addr'>測試區測試路一段</span><span id='showaddr' class="showaddrBnt" alt='測試市測試區測試路一段７０號六樓之１' fla='測試區測試路一段'>顯示</span></div>
+<div id="tr_0" class="t-tr"><div class="t-th">委託總價</div><div class="t-td"><div class="title">委託總價</div><p id="Price" class="red size22">1198萬</p></div>
+<div class="t-th"></div><div class="t-td"><div class="title"></div><p></p></div></div>
+<div id="tr_1" class="t-tr"><div class="t-th">登記坪數</div><div class="t-td"><div class="title">登記坪數</div><p>52.05 坪</p></div>
+<div class="t-th">(含車位面積</div><div class="t-td"><div class="title">(含車位面積</div><p>7.48坪)</p></div></div>
+<div id="tr_2" class="t-tr"><div class="t-th">樓別/樓高</div><div class="t-td"><div class="title">樓別/樓高</div><p>6        /15   </p></div>
+<div class="t-th">房/廳/衛</div><div class="t-td"><div class="title">房/廳/衛</div><p>4/ 2/ 2</p></div></div>
+<div id="tr_3" class="t-tr"><div class="t-th">類型/現況</div><div class="t-td"><div class="title">類型/現況</div><p>大樓  /空屋</p></div>
+<div class="t-th">物件編號</div><div class="t-td"><div class="title">物件編號</div><p>ZZ0000031</p></div></div>
+<div class="t-tr"><div class="t-td"><div id="GoodDiv" class="hidden"><div id="GoodSpan"><div class='points'><strong>1.測試社區總戶數500戶,一層十三戶四梯,公設完善,</strong></div>
+<div class='points'><strong>2.稀有四房釋出,</strong></div></div></div></div></div></div>
+<div class="menu"><a id="otherfunc3" href="https://es.houseol.com.tw/EInfos.aspx?type=3&amp;picstr=https://hq.houseol.com.tw/images/pictures/H229ZZ0000031f.jpg" target="_blank">更多照片</a></div></dt>
+<dd><ul><li><img id="Image1" src="https://hq.houseol.com.tw/images/pictures/H229ZZ0000031a.jpg?Rnd=1"></li></ul>
+<div id="personal_div" class="personal"><h2 style="font-family:微軟正黑體 Light;">經紀人員：測試<br />電話：0900-000-000</h2></div></dd></dl>
+<div id="footer" style="font-size: 12px;">僅供參考詳細內容以謄本記載為準	經紀證照:測試 101年中市經證字第00000號</div></div></div></body></html>`;
+  ok(!/不動產電子型錄/.test(新版HTML), "這份 HTML 真的沒有「不動產電子型錄」這幾個字（抬頭是圖片）", "ok", "ok");
+  ok(isHouseolCatalogHtml(新版HTML), "還是認得出是型錄頁（認 t-th/t-td ＋ showaddrBnt 那些記號）", "ok", "ok");
+  ok(!isHouseolCatalogHtml("<html><body>請先登入</body></html>"), "登入頁照樣擋掉", "ok", "ok");
+  const text2 = houseolHtmlToText(新版HTML);
+  const lines2 = text2.split("\n");
+  eq("標題取 header 裡第一個有字的 h3（不是「2026/09/15 印」也不是「列印本頁」）", lines2[1], "測試成雙採光四房平車");
+  ok(text2.includes("環境特色\n1.測試社區總戶數500戶,一層十三戶四梯,公設完善,\n2.稀有四房釋出,"), "特色新的 class='points' 也讀得到", "ok", "ok");
+  const d3 = parseListing(text2);
+  eq("解析：標題／總價／編號／樓別／房廳衛", [d3.rawTitle, d3.price, d3.no, d3.floorRaw, `${d3.room}${d3.hall}${d3.bath}`].join("|"), "測試成雙採光四房平車|1198|ZZ0000031|6|422");
+  eq("門牌全形數字轉半形（登入頁的 alt 是全形）", d3.addr, "測試市測試區測試路一段70號六樓之1");
+  const p3 = splitAddress(d3.addr);
+  eq("拆門牌：縣市／鄉鎮／路／號", [p3.city, p3.town, p3.road, p3.no].join("|"), "測試市|測試區|測試路一段|70");
+  eq("特色兩條、更多照片撈得到", d3.features.length + "/" + d3.photos.length, "2/1");
+}
 console.log("");
 console.log(pass ? "✅ 591 刊登助手：辨識器與對應規則全部一致" : "❌ 有差異，不要往下做");
 process.exit(pass ? 0 : 1);

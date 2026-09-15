@@ -194,7 +194,7 @@ export function parseHouseol(raw: string): Listing {
       .split("\n")
       .slice(0, 12)
       .find((L) => /[區鄉鎮]/.test(L) && /[路街道段巷弄號]/.test(L) && L.replace(/\s/g, "").length <= 40) || "";
-  d.addr = addrLine.replace(/(顯示|隱藏門牌|隱藏)\s*$/, "").trim();
+  d.addr = halfWidthDigits(addrLine.replace(/(顯示|隱藏門牌|隱藏)\s*$/, "").trim());
 
   d.no = one(body, "物件編號", /([A-Z]{1,3}\d{5,})/);
   d.price = toNum(one(body, "委託總價", /([\d,]+(?:\.\d+)?)\s*萬/));
@@ -394,6 +394,14 @@ function decodeEntities(s: string): string {
     .replace(/&amp;/g, "&");
 }
 
+/**
+ * 全形數字→半形。愛屋登入後的型錄頁，「顯示」按鈕 alt 裡的完整門牌是全形（「…一段７０號六樓之１」），
+ * 不轉的話 splitAddress 的 \d 抓不到「號」，591 的門牌就會空著（2026-09-15 實測）。
+ */
+export function halfWidthDigits(s: string): string {
+  return s.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
+}
+
 /** 去標籤、解實體、空白收斂（<br> 當換行） */
 function stripTags(s: string): string {
   return decodeEntities(s.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, ""))
@@ -402,27 +410,45 @@ function stripTags(s: string): string {
     .trim();
 }
 
-/** 這份 HTML 是不是愛屋的電子型錄頁（不是登入頁、不是錯誤頁） */
+/**
+ * 這份 HTML 是不是愛屋的電子型錄頁（不是登入頁、不是錯誤頁）
+ *
+ * ⚠️ 不能只認「不動產電子型錄」這幾個字：2026-09-15 他那頁的抬頭已經換成圖片（h2 是空的），
+ *    整頁一個字都沒有，後台就說「抓不到型錄頁」。認版面（t-th／t-td 那張表）＋任一個型錄頁專屬記號。
+ */
 export function isHouseolCatalogHtml(html: string): boolean {
-  return /不動產電子型錄/.test(html) && /class="t-td"/.test(html);
+  if (!/class="t-t[dh]"/.test(html)) return false;
+  return /不動產電子型錄|showaddrBnt|id=['"]addr['"]|Ecatalog\.aspx|列印本頁/.test(html);
 }
 
 /**
  * 型錄頁 HTML → parseHouseol() 吃的文字。**不是**把整頁轉純文字（標籤印兩次會讓文字欄位抓到第二個標籤），
  * 而是照版面一格一格重組成「標籤\n值」——跟使用者 Ctrl+A 貼進來的長相一樣，辨識規則一套就好。
  *
- * 版面（2026-09-14 拿他自己一戶實測）：
- *   ・標題：header 的 <h2>不動產電子型錄<h3>標題</h3>
+ * 版面（2026-09-14 拿他自己一戶實測；2026-09-15 愛屋換版，兩種都要吃）：
+ *   ・標題：舊版 <h2>不動產電子型錄<h3>標題</h3>；新版抬頭變成圖片、h2 是空的，標題是 <header> 裡第一個有字的 <h3>
+ *     （<div id="date"> 那個「2026/09/15 印」「列印本頁」在 header 外面，不會選到）
  *   ・地址：登入愛屋的頁面有「顯示」按鈕（#showaddr），完整門牌在它的 alt 屬性；匿名頁只有 <div class="caption">路名</div>
  *   ・欄位：<div class="title">標籤</div> 之後第一個 <p>值</p>（header 那個 div.title 包著 <h2>，不會被當欄位）
- *   ・環境特色：#GoodSpan 裡每個 <div class='points_m'> 一條（原文照留，含 🔱✨ 這類開頭符號）
+ *   ・環境特色：#GoodSpan 裡每個 <div class='points_m'>（舊版）或 <div class='points'>（2026-09-15 新版）一條，原文照留
  *   ・「更多照片」：<a id="otherfunc3" href="…EInfos.aspx?type=3&…&picstr=…">，寫成 [更多照片](網址) 讓 extractPhotoUrls 撈得到
  *   ・尾巴：<h2>經紀人員：姓名</h2>、<div id="footer">僅供參考…</div>（parseHouseol 用來切掉雜訊）
  */
 export function houseolHtmlToText(html: string): string {
   const out: string[] = ["不動產電子型錄"];
-  const title = html.match(/不動產電子型錄\s*<h3[^>]*>([\s\S]*?)<\/h3>/);
-  if (title) out.push(stripTags(title[1]).replace(/\n/g, " "));
+  const oldTitle = html.match(/不動產電子型錄\s*<h3[^>]*>([\s\S]*?)<\/h3>/);
+  let title = oldTitle ? stripTags(oldTitle[1]).replace(/\n/g, " ") : "";
+  if (!title) {
+    const header = html.match(/<header[^>]*>([\s\S]*?)<\/header>/i);
+    for (const m of (header ? header[1] : "").matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/gi)) {
+      const t = stripTags(m[1]).replace(/\n/g, " ").trim();
+      if (t && !/^\d{4}\s*[/／-]/.test(t) && !/列印/.test(t)) {
+        title = t;
+        break;
+      }
+    }
+  }
+  if (title) out.push(title);
   const show = html.match(/<[^>]*\bid=["']?showaddr["']?[^>]*\balt=["']([^"']+)["']/i) || html.match(/<[^>]*\balt=["']([^"']+)["'][^>]*\bid=["']?showaddr["']?/i);
   const caption = html.match(/<div class="caption">([\s\S]*?)<\/div>/);
   const addr = show ? decodeEntities(show[1]).replace(/\s+/g, " ").trim() : caption ? stripTags(caption[1]).replace(/\n/g, " ") : "";
@@ -441,7 +467,7 @@ export function houseolHtmlToText(html: string): string {
     const end = scope.search(/class=["']menu["']|<\/dt>|id=["']personal_div["']/);
     if (end > 0) scope = scope.slice(0, end);
   }
-  const points = [...scope.matchAll(/<div class=['"]points_m['"]>([\s\S]*?)<\/div>/g)].map((p) => stripTags(p[1]).replace(/\n/g, " ")).filter(Boolean);
+  const points = [...scope.matchAll(/<div class=['"]points(?:_m)?['"]>([\s\S]*?)<\/div>/g)].map((p) => stripTags(p[1]).replace(/\n/g, " ")).filter(Boolean);
   if (points.length) out.push("環境特色", ...points);
   const more = html.match(/href=["']([^"']*EInfos\.aspx\?[^"']*picstr=[^"']+)["']/i);
   out.push(`[地圖](x) [街景](x)${more ? ` [更多照片](${decodeEntities(more[1])})` : ""} [成交行情](x)`);
