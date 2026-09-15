@@ -30,6 +30,7 @@ import {
 } from "@/lib/line-bot/client";
 import { notifyHandoffRequest } from "@/lib/line-bot/notify";
 import { verifyLineSignature } from "@/lib/line-bot/signature";
+import { handleMatchTextMessage } from "@/lib/match/webhook";
 import {
   countRecentUserMessages,
   getHistory,
@@ -191,6 +192,10 @@ async function handleEvent(event: LineEvent): Promise<void> {
 
   // 一律先記下客戶說了什麼 —— 就算機器人不回，你也要看得到客戶問過什麼
   await saveMessage(userId, "user", text);
+  // 買方配對的三句話（預約編號 BK-XXXXXX／我的預約／找房）由 lib/match/webhook.ts 接手。
+  // 這些是交易性回覆（買方送了預約編號就一定要收到確認卡），所以放在 muted 與 BOT_ENABLED 之前；
+  // 其他訊息一律回 false，照原本的流程走。
+  if (await handleMatchTextMessage({ userId, text, replyToken, displayName })) return;
 
   // 你已在後台接手這個客戶，機器人閉嘴不要插話
   if (user.muted) return;

@@ -32,6 +32,8 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     items: [
       { href: "/admin/appointments", label: "預約營運", icon: "calendar" },
       { href: "/admin/listings", label: "精選好案", icon: "building" },
+      // 買方在 /match 留條件、預約看屋；物件從愛屋店網自動同步。表 match_listing / match_buyer / match_viewing。
+      { href: "/admin/match", label: "買方配對", icon: "handshake" },
       // 跟「精選好案」是兩套資料：這裡管的是 /map 上掛在各建案底下的物件
       { href: "/admin/map-listings", label: "建案地圖物件", icon: "map" },
       { href: "/admin/videos", label: "影音", icon: "video" },
@@ -55,6 +57,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { href: "/card", label: "線上名片", icon: "card", external: true },
       { href: "/card/booking", label: "線上預約", icon: "edit", external: true },
       { href: "/listings", label: "精選好案", icon: "building", external: true },
+      { href: "/match", label: "自動配對找房", icon: "handshake", external: true },
       { href: "/videos", label: "影音專區", icon: "video", external: true },
     ],
   },

@@ -59,3 +59,12 @@ jobs:
         run: |
           curl -sS --max-time 90 "https://weikaihouse.com/api/news/daily" || echo "（新聞抓取這次沒回應，端點下次會再判斷）"
           echo ""
+
+      # 愛屋店網物件同步（後台 /admin/match）。端點自己會判斷：距上次成功不到 30 分鐘就只是兩個 SELECT 回來，
+      # 所以每 10 分鐘敲一次沒有成本，也不需要任何密鑰。真的跑一次約 30–40 秒。
+      # 跟保溫是兩件事，失敗不能讓保溫變紅。
+      - name: Trigger houseol listing sync (self-limiting)
+        if: always()
+        continue-on-error: true
+        run: |
+          curl -sS --max-time 90 "https://weikaihouse.com/api/match/sync" || echo "（物件同步這次沒回應，端點下次會再判斷）"
