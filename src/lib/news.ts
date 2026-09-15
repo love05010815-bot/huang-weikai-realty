@@ -1,9 +1,13 @@
 /**
  * 📰 房產新聞 —— 資料層與「每天抓一次」的流程。
  *
- * 兩張表，第一次用到時自己建（跟 site_video 同一套，撞到 1146 才建）：
+ * 三張表，第一次用到時自己建（跟 site_video 同一套，撞到 1146 才建）：
  *   news_item  抓進來的新聞：標題、網址、來源、地區、摘要、全文、處理狀態
  *   news_run   每次抓取的紀錄：哪一天、誰觸發、抓到幾則、新增幾則、過程 log
+ *   news_task  「待產文案」：他按「拿去做」選的線（知識文章／短影音），一則新聞一條線一筆
+ *
+ * news_item.status 只是 news_task 的快取（沒排＝new、有待做＝picked、全做完＝done），
+ * 每次動 news_task 都用 syncNewsStatus() 重算，不要在別處直接改它。
  *
  * ## 時間一律存字串或毫秒，不用 DATETIME
  *
@@ -43,13 +47,35 @@ import { taipeiDay } from "@/lib/site-visits";
 export const NEWS_STATUSES = ["new", "picked", "done", "hidden"] as const;
 export type NewsStatus = (typeof NEWS_STATUSES)[number];
 
-/** 狀態的對外名稱。這是「你處理到哪」，不是新聞本身的狀態。 */
+/** 狀態的對外名稱。這是「你處理到哪」，不是新聞本身的狀態。hidden 已經沒有按鈕會設，留著是相容舊資料。 */
 export const NEWS_STATUS_LABEL: Record<NewsStatus, string> = {
-  new: "未處理",
-  picked: "要改寫",
+  new: "還沒排",
+  picked: "已排入待產",
   done: "已完成",
   hidden: "隱藏",
 };
+
+/** 待產文案的兩條線。 */
+export const NEWS_LINES = ["article", "video"] as const;
+export type NewsLine = (typeof NEWS_LINES)[number];
+
+export const NEWS_LINE_LABEL: Record<NewsLine, string> = {
+  article: "知識文章",
+  video: "短影音",
+};
+
+export function isNewsLine(value: unknown): value is NewsLine {
+  return value === "article" || value === "video";
+}
+
+export type NewsTaskStatus = "todo" | "done";
+
+export function isNewsTaskStatus(value: unknown): value is NewsTaskStatus {
+  return value === "todo" || value === "done";
+}
+
+/** 一則新聞排了哪幾條線（清單上畫小標籤用）。 */
+export type NewsTaskRef = { line: NewsLine; status: NewsTaskStatus };
 
 export function isNewsStatus(value: unknown): value is NewsStatus {
   return typeof value === "string" && (NEWS_STATUSES as readonly string[]).includes(value);
@@ -72,6 +98,25 @@ export type NewsRecord = {
   status: NewsStatus;
   note: string;
   fetchedAt: string;
+  /** 排了哪幾條線；沒排就是空陣列 */
+  tasks: NewsTaskRef[];
+};
+
+/** 待產文案的一筆：一條線＋它來自哪則新聞。 */
+export type NewsTaskRecord = {
+  id: string;
+  newsId: string;
+  line: NewsLine;
+  status: NewsTaskStatus;
+  /** 台北時間 `YYYY-MM-DD HH:MM:SS`，他按「拿去做」的時間 */
+  createdAt: string;
+  updatedAt: string | null;
+  news: NewsRecord;
+};
+
+export type NewsTaskCounts = {
+  todo: Record<NewsLine, number>;
+  done: number;
 };
 
 export type NewsRunStatus = "running" | "success" | "error";
@@ -177,6 +222,19 @@ export async function ensureNewsTables(): Promise<void> {
       KEY idx_news_run_day (day, started_ms)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS news_task (
+      id         VARCHAR(36) NOT NULL,
+      news_id    VARCHAR(36) NOT NULL,
+      line       VARCHAR(16) NOT NULL,
+      status     VARCHAR(16) NOT NULL DEFAULT 'todo',
+      created_at VARCHAR(19) NOT NULL,
+      updated_at VARCHAR(19) NULL,
+      PRIMARY KEY (id),
+      UNIQUE KEY uq_news_task_line (news_id, line),
+      KEY idx_news_task_status (status, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
 }
 
 // ---------------------------------------------------------------- 讀
@@ -193,7 +251,26 @@ type ItemRow = {
   status: string;
   note: string | null;
   fetched_at: string;
+  /** `article:todo,video:done` 這種字串（見 TASKS_SUBQUERY），沒排就是 null */
+  tasks: string | null;
 };
+
+const ITEM_COLUMNS =
+  "n.id, n.title, n.url, n.source, n.region, n.published_at, n.summary, n.content, n.status, n.note, n.fetched_at";
+
+/** 每則新聞排了哪幾條線，一個子查詢帶回來，免得清單 500 則再查 500 次。 */
+const TASKS_SUBQUERY =
+  "(SELECT GROUP_CONCAT(CONCAT(k.line, ':', k.status) ORDER BY k.line SEPARATOR ',') FROM news_task k WHERE k.news_id = n.id) AS tasks";
+
+function parseTasks(raw: string | null): NewsTaskRef[] {
+  if (!raw) return [];
+  const out: NewsTaskRef[] = [];
+  for (const part of String(raw).split(",")) {
+    const [line, status] = part.split(":");
+    if (isNewsLine(line)) out.push({ line, status: status === "done" ? "done" : "todo" });
+  }
+  return out;
+}
 
 function toRecord(r: ItemRow): NewsRecord {
   return {
@@ -208,6 +285,7 @@ function toRecord(r: ItemRow): NewsRecord {
     status: isNewsStatus(r.status) ? r.status : "new",
     note: r.note || "",
     fetchedAt: r.fetched_at,
+    tasks: parseTasks(r.tasks),
   };
 }
 
@@ -229,34 +307,31 @@ export async function listNews(filter: NewsFilter = {}): Promise<NewsRecord[]> {
   const where: string[] = [];
   const params: unknown[] = [];
   if (filter.days) {
-    where.push("COALESCE(published_at, fetched_at) >= ?");
+    where.push("COALESCE(n.published_at, n.fetched_at) >= ?");
     params.push(sinceStamp(filter.days));
   }
   if (filter.region) {
-    where.push("region = ?");
+    where.push("n.region = ?");
     params.push(filter.region);
   }
   if (filter.status === "active") {
-    where.push("status <> 'hidden'");
+    where.push("n.status <> 'hidden'");
   } else if (filter.status) {
-    where.push("status = ?");
+    where.push("n.status = ?");
     params.push(filter.status);
   }
   params.push(Math.min(1000, Math.max(1, filter.limit ?? 300)));
   const sql =
-    "SELECT id, title, url, source, region, published_at, summary, content, status, note, fetched_at FROM news_item" +
+    `SELECT ${ITEM_COLUMNS}, ${TASKS_SUBQUERY} FROM news_item n` +
     (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
-    " ORDER BY FIELD(region, 'coast', 'central', 'national'), COALESCE(published_at, fetched_at) DESC LIMIT ?";
+    " ORDER BY FIELD(n.region, 'coast', 'central', 'national'), COALESCE(n.published_at, n.fetched_at) DESC LIMIT ?";
   const rows = await withSchema(() => db.$queryRawUnsafe<ItemRow[]>(sql, ...params));
   return rows.map(toRecord);
 }
 
 export async function getNewsItem(id: string): Promise<NewsRecord | null> {
   const rows = await withSchema(() =>
-    db.$queryRawUnsafe<ItemRow[]>(
-      "SELECT id, title, url, source, region, published_at, summary, content, status, note, fetched_at FROM news_item WHERE id = ? LIMIT 1",
-      id,
-    ),
+    db.$queryRawUnsafe<ItemRow[]>(`SELECT ${ITEM_COLUMNS}, ${TASKS_SUBQUERY} FROM news_item n WHERE n.id = ? LIMIT 1`, id),
   );
   return rows.length ? toRecord(rows[0]) : null;
 }
@@ -288,6 +363,149 @@ export async function setNewsStatus(id: string, status: NewsStatus): Promise<voi
   await withSchema(() =>
     db.$executeRawUnsafe("UPDATE news_item SET status = ?, updated_at = ? WHERE id = ?", status, taipeiStamp(), id),
   );
+}
+
+// ---------------------------------------------------------------- 待產文案（news_task）
+
+/** 依 news_task 重算這則新聞的 status：沒排＝new、還有待做＝picked、全做完＝done。 */
+async function syncNewsStatus(newsId: string): Promise<void> {
+  const rows = await withSchema(() =>
+    db.$queryRawUnsafe<{ status: string }[]>("SELECT status FROM news_task WHERE news_id = ?", newsId),
+  );
+  const status: NewsStatus = rows.length === 0 ? "new" : rows.some((r) => r.status === "todo") ? "picked" : "done";
+  await setNewsStatus(newsId, status);
+}
+
+/**
+ * 「拿去做」：把一則新聞排進某條線。同一則同一條線只會有一筆（唯一鍵）——
+ * 已經排過就回那一筆；已經做完再按一次，就翻回待做。
+ */
+export async function addNewsTask(newsId: string, line: NewsLine): Promise<{ taskId: string; created: boolean }> {
+  const news = await getNewsItem(newsId);
+  if (!news) throw new Error("找不到這則新聞");
+  const id = randomUUID();
+  const n = await withSchema(() =>
+    db.$executeRawUnsafe(
+      "INSERT IGNORE INTO news_task (id, news_id, line, status, created_at) VALUES (?, ?, ?, 'todo', ?)",
+      id,
+      newsId,
+      line,
+      taipeiStamp(),
+    ),
+  );
+  if (Number(n) > 0) {
+    await syncNewsStatus(newsId);
+    return { taskId: id, created: true };
+  }
+  const rows = await withSchema(() =>
+    db.$queryRawUnsafe<{ id: string; status: string }[]>(
+      "SELECT id, status FROM news_task WHERE news_id = ? AND line = ? LIMIT 1",
+      newsId,
+      line,
+    ),
+  );
+  if (!rows.length) throw new Error("排入失敗，請再試一次");
+  if (rows[0].status !== "todo") await setNewsTaskStatus(rows[0].id, "todo");
+  else await syncNewsStatus(newsId);
+  return { taskId: rows[0].id, created: false };
+}
+
+async function taskNewsId(taskId: string): Promise<string | null> {
+  const rows = await withSchema(() =>
+    db.$queryRawUnsafe<{ news_id: string }[]>("SELECT news_id FROM news_task WHERE id = ? LIMIT 1", taskId),
+  );
+  return rows.length ? rows[0].news_id : null;
+}
+
+export async function setNewsTaskStatus(taskId: string, status: NewsTaskStatus): Promise<void> {
+  const newsId = await taskNewsId(taskId);
+  if (!newsId) throw new Error("找不到這一題");
+  await withSchema(() =>
+    db.$executeRawUnsafe("UPDATE news_task SET status = ?, updated_at = ? WHERE id = ?", status, taipeiStamp(), taskId),
+  );
+  await syncNewsStatus(newsId);
+}
+
+/** 「退回」：這條線刪掉。新聞沒有別條線就回到「還沒排」。 */
+export async function removeNewsTask(taskId: string): Promise<void> {
+  const newsId = await taskNewsId(taskId);
+  if (!newsId) return;
+  await withSchema(() => db.$executeRawUnsafe("DELETE FROM news_task WHERE id = ?", taskId));
+  await syncNewsStatus(newsId);
+}
+
+type TaskRow = ItemRow & {
+  task_id: string;
+  line: string;
+  task_status: string;
+  created_at: string;
+  updated_at: string | null;
+};
+
+const TASK_COLUMNS = "t.id AS task_id, t.line, t.status AS task_status, t.created_at, t.updated_at";
+
+function toTask(r: TaskRow): NewsTaskRecord {
+  return {
+    id: r.task_id,
+    newsId: r.id,
+    line: isNewsLine(r.line) ? r.line : "article",
+    status: r.task_status === "done" ? "done" : "todo",
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+    news: toRecord(r),
+  };
+}
+
+export type NewsTaskFilter = {
+  status?: NewsTaskStatus;
+  line?: NewsLine;
+  limit?: number;
+};
+
+/** 待產文案清單：最新排入的在最上面。 */
+export async function listNewsTasks(filter: NewsTaskFilter = {}): Promise<NewsTaskRecord[]> {
+  const where: string[] = [];
+  const params: unknown[] = [];
+  if (filter.status) {
+    where.push("t.status = ?");
+    params.push(filter.status);
+  }
+  if (filter.line) {
+    where.push("t.line = ?");
+    params.push(filter.line);
+  }
+  params.push(Math.min(1000, Math.max(1, filter.limit ?? 300)));
+  const sql =
+    `SELECT ${TASK_COLUMNS}, ${ITEM_COLUMNS}, ${TASKS_SUBQUERY} FROM news_task t JOIN news_item n ON n.id = t.news_id` +
+    (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
+    " ORDER BY t.created_at DESC, t.id LIMIT ?";
+  const rows = await withSchema(() => db.$queryRawUnsafe<TaskRow[]>(sql, ...params));
+  return rows.map(toTask);
+}
+
+export async function getNewsTask(taskId: string): Promise<NewsTaskRecord | null> {
+  const rows = await withSchema(() =>
+    db.$queryRawUnsafe<TaskRow[]>(
+      `SELECT ${TASK_COLUMNS}, ${ITEM_COLUMNS}, ${TASKS_SUBQUERY} FROM news_task t JOIN news_item n ON n.id = t.news_id WHERE t.id = ? LIMIT 1`,
+      taskId,
+    ),
+  );
+  return rows.length ? toTask(rows[0]) : null;
+}
+
+/** 上方三個數字：兩條線各還有幾題待做、做完幾題。 */
+export async function countNewsTasks(): Promise<NewsTaskCounts> {
+  const rows = await withSchema(() =>
+    db.$queryRawUnsafe<{ line: string; status: string; n: unknown }[]>(
+      "SELECT line, status, COUNT(*) AS n FROM news_task GROUP BY line, status",
+    ),
+  );
+  const counts: NewsTaskCounts = { todo: { article: 0, video: 0 }, done: 0 };
+  for (const r of rows) {
+    if (r.status === "done") counts.done += Number(r.n);
+    else if (isNewsLine(r.line)) counts.todo[r.line] += Number(r.n);
+  }
+  return counts;
 }
 
 function sha1(text: string): string {

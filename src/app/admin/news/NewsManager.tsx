@@ -1,22 +1,26 @@
 "use client";
 
 /**
- * 房產新聞後台的清單：篩選、標記狀態、看全文、複製、立即抓取。
+ * 房產新聞後台的清單：篩選、「拿去做」、立即抓取。
  *
  * 樣式沿用精選好案那一份（`listings-admin.module.css`）—— 後台每一頁長得一樣才像同一套系統。
  * ⚠️ 改那份 CSS 會同時影響精選好案、影音與這一頁。
  *
- * 狀態是「你處理到哪」：未處理 → 要改寫 → 已完成；不想看的按隱藏。
+ * 每一則只有一顆「拿去做」：按下去選「改寫成知識文章」或「翻拍成短影音」，
+ * 選完就排進「待產文案」（/admin/content）並直接跳過去。
+ * 9/15 他說原本那排「要改寫／已完成／隱藏／看全文／複製」都不需要，已拿掉；
+ * 全文與複製移到待產文案那一頁 —— 那裡才是他動手改寫的地方。
+ *
  * 清單本身由 server 端排好（海線 → 中部 → 全台，各區新到舊），這裡只做篩選與分組顯示。
  */
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { CHIP, CIS, type ChipTone } from "@/app/admin/_components/cis";
-import { Icon } from "@/app/admin/_ui/icons";
+import { Icon, type IconName } from "@/app/admin/_ui/icons";
 import { NEWS_REGION_LABEL, NEWS_REGION_ORDER, type NewsRegion } from "@/config/news";
-import { runNewsFetchAction, setNewsStatusAction } from "@/lib/actions/news";
-import { NEWS_STATUS_LABEL, type NewsRecord, type NewsRunRecord, type NewsStatus } from "@/lib/news";
+import { addNewsTaskAction, runNewsFetchAction } from "@/lib/actions/news";
+import { NEWS_LINES, NEWS_LINE_LABEL, type NewsLine, type NewsRecord, type NewsRunRecord } from "@/lib/news";
 import styles from "@/app/admin/listings/listings-admin.module.css";
 
 type Props = {
@@ -25,10 +29,19 @@ type Props = {
   latestRun: NewsRunRecord | null;
 };
 
-type StatusFilter = "active" | NewsStatus;
+/** 「還沒排的」是預設 —— 排進待產文案的就從這裡消失，去那一頁看。 */
+type StatusFilter = "new" | "picked" | "done" | "all";
+const STATUS_FILTER_LABEL: Record<StatusFilter, string> = {
+  new: "還沒排的",
+  picked: "已排入待產",
+  done: "已完成",
+  all: "全部",
+};
 
 const REGION_TONE: Record<NewsRegion, ChipTone> = { coast: "warn", central: "info", national: "neutral" };
-const STATUS_TONE: Record<NewsStatus, ChipTone> = { new: "neutral", picked: "warn", done: "success", hidden: "neutral" };
+const LINE_TONE: Record<NewsLine, ChipTone> = { article: "info", video: "warn" };
+const LINE_ICON: Record<NewsLine, IconName> = { article: "edit", video: "video" };
+const LINE_ACTION: Record<NewsLine, string> = { article: "改寫成知識文章", video: "翻拍成短影音" };
 
 /** epoch 毫秒 → 台北時間 `MM/DD HH:MM` */
 function taipeiShort(ms: number): string {
@@ -57,9 +70,10 @@ export default function NewsManager({ items, counts, latestRun }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [region, setRegion] = useState<"all" | NewsRegion>("all");
-  const [status, setStatus] = useState<StatusFilter>("active");
+  const [status, setStatus] = useState<StatusFilter>("new");
   const [query, setQuery] = useState("");
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  /** 哪一則的「要做成什麼？」選項打開著 */
+  const [chooser, setChooser] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [fetching, setFetching] = useState(false);
   const [msg, setMsg] = useState<{ tone: ChipTone; text: string } | null>(null);
@@ -68,7 +82,7 @@ export default function NewsManager({ items, counts, latestRun }: Props) {
     const q = query.trim();
     return items.filter((it) => {
       if (region !== "all" && it.region !== region) return false;
-      if (status === "active" ? it.status === "hidden" : it.status !== status) return false;
+      if (status === "all" ? it.status === "hidden" : it.status !== status) return false;
       if (q && !`${it.title} ${it.source} ${it.summary}`.includes(q)) return false;
       return true;
     });
@@ -80,15 +94,17 @@ export default function NewsManager({ items, counts, latestRun }: Props) {
     return map;
   }, [visible]);
 
-  async function changeStatus(id: string, next: NewsStatus) {
-    setBusyId(id);
-    const r = await setNewsStatusAction(id, next);
+  async function pick(it: NewsRecord, line: NewsLine) {
+    setBusyId(it.id);
+    const r = await addNewsTaskAction(it.id, line);
     setBusyId(null);
-    if (!r.ok) {
-      setMsg({ tone: "danger", text: r.error || "存檔失敗" });
+    if (!r.ok || !r.taskId) {
+      setMsg({ tone: "danger", text: r.error || "排入失敗" });
       return;
     }
-    startTransition(() => router.refresh());
+    setChooser(null);
+    setMsg({ tone: "success", text: `已排進待產文案（${NEWS_LINE_LABEL[line]}），帶你過去…` });
+    router.push(`/admin/content?focus=${encodeURIComponent(r.taskId)}`);
   }
 
   async function fetchNow() {
@@ -102,17 +118,6 @@ export default function NewsManager({ items, counts, latestRun }: Props) {
     }
     setMsg({ tone: "success", text: `完成：${r.summary}` });
     startTransition(() => router.refresh());
-  }
-
-  async function copyItem(it: NewsRecord) {
-    const body = it.content || it.summary || "";
-    const text = `${it.title}\n${[it.source, shortStamp(it.publishedAt)].filter(Boolean).join(" · ")}\n${it.url}\n\n${body}`;
-    try {
-      await navigator.clipboard.writeText(text);
-      setMsg({ tone: "success", text: "已複製標題、來源、連結與內文。" });
-    } catch {
-      setMsg({ tone: "danger", text: "複製失敗，請手動選取。" });
-    }
   }
 
   const runText = latestRun
@@ -161,11 +166,11 @@ export default function NewsManager({ items, counts, latestRun }: Props) {
           ))}
         </select>
         <select className={styles.select} style={{ ...fieldStyle, width: "auto", minHeight: 38 }} value={status} onChange={(e) => setStatus(e.target.value as StatusFilter)}>
-          <option value="active">未隱藏的</option>
-          <option value="new">未處理</option>
-          <option value="picked">要改寫</option>
-          <option value="done">已完成</option>
-          <option value="hidden">已隱藏</option>
+          {(Object.keys(STATUS_FILTER_LABEL) as StatusFilter[]).map((s) => (
+            <option key={s} value={s}>
+              {STATUS_FILTER_LABEL[s]}
+            </option>
+          ))}
         </select>
         <input
           className={styles.input}
@@ -214,7 +219,9 @@ export default function NewsManager({ items, counts, latestRun }: Props) {
         <div className={styles.notice} style={{ borderColor: CIS.cardBorder, color: CIS.textMute }}>
           {items.length === 0
             ? "還沒有任何新聞。按右上角「立即抓取」抓第一批，或等明天早上自動抓。"
-            : "這個篩選條件底下沒有新聞。"}
+            : status === "new"
+              ? "沒有還沒排的新聞了。排進去的在左側「待產文案」；要看全部把篩選改成「全部」。"
+              : "這個篩選條件底下沒有新聞。"}
         </div>
       )}
 
@@ -231,8 +238,8 @@ export default function NewsManager({ items, counts, latestRun }: Props) {
             </h2>
             <div className={styles.list}>
               {rows.map((it) => {
-                const open = !!expanded[it.id];
                 const busy = busyId === it.id;
+                const choosing = chooser === it.id;
                 return (
                   <article key={it.id} className={styles.row} style={{ borderColor: CIS.cardBorder, background: CIS.card }}>
                     <div className={styles.rowBody}>
@@ -242,69 +249,52 @@ export default function NewsManager({ items, counts, latestRun }: Props) {
                             {it.title}
                           </a>
                         </h3>
-                        <span className={styles.chip} style={chipStyle(STATUS_TONE[it.status])}>
-                          {NEWS_STATUS_LABEL[it.status]}
-                        </span>
+                        {it.tasks.map((t) => (
+                          <span key={t.line} className={styles.chip} style={chipStyle(t.status === "done" ? "success" : LINE_TONE[t.line])}>
+                            {NEWS_LINE_LABEL[t.line]}
+                            {t.status === "done" ? " 已完成" : " 待做"}
+                          </span>
+                        ))}
                       </div>
                       <div className={styles.rowMeta} style={{ color: CIS.textMute }}>
                         {[it.source, shortStamp(it.publishedAt) || `抓於 ${shortStamp(it.fetchedAt)}`].filter(Boolean).join(" · ")}
                         {!it.content && <span style={{ marginLeft: 8 }}>（只有標題，點標題看原文）</span>}
                       </div>
-                      {!open && excerpt(it) && (
+                      {excerpt(it) && (
                         <p className={styles.msg} style={{ color: CIS.textSub, marginTop: 8 }}>
                           {excerpt(it)}
                         </p>
                       )}
-                      {open && (
-                        <pre
-                          style={{
-                            whiteSpace: "pre-wrap",
-                            wordBreak: "break-word",
-                            font: "inherit",
-                            lineHeight: 1.8,
-                            color: CIS.textSub,
-                            margin: "10px 0 0",
-                            padding: "12px 14px",
-                            border: `1px solid ${CIS.divider}`,
-                            borderRadius: 8,
-                            background: CIS.bgSoft,
-                            maxHeight: 420,
-                            overflow: "auto",
-                          }}
-                        >
-                          {it.content || it.summary || "（沒有抓到內文，請開原文）"}
-                        </pre>
-                      )}
                       <div className={styles.actions}>
-                        {it.status !== "picked" && (
-                          <button type="button" className={styles.btn} style={btnPrimary} disabled={busy} onClick={() => changeStatus(it.id, "picked")}>
-                            <Icon name="edit" size={14} />
-                            要改寫
-                          </button>
-                        )}
-                        {it.status !== "done" && (
-                          <button type="button" className={styles.btn} style={btnBase} disabled={busy} onClick={() => changeStatus(it.id, "done")}>
-                            <Icon name="success" size={14} />
-                            已完成
-                          </button>
-                        )}
-                        {it.status !== "hidden" ? (
-                          <button type="button" className={styles.btn} style={btnBase} disabled={busy} onClick={() => changeStatus(it.id, "hidden")}>
-                            隱藏
-                          </button>
+                        {choosing ? (
+                          <>
+                            <span style={{ alignSelf: "center", color: CIS.textMute, fontSize: 13.5 }}>要做成什麼？</span>
+                            {NEWS_LINES.map((line) => {
+                              const queued = it.tasks.find((t) => t.line === line && t.status === "todo");
+                              return (
+                                <button
+                                  key={line}
+                                  type="button"
+                                  className={styles.btn}
+                                  style={queued ? btnBase : btnPrimary}
+                                  disabled={busy || !!queued}
+                                  onClick={() => pick(it, line)}
+                                >
+                                  <Icon name={LINE_ICON[line]} size={14} />
+                                  {queued ? `${NEWS_LINE_LABEL[line]}已排入` : LINE_ACTION[line]}
+                                </button>
+                              );
+                            })}
+                            <button type="button" className={styles.btn} style={btnBase} disabled={busy} onClick={() => setChooser(null)}>
+                              取消
+                            </button>
+                          </>
                         ) : (
-                          <button type="button" className={styles.btn} style={btnBase} disabled={busy} onClick={() => changeStatus(it.id, "new")}>
-                            <Icon name="undo" size={14} />
-                            復原
+                          <button type="button" className={styles.btn} style={btnPrimary} disabled={busy} onClick={() => setChooser(it.id)}>
+                            <Icon name="add" size={14} />
+                            {busy ? "排入中…" : "拿去做"}
                           </button>
                         )}
-                        <button type="button" className={styles.btn} style={btnBase} onClick={() => setExpanded((s) => ({ ...s, [it.id]: !open }))}>
-                          {open ? "收起" : "看全文"}
-                        </button>
-                        <button type="button" className={styles.btn} style={btnBase} onClick={() => copyItem(it)}>
-                          <Icon name="copy" size={14} />
-                          複製
-                        </button>
                         <a className={styles.btn} style={btnBase} href={it.url} target="_blank" rel="noopener noreferrer">
                           <Icon name="link" size={14} />
                           原文

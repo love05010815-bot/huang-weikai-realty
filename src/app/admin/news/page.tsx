@@ -2,8 +2,9 @@
  * /admin/news —— 房產新聞
  *
  * 每天早上 09:00 後系統自動把海線、中部、全台的房地產新聞抓進來（怎麼抓見 `lib/news-fetch.ts`）。
- * 這一頁給你看清單、標記「要改寫／已完成／隱藏」、看全文與複製。
- * **改寫後放到前台給客戶看，是下一步的功能，還沒做。**
+ * 這一頁給你挑：每一則一顆「拿去做」，選「改寫成知識文章」或「翻拍成短影音」，
+ * 就排進「待產文案」（/admin/content）並跳過去；全文、複製、完成都在那一頁。
+ * **改寫後放到前台給客戶看，是再下一步的功能，還沒做。**
  *
  * 權限跟其他後台頁一樣：三道 gate，再看白名單。
  */
@@ -58,8 +59,8 @@ export default async function NewsAdminPage() {
             <p className={styles.subtitle} style={{ color: CIS.textMute }}>
               每天早上 {String(NEWS_CONFIG.startHour).padStart(2, "0")}:00 後自動抓進來，排序固定
               <b>海線 → 中部 → 全台</b>；標題或摘要要有房市、建案、租金這類字才會收。
-              海線的新聞少，往回看 {NEWS_CONFIG.regionDays.coast} 天。這裡只負責抓與挑；
-              改寫後放到前台給客戶看是下一步，還沒做。
+              海線的新聞少，往回看 {NEWS_CONFIG.regionDays.coast} 天。看到想做的，按「拿去做」選
+              <b>改寫成知識文章</b>或<b>翻拍成短影音</b>，就會排進左側的「待產文案」。
             </p>
           </div>
         </div>
