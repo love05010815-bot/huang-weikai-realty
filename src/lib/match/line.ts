@@ -69,9 +69,21 @@ export const addFriendUrl = (): string => `https://line.me/R/ti/p/${MATCH.lineOa
 export const oaMessageUrl = (message: string): string =>
   `https://line.me/R/oaMessage/${encodeURIComponent(MATCH.lineOaId)}/?${encodeURIComponent(message)}`;
 
-/** 配對頁；帶 book=物件編號 會直接跳到那一戶的預約表單 */
-export const matchPageUrl = (listingId?: string): string =>
-  listingId ? `${SITE_URL}/match?book=${encodeURIComponent(listingId)}` : `${SITE_URL}/match`;
+/**
+ * 配對頁。
+ *   book=物件編號 → 直接跳到那一戶的預約表單
+ *   k=買方識別碼  → 認得出是同一個人（帶回他上次的條件、之後改的條件寫回同一筆）
+ *
+ * 識別碼是簽章過的買方編號（lib/match/token.ts），**不是** LINE userId ——
+ * 個資不進網址。網頁讀完會自己把 k 從網址上拿掉。
+ */
+export const matchPageUrl = (listingId?: string, token?: string | null): string => {
+  const qs = new URLSearchParams();
+  if (listingId) qs.set("book", listingId);
+  if (token) qs.set("k", token);
+  const q = qs.toString();
+  return q ? `${SITE_URL}/match?${q}` : `${SITE_URL}/match`;
+};
 
 // ---------------------------------------------------------------- 樣板
 
@@ -107,7 +119,7 @@ const row = (label: string, value: string) => ({
   ],
 });
 
-export function listingBubble(listing: ListingLike, opts: { score?: number; reasons?: string[] } = {}) {
+export function listingBubble(listing: ListingLike, opts: { score?: number; reasons?: string[]; token?: string | null } = {}) {
   const image = listing.images?.[0];
   const bubble: Record<string, unknown> = {
     type: "bubble",
@@ -128,7 +140,7 @@ export function listingBubble(listing: ListingLike, opts: { score?: number; reas
       layout: "vertical",
       spacing: "sm",
       contents: [
-        { type: "button", style: "primary", color: GREEN, action: { type: "uri", label: "預約看屋", uri: matchPageUrl(listing.id) } },
+        { type: "button", style: "primary", color: GREEN, action: { type: "uri", label: "預約看屋", uri: matchPageUrl(listing.id, opts.token) } },
       ],
     },
   };
@@ -139,8 +151,8 @@ export function listingBubble(listing: ListingLike, opts: { score?: number; reas
 }
 
 /** 新物件通知：一則 carousel 裝最多 10 戶 */
-export function listingCarousel(items: { listing: ListingLike; score: number; reasons: string[] }[]): LineMessage {
-  const bubbles = items.slice(0, 10).map((m) => listingBubble(m.listing, { score: m.score, reasons: m.reasons }));
+export function listingCarousel(items: { listing: ListingLike; score: number; reasons: string[] }[], token?: string | null): LineMessage {
+  const bubbles = items.slice(0, 10).map((m) => listingBubble(m.listing, { score: m.score, reasons: m.reasons, token }));
   return {
     type: "flex",
     altText: `有 ${items.length} 個新物件符合您的條件`,
@@ -194,30 +206,55 @@ export function viewingConfirmFlex(
   };
 }
 
-/** 買方在 LINE 輸入「找房」時回的入口卡 */
-export function welcomeFlex(): LineMessage {
+/**
+ * 買方在 LINE 輸入「找房」或「修改條件」時回的入口卡
+ *
+ * 帶 token 進去，他在網頁填的條件就會寫回同一筆買方資料 —— 換手機也不會變成兩個人。
+ * 已經留過條件的人（summary 有值）看到的是「目前設定 …」＋「重新設定條件」。
+ */
+export function welcomeFlex(
+  { token, summary, mode = "new" }: { token?: string | null; summary?: string | null; mode?: "new" | "edit" } = {},
+): LineMessage {
+  const editing = mode === "edit" || Boolean(summary);
+  const body: Record<string, unknown>[] = [
+    { type: "text", text: editing ? "更新購屋條件 🏠" : "找房交給我 🏠", weight: "bold", size: "xl" },
+  ];
+  if (summary) {
+    body.push({
+      type: "box",
+      layout: "vertical",
+      backgroundColor: "#F4F7F6",
+      cornerRadius: "6px",
+      paddingAll: "10px",
+      contents: [
+        { type: "text", text: "目前設定", size: "xs", color: "#888888" },
+        { type: "text", text: safe(summary), wrap: true, size: "sm", color: "#333333" },
+      ],
+    });
+    body.push({ type: "text", text: "按下面的按鈕重填一次就會蓋掉舊的條件，之後的新物件通知也照新條件配。", wrap: true, size: "sm", color: "#666666" });
+  } else {
+    body.push({ type: "text", text: "告訴我們您的購屋條件，系統會從目前在售的物件裡自動配對，看中意可以直接預約看屋。", wrap: true, size: "sm", color: "#666666" });
+    body.push({ type: "text", text: "之後有符合條件的新物件，也會第一時間通知您。", wrap: true, size: "sm", color: "#666666" });
+  }
   return {
     type: "flex",
-    altText: "開始配對找房",
+    altText: editing ? "更新購屋條件" : "開始配對找房",
     contents: {
       type: "bubble",
-      body: {
-        type: "box",
-        layout: "vertical",
-        spacing: "md",
-        contents: [
-          { type: "text", text: "找房交給我 🏠", weight: "bold", size: "xl" },
-          { type: "text", text: "告訴我們您的購屋條件，系統會從目前在售的物件裡自動配對，看中意可以直接預約看屋。", wrap: true, size: "sm", color: "#666666" },
-          { type: "text", text: "之後有符合條件的新物件，也會第一時間通知您。", wrap: true, size: "sm", color: "#666666" },
-        ],
-      },
+      body: { type: "box", layout: "vertical", spacing: "md", contents: body },
       footer: {
         type: "box",
         layout: "vertical",
         spacing: "sm",
         contents: [
-          { type: "button", style: "primary", color: GREEN, action: { type: "uri", label: "開始配對找房", uri: matchPageUrl() } },
-          { type: "button", style: "secondary", action: { type: "message", label: "查詢我的預約", text: "我的預約" } },
+          {
+            type: "button",
+            style: "primary",
+            color: GREEN,
+            action: { type: "uri", label: editing ? "重新設定條件" : "開始配對找房", uri: matchPageUrl(undefined, token) },
+          },
+          { type: "button", style: "secondary", height: "sm", action: { type: "message", label: "查詢我的預約", text: "我的預約" } },
+          { type: "text", text: "不想再收到新物件通知，回覆「停止通知」即可。", size: "xxs", color: "#aaaaaa", wrap: true },
         ],
       },
     },

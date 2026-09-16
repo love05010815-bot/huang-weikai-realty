@@ -12,6 +12,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describePreference, normalizePreference, rankListings, scoreListing } from "../src/lib/match/matcher.ts";
 import { parseBlocks, splitAddress, splitResponse, toListingUpsert } from "../src/lib/match/houseol-parse.ts";
+import { createBuyerToken, verifyBuyerToken } from "../src/lib/match/token.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const html = fs.readFileSync(path.join(here, "fixtures", "houseol-page1.html"), "utf8");
@@ -115,6 +116,52 @@ test("splitAddress：縣市／行政區／路名", () => {
   assert.deepEqual(splitAddress("新北市板橋區文化路一段"), { city: "新北市", district: "板橋區", address: "文化路一段" });
   assert.deepEqual(splitAddress("彰化縣田尾鄉新興路"), { city: "彰化縣", district: "田尾鄉", address: "新興路" });
   assert.deepEqual(splitAddress("新竹市東區中華路一段"), { city: "新竹市", district: "東區", address: "中華路一段" });
+});
+
+// ---------------------------------------------------------------- 買方識別碼
+//
+// 這是「從 LINE 點進配對頁的人對得回同一筆買方」的關鍵。簽壞了不會有人發現 ——
+// 買方只會覺得「我明明改過條件，怎麼還是推舊的給我」，所以這裡測死。
+
+test("買方識別碼：簽得出來、驗得回同一個編號", () => {
+  process.env.APPOINTMENT_TOKEN_SECRET = "check-match-secret";
+  const id = "11111111-2222-3333-4444-555555555555";
+  const token = createBuyerToken(id);
+  assert.ok(token, "應該簽得出識別碼");
+  assert.equal(verifyBuyerToken(token), id);
+});
+
+test("買方識別碼：被改過、過期、換密鑰、亂填一律回 null", () => {
+  process.env.APPOINTMENT_TOKEN_SECRET = "check-match-secret";
+  const id = "11111111-2222-3333-4444-555555555555";
+  const token = createBuyerToken(id);
+
+  // 改內容（換成別人的買方編號）簽章就對不上
+  const tampered = `22222222-2222-3333-4444-555555555555.${token.split(".").slice(1).join(".")}`;
+  assert.equal(verifyBuyerToken(tampered), null);
+
+  // 只改簽章
+  assert.equal(verifyBuyerToken(`${token.slice(0, -3)}aaa`), null);
+
+  // 過期
+  assert.equal(verifyBuyerToken(createBuyerToken(id, -1)), null);
+
+  // 換了密鑰，舊連結就失效
+  process.env.APPOINTMENT_TOKEN_SECRET = "another-secret";
+  assert.equal(verifyBuyerToken(token), null);
+  process.env.APPOINTMENT_TOKEN_SECRET = "check-match-secret";
+
+  // 亂填
+  assert.equal(verifyBuyerToken(""), null);
+  assert.equal(verifyBuyerToken(null), null);
+  assert.equal(verifyBuyerToken("abc"), null);
+  assert.equal(verifyBuyerToken("not-a-uuid.9999999999.xxxx"), null);
+});
+
+test("買方識別碼：買方編號格式不對就不簽", () => {
+  process.env.APPOINTMENT_TOKEN_SECRET = "check-match-secret";
+  assert.equal(createBuyerToken("abc"), null);
+  assert.equal(createBuyerToken(""), null);
 });
 
 if (process.exitCode) {

@@ -38,6 +38,7 @@ export type AdminBuyer = {
   phone: string | null;
   linked: boolean;
   followed: boolean;
+  notify: boolean;
   summary: string | null;
   updatedAt: string | null;
 };
@@ -232,6 +233,8 @@ export default function MatchAdmin({
         <div style={cisCard} className={styles.wrap}>
           <p style={{ margin: 0, padding: "12px 14px", color: CIS.textMute, fontSize: 12 }}>
             留過條件的買方。有綁 LINE 的，新物件同步進來時會自動收到推播（每次同步最多 {MATCH.maxNotifyBuyersPerSync} 位）。
+            買方在 LINE 回「停止通知」會標成已關閉通知，封鎖官方帳號則標成已封鎖，兩種都不再推播。
+            官方帳號認得的關鍵字：找房／修改條件／我的預約／停止通知／恢復通知。
           </p>
           <table className={styles.table}>
             <thead>
@@ -252,7 +255,13 @@ export default function MatchAdmin({
               )}
               {buyers.map((b) => (
                 <tr key={b.id}>
-                  <td>{b.linked ? <Chip tone={b.followed ? "success" : "warn"}>✔ {b.displayName ?? "已綁定"}{b.followed ? "" : "（已封鎖）"}</Chip> : <Chip tone="neutral">未綁定</Chip>}</td>
+                  <td>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {b.linked ? <Chip tone={b.followed ? "success" : "warn"}>✔ {b.displayName ?? "已綁定"}</Chip> : <Chip tone="neutral">未綁定</Chip>}
+                      {b.linked && !b.followed && <Chip tone="warn">已封鎖</Chip>}
+                      {b.linked && b.followed && !b.notify && <Chip tone="neutral">已關閉通知</Chip>}
+                    </div>
+                  </td>
                   <td>
                     {b.name ?? "—"}
                     <div style={{ color: CIS.textSub, fontSize: 12 }}>{b.phone ?? ""}</div>

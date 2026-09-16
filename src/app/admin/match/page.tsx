@@ -62,6 +62,7 @@ export default async function MatchAdminPage() {
       phone: b.phone,
       linked: Boolean(b.lineUserId),
       followed: b.followed,
+      notify: b.notify,
       summary: b.preference ? describePreference(b.preference) : null,
       updatedAt: iso(b.updatedAt),
     }));

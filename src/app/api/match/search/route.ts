@@ -9,20 +9,26 @@ import { MATCH } from "@/config/match";
 import { describePreference, normalizePreference, rankListings } from "@/lib/match/matcher";
 import { publicListing } from "@/lib/match/public";
 import { listAvailableListings, upsertBuyer } from "@/lib/match/store";
+import { verifyBuyerToken } from "@/lib/match/token";
 
 export const dynamic = "force-dynamic";
 
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 
 export async function POST(req: NextRequest) {
-  let body: { preference?: unknown; buyerId?: unknown } = {};
+  let body: { preference?: unknown; buyerId?: unknown; token?: unknown } = {};
   try {
     body = await req.json();
   } catch {
     body = {};
   }
   const preference = normalizePreference(body.preference ?? body);
-  const wantedBuyerId = typeof body.buyerId === "string" && UUID_RE.test(body.buyerId) ? body.buyerId : null;
+
+  // 從官方帳號的連結進來會帶簽章過的識別碼 —— 它比瀏覽器記的編號可靠（換手機也對得回同一個人），
+  // 所以優先採用。
+  const tokenBuyerId = verifyBuyerToken(typeof body.token === "string" ? body.token : null);
+  const localBuyerId = typeof body.buyerId === "string" && UUID_RE.test(body.buyerId) ? body.buyerId : null;
+  const wantedBuyerId = tokenBuyerId ?? localBuyerId;
 
   let buyerId: string | null = null;
   try {

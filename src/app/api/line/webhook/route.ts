@@ -30,6 +30,7 @@ import {
 } from "@/lib/line-bot/client";
 import { notifyHandoffRequest } from "@/lib/line-bot/notify";
 import { verifyLineSignature } from "@/lib/line-bot/signature";
+import { setBuyerFlagsByLine } from "@/lib/match/store";
 import { handleMatchTextMessage } from "@/lib/match/webhook";
 import {
   countRecentUserMessages,
@@ -144,8 +145,25 @@ async function handleEvent(event: LineEvent): Promise<void> {
   if (event.type === "follow") {
     const displayName = await getProfileName(userId);
     await touchUser(userId, displayName);
+    // 之前封鎖過又加回來 → 把買方的「還是好友嗎」改回 true，新物件通知才會恢復
+    try {
+      await setBuyerFlagsByLine(userId, { followed: true });
+    } catch (e) {
+      console.error("[line/webhook] 回復買方追蹤狀態失敗:", e);
+    }
     if (BOT_ENABLED && event.replyToken) {
       await replyMessage(event.replyToken, WELCOME_MESSAGE);
+    }
+    return;
+  }
+
+  // 封鎖或刪除好友 —— 從這一刻起推播一定失敗。把買方標成「沒在追蹤」，
+  // 每次同步就不會再對他白試一次，後台「買方」也看得出來為什麼聯絡不上。
+  if (event.type === "unfollow") {
+    try {
+      await setBuyerFlagsByLine(userId, { followed: false });
+    } catch (e) {
+      console.error("[line/webhook] 標記買方已封鎖失敗:", e);
     }
     return;
   }

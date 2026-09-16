@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addFriendUrl, notifyOwnerNewViewing, oaMessageUrl } from "@/lib/match/line";
 import { createViewing, getListing, upsertBuyer } from "@/lib/match/store";
+import { verifyBuyerToken } from "@/lib/match/token";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,9 @@ export async function POST(req: NextRequest) {
   const phone = clean(body.phone, 40).replace(/[^\d+]/g, "");
   const preferredAt = clean(body.preferredAt, 80);
   const note = clean(body.note, 500);
-  const buyerId = typeof body.buyerId === "string" && UUID_RE.test(body.buyerId) ? body.buyerId : null;
+  // 識別碼（從官方帳號連結帶進來的）優先於瀏覽器記的編號，理由同 /api/match/search
+  const tokenBuyerId = verifyBuyerToken(typeof body.token === "string" ? body.token : null);
+  const buyerId = tokenBuyerId ?? (typeof body.buyerId === "string" && UUID_RE.test(body.buyerId) ? body.buyerId : null);
 
   if (!name) return NextResponse.json({ error: "請填寫姓名" }, { status: 400 });
   if (phone.replace(/\D/g, "").length < 8) return NextResponse.json({ error: "請填寫正確的聯絡電話" }, { status: 400 });

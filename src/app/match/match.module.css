@@ -141,6 +141,18 @@
   margin: 0 0 10px;
 }
 
+/* 從官方帳號連結進來、已帶回舊條件時的提示。不是錯誤，別用紅色。 */
+.loaded {
+  background: #eef7f3;
+  border-left: 3px solid #2f7d6b;
+  border-radius: 6px;
+  color: #2f5d54;
+  font-size: 13.5px;
+  line-height: 1.6;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+}
+
 .summary {
   color: var(--muted, #5b6b73);
   font-size: 14px;

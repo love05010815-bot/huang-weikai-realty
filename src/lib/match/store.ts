@@ -72,6 +72,7 @@ export async function ensureMatchTables(): Promise<void> {
       name          VARCHAR(80)  NULL,
       phone         VARCHAR(40)  NULL,
       followed      TINYINT(1)   NOT NULL DEFAULT 1,
+      notify        TINYINT(1)   NOT NULL DEFAULT 1,
       preference    TEXT         NULL,
       created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -79,6 +80,13 @@ export async function ensureMatchTables(): Promise<void> {
       UNIQUE KEY uq_match_buyer_line (line_user_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+
+  // notify 是 2026-09-16 才加的欄位（買方在 LINE 回「停止通知」用），表在那之前就建好了。
+  // 同 land_size：CREATE TABLE IF NOT EXISTS 不補欄位，先查再 ALTER。
+  const hasNotify = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM match_buyer LIKE 'notify'`);
+  if (hasNotify.length === 0) {
+    await db.$executeRawUnsafe("ALTER TABLE match_buyer ADD COLUMN notify TINYINT(1) NOT NULL DEFAULT 1 AFTER followed");
+  }
 
   await db.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS match_viewing (
@@ -337,7 +345,10 @@ export type Buyer = {
   displayName: string | null;
   name: string | null;
   phone: string | null;
+  /** 還是官方帳號的好友嗎。封鎖／刪除好友時由 webhook 的 unfollow 事件寫 false */
   followed: boolean;
+  /** 要不要收新物件推播。買方自己在 LINE 回「停止通知」會變 false */
+  notify: boolean;
   preference: Preference | null;
   createdAt: Date | null;
   updatedAt: Date | null;
@@ -350,6 +361,7 @@ type BuyerRow = {
   name: string | null;
   phone: string | null;
   followed: number;
+  notify: number;
   preference: string | null;
   created_at: Date | null;
   updated_at: Date | null;
@@ -371,13 +383,14 @@ function toBuyer(row: BuyerRow): Buyer {
     name: row.name,
     phone: row.phone,
     followed: Number(row.followed) !== 0,
+    notify: Number(row.notify) !== 0,
     preference,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
-const BUYER_COLS = "id, line_user_id, display_name, name, phone, followed, preference, created_at, updated_at";
+const BUYER_COLS = "id, line_user_id, display_name, name, phone, followed, notify, preference, created_at, updated_at";
 
 export async function getBuyer(id: string): Promise<Buyer | null> {
   await ensureMatchTables();
@@ -399,7 +412,22 @@ export type BuyerUpsertInput = {
   phone?: string | null;
   preference?: Preference | null;
   followed?: boolean;
+  notify?: boolean;
 };
+
+/**
+ * 兩筆買方合併時，條件要留哪一筆 —— 留「比較晚更新」的那筆。
+ *
+ * 會撞在一起是因為他換手機／清掉瀏覽資料後重填條件（新的一筆），之後又送預約編號綁 LINE
+ * （舊的那筆）。新填的才是他現在要的，舊的不見得動過。
+ */
+function newerPreference(a: Buyer, b: Buyer): Preference | null {
+  if (!a.preference) return b.preference;
+  if (!b.preference) return a.preference;
+  const ta = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+  const tb = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+  return tb > ta ? b.preference : a.preference;
+}
 
 /**
  * 以 id 或 lineUserId 找到既有買方並更新，找不到就新增。
@@ -421,7 +449,7 @@ export async function upsertBuyer(input: BuyerUpsertInput): Promise<Buyer> {
       ...byLine,
       name: byLine.name ?? byId.name,
       phone: byLine.phone ?? byId.phone,
-      preference: byLine.preference ?? byId.preference,
+      preference: newerPreference(byLine, byId),
     };
   }
 
@@ -432,31 +460,34 @@ export async function upsertBuyer(input: BuyerUpsertInput): Promise<Buyer> {
     phone: input.phone || target?.phone || null,
     preference: input.preference ?? target?.preference ?? null,
     followed: input.followed ?? target?.followed ?? true,
+    notify: input.notify ?? target?.notify ?? true,
   };
   const prefJson = merged.preference ? JSON.stringify(merged.preference) : null;
 
   if (!target) {
     const id = randomUUID();
     await db.$executeRawUnsafe(
-      `INSERT INTO match_buyer (id, line_user_id, display_name, name, phone, followed, preference) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO match_buyer (id, line_user_id, display_name, name, phone, followed, notify, preference) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       merged.lineUserId,
       merged.displayName,
       merged.name,
       merged.phone,
       merged.followed ? 1 : 0,
+      merged.notify ? 1 : 0,
       prefJson,
     );
     return (await getBuyer(id))!;
   }
 
   await db.$executeRawUnsafe(
-    `UPDATE match_buyer SET line_user_id = ?, display_name = ?, name = ?, phone = ?, followed = ?, preference = ? WHERE id = ?`,
+    `UPDATE match_buyer SET line_user_id = ?, display_name = ?, name = ?, phone = ?, followed = ?, notify = ?, preference = ? WHERE id = ?`,
     merged.lineUserId,
     merged.displayName,
     merged.name,
     merged.phone,
     merged.followed ? 1 : 0,
+    merged.notify ? 1 : 0,
     prefJson,
     target.id,
   );
@@ -467,9 +498,35 @@ export async function upsertBuyer(input: BuyerUpsertInput): Promise<Buyer> {
 export async function listBuyersForNotify(): Promise<Buyer[]> {
   await ensureMatchTables();
   const rows = await db.$queryRawUnsafe<BuyerRow[]>(
-    `SELECT ${BUYER_COLS} FROM match_buyer WHERE line_user_id IS NOT NULL AND followed = 1 AND preference IS NOT NULL ORDER BY updated_at DESC LIMIT 500`,
+    `SELECT ${BUYER_COLS} FROM match_buyer WHERE line_user_id IS NOT NULL AND followed = 1 AND notify = 1 AND preference IS NOT NULL ORDER BY updated_at DESC LIMIT 500`,
   );
   return rows.map(toBuyer).filter((b) => b.preference);
+}
+
+/**
+ * 改「還是好友嗎」「要不要收通知」這兩個旗標，用 LINE userId 找人。
+ *
+ * 找不到（這位好友從來沒留過條件）回 null —— 呼叫端據此回不同的話。
+ * 這裡刻意不建新買方：unfollow 事件如果幫每個封鎖的人都建一筆，買方名單會被灌爆。
+ */
+export async function setBuyerFlagsByLine(
+  lineUserId: string,
+  flags: { followed?: boolean; notify?: boolean },
+): Promise<Buyer | null> {
+  await ensureMatchTables();
+  const sets: string[] = [];
+  const values: unknown[] = [];
+  if (flags.followed !== undefined) {
+    sets.push("followed = ?");
+    values.push(flags.followed ? 1 : 0);
+  }
+  if (flags.notify !== undefined) {
+    sets.push("notify = ?");
+    values.push(flags.notify ? 1 : 0);
+  }
+  if (!sets.length) return getBuyerByLine(lineUserId);
+  await db.$executeRawUnsafe(`UPDATE match_buyer SET ${sets.join(", ")} WHERE line_user_id = ?`, ...values, lineUserId);
+  return getBuyerByLine(lineUserId);
 }
 
 export async function listBuyersForAdmin(limit = 300): Promise<Buyer[]> {

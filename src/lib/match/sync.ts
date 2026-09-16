@@ -21,6 +21,7 @@ import { toListingUpsert, type ListingUpsert } from "./houseol-parse";
 import { listingCarousel, pushMessages, text } from "./line";
 import { rankListings } from "./matcher";
 import { ensureMatchTables, getListingStatusMap, hideListings, listBuyersForNotify, upsertListings } from "./store";
+import { createBuyerToken } from "./token";
 
 const KEY_LAST_OK = "match_sync_last_ok";
 const KEY_LOCK = "match_sync_lock";
@@ -140,9 +141,12 @@ async function notifyBuyers(fresh: ListingUpsert[]): Promise<number> {
     if (!buyer.lineUserId || !buyer.preference) continue;
     const matches = rankListings(buyer.preference, fresh, { threshold: MATCH.threshold, limit: MATCH.maxListingsPerNotify });
     if (!matches.length) continue;
+    // 卡片上的「預約看屋」帶這位買方的識別碼 —— 他用哪支手機點開都對得回同一筆，
+    // 預約也就不會又生出一個沒綁 LINE 的買方（見 lib/match/token.ts）。
+    const token = createBuyerToken(buyer.id);
     const ok = await pushMessages(buyer.lineUserId, [
-      text(`🏠 有 ${matches.length} 個新物件符合您的條件（配對度 ${matches[0].score}% 起）`),
-      listingCarousel(matches),
+      text(`🏠 有 ${matches.length} 個新物件符合您的條件（配對度 ${matches[0].score}% 起）\n不想再收到可回覆「停止通知」。`),
+      listingCarousel(matches, token),
     ]);
     if (ok) count++;
   }

@@ -7,6 +7,8 @@
  * 之後新物件推播才對得到人。
  *
  * ?book=物件編號：從 LINE 卡片的「預約看屋」按鈕進來，直接跳到那一戶的預約表單。
+ * ?k=識別碼：從官方帳號的連結進來，認得出是同一位買方 —— 先帶回他上次設定的條件，
+ *   之後改的也寫回同一筆（換手機、清掉瀏覽資料都不會變成兩個人）。讀完立刻把 k 從網址上拿掉。
  */
 import { useCallback, useEffect, useState } from "react";
 import styles from "./match.module.css";
@@ -45,6 +47,21 @@ type Listing = {
 type Match = Listing & { score: number; reasons: string[]; misses: string[]; recommended: boolean };
 
 type SearchResult = { buyerId: string | null; summary: string; threshold: number; total: number; matches: Match[] };
+
+/** 資料庫存的購屋條件（GET /api/match/me?k=… 回的） */
+type ApiPreference = {
+  city?: string;
+  districts?: string[];
+  budgetMax?: number;
+  rooms?: number;
+  sizeMin?: number;
+  sizeMax?: number;
+  types?: string[];
+  maxAge?: number;
+  features?: string[];
+};
+
+type Me = { buyerId: string; preference: ApiPreference | null; name: string | null; phone: string | null; notify: boolean };
 
 type Booking = {
   viewing: { code: string; preferredAt: string; name: string; phone: string };
@@ -131,6 +148,22 @@ type PrefState = {
 
 const EMPTY_PREF: PrefState = { city: "", districts: [], budgetMax: "", rooms: 0, sizeMin: "", sizeMax: "", types: [], maxAge: 0, features: [] };
 
+/** 資料庫存的條件 → 表單狀態。0 代表「不限」，輸入框要留白而不是顯示 0。 */
+function toPrefState(p: ApiPreference): PrefState {
+  const numText = (v: number | undefined) => (Number(v) > 0 ? String(v) : "");
+  return {
+    city: p.city ?? "",
+    districts: Array.isArray(p.districts) ? p.districts : [],
+    budgetMax: numText(p.budgetMax),
+    rooms: Number(p.rooms) || 0,
+    sizeMin: numText(p.sizeMin),
+    sizeMax: numText(p.sizeMax),
+    types: Array.isArray(p.types) ? p.types : [],
+    maxAge: Number(p.maxAge) || 0,
+    features: Array.isArray(p.features) ? p.features : [],
+  };
+}
+
 function toggle(list: string[], v: string): string[] {
   return list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
 }
@@ -147,6 +180,9 @@ export default function MatchApp() {
   const [notice, setNotice] = useState<string | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [buyerId, setBuyerId] = useState<string | null>(null);
+  /** 從官方帳號連結帶進來的買方識別碼；有它就不靠瀏覽器記的編號 */
+  const [token, setToken] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState<string | null>(null);
 
   const go = useCallback((next: Step) => {
     setStep(next);
@@ -160,7 +196,32 @@ export default function MatchApp() {
       .then(setMeta)
       .catch(() => setMeta({ cities: [], types: [], features: [], threshold: 60, addFriendUrl: "" }));
 
-    const bookId = new URLSearchParams(window.location.search).get("book");
+    const params = new URLSearchParams(window.location.search);
+
+    // 從官方帳號的連結進來：帶回他目前設定的條件與聯絡方式，然後立刻把識別碼從網址上拿掉
+    // —— 網址會被截圖、被轉貼，留著等於把他的資料給別人。識別碼過期就當沒帶，照原本流程走。
+    const k = params.get("k");
+    if (k) {
+      setToken(k);
+      api<Me>(`/api/match/me?k=${encodeURIComponent(k)}`)
+        .then((me) => {
+          setBuyerId(me.buyerId);
+          writeBuyerId(me.buyerId);
+          if (me.preference) {
+            setPref(toPrefState(me.preference));
+            setLoaded("已帶入您目前設定的條件，改好按「開始配對」就會更新，之後的新物件通知也照新條件配。");
+          }
+          setForm((f) => ({ ...f, name: me.name || f.name, phone: me.phone || f.phone }));
+        })
+        .catch(() => {
+          // 連結失效不用嚇買方，就當一般訪客重新填一次
+        });
+      params.delete("k");
+      const rest = params.toString();
+      window.history.replaceState(null, "", rest ? `${window.location.pathname}?${rest}` : window.location.pathname);
+    }
+
+    const bookId = params.get("book");
     if (bookId) {
       api<Listing>(`/api/match/listing/${encodeURIComponent(bookId)}`)
         .then((listing) => {
@@ -189,7 +250,7 @@ export default function MatchApp() {
         maxAge: pref.maxAge,
         features: pref.features,
       };
-      const data = await api<SearchResult>("/api/match/search", { method: "POST", body: JSON.stringify({ preference, buyerId }) });
+      const data = await api<SearchResult>("/api/match/search", { method: "POST", body: JSON.stringify({ preference, buyerId, token }) });
       if (data.buyerId) {
         setBuyerId(data.buyerId);
         writeBuyerId(data.buyerId);
@@ -229,6 +290,7 @@ export default function MatchApp() {
           preferredAt: `${form.date} ${form.slot}`,
           note: form.note.trim(),
           buyerId,
+          token,
           website: form.website,
         }),
       });
@@ -250,6 +312,7 @@ export default function MatchApp() {
     return (
       <div className={styles.wrap}>
         {notice && <p className={styles.error}>{notice}</p>}
+        {loaded && <p className={styles.loaded}>{loaded}</p>}
         <form className={styles.card} onSubmit={onSearch} noValidate>
           <label className={styles.field}>
             縣市
