@@ -202,3 +202,19 @@ export function videoPrompt(src: CopySource): string {
 export function buildPrompt(line: NewsLine, src: CopySource): string {
   return line === "video" ? videoPrompt(src) : articlePrompt(src);
 }
+
+/**
+ * 給「複製到 ChatGPT 網頁版自己貼」用的一整段提示詞。
+ *
+ * 2026-09-16 他說「用免費的方式連到 ChatGPT」之後，這條變成**主要**做法：
+ * OpenAI 的 API 沒有免費額度，而 ChatGPT 網頁版沒有可以給程式呼叫的接口，
+ * 兩者兜不起來；能同時滿足「免費」與「用我的 ChatGPT」的只有人工貼一趟。
+ *
+ * 網頁版沒有 system 這個角色，所以把身分規則跟任務合成同一段，貼一次就夠。
+ */
+export function manualPrompt(line: NewsLine, src: CopySource): string {
+  return `${systemPrompt()}\n\n${buildPrompt(line, src)}`;
+}
+
+/** 手動貼回來的文案，在 `news_draft.model` 欄位記成這個值（那一欄是 VARCHAR(64)）。 */
+export const MANUAL_MODEL = "ChatGPT（自己貼）";

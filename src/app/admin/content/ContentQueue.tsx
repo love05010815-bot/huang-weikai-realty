@@ -3,10 +3,14 @@
 /**
  * 待產文案的清單：從「房產新聞」按「拿去做」排進來的題，知識文章與短影音各自一筆。
  *
- * 這裡是他真正動手的地方，所以全文與複製放在這（房產新聞那頁沒有）。
- * 每一題有「派工寫稿」：一鍵把原文交給 ChatGPT，照 src/config/copywriter.ts 的規則寫
- * （知識文章＝六個平台各一版；短影音＝三個版本，各有 15 字標題、黃金三秒鉤子、1 分鐘口播稿）。
- * 每按一次多一版、舊版留著可以切換比較；字數是後台自己數的，模型自己報的數字不可信。
+ * ## 寫稿有兩條路，預設走免費那條
+ *
+ * 1. **免費（主要）**：按「複製指令」把整段提示詞（身分、平台規範、原文）複製起來，
+ *    貼進他自己的 ChatGPT 跑，再把結果貼回「貼回結果」存成一版文案。不用金鑰、不花錢。
+ * 2. **自動（要錢）**：「自動派工」直接呼叫 OpenAI API。2026-09-16 他的帳戶沒額度，
+ *    按下去會回「沒有額度」；他哪天儲值了就會動，所以按鈕留著、只是降級成次要。
+ *
+ * 兩條路存進同一張表、同一個畫面、同一套字數檢查（字數一律後台自己數，不信模型報的）。
  *
  * 做完按「完成」；不做了按「退回」—— 退回會把這條線（連同文案）刪掉，
  * 新聞沒有別條線就回到房產新聞的「還沒排的」。
@@ -21,8 +25,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { CHIP, CIS, type ChipTone } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
+import { COPYWRITER, manualPrompt } from "@/config/copywriter";
 import { NEWS_REGION_LABEL, type NewsRegion } from "@/config/news";
-import { generateDraftAction, removeNewsTaskAction, setNewsTaskStatusAction } from "@/lib/actions/news";
+import { generateDraftAction, removeNewsTaskAction, saveManualDraftAction, setNewsTaskStatusAction } from "@/lib/actions/news";
 import { analyzeDraft, type DraftStats } from "@/lib/copywriter-text";
 import {
   NEWS_LINES,
@@ -40,7 +45,7 @@ type Props = {
   counts: NewsTaskCounts;
   /** 每一題的文案（題的 id → 文案，最新的在前） */
   drafts: Record<string, NewsDraftRecord[]>;
-  /** 有沒有設 OPENAI_API_KEY；沒有就把按鈕鎖起來、上面講怎麼設 */
+  /** 有沒有設 OPENAI_API_KEY。沒有的話「自動派工」整顆不給按 */
   configured: boolean;
   /** 目前會用的模型名稱（顯示用） */
   model: string;
@@ -53,6 +58,9 @@ const STATUS_FILTER_LABEL: Record<StatusFilter, string> = { todo: "待做", done
 
 const LINE_TONE: Record<NewsLine, ChipTone> = { article: "info", video: "warn" };
 const REGION_TONE: Record<NewsRegion, ChipTone> = { coast: "warn", central: "info", national: "neutral" };
+
+/** 他的 ChatGPT。開新分頁，不要把後台頁面蓋掉（貼回來還要用）。 */
+const CHATGPT_URL = "https://chatgpt.com/";
 
 /** `YYYY-MM-DD HH:MM:SS` → `MM/DD HH:MM` */
 function shortStamp(stamp: string | null): string {
@@ -104,7 +112,7 @@ function StatsLine({ stats }: { stats: DraftStats }) {
   if (stats.scripts.length === 0) {
     return (
       <p className={styles.msg} style={{ color: CHIP.warn.color, marginTop: 8 }}>
-        沒找到 ``` 圍起來的口播文稿，字數沒法算；再派工一次通常會照格式寫。
+        沒找到 ``` 圍起來的口播文稿，字數沒法算。把 ChatGPT 的回答整段貼回來（含 ``` 那幾行）就會算了。
       </p>
     );
   }
@@ -139,7 +147,7 @@ function DraftPanel({
   return (
     <div style={{ marginTop: 12, padding: "12px 14px", border: `1px solid ${CIS.cardBorder}`, borderRadius: 10, background: CIS.bgSoft }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", color: CIS.textMute, fontSize: 13.5 }}>
-        <b style={{ color: CIS.text, fontSize: 14.5 }}>✍️ ChatGPT 寫的{NEWS_LINE_LABEL[task.line]}</b>
+        <b style={{ color: CIS.text, fontSize: 14.5 }}>✍️ 寫好的{NEWS_LINE_LABEL[task.line]}</b>
         {list.length > 1 ? (
           <select className={styles.select} style={{ ...fieldStyle, width: "auto", minHeight: 32, fontSize: 13 }} value={draft.id} onChange={(e) => onSelect(e.target.value)}>
             {list.map((d, i) => (
@@ -153,9 +161,8 @@ function DraftPanel({
             第 {version} 版 · {shortStamp(draft.createdAt)}
           </span>
         )}
-        <span>
-          {draft.model} · 花 {Math.max(1, Math.round(draft.ms / 1000))} 秒
-        </span>
+        <span>{draft.model}</span>
+        {draft.ms > 0 && <span>花 {Math.max(1, Math.round(draft.ms / 1000))} 秒</span>}
         <span className={styles.spacer} />
         <button type="button" className={styles.btn} style={{ borderColor: CIS.blue, color: CIS.blue }} onClick={() => onCopy(draft)}>
           <Icon name="copy" size={14} />
@@ -164,7 +171,7 @@ function DraftPanel({
       </div>
       {draft.truncated && (
         <p className={styles.msg} style={{ color: CHIP.warn.color, marginTop: 8 }}>
-          ⚠️ 這版被字數上限截斷了，結尾可能不完整；再派工一次通常會好。
+          ⚠️ 這版被字數上限截斷了，結尾可能不完整；再寫一次通常會好。
         </p>
       )}
       <StatsLine stats={stats} />
@@ -184,6 +191,9 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
   const [selectedDraft, setSelectedDraft] = useState<Record<string, string>>({});
   /** 剛寫好、伺服器還沒重新讀回來的文案，先塞進畫面 */
   const [freshDrafts, setFreshDrafts] = useState<NewsDraftRecord[]>([]);
+  /** 哪一題打開了「貼回結果」的框 */
+  const [pastingId, setPastingId] = useState<string | null>(null);
+  const [pasteText, setPasteText] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [writingId, setWritingId] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ tone: ChipTone; text: string } | null>(null);
@@ -232,9 +242,57 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
     void run(t.id, () => removeNewsTaskAction(t.id), "已退回。");
   }
 
+  async function copyText(text: string, doneText: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setMsg({ tone: "success", text: doneText });
+      return true;
+    } catch {
+      setMsg({ tone: "danger", text: "複製失敗，請手動選取。" });
+      return false;
+    }
+  }
+
+  /** 免費那條路的第一步：把整段指令複製起來，準備貼進 ChatGPT。 */
+  async function copyPrompt(t: NewsTaskRecord) {
+    const text = (t.news.content || t.news.summary || "").trim();
+    if (!text) {
+      setMsg({ tone: "danger", text: "這則只有標題、沒抓到內文，寫不出東西。請開原文自己看。" });
+      return;
+    }
+    const prompt = manualPrompt(t.line, {
+      title: t.news.title,
+      source: t.news.source,
+      publishedAt: t.news.publishedAt,
+      url: t.news.url,
+      text: text.slice(0, COPYWRITER.MAX_SOURCE_CHARS),
+    });
+    const ok = await copyText(prompt, "指令已複製。到 ChatGPT 貼上送出，寫好後整段複製，回來按「貼回結果」。");
+    if (ok) setPastingId(t.id);
+  }
+
+  /** 免費那條路的最後一步：把 ChatGPT 的回答存成一版文案。 */
+  async function savePaste(t: NewsTaskRecord) {
+    setBusyId(t.id);
+    const r = await saveManualDraftAction(t.id, pasteText);
+    setBusyId(null);
+    if (!r.ok || !r.draft) {
+      setMsg({ tone: "danger", text: r.error || "存檔失敗" });
+      return;
+    }
+    const draft = r.draft;
+    setFreshDrafts((s) => [draft, ...s]);
+    setSelectedDraft((s) => ({ ...s, [t.id]: draft.id }));
+    setPastingId(null);
+    setPasteText("");
+    setMsg({ tone: "success", text: "存好了。字數是後台自己數的，看下面那一行有沒有超過。" });
+    startTransition(() => router.refresh());
+  }
+
+  /** 要錢那條路：直接呼叫 OpenAI。 */
   async function write(t: NewsTaskRecord) {
     setWritingId(t.id);
-    setMsg({ tone: "info", text: `派工中… ChatGPT（${model}）通常 20 到 50 秒，別關掉這一頁。` });
+    setMsg({ tone: "info", text: `自動寫稿中… ${model} 通常 20 到 50 秒，別關掉這一頁。` });
     const r = await generateDraftAction(t.id);
     setWritingId(null);
     if (!r.ok || !r.draft) {
@@ -244,17 +302,8 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
     const draft = r.draft;
     setFreshDrafts((s) => [draft, ...s]);
     setSelectedDraft((s) => ({ ...s, [t.id]: draft.id }));
-    setMsg({ tone: "success", text: `寫好了，花 ${Math.max(1, Math.round(draft.ms / 1000))} 秒。字數後台自己數過，看下面那一行。` });
+    setMsg({ tone: "success", text: `寫好了，花 ${Math.max(1, Math.round(draft.ms / 1000))} 秒。` });
     startTransition(() => router.refresh());
-  }
-
-  async function copyText(text: string, doneText: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      setMsg({ tone: "success", text: doneText });
-    } catch {
-      setMsg({ tone: "danger", text: "複製失敗，請手動選取。" });
-    }
   }
 
   function copySource(t: NewsTaskRecord) {
@@ -267,6 +316,7 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
 
   const btnBase: React.CSSProperties = { borderColor: CIS.cardBorder, color: CIS.textSub };
   const btnPrimary: React.CSSProperties = { borderColor: CIS.blue, color: CIS.blue };
+  const btnQuiet: React.CSSProperties = { borderColor: CIS.divider, color: CIS.textMute, fontSize: 13 };
   const fieldStyle: React.CSSProperties = { background: CIS.bgSoft, borderColor: CIS.cardBorder, color: CIS.text };
 
   return (
@@ -289,13 +339,11 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
         </div>
       </div>
 
-      {!configured && (
-        <div className={styles.notice} style={{ borderColor: "rgba(245,158,11,0.45)", color: CHIP.warn.color, marginTop: 14 }}>
-          「派工寫稿」還沒接上 ChatGPT。到 Vercel → 這個專案 → Settings → Environment Variables 加一個
-          <code style={{ margin: "0 4px" }}>OPENAI_API_KEY</code>（platform.openai.com → API keys 建立），存檔後重新部署一次按鈕就會動。
-          ChatGPT Plus 的訂閱不包含 API，API 要另外儲值，一篇文案約新台幣 1 元上下。
-        </div>
-      )}
+      <div className={styles.notice} style={{ borderColor: CIS.cardBorder, color: CIS.textMute, marginTop: 14 }}>
+        <b style={{ color: CIS.text }}>寫稿流程（免費）</b>：按 <b>複製指令</b> → 開 ChatGPT 貼上送出 → 把它寫的整段複製 → 回來按{" "}
+        <b>貼回結果</b> 存檔。指令裡已經包含原文、平台字數規範跟你的口吻設定，不用再多打字。
+        旁邊的「自動派工」是直接叫 OpenAI 的 API 寫，不用複製貼上，但那是<b>付費</b>的，要先在 platform.openai.com 儲值才會動。
+      </div>
 
       {/* 篩選列 */}
       <div className={styles.actions}>
@@ -341,6 +389,7 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
           const writing = writingId === t.id;
           const busy = busyId === t.id || pending || writing;
           const isFocus = t.id === focus;
+          const pasting = pastingId === t.id;
           const otherLines = t.news.tasks.filter((x) => x.line !== t.line);
           const list = allDrafts[t.id] ?? [];
           const hasSource = !!(t.news.content || t.news.summary);
@@ -384,7 +433,7 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
                   {otherLines.length > 0 && (
                     <span style={{ marginLeft: 8 }}>（這則也排了{otherLines.map((x) => NEWS_LINE_LABEL[x.line]).join("、")}）</span>
                   )}
-                  {!hasSource && <span style={{ marginLeft: 8 }}>（沒抓到內文，派工會寫不出東西，請開原文）</span>}
+                  {!hasSource && <span style={{ marginLeft: 8 }}>（沒抓到內文，寫不出東西，請開原文）</span>}
                 </div>
                 {!open && excerpt(t) && (
                   <p className={styles.msg} style={{ color: CIS.textSub, marginTop: 8 }}>
@@ -392,24 +441,84 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
                   </p>
                 )}
                 {open && <pre style={{ ...preStyle, maxHeight: 520 }}>{t.news.content || t.news.summary || "（沒有抓到內文，請開原文）"}</pre>}
+
+                {/* 第一排：寫這一題 */}
                 <div className={styles.actions}>
+                  <button type="button" className={styles.btn} style={hasSource ? btnPrimary : btnBase} disabled={busy || !hasSource} onClick={() => copyPrompt(t)}>
+                    <Icon name="copy" size={14} />
+                    複製指令
+                  </button>
+                  <a className={styles.btn} style={btnBase} href={CHATGPT_URL} target="_blank" rel="noopener noreferrer">
+                    <Icon name="ai" size={14} />
+                    開 ChatGPT
+                  </a>
                   <button
                     type="button"
                     className={styles.btn}
-                    style={configured && hasSource ? btnPrimary : btnBase}
+                    style={pasting ? btnPrimary : btnBase}
+                    disabled={busy}
+                    onClick={() => {
+                      setPastingId(pasting ? null : t.id);
+                      setPasteText("");
+                    }}
+                  >
+                    <Icon name="edit" size={14} />
+                    {pasting ? "收起貼回框" : "貼回結果"}
+                  </button>
+                  <span className={styles.spacer} />
+                  <button
+                    type="button"
+                    className={styles.btn}
+                    style={btnQuiet}
                     disabled={busy || !configured || !hasSource}
-                    title={!configured ? "還沒設 OPENAI_API_KEY" : !hasSource ? "這則沒抓到內文" : `交給 ${model} 寫`}
+                    title={!configured ? "還沒設 OPENAI_API_KEY" : !hasSource ? "這則沒抓到內文" : `直接叫 ${model} 寫，要 OpenAI 有額度`}
                     onClick={() => write(t)}
                   >
-                    <Icon name="ai" size={14} />
-                    {writing ? "寫稿中…" : list.length > 0 ? "再派工一次" : "派工寫稿"}
+                    {writing ? "自動寫稿中…" : "自動派工（付費）"}
                   </button>
+                </div>
+
+                {pasting && (
+                  <div style={{ marginTop: 10, padding: "12px 14px", border: `1px solid ${CIS.blue}55`, borderRadius: 10, background: CIS.bgSoft }}>
+                    <p className={styles.msg} style={{ color: CIS.textSub, margin: "0 0 8px" }}>
+                      把 ChatGPT 寫好的內容<b>整段</b>複製貼在這裡（含「## 版本 A」「```」那些行，字數才算得出來），再按「存成文案」。
+                    </p>
+                    <textarea
+                      className={styles.textarea}
+                      style={{ ...fieldStyle, width: "100%", minHeight: 200 }}
+                      placeholder="在這裡貼上 ChatGPT 的回答…"
+                      value={pasteText}
+                      onChange={(e) => setPasteText(e.target.value)}
+                    />
+                    <div className={styles.actions}>
+                      <button type="button" className={styles.btn} style={btnPrimary} disabled={busy || pasteText.trim().length < 20} onClick={() => savePaste(t)}>
+                        <Icon name="save" size={14} />
+                        存成文案
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.btn}
+                        style={btnBase}
+                        disabled={busy}
+                        onClick={() => {
+                          setPastingId(null);
+                          setPasteText("");
+                        }}
+                      >
+                        取消
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 第二排：這一題的資料與狀態 */}
+                <div className={styles.actions}>
                   <button type="button" className={styles.btn} style={btnBase} onClick={() => setExpanded((s) => ({ ...s, [t.id]: !open }))}>
                     {open ? "收起原文" : "看原文全文"}
                   </button>
                   <button type="button" className={styles.btn} style={btnBase} onClick={() => copySource(t)}>
                     <Icon name="copy" size={14} />
-                    複製原文
+                    只複製原文
                   </button>
                   <a className={styles.btn} style={btnBase} href={t.news.url} target="_blank" rel="noopener noreferrer">
                     <Icon name="link" size={14} />
@@ -443,6 +552,7 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
                     退回
                   </button>
                 </div>
+
                 {list.length > 0 && (
                   <DraftPanel
                     task={t}

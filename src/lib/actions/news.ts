@@ -7,7 +7,7 @@
  */
 import { revalidatePath } from "next/cache";
 import { isCurrentUserAdmin } from "@/lib/admin-check";
-import { COPYWRITER } from "@/config/copywriter";
+import { COPYWRITER, MANUAL_MODEL } from "@/config/copywriter";
 import { generateCopy, isCopywriterConfigured } from "@/lib/copywriter";
 import {
   addNewsTask,
@@ -117,6 +117,39 @@ export async function generateDraftAction(taskId: string): Promise<Result & { dr
       tokensIn: r.tokensIn,
       tokensOut: r.tokensOut,
       truncated: r.truncated,
+    });
+    revalidatePath("/admin/content");
+    return { ok: true, draft };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}
+
+/**
+ * 待產文案：把「自己貼到 ChatGPT 跑出來的結果」存成一版文案。
+ *
+ * 跟 `generateDraftAction()` 存進同一張表、同一個畫面、同一套字數檢查，
+ * 差別只在 model 欄位記的是「自己貼」、沒有耗時與 token 數。
+ * 這條路不用金鑰、不花錢，是 2026-09-16 起的主要做法。
+ */
+export async function saveManualDraftAction(taskId: string, content: string): Promise<Result & { draft?: NewsDraftRecord }> {
+  if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
+  if (typeof taskId !== "string" || !taskId || typeof content !== "string") return { ok: false, error: "參數不對" };
+  const text = content.trim();
+  if (text.length < 20) return { ok: false, error: "貼進來的內容太短，確認有把 ChatGPT 的回答整段複製到嗎？" };
+
+  try {
+    const task = await getNewsTask(taskId);
+    if (!task) return { ok: false, error: "找不到這一題，可能已經被退回了。" };
+    const draft = await insertNewsDraft({
+      taskId,
+      line: task.line,
+      model: MANUAL_MODEL,
+      content: text,
+      ms: 0,
+      tokensIn: 0,
+      tokensOut: 0,
+      truncated: false,
     });
     revalidatePath("/admin/content");
     return { ok: true, draft };

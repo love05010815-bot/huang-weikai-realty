@@ -98,6 +98,14 @@ ok(vs.scripts[0].seconds === Math.round(((4 + 96 + 5 + 100) / 240) * 60), "秒�
 ok(vs.scripts[1].label === "版本 B" && vs.scripts[1].seconds === 75, "版本 B 300 字 → 75 秒", `${vs.scripts[1].label} ${vs.scripts[1].seconds}`, "版本 B 75");
 ok(T.analyzeDraft("video", "沒有 fence").scripts.length === 0, "沒 fence → 空陣列", T.analyzeDraft("video", "沒有 fence").scripts.length, 0);
 
+console.log("=== G 複製到 ChatGPT 的整段指令 ===");
+const mp = C.manualPrompt("video", src);
+ok(mp.startsWith(C.systemPrompt()), "身分與紅線在最前面", mp.slice(0, 12), "system 開頭");
+ok(mp.includes(C.videoPrompt(src)), "後面接完整任務", mp.includes(C.videoPrompt(src)), "true");
+ok(mp.includes(src.text), "原文有帶進去", mp.includes(src.text), "true");
+ok(C.manualPrompt("article", src).includes(C.articlePrompt(src)), "知識文章那條也對", "對", "對");
+ok(C.MANUAL_MODEL.length <= 64, "手動貼回的 model 標籤塞得進 VARCHAR(64)", C.MANUAL_MODEL, "<=64");
+
 if (process.argv.includes("--live")) {
   console.log("=== G 真的叫一次 OpenAI（短影音）===");
   const L = await import("../src/lib/copywriter.ts");
