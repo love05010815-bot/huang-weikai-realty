@@ -81,6 +81,9 @@ export async function GET(req: Request) {
           youtube: Boolean(process.env.GOOGLE_CALENDAR_CLIENT_ID || process.env.AUTH_GOOGLE_ID),
           line: Boolean(process.env.LINE_BOT_CHANNEL_SECRET && process.env.LINE_BOT_ACCESS_TOKEN),
           anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
+          // 待產文案「派工寫稿」用的 OpenAI 金鑰（2026-09-15 加）。
+          // 同樣的理由：那顆按鈕在登入牆後面，沒有這一項就只能請他點一次回報給我。
+          openai: Boolean(process.env.OPENAI_API_KEY),
           blob: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
         }
       : null;
