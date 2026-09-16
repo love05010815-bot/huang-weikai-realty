@@ -292,7 +292,8 @@ export async function notifyOwnerNewViewing(viewing: Viewing, listing: ListingLi
     profileName
       ? `💬 回客戶：到官方帳號的聊天室找「${profileName}」直接回覆就好。`
       : `💬 他還沒在 LINE 綁定，可以先打 ${viewing.phone}。`,
-    `✅ 要標記狀態，直接回這則訊息：確認 ${viewing.code}／取消 ${viewing.code}／完成 ${viewing.code}`,
+    `✅ 跟客戶談好時間後，直接回這則訊息「已確認」，系統就會通知買方（要取消就回「取消」）。`,
+    `　 同時有好幾筆時改打：確認 ${viewing.code}`,
     `後台（不一定要開）：${SITE_URL}/admin/match`,
   ].filter((l): l is string => l !== null);
   const body = lines.join("\n");

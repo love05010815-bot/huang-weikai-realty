@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CHIP, CIS, cisCard, type ChipTone } from "@/app/admin/_components/cis";
 import { MATCH, VIEWING_STATUS } from "@/config/match";
-import { setMatchAgentsAction, setViewingStatusAction } from "@/lib/actions/match";
+import { setViewingStatusAction } from "@/lib/actions/match";
 import type { SyncSummary } from "@/lib/match/sync";
 import styles from "./match-admin.module.css";
 
@@ -56,13 +56,6 @@ export type AdminListing = {
   syncedAt: string | null;
 };
 
-/** 「新預約要通知誰」的候選：跟官方帳號講過話的人 */
-export type AdminFriend = {
-  lineUserId: string;
-  displayName: string | null;
-  lastSeenAt: string | null;
-};
-
 type Tab = "viewings" | "buyers" | "sync";
 
 const STATUS_TONE: Record<string, ChipTone> = {
@@ -93,16 +86,12 @@ export default function MatchAdmin({
   listings,
   counts,
   lastSync,
-  friends,
-  agentIds,
 }: {
   viewings: AdminViewing[];
   buyers: AdminBuyer[];
   listings: AdminListing[];
   counts: { available: number; hidden: number };
   lastSync: SyncSummary | null;
-  friends: AdminFriend[];
-  agentIds: string[];
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("viewings");
@@ -110,17 +99,6 @@ export default function MatchAdmin({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<SyncSummary | null>(null);
-  const [agents, setAgents] = useState<string[]>(agentIds);
-  const [savingAgents, setSavingAgents] = useState(false);
-
-  async function saveAgents() {
-    setSavingAgents(true);
-    setMsg(null);
-    const r = await setMatchAgentsAction(agents);
-    setSavingAgents(false);
-    setMsg(r.ok ? `已存好，${(r.saved ?? []).length} 個 LINE 帳號會收到新預約通知` : (r.error ?? "儲存失敗"));
-    if (r.ok) router.refresh();
-  }
 
   async function changeStatus(id: string, status: string) {
     setBusyId(id);
@@ -183,60 +161,11 @@ export default function MatchAdmin({
       )}
 
       {tab === "viewings" && (
-        <>
-        <div style={{ ...cisCard, padding: 14, marginBottom: 12 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>新預約要通知誰</div>
-          <p style={{ color: CIS.textMute, fontSize: 12, margin: "0 0 10px", lineHeight: 1.8 }}>
-            勾起來的 LINE 帳號，有人預約看屋時會收到通知，也可以直接在官方帳號的聊天室回覆
-            「確認 BK-XXXXXX」「取消 BK-XXXXXX」「完成 BK-XXXXXX」改狀態，不用開這個後台。
-            <br />
-            沒看到要的帳號？那支手機要先用 LINE 加官方帳號好友、隨便傳一句話，名字才會出現在這裡。
-          </p>
-          <div style={{ maxHeight: 200, overflowY: "auto", border: `1px solid ${CIS.cardBorder}`, borderRadius: CIS.radiusSm, padding: 6 }}>
-            {friends.length === 0 && (
-              <div style={{ color: CIS.textMute, fontSize: 12, padding: 8 }}>還沒有人跟官方帳號說過話。</div>
-            )}
-            {friends.map((f) => (
-              <label
-                key={f.lineUserId}
-                style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 6px", fontSize: 13, cursor: "pointer" }}
-              >
-                <input
-                  type="checkbox"
-                  checked={agents.includes(f.lineUserId)}
-                  onChange={() =>
-                    setAgents((a) => (a.includes(f.lineUserId) ? a.filter((x) => x !== f.lineUserId) : [...a, f.lineUserId]))
-                  }
-                />
-                <span style={{ fontWeight: 600 }}>{f.displayName ?? "（沒有名字）"}</span>
-                <span style={{ color: CIS.textMute, fontSize: 11 }}>最後互動 {fmt(f.lastSeenAt)}</span>
-              </label>
-            ))}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={saveAgents}
-              disabled={savingAgents}
-              style={{
-                padding: "8px 16px",
-                borderRadius: 999,
-                border: `1px solid ${CIS.cardBorder}`,
-                background: CIS.bgSoft,
-                color: CIS.text,
-                fontWeight: 600,
-                fontSize: 13,
-                cursor: savingAgents ? "default" : "pointer",
-              }}
-            >
-              {savingAgents ? "儲存中…" : "儲存通知名單"}
-            </button>
-            <span style={{ color: CIS.textMute, fontSize: 12 }}>目前勾了 {agents.length} 個</span>
-          </div>
-        </div>
         <div style={cisCard} className={styles.wrap}>
           <p style={{ margin: 0, padding: "12px 14px", color: CIS.textMute, fontSize: 12 }}>
-            狀態改成「已確認」或「已取消」會自動推播通知已綁定 LINE 的買方。新預約會同時通知上面勾選的 LINE、Email 與 admin 群。
+            狀態改成「已確認」或「已取消」會自動推播通知已綁定 LINE 的買方。新預約會同時通知你的 LINE、Email 與 admin 群。
+            <br />
+            這一頁不是必經之路：收到 LINE 通知後，直接在那則通知的聊天室回「已確認」就會做一樣的事。
           </p>
           <table className={styles.table}>
             <thead>
@@ -300,7 +229,6 @@ export default function MatchAdmin({
             </tbody>
           </table>
         </div>
-        </>
       )}
 
       {tab === "buyers" && (

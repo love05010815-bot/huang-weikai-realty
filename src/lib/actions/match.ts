@@ -9,7 +9,6 @@
  */
 import { revalidatePath } from "next/cache";
 import { isCurrentUserAdmin } from "@/lib/admin-check";
-import { setAgentLineIds } from "@/lib/match/agents";
 import { updateViewing } from "@/lib/match/store";
 import { applyViewingStatus } from "@/lib/match/viewing-status";
 
@@ -27,21 +26,6 @@ export async function setViewingStatusAction(id: string, status: string): Promis
   return { ok: true, notified: res.notified };
 }
 
-/**
- * 「新預約要通知誰」—— 勾選哪幾支 LINE 會收到新預約推播（也才能用官方帳號的狀態指令）。
- *
- * 名單只能從「跟官方帳號講過話的人」裡挑：LINE 的規矩是沒加好友就拿不到 userId、也推不過去。
- */
-export async function setMatchAgentsAction(ids: string[]): Promise<Result & { saved?: string[] }> {
-  if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
-  try {
-    const saved = await setAgentLineIds(Array.isArray(ids) ? ids : []);
-    revalidatePath("/admin/match");
-    return { ok: true, saved };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
-}
 
 export async function setViewingAgentNoteAction(id: string, agentNote: string): Promise<Result> {
   if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };

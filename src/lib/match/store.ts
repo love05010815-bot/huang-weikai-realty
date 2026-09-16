@@ -642,6 +642,21 @@ export async function getViewing(id: string): Promise<Viewing | null> {
   return rows[0] ? toViewing(rows[0]) : null;
 }
 
+/**
+ * 還沒結束的預約，最新的排前面（已完成看屋、已取消的不算）。
+ *
+ * 專員在 LINE 只回一句「已確認」時，指的就是第一筆 —— 他剛收到那則通知。
+ * 多撈幾筆是為了在回覆裡提醒他「還有 N 筆沒結束」，免得他以為全部都改到了。
+ */
+export async function listOpenViewings(limit = 5): Promise<Viewing[]> {
+  await ensureMatchTables();
+  const n = Math.max(1, Math.min(20, Math.floor(limit)));
+  const rows = await db.$queryRawUnsafe<ViewingRow[]>(
+    `SELECT ${VIEWING_COLS} FROM match_viewing WHERE status IN ('pending','linked','confirmed') ORDER BY created_at DESC LIMIT ${n}`,
+  );
+  return rows.map(toViewing);
+}
+
 export async function getViewingByCode(code: string): Promise<Viewing | null> {
   await ensureMatchTables();
   const rows = await db.$queryRawUnsafe<ViewingRow[]>(

@@ -21,7 +21,7 @@ import { saveMessage } from "@/lib/line-bot/store";
 import { getAgentLineIds, isAgent } from "./agents";
 import { pushMessages, replyMessages, text, viewingConfirmFlex, welcomeFlex } from "./line";
 import { describePreference } from "./matcher";
-import { getListing, getViewingByCode, listViewingsByLine, setBuyerFlagsByLine, updateViewing, upsertBuyer } from "./store";
+import { getListing, getViewingByCode, listOpenViewings, listViewingsByLine, setBuyerFlagsByLine, updateViewing, upsertBuyer } from "./store";
 import { createBuyerToken } from "./token";
 import { applyViewingStatus } from "./viewing-status";
 
@@ -37,12 +37,24 @@ const RESUME_RE = /^(恢復通知|開啟通知|繼續通知|重新通知)$/;
 const AGENT_CMD_RE = /^(確認|取消|完成|已完成|看屋完成|結案)\s*(BK-[A-Z0-9]{6})$/i;
 const AGENT_STATUS: Record<string, string> = {
   確認: "confirmed",
+  已確認: "confirmed",
+  確定: "confirmed",
   取消: "cancelled",
+  已取消: "cancelled",
   完成: "done",
   已完成: "done",
   看屋完成: "done",
   結案: "done",
 };
+
+/**
+ * 不帶編號的版本：他剛收到通知、人在那個聊天室，直接回「已確認」就該生效 ——
+ * 要他從通知裡抄一串 BK-XXXXXX 才算數，等於把他趕回後台，那就失去意義了。
+ * 對象＝最新一筆還沒結束的預約，回覆裡會講清楚改的是哪一筆。
+ *
+ * 刻意不收「OK」「好」這種太常用的字：他在這個聊天室打那兩個字不見得是要改狀態。
+ */
+const AGENT_BARE_RE = /^(確認|已確認|確定|取消|已取消|完成|已完成|看屋完成|結案)$/;
 
 export async function handleMatchTextMessage(params: Ctx): Promise<boolean> {
   const message = params.text.trim();
@@ -83,9 +95,12 @@ export async function handleMatchTextMessage(params: Ctx): Promise<boolean> {
 /**
  * 專員傳進來的訊息。
  *
- *   確認／取消／完成 BK-XXXXXX → 改狀態，該通知買方的照樣通知（跟後台那顆下拉同一段程式）
- *   只貼一個 BK-XXXXXX      → 回那筆預約的內容（**不會**把你綁成買方）
- *   其他                    → 回 false，照原本的流程進收件匣，機器人不出聲
+ *   「已確認」「取消」「完成」  → 改**最新一筆還沒結束**的預約（他剛收到通知，人就在那個聊天室）
+ *   確認／取消／完成 BK-XXXXXX → 指定某一筆（同時有好幾筆時用）
+ *   只貼一個 BK-XXXXXX        → 回那筆預約的內容（**不會**把你綁成買方）
+ *   其他                      → 回 false，照原本的流程進收件匣，機器人不出聲
+ *
+ * 三條路都走 lib/match/viewing-status.ts，跟後台那顆下拉是同一段程式。
  */
 async function handleAgentMessage(params: Ctx, message: string): Promise<boolean> {
   const cmd = message.match(AGENT_CMD_RE);
@@ -111,6 +126,37 @@ async function handleAgentMessage(params: Ctx, message: string): Promise<boolean
           : "，但通知買方失敗，請自己跟他說一聲"
         : "";
     await agentReply(params, `${code} 已標記為「${label}」${tail}`);
+    return true;
+  }
+
+  const bareCmd = message.match(AGENT_BARE_RE);
+  if (bareCmd) {
+    const status = AGENT_STATUS[bareCmd[1]];
+    const open = await listOpenViewings(5);
+    if (!open.length) {
+      await agentReply(params, "目前沒有還沒結束的預約。要改某一筆請打「確認 BK-XXXXXX」。");
+      return true;
+    }
+    const target = open[0];
+    const res = await applyViewingStatus(target.id, status);
+    if (!res.ok) {
+      await agentReply(params, `${target.code} 改狀態失敗：${res.error ?? "請稍後再試"}`);
+      return true;
+    }
+    const label = VIEWING_STATUS[status] ?? status;
+    const who = `${target.name}｜${target.preferredAt || "時間待安排"}`;
+    const tail = !target.lineUserId
+      ? "（買方還沒綁 LINE，沒有通知他）"
+      : status === "confirmed" || status === "cancelled"
+        ? res.notified
+          ? "，已通知買方"
+          : "，但通知買方失敗，請自己跟他說一聲"
+        : "";
+    const more =
+      open.length > 1
+        ? `\n（另外還有 ${open.length - 1} 筆沒結束的預約沒動到，要改那些請打「確認 BK-XXXXXX」）`
+        : "";
+    await agentReply(params, `${target.code}（${who}）已標記為「${label}」${tail}${more}`);
     return true;
   }
 
