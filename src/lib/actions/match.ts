@@ -8,36 +8,39 @@
  * 狀態改成「已確認」「已取消」時，買方有綁 LINE 就推播通知他（計費，一則）。
  */
 import { revalidatePath } from "next/cache";
-import { VIEWING_STATUS } from "@/config/match";
 import { isCurrentUserAdmin } from "@/lib/admin-check";
-import { pushMessages, text, viewingConfirmFlex } from "@/lib/match/line";
-import { getListing, updateViewing } from "@/lib/match/store";
+import { setAgentLineIds } from "@/lib/match/agents";
+import { updateViewing } from "@/lib/match/store";
+import { applyViewingStatus } from "@/lib/match/viewing-status";
 
 type Result = { ok: boolean; error?: string; notified?: boolean };
 
 export async function setViewingStatusAction(id: string, status: string): Promise<Result> {
   if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
-  if (!VIEWING_STATUS[status]) return { ok: false, error: "無效的狀態" };
 
-  let notified = false;
+  // 真正的動作在 lib/match/viewing-status.ts —— 官方帳號的「確認 BK-XXXXXX」走的是同一段，
+  // 兩條路的結果必須一模一樣。
+  const res = await applyViewingStatus(id, status);
+  if (!res.ok) return { ok: false, error: res.error };
+
+  revalidatePath("/admin/match");
+  return { ok: true, notified: res.notified };
+}
+
+/**
+ * 「新預約要通知誰」—— 勾選哪幾支 LINE 會收到新預約推播（也才能用官方帳號的狀態指令）。
+ *
+ * 名單只能從「跟官方帳號講過話的人」裡挑：LINE 的規矩是沒加好友就拿不到 userId、也推不過去。
+ */
+export async function setMatchAgentsAction(ids: string[]): Promise<Result & { saved?: string[] }> {
+  if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
   try {
-    const viewing = await updateViewing(id, { status });
-    if (!viewing) return { ok: false, error: "找不到預約" };
-
-    if (viewing.lineUserId && (status === "confirmed" || status === "cancelled")) {
-      const listing = await getListing(viewing.listingId);
-      const message =
-        status === "confirmed"
-          ? viewingConfirmFlex(viewing, listing, { title: "📅 看屋時間已確認", note: "當天請準時抵達；如需更改時間請在此留言。" })
-          : text(`您的預約 ${viewing.code} 已取消。若要重新安排，隨時在此留言或輸入「找房」。`);
-      notified = await pushMessages(viewing.lineUserId, [message]);
-    }
+    const saved = await setAgentLineIds(Array.isArray(ids) ? ids : []);
+    revalidatePath("/admin/match");
+    return { ok: true, saved };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
-
-  revalidatePath("/admin/match");
-  return { ok: true, notified };
 }
 
 export async function setViewingAgentNoteAction(id: string, agentNote: string): Promise<Result> {

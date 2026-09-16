@@ -16,12 +16,14 @@
  * 買方送了預約編號卻沒收到確認，比機器人多講一句話嚴重得多。
  * 回過的內容也寫進 line_bot_message，收件匣才看得到「系統回了什麼」。
  */
-import { MATCH, VIEWING_STATUS } from "@/config/match";
+import { VIEWING_STATUS } from "@/config/match";
 import { saveMessage } from "@/lib/line-bot/store";
+import { getAgentLineIds, isAgent } from "./agents";
 import { pushMessages, replyMessages, text, viewingConfirmFlex, welcomeFlex } from "./line";
 import { describePreference } from "./matcher";
 import { getListing, getViewingByCode, listViewingsByLine, setBuyerFlagsByLine, updateViewing, upsertBuyer } from "./store";
 import { createBuyerToken } from "./token";
+import { applyViewingStatus } from "./viewing-status";
 
 type Ctx = { userId: string; text: string; replyToken: string; displayName: string | null };
 
@@ -31,8 +33,26 @@ const EDIT_RE = /^(修改條件|更改條件|改條件|更新條件|修改需求
 const STOP_RE = /^(停止通知|取消通知|不要通知|停止推播|退出配對)$/;
 const RESUME_RE = /^(恢復通知|開啟通知|繼續通知|重新通知)$/;
 
+/** 專員（你本人／工作帳）在官方帳號裡改狀態用的指令。買方打這些沒有用 —— 只認名單上的 userId。 */
+const AGENT_CMD_RE = /^(確認|取消|完成|已完成|看屋完成|結案)\s*(BK-[A-Z0-9]{6})$/i;
+const AGENT_STATUS: Record<string, string> = {
+  確認: "confirmed",
+  取消: "cancelled",
+  完成: "done",
+  已完成: "done",
+  看屋完成: "done",
+  結案: "done",
+};
+
 export async function handleMatchTextMessage(params: Ctx): Promise<boolean> {
   const message = params.text.trim();
+
+  // 🔴 專員本人傳的訊息絕對不能走買方那條路。
+  //    他在聊天室貼一個預約編號，下面那段會把「他」綁成那筆預約的買方、把預約改指到他身上 ——
+  //    2026-09-16 之前真的會這樣。先攔下來，順便讓他可以直接用 LINE 改狀態、不必開後台。
+  if (await isAgent(params.userId)) {
+    return handleAgentMessage(params, message);
+  }
 
   const code = message.match(CODE_RE)?.[0]?.toUpperCase();
   if (code) {
@@ -56,6 +76,70 @@ export async function handleMatchTextMessage(params: Ctx): Promise<boolean> {
   }
 
   return false;
+}
+
+// ---------------------------------------------------------------- 專員（你）
+
+/**
+ * 專員傳進來的訊息。
+ *
+ *   確認／取消／完成 BK-XXXXXX → 改狀態，該通知買方的照樣通知（跟後台那顆下拉同一段程式）
+ *   只貼一個 BK-XXXXXX      → 回那筆預約的內容（**不會**把你綁成買方）
+ *   其他                    → 回 false，照原本的流程進收件匣，機器人不出聲
+ */
+async function handleAgentMessage(params: Ctx, message: string): Promise<boolean> {
+  const cmd = message.match(AGENT_CMD_RE);
+  if (cmd) {
+    const status = AGENT_STATUS[cmd[1]];
+    const code = cmd[2].toUpperCase();
+    const viewing = await getViewingByCode(code);
+    if (!viewing) {
+      await agentReply(params, `找不到預約編號 ${code}，請確認後再試一次。`);
+      return true;
+    }
+    const res = await applyViewingStatus(viewing.id, status);
+    if (!res.ok) {
+      await agentReply(params, `${code} 改狀態失敗：${res.error ?? "請稍後再試"}`);
+      return true;
+    }
+    const label = VIEWING_STATUS[status] ?? status;
+    const tail = !viewing.lineUserId
+      ? "（買方還沒綁 LINE，沒有通知他）"
+      : status === "confirmed" || status === "cancelled"
+        ? res.notified
+          ? "，已通知買方"
+          : "，但通知買方失敗，請自己跟他說一聲"
+        : "";
+    await agentReply(params, `${code} 已標記為「${label}」${tail}`);
+    return true;
+  }
+
+  const bare = message.match(/^BK-[A-Z0-9]{6}$/i)?.[0]?.toUpperCase();
+  if (bare) {
+    const viewing = await getViewingByCode(bare);
+    if (!viewing) {
+      await agentReply(params, `找不到預約編號 ${bare}。`);
+      return true;
+    }
+    const listing = await getListing(viewing.listingId);
+    const lines = [
+      `${viewing.code}｜${VIEWING_STATUS[viewing.status] ?? viewing.status}`,
+      `物件：${listing?.title ?? viewing.listingId}`,
+      `時間：${viewing.preferredAt || "待安排"}`,
+      `姓名：${viewing.name}｜${viewing.phone}`,
+      viewing.note ? `備註：${viewing.note}` : null,
+      `改狀態：確認 ${viewing.code}／取消 ${viewing.code}／完成 ${viewing.code}`,
+    ].filter((l): l is string => l !== null);
+    await agentReply(params, lines.join("\n"));
+    return true;
+  }
+
+  return false;
+}
+
+async function agentReply({ userId, replyToken }: Ctx, msg: string): Promise<void> {
+  await replyMessages(replyToken, [text(msg)]);
+  await saveMessage(userId, "assistant", msg, "bot");
 }
 
 /**
@@ -133,7 +217,7 @@ async function linkViewing(code: string, { userId, replyToken, displayName }: { 
   // 讓你知道可以直接在官方帳號聊天室找到他。
   if (firstLink) {
     const who = displayName ? `${displayName}（${viewing.name}）` : viewing.name;
-    for (const uid of MATCH.agentLineUserIds) {
+    for (const uid of await getAgentLineIds()) {
       await pushMessages(uid, [text(`✅ ${code} 買方已綁定 LINE：${who}\n${listing?.title ?? viewing.listingId}｜${viewing.preferredAt || "時間待安排"}`)]);
     }
   }

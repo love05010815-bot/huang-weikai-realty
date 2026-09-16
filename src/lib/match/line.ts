@@ -9,6 +9,7 @@
  *    只有「新物件通知」與「通知你本人」才 push。
  */
 import { MATCH } from "@/config/match";
+import { getAgentLineIds } from "./agents";
 import { OWNER, SITE_URL } from "@/config/owner";
 import { getLineBotToken } from "@/lib/line-bot/client";
 import { notifyAbinAdminGroup } from "@/lib/line-notify";
@@ -269,9 +270,12 @@ function ownerEmail(): string {
 
 /**
  * 有人預約看屋（且已綁定 LINE）→ 通知你。三條管道各自獨立失敗，任何一條掛了都不影響買方那邊。
- *   1. 官方帳號 push 到你的工作帳（MATCH.agentLineUserIds；計費，一筆預約一則）
+ *   1. 官方帳號 push 到後台勾選的每一支 LINE（見 lib/match/agents.ts；計費，一支一則）
  *   2. Email
  *   3. ABIN admin 群（沒設就自己跳過）
+ *
+ * 訊息裡刻意寫「怎麼往下處理」：他多數時候人在 LINE 裡，不該被逼著開後台 ——
+ * 回客戶就去官方帳號聊天室找那個名字，要標狀態就直接回「確認 BK-XXXXXX」。
  */
 export async function notifyOwnerNewViewing(viewing: Viewing, listing: ListingLike | null, profileName: string | null): Promise<void> {
   const where = listing ? `${listing.city}${listing.district}${listing.address}` : "";
@@ -284,11 +288,16 @@ export async function notifyOwnerNewViewing(viewing: Viewing, listing: ListingLi
     `電話：${viewing.phone}`,
     `LINE：${profileName ?? "（尚未綁定）"}`,
     viewing.note ? `備註：${viewing.note}` : null,
-    `後台：${SITE_URL}/admin/match`,
-  ].filter((l): l is string => Boolean(l));
+    "",
+    profileName
+      ? `💬 回客戶：到官方帳號的聊天室找「${profileName}」直接回覆就好。`
+      : `💬 他還沒在 LINE 綁定，可以先打 ${viewing.phone}。`,
+    `✅ 要標記狀態，直接回這則訊息：確認 ${viewing.code}／取消 ${viewing.code}／完成 ${viewing.code}`,
+    `後台（不一定要開）：${SITE_URL}/admin/match`,
+  ].filter((l): l is string => l !== null);
   const body = lines.join("\n");
 
-  for (const uid of MATCH.agentLineUserIds) {
+  for (const uid of await getAgentLineIds()) {
     await pushMessages(uid, [text(body)]);
   }
 
