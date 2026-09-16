@@ -20,18 +20,32 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import { resolvePhotoSrc } from "@/lib/photo-src";
 import { MAX_PHOTOS, type MapListingRecord, type MapListingStatus } from "@/lib/map-listings";
-import { houseolItemSummary, type HouseolItem } from "@/lib/houseol-item";
 import { uploadPhotos } from "@/lib/photo-upload-client";
+import type { ProjectSuggestion } from "@/lib/project-match";
 import type { ListingClickStats } from "@/lib/listing-clicks";
 import {
   deleteMapListingAction,
   moveMapListingAction,
+  importHouseolPhotosAction,
+  readHouseolAction,
   saveMapListingAction,
   setMapListingStatusAction,
 } from "@/lib/actions/map-listings";
 import styles from "./map-listings-admin.module.css";
 
 type ProjectOption = { id: string; name: string; builder: string; count: number };
+
+/** 讀完愛屋型錄之後，畫面上要顯示的東西 */
+type ReadInfo = {
+  caseId: string;
+  community: string;
+  addressSource: "門牌" | "型錄";
+  photoCount: number;
+  suggestions: ProjectSuggestion[];
+  /** 自動選好的建案名，空字串＝沒自動選 */
+  autoPicked: string;
+  missing: string[];
+};
 
 type Draft = {
   id: string | null;
@@ -71,12 +85,10 @@ function toDraft(r: MapListingRecord): Draft {
 export default function MapListingsManager({
   initial,
   projects,
-  inventory,
   clickStats = {},
 }: {
   initial: MapListingRecord[];
   projects: ProjectOption[];
-  inventory: HouseolItem[];
   /** 每一筆物件的兩顆按鈕各被點過幾次。讀不到時是空物件，畫面顯示 0。 */
   clickStats?: ListingClickStats;
 }) {
@@ -86,20 +98,13 @@ export default function MapListingsManager({
   const [dirty, setDirty] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const [invQuery, setInvQuery] = useState("");
   const [projQuery, setProjQuery] = useState("");
+  const [houseolInput, setHouseolInput] = useState("");
+  const [reading, setReading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [readInfo, setReadInfo] = useState<ReadInfo | null>(null);
   const [pending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
-
-  /** 打字才篩，一開始最多先列 20 筆，不要一次把上百筆都塞進畫面 */
-  const invPool = useMemo(() => {
-    const q = invQuery.trim();
-    // 地址也能搜 —— 「這間我上架過了嗎」用門牌找比用案名快
-    return q
-      ? inventory.filter((it) => `${it.title}${it.community}${it.district}${it.address ?? ""}`.includes(q))
-      : inventory;
-  }, [inventory, invQuery]);
-  const invMatches = useMemo(() => invPool.slice(0, 20), [invPool]);
 
   /**
    * 建案挑選（2026-09-07 改）。原本是一顆 `<select>`，但建案有 500 多個，
@@ -146,21 +151,78 @@ export default function MapListingsManager({
     setDirty(true);
   };
 
-  /** 帶入標題與坪數價格摘要；屬於哪個建案不動，要自己選 —— 愛屋資料沒有建案欄位，猜錯比留白更糟 */
-  const applyInventoryItem = (item: HouseolItem) => {
-    const summaryLine = houseolItemSummary(item);
-    patch({
-      title: item.title,
-      // 地址有才帶入。沒有的話**不要碰** —— 覆寫成空字串會把你手打的洗掉
-      ...(item.address ? { address: item.address } : {}),
-      pointsText: summaryLine ? `${summaryLine}\n` : "",
-    });
-    setMsg({
-      kind: "ok",
-      text: item.address
-        ? `已帶入「${item.title}」與地址，記得選建案、補賣點。`
-        : `已帶入「${item.title}」，記得選建案、補賣點。這筆愛屋沒有地址（還沒跑 push-addresses.js？）。`,
-    });
+  /**
+   * 貼愛屋連結 → 讀型錄 → 標題／地址／賣點一次帶進來，建案夠確定就順手選好。
+   *
+   * ⚠️ 只覆蓋讀得到的欄位。型錄沒有的東西**不要寫空字串進去** ——
+   *    那會把他已經手打的內容洗掉，而且不會有任何提示。
+   */
+  const readHouseol = async () => {
+    const input = houseolInput.trim();
+    if (!input || reading) return;
+    setReading(true);
+    setMsg(null);
+    try {
+      const res = await readHouseolAction(input);
+      if (!res.ok) {
+        setReadInfo(null);
+        setMsg({ kind: "err", text: res.error });
+        return;
+      }
+      const autoName = res.autoProjectId ? (projects.find((p) => p.id === res.autoProjectId)?.name ?? "") : "";
+      patch({
+        ...(res.title ? { title: res.title } : {}),
+        ...(res.address ? { address: res.address } : {}),
+        ...(res.pointsText ? { pointsText: res.pointsText } : {}),
+        linkHref: res.linkHref,
+        ...(res.autoProjectId ? { projectId: res.autoProjectId } : {}),
+      });
+      setReadInfo({
+        caseId: res.caseId,
+        community: res.community,
+        addressSource: res.addressSource,
+        photoCount: res.photoCount,
+        suggestions: res.suggestions,
+        autoPicked: autoName,
+        missing: res.missing,
+      });
+      setMsg({
+        kind: "ok",
+        text: `已帶入「${res.title}」${autoName ? `，建案自動選了「${autoName}」` : "，建案要自己挑一個"}。存檔前看一眼賣點。`,
+      });
+    } catch (e) {
+      setMsg({ kind: "err", text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setReading(false);
+    }
+  };
+
+  /** 把型錄上的照片抓下來（走跟手動上傳同一支壓縮＋Blob，不是外連愛屋的圖） */
+  const importPhotos = async () => {
+    if (!draft || !readInfo || importing) return;
+    const room = MAX_PHOTOS - draft.photos.length;
+    if (room <= 0) {
+      setMsg({ kind: "err", text: `已經有 ${MAX_PHOTOS} 張了，先移除幾張再帶` });
+      return;
+    }
+    setImporting(true);
+    setMsg({ kind: "ok", text: `抓照片中…（最多 ${room} 張，一張一張處理，請等一下）` });
+    try {
+      const res = await importHouseolPhotosAction(readInfo.caseId, room);
+      if (!res.ok || !res.urls) {
+        setMsg({ kind: "err", text: res.error ?? "照片帶入失敗" });
+        return;
+      }
+      patch({ photos: [...draft.photos, ...res.urls].slice(0, MAX_PHOTOS) });
+      setMsg({
+        kind: "ok",
+        text: `已帶入 ${res.urls.length} 張照片${res.failed ? `（${res.failed} 張失敗）` : ""}。⚠️ 記得按「儲存」才會寫進資料庫`,
+      });
+    } catch (e) {
+      setMsg({ kind: "err", text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setImporting(false);
+    }
   };
 
   /** 存完重新抓一次，不要自己在前端拼資料 —— 拼錯了畫面跟資料庫就對不起來 */
@@ -270,6 +332,8 @@ export default function MapListingsManager({
                 setDirty(false);
                 setMsg(null);
                 setProjQuery("");
+                setHouseolInput("");
+                setReadInfo(null);
               }}
             >
               ＋ 新增物件
@@ -356,6 +420,8 @@ export default function MapListingsManager({
                             setDirty(false);
                             setMsg(null);
                             setProjQuery("");
+                            setHouseolInput("");
+                            setReadInfo(null);
                           }}
                         >
                           編輯
@@ -384,53 +450,76 @@ export default function MapListingsManager({
             <div className={styles.form}>
               <h2>{draft.id ? "編輯物件" : "新增物件"}</h2>
 
+              {/* 貼一條愛屋連結，標題／地址／格局／特色一次帶進來，順便猜建案。
+                  2026-09-16 取代原本「搜尋愛屋庫存快照」那塊 —— 快照要自己跑書籤更新，
+                  而且沒有特色也不會挑建案。 */}
               <div className={styles.invBlock}>
-                <span className={styles.fieldLabel}>🏠 從愛屋庫存帶入標題與坪數價格（可選）</span>
-                {inventory.length === 0 ? (
-                  <small>
-                    還沒有庫存資料。打開 <code>tools/houseol/install.html</code> 抓一次愛屋，
-                    或跳過這段直接手動填。
-                  </small>
-                ) : (
-                  <>
-                    <input
-                      type="text"
-                      placeholder={`搜尋案名／社區／行政區（共 ${inventory.length} 筆）`}
-                      value={invQuery}
-                      onChange={(e) => setInvQuery(e.target.value)}
-                    />
-                    {invMatches.length === 0 ? (
-                      <small>沒有符合的物件。</small>
+                <span className={styles.fieldLabel}>🏠 貼愛屋連結，自動帶入</span>
+                <div className={styles.pasteRow}>
+                  <input
+                    type="text"
+                    placeholder="貼愛屋物件連結，或直接打案號（例：AA6362139）"
+                    value={houseolInput}
+                    onChange={(e) => setHouseolInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      e.preventDefault();
+                      void readHouseol();
+                    }}
+                    disabled={reading}
+                  />
+                  <button type="button" onClick={() => void readHouseol()} disabled={reading || !houseolInput.trim()}>
+                    {reading ? "讀取中…" : "讀取"}
+                  </button>
+                </div>
+
+                {readInfo && (
+                  <div className={styles.readBox}>
+                    <span className={styles.readLine}>
+                      {`✅ ${readInfo.caseId}`}
+                      {readInfo.community ? `｜社區「${readInfo.community}」` : "｜型錄上沒有社區名"}
+                      {`｜地址用${readInfo.addressSource === "門牌" ? "資料庫的完整門牌" : "型錄上的路名（沒有門牌）"}`}
+                    </span>
+                    {readInfo.missing.length > 0 && (
+                      <span className={styles.readWarn}>{`⚠️ 型錄上沒讀到：${readInfo.missing.join("、")} —— 自己補一下`}</span>
+                    )}
+                    {readInfo.autoPicked ? (
+                      <span className={styles.readLine}>{`🏢 建案已自動選好：${readInfo.autoPicked}`}</span>
+                    ) : readInfo.suggestions.length > 0 ? (
+                      <>
+                        <span className={styles.readLine}>🏢 建案不夠確定，挑一個（或到下面自己搜）：</span>
+                        <ul className={styles.invList}>
+                          {readInfo.suggestions.map((s) => (
+                            <li key={s.id}>
+                              <div>
+                                <b>{`${s.name}（${s.builder}）`}</b>
+                                <small>{`${s.reason}　・把握度 ${s.score}`}</small>
+                              </div>
+                              <button type="button" onClick={() => pickProject(s.id)}>
+                                選這個
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
                     ) : (
-                      <ul className={styles.invList}>
-                        {invMatches.map((item) => (
-                          <li key={item.caseId || item.title}>
-                            <div>
-                              <b>{item.title}</b>
-                              <small>
-                                {[item.community, item.district, houseolItemSummary(item)].filter(Boolean).join(" ・ ")}
-                              </small>
-                              {/* 地址直接列在挑案清單上，不用點進去就認得出是哪一間。
-                                  用 span 不用 small，避開上面 `.invList small` 那條規則。 */}
-                              {item.address && (
-                                <span className={styles.invAddr}>{`📍 ${item.address}`}</span>
-                              )}
-                            </div>
-                            <button type="button" onClick={() => applyInventoryItem(item)}>
-                              帶入
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
+                      <span className={styles.readWarn}>🏢 猜不出是哪個建案，請到下面自己搜一個</span>
                     )}
-                    {invPool.length > invMatches.length && (
-                      <small>
-                        符合的有 {invPool.length} 筆，只列前 {invMatches.length} 筆，打字縮小範圍找剩下的。
-                      </small>
+                    {readInfo.photoCount > 0 && (
+                      <div className={styles.pasteRow}>
+                        <span className={styles.readLine}>{`📷 型錄上有 ${readInfo.photoCount} 張照片`}</span>
+                        <button type="button" onClick={() => void importPhotos()} disabled={importing}>
+                          {importing ? "抓照片中…" : `帶入 ${Math.min(readInfo.photoCount, MAX_PHOTOS - draft.photos.length)} 張`}
+                        </button>
+                      </div>
                     )}
-                    <small>屬於哪個建案不會自動選，帶入之後記得手動選建案。</small>
-                  </>
+                  </div>
                 )}
+
+                <small>
+                  電子型錄連結、店網物件頁、或只打案號都可以。<b>帶入之後全部都能改</b> ——
+                  存檔前看一眼標題與賣點是不是你要的說法。
+                </small>
               </div>
 
               {/* 選好之後只留一行，候選清單收起來 —— 不然表單會被清單撐得很長，

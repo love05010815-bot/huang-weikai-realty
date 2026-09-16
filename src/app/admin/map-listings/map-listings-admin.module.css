@@ -620,3 +620,56 @@
 .projWarn {
   color: #fb7185;
 }
+
+/* ── 貼愛屋連結帶入（2026-09-16）── */
+.pasteRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.pasteRow input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.pasteRow button {
+  flex: none;
+  border: 1px solid #e00000;
+  background: #e00000;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.pasteRow button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 讀完之後的回報：讀到什麼、建案猜成什麼、有幾張照片 */
+.readBox {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.readLine {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #d0c6c4;
+}
+
+/* 沒讀到的欄位要紅一點 —— 留白他不會發現 */
+.readWarn {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #fb7185;
+}

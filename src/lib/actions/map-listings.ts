@@ -11,6 +11,11 @@
  */
 import { revalidatePath } from "next/cache";
 import { isCurrentUserAdmin } from "@/lib/admin-check";
+import { PROJECTS } from "@/data/port-projects";
+import { buildPoints, fetchCatalog } from "@/lib/houseol-catalog";
+import { getHouseolAddressMap } from "@/lib/houseol-address";
+import { uploadListingPhoto } from "@/lib/listing-photos";
+import { matchProjects, pickAuto, type ProjectSuggestion } from "@/lib/project-match";
 import {
   createMapListing,
   deleteMapListing,
@@ -18,6 +23,7 @@ import {
   setMapListingStatus,
   updateMapListing,
   validateMapListing,
+  MAX_PHOTOS,
   type MapListingInput,
   type MapListingStatus,
 } from "@/lib/map-listings";
@@ -89,4 +95,132 @@ export async function deleteMapListingAction(id: string): Promise<Result> {
   }
   revalidateAll();
   return { ok: true };
+}
+
+/* ────────────────────────────────────────────────────────────────
+   🏠 貼愛屋連結就帶入（2026-09-16）
+
+   他原本要先在「愛屋庫存」搜尋（那份是書籤小工具抓的快照，要手動更新），
+   再自己從 519 個建案裡挑一個。現在改成貼一條愛屋連結：這裡去讀電子型錄，
+   標題／地址／格局／特色一次帶進來，順便用社區名猜建案。
+
+   🔴 猜建案只有「社區名跟建案名一模一樣」才會自動選起來，其餘都只給候選讓他點 ——
+      掛錯建案客戶會在地圖上看到別棟的房子，而且不會報錯。規則在 lib/project-match.ts。
+   ──────────────────────────────────────────────────────────────── */
+
+export type HouseolReadResult =
+  | { ok: false; error: string }
+  | {
+      ok: true;
+      caseId: string;
+      title: string;
+      address: string;
+      /** 地址是哪裡來的：資料庫的完整門牌，還是型錄上只到路名的 */
+      addressSource: "門牌" | "型錄";
+      pointsText: string;
+      linkHref: string;
+      community: string;
+      photoCount: number;
+      suggestions: ProjectSuggestion[];
+      /** 有值＝夠確定，畫面直接幫他選起來 */
+      autoProjectId: string | null;
+      /** 型錄上沒讀到的欄位，畫面提醒他自己補 */
+      missing: string[];
+    };
+
+export async function readHouseolAction(input: string): Promise<HouseolReadResult> {
+  if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
+
+  const read = await fetchCatalog(input);
+  if (!read.ok) return { ok: false, error: read.error };
+  const l = read.listing;
+
+  // 完整門牌只在資料庫裡（型錄把號碼藏起來只到路名），有就用好的那個
+  let address = l.address;
+  let addressSource: "門牌" | "型錄" = "型錄";
+  try {
+    const full = (await getHouseolAddressMap()).get(l.caseId);
+    if (full) {
+      address = full;
+      addressSource = "門牌";
+    }
+  } catch {
+    // 地址表讀不到就用型錄上的，不要讓整個帶入失敗
+  }
+
+  const projects = PROJECTS.map((p) => ({
+    id: p.id,
+    name: p.name,
+    alias: p.alias,
+    aliases: p.aliases,
+    builder: p.builder,
+    area: p.area,
+    street: p.street,
+  }));
+  // 分數太低的是雜訊（「富宇大悦」配到「富宇大地」那種），寧可讓他自己搜
+  const suggestions = matchProjects({ community: l.community, title: l.title, address }, projects).filter(
+    (s) => s.score >= 50,
+  );
+
+  const missing: string[] = [];
+  if (!l.title) missing.push("標題");
+  if (!l.community) missing.push("社區名（所以猜不出建案）");
+  if (l.rooms === null) missing.push("格局");
+  if (l.ping === null) missing.push("坪數");
+
+  return {
+    ok: true,
+    caseId: l.caseId,
+    title: l.title,
+    address,
+    addressSource,
+    pointsText: buildPoints(l).join("\n"),
+    linkHref: l.catalogUrl,
+    community: l.community,
+    photoCount: l.photos.length,
+    suggestions,
+    autoProjectId: pickAuto(suggestions),
+    missing,
+  };
+}
+
+/**
+ * 把型錄上的照片抓下來、壓好、存進 Blob，回可以直接放進表單的網址。
+ *
+ * 走的是後台上傳照片同一支 `uploadListingPhoto()`（縮到 1600px、壓 WebP、存 Blob），
+ * 所以照片跟他自己傳的一模一樣，不是把愛屋的圖直接外連
+ * —— 外連的話愛屋換網址或擋熱連結，地圖上的照片就默默變破圖。
+ *
+ * ⚠️ 一張一張做不並行：sharp 同時解好幾張會把函式的記憶體吃爆
+ *    （跟 lib/photo-upload-client.ts 同一個理由）。
+ */
+export async function importHouseolPhotosAction(
+  caseId: string,
+  room: number,
+): Promise<{ ok: boolean; urls?: string[]; failed?: number; error?: string }> {
+  if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
+  const take = Math.max(0, Math.min(MAX_PHOTOS, Math.floor(room)));
+  if (take === 0) return { ok: false, error: `照片已經有 ${MAX_PHOTOS} 張了，先移除幾張再帶` };
+
+  const read = await fetchCatalog(caseId);
+  if (!read.ok) return { ok: false, error: read.error };
+  const photos = read.listing.photos.slice(0, take);
+  if (photos.length === 0) return { ok: false, error: "這一頁的型錄沒有照片" };
+
+  const urls: string[] = [];
+  let failed = 0;
+  for (const src of photos) {
+    try {
+      const res = await fetch(src, { signal: AbortSignal.timeout(10000) });
+      if (!res.ok) throw new Error(String(res.status));
+      const buf = Buffer.from(await res.arrayBuffer());
+      const name = src.split("/").pop() || `${caseId}.jpg`;
+      const { url } = await uploadListingPhoto(new File([buf], name, { type: res.headers.get("content-type") ?? "image/jpeg" }));
+      urls.push(url);
+    } catch {
+      failed++;
+    }
+  }
+  if (urls.length === 0) return { ok: false, error: `${photos.length} 張都抓失敗，可能是愛屋擋了或圖檔壞了` };
+  return { ok: true, urls, failed };
 }

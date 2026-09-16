@@ -19,8 +19,6 @@ import { CIS } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
 import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
 import { listAllMapListings, type MapListingRecord } from "@/lib/map-listings";
-import { loadHouseolInventory } from "@/lib/houseol-inventory";
-import { getHouseolAddressMap } from "@/lib/houseol-address";
 import { getListingClickStats, type ListingClickStats } from "@/lib/listing-clicks";
 import { PROJECTS } from "@/data/port-projects";
 import MapListingsManager from "./MapListingsManager";
@@ -65,15 +63,6 @@ export default async function MapListingsAdminPage() {
     builder: p.builder,
     count: rows.filter((r) => r.projectId === p.id).length,
   })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "zh-Hant"));
-
-  // 門牌地址存資料庫、不在庫存檔裡 —— 庫存檔有版控而這個 repo 是公開的。
-  // 還沒跑過 `node tools/houseol/push-addresses.js` 就是每筆都沒地址，
-  // 挑案清單照常運作，只是少一個便利功能。
-  const addressMap = await getHouseolAddressMap();
-  const inventory = loadHouseolInventory().map((it) => {
-    const address = addressMap.get(it.caseId);
-    return address ? { ...it, address } : it;
-  });
 
   return (
     <main
@@ -128,7 +117,7 @@ export default async function MapListingsAdminPage() {
             </li>
           </ul>
 
-          <MapListingsManager initial={rows} projects={options} inventory={inventory} clickStats={clickStats} />
+          <MapListingsManager initial={rows} projects={options} clickStats={clickStats} />
         </>
       )}
     </main>
