@@ -46,6 +46,8 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       // 貼上愛屋型錄／LINE 物件文字，一鍵交給 Chrome 外掛填進 591／樂屋網的刊登表單。純前端、不進資料庫。
       // 2026-09-10 他改名「廣告刊登助手」（不只 591 了）；網址 /admin/post591 不動。
       { href: "/admin/post591", label: "廣告刊登助手", icon: "edit" },
+      // 一版廣告 → 交給 Chrome 外掛（tools/fb-group-poster）用粉專身分逐一發到勾好的 FB 社團；發佈他自己按。純前端＋IndexedDB，不進資料庫。
+      { href: "/admin/fb", label: "社團廣告發佈", icon: "megaphone" },
       { href: "/admin/line", label: "LINE 機器人", icon: "mobile" },
       { href: "/admin/inbox", label: "留言收件匣", icon: "chat" },
     ],

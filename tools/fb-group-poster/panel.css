@@ -1,0 +1,106 @@
+/* FB 社團廣告助手 —— 社團頁右下角的操作面板 */
+#fbq-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  z-index: 2147483647;
+  background: #fff;
+  color: #1c1e21;
+  border: 1px solid #dddfe2;
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  font-family: "Segoe UI", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
+  font-size: 13.5px;
+  line-height: 1.5;
+  overflow: hidden;
+}
+#fbq-panel h4 {
+  margin: 0;
+  padding: 10px 14px;
+  background: #1877f2;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+#fbq-panel h4 button {
+  background: rgba(255, 255, 255, 0.2);
+  border: 0;
+  color: #fff;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+#fbq-panel ul {
+  list-style: none;
+  margin: 0;
+  padding: 10px 14px;
+  max-height: 240px;
+  overflow: auto;
+}
+#fbq-panel li {
+  padding: 3px 0;
+  border-bottom: 1px solid #f0f2f5;
+  word-break: break-word;
+}
+#fbq-panel li:last-child {
+  border-bottom: 0;
+}
+#fbq-panel li.fbq-strong {
+  font-weight: 700;
+}
+#fbq-panel li.fbq-ok {
+  color: #1a7f37;
+  font-weight: 600;
+}
+#fbq-panel li.fbq-bad {
+  color: #c0392b;
+  font-weight: 600;
+}
+#fbq-panel .fbq-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  border-top: 1px solid #f0f2f5;
+}
+#fbq-panel .fbq-btns button {
+  flex: 1 1 auto;
+  min-width: 100px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid #ccd0d5;
+  background: #f0f2f5;
+  color: #1c1e21;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+#fbq-panel .fbq-btns button:hover {
+  background: #e4e6eb;
+}
+#fbq-panel .fbq-btns button.fbq-primary {
+  background: #1877f2;
+  border-color: #1877f2;
+  color: #fff;
+  flex-basis: 100%;
+}
+#fbq-panel .fbq-btns button.fbq-primary:hover {
+  background: #166fe5;
+}
+#fbq-panel .fbq-btns button.fbq-danger {
+  color: #c0392b;
+  border-color: #f5c2c0;
+  background: #fff;
+}
+#fbq-panel.fbq-min ul,
+#fbq-panel.fbq-min .fbq-btns {
+  display: none;
+}

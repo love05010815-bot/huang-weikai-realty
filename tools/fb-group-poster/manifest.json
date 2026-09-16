@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "FB 社團廣告助手",
+  "version": "1.0.0",
+  "description": "在後台寫一版廣告，勾好社團，這支外掛用你登入的粉專身分，在你自己的 Chrome 裡逐一打開社團、填好文案與圖片。發佈那一顆永遠是你自己按。",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": ["https://www.facebook.com/*", "https://web.facebook.com/*"],
+  "action": { "default_title": "FB 社團廣告助手：到後台的『社團廣告發佈』開始" },
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://www.facebook.com/groups/*", "https://web.facebook.com/groups/*"],
+      "js": ["fb-selectors.js", "content.js"],
+      "css": ["panel.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://weikaihouse.com/admin/fb*",
+        "https://www.weikaihouse.com/admin/fb*",
+        "https://huang-weikai-realty.vercel.app/admin/fb*",
+        "http://localhost:3000/admin/fb*"
+      ],
+      "js": ["bridge.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
