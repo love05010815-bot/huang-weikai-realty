@@ -366,6 +366,32 @@ export default async function HomePage() {
           </div>
         </section>
 
+        {/* ---------------- 自動配對找房（入口）----------------
+            2026-09-16 系統擁有者指定位置：hero 的三顆按鈕與「精選好案」之間。
+            這一區白底、不放弧，所以看起來是 hero 那片白的延續、只多一張卡 ——
+            首頁的色序（hero 白 → 精選好案 淡藍 → 服務 白 → 試算 蜜桃 → 預約 深藍綠）
+            是他 9/07 拍板的，中間插一塊新顏色會把整頁的節奏打亂。詳見 home.module.css 的 .matchBand。 */}
+        <section className={styles.matchBand} aria-label="自動配對找房">
+          <div className={styles.matchCard}>
+            <div className={styles.matchCardBody}>
+              <span className={styles.matchTag}>🏠 自動配對找房</span>
+              <h2 className={styles.matchTitle}>不知道從哪一間看起？讓系統幫您配</h2>
+              <p className={styles.matchDesc}>
+                填一次購屋條件，系統會從目前所有在售物件裡挑出最符合的幾間，並告訴您為什麼合適。
+                看中意可以直接預約看屋；之後有新物件進來，也會第一時間在官方 LINE 通知您。
+              </p>
+              <ul className={styles.matchSteps}>
+                <li>① 填條件</li>
+                <li>② 看配對結果</li>
+                <li>③ 預約看屋</li>
+              </ul>
+            </div>
+            <Link className={`${styles.btn} ${styles.btnPrimary} ${styles.matchBtn}`} href="/match">
+              開始配對找房
+            </Link>
+          </div>
+        </section>
+
         {/* ---------------- 關於我（導引；完整內容在 /about）----------------
             原本自我介紹＋服務區域＋戰績整包都在首頁，光這段就佔首頁 26%
             的長度（手機 2426px）。搬到 /about 之後這裡只留自我介紹當鉤子，

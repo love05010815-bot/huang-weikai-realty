@@ -626,6 +626,105 @@
   }
 }
 
+/* ---------- 自動配對找房（首頁入口卡，2026-09-16）----------
+   系統擁有者圈了 hero 按鈕與「精選好案」中間那一段，要把 /match 放在那裡。
+
+   ⚠️ 這一區**刻意也是白底、也不放弧**。首頁的色序是他 9/07 拍板的
+      （hero 白 → 精選好案 淡藍 → 服務 白 → 試算 蜜桃 → 預約 深藍綠），
+      中間插一塊新顏色會把整頁的節奏打亂；白接白就只是多一張卡。
+   ⚠️ padding-bottom 要 ≥ 56px（手機 36px）—— 下一區 .bandBlue 的弧是絕對定位在
+      它自己頂端外面，會吃掉這一區的底部；縮小就會壓到卡片，而且不會報錯。 */
+.matchBand {
+  padding: 0 20px 76px;
+}
+
+.matchCard {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  padding: 26px 32px;
+  border-radius: 22px;
+  border: 1px solid rgba(1, 53, 77, 0.1);
+  background: linear-gradient(115deg, #eef6f3 0%, #e8f1f8 100%);
+  box-shadow: 0 14px 30px rgba(1, 53, 77, 0.08);
+}
+
+.matchCardBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.matchTag {
+  display: inline-block;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--primary);
+  background: #fff;
+  padding: 5px 14px;
+  border-radius: 999px;
+  margin-bottom: 10px;
+}
+
+.matchTitle {
+  font-size: clamp(20px, 3vw, 26px);
+  font-weight: 900;
+  line-height: 1.35;
+  margin: 0 0 8px;
+}
+
+.matchDesc {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.75;
+  margin: 0 0 14px;
+}
+
+/* 三個步驟用文字不用圖示：這一行要回答「按下去會發生什麼」，不是裝飾。 */
+.matchSteps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.matchSteps li {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 14px;
+}
+
+.matchBtn {
+  flex: none;
+  /* 這個專案沒有全域 box-sizing reset（globals.css 沒被 import），而 .btn 有 2px 邊框
+     ＋ 這裡手機要 width:100% —— 不自己寫的話按鈕會比卡片寬出 padding＋邊框那一截。 */
+  box-sizing: border-box;
+  padding: 15px 30px;
+  font-size: 15.5px;
+}
+
+@media (max-width: 760px) {
+  .matchBand {
+    padding: 0 20px 60px;
+  }
+  .matchCard {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+    padding: 22px 20px;
+  }
+  .matchBtn {
+    width: 100%;
+  }
+}
+
 /* ---------- 服務區域 ---------- */
 .areaGrid {
   display: grid;
