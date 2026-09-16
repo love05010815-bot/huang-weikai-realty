@@ -102,6 +102,56 @@
     return new File([blob], name + "." + ext, { type: blob.type || "image/jpeg" });
   }
 
+  /* ───────── 填文案（保留後台的排版）───────── */
+  const countLines = (s) => String(s || "").split("\n").filter((x) => x.trim()).length;
+
+  function clearBox(box) {
+    box.focus();
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(box);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    document.execCommand("delete");
+  }
+
+  /**
+   * 把文案填進 Facebook 的編輯器，**換行與空行原封不動照後台的排版**。
+   *
+   * 🔴 不要一次把整段（含 \n）丟給 execCommand("insertText")：FB 用 Lexical 編輯器，
+   *    會把 \n 正規化掉，結果後台排得好好的版型貼到 FB 變成一大段（2026-09-16 他回報）。
+   * ① 先模擬「貼上」：Lexical 的 paste 處理會照實保留換行與空行，最接近他在後台看到的樣子。
+   * ② 貼上沒生效才一行一行填，中間用 insertLineBreak 換行。
+   */
+  async function fillComposer(box, text) {
+    const norm = String(text).replace(/\r\n/g, "\n");
+    const want = countLines(norm);
+    const got = () => countLines(box.innerText);
+    box.focus();
+    await sleep(150);
+
+    try {
+      const dt = new DataTransfer();
+      dt.setData("text/plain", norm);
+      box.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+      await sleep(600);
+    } catch {}
+    if (got() >= want) return "paste";
+
+    clearBox(box);
+    await sleep(150);
+    const lines = norm.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      if (i > 0 && !document.execCommand("insertLineBreak")) {
+        box.dispatchEvent(new InputEvent("beforeinput", { inputType: "insertLineBreak", bubbles: true, cancelable: true }));
+      }
+      if (lines[i]) document.execCommand("insertText", false, lines[i]);
+      await sleep(12);
+    }
+    await sleep(300);
+    return got() >= want ? "lines" : got() > 0 ? "partial" : "failed";
+  }
+
   /* ───────── 主流程 ───────── */
   async function run() {
     const cur = await send("fbq:current");
@@ -238,18 +288,14 @@
         else log("⚠ 沒能自動切成粉專「" + job.pageName + "」。請在視窗左上角自己切換成粉專，再按發佈。", "fbq-bad");
       }
 
-      // 4. 填文案
+      // 4. 填文案（排版照後台，換行與空行一模一樣）
       if (job.ad.text && job.ad.text.trim()) {
         log("填入文案…");
         const box = dialog.querySelector('div[role="textbox"]');
-        box.focus();
-        await sleep(200);
-        document.execCommand("insertText", false, job.ad.text.replace(/\r\n/g, "\n"));
-        await sleep(400);
-        if (!textOf(box)) {
-          // execCommand 沒生效的退路
-          box.dispatchEvent(new InputEvent("beforeinput", { inputType: "insertText", data: job.ad.text, bubbles: true, cancelable: true }));
-        }
+        const how = await fillComposer(box, job.ad.text);
+        if (how === "failed") log("文案沒填進去，請自己貼上再發佈。", "fbq-bad");
+        else if (how === "partial") log("⚠ 排版可能沒完全照後台，發佈前請看一下換行。", "fbq-bad");
+        else log("文案已填好，排版照後台。", "");
       }
 
       // 5. 上傳圖片
