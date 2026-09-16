@@ -37,17 +37,24 @@ chrome.action.onClicked.addListener(async () => {
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
-async function getDaily() {
+/**
+ * 每日上限「每個發文身分分開算」——他可能有兩三個粉專／帳號輪流發，
+ * 一個身分發滿 10 個社團，不該害另一個身分今天不能發。
+ * 存成 { date, counts: { 身分名稱: 次數 } }；舊格式（只有 count）自動搬過來。
+ */
+async function getDaily(who) {
   const o = await chrome.storage.local.get(DAILY_KEY);
   const d = o[DAILY_KEY];
-  if (!d || d.date !== todayStr()) return { date: todayStr(), count: 0 };
-  return d;
+  const key = String(who || "");
+  if (!d || d.date !== todayStr()) return { date: todayStr(), counts: {}, count: 0, key };
+  const counts = d.counts || (typeof d.count === "number" ? { "": d.count } : {});
+  return { date: d.date, counts, count: counts[key] || 0, key };
 }
-async function bumpDaily() {
-  const d = await getDaily();
-  d.count += 1;
-  await chrome.storage.local.set({ [DAILY_KEY]: d });
-  return d.count;
+async function bumpDaily(who) {
+  const d = await getDaily(who);
+  d.counts[d.key] = (d.counts[d.key] || 0) + 1;
+  await chrome.storage.local.set({ [DAILY_KEY]: { date: d.date, counts: d.counts } });
+  return d.counts[d.key];
 }
 
 async function setProgress(patch) {
@@ -95,10 +102,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return reply(async () => {
       const p = msg.payload;
       if (!p || p.v !== 1 || !Array.isArray(p.groups) || !p.groups.length) throw new Error("資料格式不對");
-      const daily = await getDaily();
+      // 發文身分：新版後台送 identity，舊版只送 pageName
+      const identity = {
+        name: String((p.identity && p.identity.name) || p.pageName || ""),
+        kind: p.identity && p.identity.kind === "account" ? "account" : "page",
+      };
+      const daily = await getDaily(identity.name);
       const job = {
         v: 1,
-        pageName: String(p.pageName || ""),
+        identity,
+        pageName: identity.name,
         locale: p.locale === "en" ? "en" : "zh-TW",
         dailyLimit: Math.max(0, Number(p.dailyLimit) || 0),
         requirePageIdentity: p.requirePageIdentity !== false,
@@ -116,6 +129,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         results: [],
         today: daily.count,
         dailyLimit: job.dailyLimit,
+        identityName: identity.name,
         groupNames: Object.fromEntries(job.groups.map((g) => [g.id, g.name])),
         groupIds: job.groups.map((g) => g.id),
       });
@@ -130,10 +144,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       const job = await getJob();
       if (!job) return { ok: true, job: null };
       if (sender.tab && job.tabId != null && sender.tab.id !== job.tabId) return { ok: true, job: null }; // 別的 FB 分頁不理它
-      const daily = await getDaily();
+      const daily = await getDaily(job.identity ? job.identity.name : job.pageName);
       return {
         ok: true,
         job: {
+          identity: job.identity || { name: job.pageName, kind: "page" },
           pageName: job.pageName,
           locale: job.locale,
           requirePageIdentity: job.requirePageIdentity,
@@ -172,7 +187,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       const status = msg.type === "fbq:skip" ? "skipped" : String(msg.status || "posted");
       results[job.index] = { groupId: g.id, groupName: g.name, status, message: String(msg.message || (status === "skipped" ? "已跳過" : "已由你按下發佈")), at: new Date().toISOString() };
       let today = prog.today || 0;
-      if (status === "posted" || status === "pending") today = await bumpDaily();
+      if (status === "posted" || status === "pending") today = await bumpDaily(job.identity ? job.identity.name : job.pageName);
 
       // 到每日上限就停
       if (job.dailyLimit > 0 && today >= job.dailyLimit && job.index + 1 < job.groups.length) {

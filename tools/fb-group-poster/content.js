@@ -281,11 +281,44 @@
       }
       await sleep(1000);
 
-      // 3. 確認粉專身分
-      if (job.pageName) {
-        const ok = await ensureIdentity(dialog, job.pageName, L);
-        if (ok) log("發文身分：" + job.pageName + " ✓", "fbq-ok");
-        else log("⚠ 沒能自動切成粉專「" + job.pageName + "」。請在視窗左上角自己切換成粉專，再按發佈。", "fbq-bad");
+      // 3. 確認發文身分
+      // 🔴 他有兩三個粉專／帳號輪流發，用錯身分發出去收不回來 —— 認不出來就**停在這裡問**，
+      //    不會先把文案填好讓他順手按發佈。帳號（不是粉專）一律只認人、不自動切：切帳號要碰密碼。
+      const idName = (job.identity && job.identity.name) || job.pageName || "";
+      const idKind = (job.identity && job.identity.kind) || "page";
+      if (idName) {
+        const askIdentity = () => {
+          log(
+            "⛔ 目前的發文身分不是「" + idName + "」" + (idKind === "account" ? "（這是另一個帳號，要你自己切 Chrome 使用者／登入）" : "（請在發文視窗左上角切換）") + "。",
+            "fbq-bad",
+          );
+          log("怕用錯身分發出去，先停在這裡。切好之後再按下面。", "fbq-strong");
+          return new Promise((resolve) => {
+            buttons([
+              { label: "我切好了，繼續填", primary: true, onClick: () => resolve("retry") },
+              { label: "跳過這個", onClick: () => resolve("skip") },
+              { label: "停止全部", danger: true, onClick: () => resolve("stop") },
+            ]);
+          });
+        };
+        let ok = await ensureIdentity(dialog, idName, L, idKind === "account");
+        while (!ok) {
+          await report("waiting", "等你切到「" + idName + "」");
+          const choice = await askIdentity();
+          if (choice === "skip") {
+            await send("fbq:skip", { message: "身分不是「" + idName + "」，跳過" });
+            return;
+          }
+          if (choice === "stop") {
+            await send("fbq:stop");
+            log("已停止。你可以關掉這個分頁。", "fbq-strong");
+            buttons([{ label: "關閉面板", onClick: () => panel.remove() }]);
+            return;
+          }
+          controls(false);
+          ok = await ensureIdentity(dialog, idName, L, idKind === "account");
+        }
+        log("發文身分：" + idName + " ✓", "fbq-ok");
       }
 
       // 4. 填文案（排版照後台，換行與空行一模一樣）
@@ -325,8 +358,9 @@
     }
   }
 
-  /* ───────── 粉專身分 ───────── */
-  async function ensureIdentity(dialog, pageName, L) {
+  /* ───────── 發文身分 ───────── */
+  /** checkOnly=true（另一個 FB 帳號）只認人、不嘗試切換：切帳號要密碼，工具不碰。 */
+  async function ensureIdentity(dialog, pageName, L, checkOnly) {
     const nameRe = new RegExp(FBQ.escapeRe(pageName), "i");
     const shown = () => {
       const box = dialog.getBoundingClientRect();
@@ -339,6 +373,7 @@
       return false;
     };
     if (shown()) return true;
+    if (checkOnly) return false;
 
     let switcher = byRoleName("button", FBQ.anyRe(FBQ.words(L, "switchProfile")), 1)[0];
     if (!switcher) {

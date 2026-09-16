@@ -17,10 +17,16 @@ import styles from "./fb.module.css";
 type AdImage = { name: string; dataUrl: string };
 type Ad = { id: string; title: string; text: string; images: AdImage[]; updatedAt: number };
 type GroupResult = { status: string; message: string; at: string };
-type Group = { id: string; name: string; url: string; note: string; enabled: boolean; lastResult: GroupResult | null };
+type Group = { id: string; name: string; url: string; note: string; enabled: boolean; lastResult: GroupResult | null; identityIds?: string[] };
+/**
+ * 發文身分：貼文最後會掛在誰名下。
+ * kind="page" 粉專（同一個 FB 帳號底下切換，外掛可以自己切）
+ * kind="account" 另一個 FB 帳號（要你自己換 Chrome 使用者／登入，工具只負責認人、不碰密碼）
+ */
+type Identity = { id: string; name: string; kind: "page" | "account"; note: string };
 type Settings = { pageName: string; locale: "zh-TW" | "en"; dailyLimit: number };
 type ResultRow = { groupId: string; groupName: string; status: string; message: string; at: string };
-type HistoryJob = { id: string; at: number; adTitle: string; total: number; results: ResultRow[]; status: string };
+type HistoryJob = { id: string; at: number; adTitle: string; identityName?: string; total: number; results: ResultRow[]; status: string };
 type Progress = {
   status: "running" | "done" | "stopped";
   total: number;
@@ -94,6 +100,7 @@ export default function FbGroupManager() {
   const [tab, setTab] = useState<"publish" | "posts" | "groups" | "history" | "settings">("publish");
   const [ads, setAds] = useState<Ad[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [identities, setIdentities] = useState<Identity[]>([]);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [history, setHistory] = useState<HistoryJob[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -105,6 +112,7 @@ export default function FbGroupManager() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wroteHistoryFor = useRef<number | null>(null);
   const currentAdTitle = useRef("");
+  const currentIdentityName = useRef("");
 
   const showToast = useCallback((msg: string, type = "info") => {
     setToast({ msg, type });
@@ -117,7 +125,15 @@ export default function FbGroupManager() {
     (async () => {
       setAds(await idbGet<Ad[]>("ads", []));
       setGroups(await idbGet<Group[]>("groups", []));
-      setSettings({ ...DEFAULT_SETTINGS, ...(await idbGet<Partial<Settings>>("settings", {})) });
+      const s = { ...DEFAULT_SETTINGS, ...(await idbGet<Partial<Settings>>("settings", {})) };
+      setSettings(s);
+      // 舊資料只有單一「粉專名稱」→ 自動升級成第一個發文身分，不用他重打
+      let ids = await idbGet<Identity[]>("identities", []);
+      if (!ids.length && s.pageName.trim()) {
+        ids = [{ id: uid(), name: s.pageName.trim(), kind: "page", note: "從舊設定的粉專名稱自動帶入" }];
+        await idbSet("identities", ids);
+      }
+      setIdentities(ids);
       setHistory(await idbGet<HistoryJob[]>("history", []));
       setLoaded(true);
     })();
@@ -128,6 +144,9 @@ export default function FbGroupManager() {
   useEffect(() => {
     if (loaded) idbSet("groups", groups);
   }, [groups, loaded]);
+  useEffect(() => {
+    if (loaded) idbSet("identities", identities);
+  }, [identities, loaded]);
   useEffect(() => {
     if (loaded) idbSet("settings", settings);
   }, [settings, loaded]);
@@ -168,7 +187,20 @@ export default function FbGroupManager() {
     if (wroteHistoryFor.current === progress.finishedAt) return;
     wroteHistoryFor.current = progress.finishedAt;
     const results = progress.results || [];
-    setHistory((h) => [{ id: uid(), at: progress.finishedAt || Date.now(), adTitle: currentAdTitle.current, total: progress.total, results, status: progress.status }, ...h].slice(0, 100));
+    setHistory((h) =>
+      [
+        {
+          id: uid(),
+          at: progress.finishedAt || Date.now(),
+          adTitle: currentAdTitle.current,
+          identityName: currentIdentityName.current,
+          total: progress.total,
+          results,
+          status: progress.status,
+        },
+        ...h,
+      ].slice(0, 100),
+    );
     setGroups((gs) => gs.map((g) => {
       const r = results.find((x) => x.groupId === g.id);
       return r ? { ...g, lastResult: { status: r.status, message: r.message, at: r.at } } : g;
@@ -292,30 +324,49 @@ export default function FbGroupManager() {
 
   // ── 發佈 ──
   const [pubAdId, setPubAdId] = useState<string>("");
+  const [pubIdentityId, setPubIdentityId] = useState<string>("");
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const checkedInit = useRef(false);
+  const pubIdentity = identities.find((i) => i.id === pubIdentityId) || null;
+  /** 沒標身分的社團＝每個身分都能發（相容舊資料）；標了就只在那些身分底下出現 */
+  const groupsForIdentity = (idId: string) =>
+    groups.filter((g) => !g.identityIds || g.identityIds.length === 0 || (!!idId && g.identityIds.includes(idId)));
+  const visibleGroups = groupsForIdentity(pubIdentityId);
   useEffect(() => {
     if (!loaded || checkedInit.current) return;
     checkedInit.current = true;
-    setChecked(new Set(groups.filter((g) => g.enabled).map((g) => g.id)));
     if (!pubAdId && ads[0]) setPubAdId(ads[0].id);
+    if (!pubIdentityId && identities[0]) setPubIdentityId(identities[0].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded]);
+  // 換身分 → 重新預選那個身分底下、啟用中的社團（不同帳號加入的社團不一樣）
+  useEffect(() => {
+    if (!loaded) return;
+    setChecked(new Set(groupsForIdentity(pubIdentityId).filter((g) => g.enabled).map((g) => g.id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pubIdentityId, loaded]);
   const pubAd = ads.find((a) => a.id === pubAdId) || null;
-  const checkedCount = groups.filter((g) => checked.has(g.id)).length;
+  const checkedCount = visibleGroups.filter((g) => checked.has(g.id)).length;
 
   async function launch() {
     if (!extVersion) return showToast("沒偵測到外掛：請先安裝「FB 社團廣告助手」，裝好後按 F5 重新整理這頁", "bad");
     if (!pubAd) return showToast("請先選一版廣告文案", "warn");
     if (!pubAd.text.trim() && !pubAd.images.length) return showToast("這版文案沒有內容", "warn");
-    const picked = groups.filter((g) => checked.has(g.id));
+    if (!pubIdentity) return showToast("請先選發文身分（沒有的話到「設定」新增）", "warn");
+    const picked = visibleGroups.filter((g) => checked.has(g.id));
     if (!picked.length) return showToast("請至少勾選一個社團", "warn");
-    if (!settings.pageName && !confirm("你還沒在設定裡填粉專名稱，系統就無法自動確認發文身分（可能用個人帳號發）。仍要繼續嗎？")) return;
+    if (
+      pubIdentity.kind === "account" &&
+      !confirm(`這批要用「${pubIdentity.name}」這個帳號發。請先確認 Chrome 目前登入的就是它（工具不會、也不能替你切換帳號）。現在就是這個帳號嗎？`)
+    )
+      return;
 
     currentAdTitle.current = pubAd.title;
+    currentIdentityName.current = pubIdentity.name;
     const payload = {
       v: 1,
-      pageName: settings.pageName,
+      pageName: pubIdentity.name, // 舊版外掛只認 pageName，留著相容
+      identity: { name: pubIdentity.name, kind: pubIdentity.kind },
       locale: settings.locale,
       dailyLimit: settings.dailyLimit,
       requirePageIdentity: true,
@@ -365,7 +416,7 @@ export default function FbGroupManager() {
   const missing: string[] = [];
   if (!ads.length) missing.push("到「廣告文案」寫一版廣告");
   if (!groups.length) missing.push("到「社團清單」加入社團");
-  if (!settings.pageName) missing.push("到「設定」填粉專名稱");
+  if (!identities.length) missing.push("到「設定」新增發文身分（粉專或帳號，可以多個）");
   if (!extVersion) missing.push("安裝「FB 社團廣告助手」外掛（裝法在設定頁）");
 
   return (
@@ -431,25 +482,47 @@ export default function FbGroupManager() {
               )}
             </section>
             <section className={styles.card}>
-              <h2 className={styles.h2}>2. 方式</h2>
-              <p className={styles.hint}>
-                外掛會自動打開社團、切成粉專身分、填好文案和圖片，然後停下來。<b>你自己核對後按 Facebook 的「發佈」</b>，
-                再點面板上的「下一個社團」，就換下一個。這是最安全的做法。
-              </p>
-              <p className={styles.hint}>
-                每天最多發 <b>{settings.dailyLimit > 0 ? `${settings.dailyLimit} 個社團` : "不限"}</b>（可到設定改）。
-                同一篇短時間發太多社團容易被 Facebook 判定垃圾訊息。
-              </p>
+              <h2 className={styles.h2}>2. 用哪個身分發</h2>
+              {identities.length ? (
+                <>
+                  <select className={styles.input} value={pubIdentityId} onChange={(e) => setPubIdentityId(e.target.value)}>
+                    {identities.map((i) => (
+                      <option key={i.id} value={i.id}>
+                        {i.name}（{i.kind === "page" ? "粉專" : "帳號"}）
+                      </option>
+                    ))}
+                  </select>
+                  {pubIdentity?.kind === "account" ? (
+                    <p className={styles.warnText}>
+                      ⚠ 這是<b>另一個 FB 帳號</b>。發之前請先自己把 Chrome 切到登入「{pubIdentity.name}」的那個視窗
+                      （工具不會也不能替你登入或切帳號）。外掛會在每個社團先認人，對不上就停下來問你，不會用錯帳號發出去。
+                    </p>
+                  ) : (
+                    <p className={styles.hint}>粉專身分外掛會自己在發文視窗切好；切不過去會停下來問你，不會硬發。</p>
+                  )}
+                  {pubIdentity?.note && <p className={styles.hint}>備註：{pubIdentity.note}</p>}
+                  <p className={styles.hint}>
+                    每天最多發 <b>{settings.dailyLimit > 0 ? `${settings.dailyLimit} 個社團` : "不限"}</b>
+                    （<b>每個身分分開算</b>，可到設定改）。同一篇短時間發太多社團容易被判定垃圾訊息。
+                  </p>
+                </>
+              ) : (
+                <p className={styles.hint}>還沒有發文身分，請到「設定」新增（可以放 2～3 個粉專或帳號）。</p>
+              )}
             </section>
           </div>
 
           <section className={styles.card}>
             <div className={styles.between}>
               <h2 className={styles.h2}>
-                3. 勾選社團 <span className={styles.hintInline}>（已勾 {checkedCount} / {groups.length}）</span>
+                3. 勾選社團{" "}
+                <span className={styles.hintInline}>
+                  （已勾 {checkedCount} / {visibleGroups.length}
+                  {pubIdentity ? `，${pubIdentity.name} 的社團` : ""}）
+                </span>
               </h2>
               <div>
-                <button type="button" className={styles.btnSm} onClick={() => setChecked(new Set(groups.filter((g) => g.enabled).map((g) => g.id)))}>
+                <button type="button" className={styles.btnSm} onClick={() => setChecked(new Set(visibleGroups.filter((g) => g.enabled).map((g) => g.id)))}>
                   全選啟用中
                 </button>
                 <button type="button" className={styles.btnSm} onClick={() => setChecked(new Set())}>
@@ -457,9 +530,9 @@ export default function FbGroupManager() {
                 </button>
               </div>
             </div>
-            {groups.length ? (
+            {visibleGroups.length ? (
               <div className={styles.checklist}>
-                {groups.map((g) => (
+                {visibleGroups.map((g) => (
                   <label key={g.id} className={`${styles.checkItem} ${g.enabled ? "" : styles.disabled}`}>
                     <input
                       type="checkbox"
@@ -479,7 +552,11 @@ export default function FbGroupManager() {
                 ))}
               </div>
             ) : (
-              <p className={styles.hint}>還沒有社團，請到「社團清單」新增。</p>
+              <p className={styles.hint}>
+                {groups.length
+                  ? `「${pubIdentity?.name ?? ""}」底下還沒有社團。到「社團清單」把社團標給這個身分（沒標身分的社團每個身分都會出現）。`
+                  : "還沒有社團，請到「社團清單」新增。"}
+              </p>
             )}
           </section>
 
@@ -633,7 +710,10 @@ export default function FbGroupManager() {
             <h2 className={styles.h2}>
               所有社團 <span className={styles.hintInline}>{groups.length ? `（${groups.length} 個）` : ""}</span>
             </h2>
-            <p className={styles.hint}>「啟用」關掉的社團不會出現在發佈頁的預設勾選。名稱與備註可直接改。</p>
+            <p className={styles.hint}>
+              「啟用」關掉的社團不會出現在發佈頁的預設勾選。名稱與備註可直接改。
+              {identities.length > 1 && <> 「哪個身分」勾起來，這個社團就只在那些身分底下出現；<b>都不勾＝每個身分都會出現</b>。</>}
+            </p>
             <div className={styles.tableWrap}>
               <table className={styles.table}>
                 <thead>
@@ -641,6 +721,7 @@ export default function FbGroupManager() {
                     <th>啟用</th>
                     <th>名稱</th>
                     <th>網址</th>
+                    {identities.length > 1 && <th>哪個身分</th>}
                     <th>備註</th>
                     <th>上次結果</th>
                     <th></th>
@@ -661,6 +742,28 @@ export default function FbGroupManager() {
                             {g.url.replace("https://www.facebook.com/groups/", "").replace(/\/$/, "")}
                           </a>
                         </td>
+                        {identities.length > 1 && (
+                          <td>
+                            <div className={styles.idTags}>
+                              {identities.map((it) => {
+                                const on = (g.identityIds || []).includes(it.id);
+                                return (
+                                  <label key={it.id} className={`${styles.idTag} ${on ? styles.idTagOn : ""}`} title={it.kind === "page" ? "粉專" : "帳號"}>
+                                    <input
+                                      type="checkbox"
+                                      checked={on}
+                                      onChange={(e) => {
+                                        const cur = g.identityIds || [];
+                                        updateGroup(g.id, { identityIds: e.target.checked ? [...cur, it.id] : cur.filter((x) => x !== it.id) });
+                                      }}
+                                    />
+                                    {it.name || "(未命名)"}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </td>
+                        )}
                         <td>
                           <input className={styles.cell} value={g.note} onChange={(e) => updateGroup(g.id, { note: e.target.value })} placeholder="備註" />
                         </td>
@@ -674,7 +777,7 @@ export default function FbGroupManager() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className={styles.empty}>
+                      <td colSpan={identities.length > 1 ? 7 : 6} className={styles.empty}>
                         還沒有社團。
                       </td>
                     </tr>
@@ -698,7 +801,7 @@ export default function FbGroupManager() {
                     {badge(j.status === "done" ? "posted" : j.status)}
                     <b>{j.adTitle}</b>
                     <span className={styles.hintInline}>
-                      {fmt(j.at)} · {j.total} 個社團
+                      {fmt(j.at)} · {j.total} 個社團{j.identityName ? ` · 以 ${j.identityName} 發` : ""}
                     </span>
                     <span className={styles.counts}>
                       已發 {c("posted")} · 待審核 {c("pending")} · 失敗 {c("failed")} · 跳過 {c("skipped")}
@@ -728,9 +831,97 @@ export default function FbGroupManager() {
       {tab === "settings" && (
         <>
           <section className={styles.card}>
+            <h2 className={styles.h2}>發文身分（可以放好幾個粉專／帳號）</h2>
+            <p className={styles.hint}>
+              名稱要和 <b>Facebook 上顯示的一模一樣</b>，外掛靠它認人。發佈前在「發佈」頁選要用哪一個，每個身分的每日上限分開算。
+            </p>
+            <p className={styles.warnText}>
+              ⚠ 兩三個<b>不同帳號</b>的用法：工具<b>不會也不能</b>替你登入或切換帳號（那要碰密碼）。請幫每個帳號開一個
+              Chrome 使用者（右上角頭像 →「新增」），各自登入好；要用哪個帳號發，就先切到那個 Chrome 視窗再按開始。
+              外掛會在每個社團先確認發文者是不是你選的那個，對不上就停下來問你，<b>不會用錯帳號發出去</b>。
+            </p>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>名稱（FB 上顯示的）</th>
+                    <th>類型</th>
+                    <th>備註</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {identities.length ? (
+                    identities.map((it) => (
+                      <tr key={it.id}>
+                        <td>
+                          <input
+                            className={styles.cell}
+                            value={it.name}
+                            onChange={(e) => setIdentities((prev) => prev.map((x) => (x.id === it.id ? { ...x, name: e.target.value } : x)))}
+                          />
+                        </td>
+                        <td>
+                          <select
+                            className={styles.cell}
+                            value={it.kind}
+                            onChange={(e) => setIdentities((prev) => prev.map((x) => (x.id === it.id ? { ...x, kind: e.target.value as "page" | "account" } : x)))}
+                          >
+                            <option value="page">粉專</option>
+                            <option value="account">帳號</option>
+                          </select>
+                        </td>
+                        <td>
+                          <input
+                            className={styles.cell}
+                            value={it.note}
+                            placeholder="例：主帳號、公司粉專"
+                            onChange={(e) => setIdentities((prev) => prev.map((x) => (x.id === it.id ? { ...x, note: e.target.value } : x)))}
+                          />
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className={styles.btnSmDanger}
+                            onClick={() => {
+                              if (!confirm(`刪除身分「${it.name}」？（社團上標的這個身分也會一起清掉）`)) return;
+                              setIdentities((prev) => prev.filter((x) => x.id !== it.id));
+                              setGroups((prev) => prev.map((g) => ({ ...g, identityIds: (g.identityIds || []).filter((x) => x !== it.id) })));
+                              if (pubIdentityId === it.id) setPubIdentityId("");
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className={styles.empty}>
+                        還沒有身分。按下面新增，至少要有一個。
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className={styles.actions}>
+              <button
+                type="button"
+                className={styles.run}
+                onClick={() => {
+                  const it: Identity = { id: uid(), name: "", kind: "page", note: "" };
+                  setIdentities((prev) => [...prev, it]);
+                  if (!pubIdentityId) setPubIdentityId(it.id);
+                }}
+              >
+                ＋ 新增身分
+              </button>
+            </div>
+          </section>
+
+          <section className={styles.card}>
             <h2 className={styles.h2}>發文設定</h2>
-            <label className={styles.lbl}>粉專名稱（用來確認發文身分；要和 Facebook 上顯示的一樣）</label>
-            <input className={styles.input} value={settings.pageName} onChange={(e) => setSettings((s) => ({ ...s, pageName: e.target.value }))} placeholder="例：房產找瑋凱" />
             <div className={styles.grid2}>
               <div>
                 <label className={styles.lbl}>Facebook 介面語言</label>

@@ -487,6 +487,44 @@
   font-size: 13px;
   font-weight: 600;
 }
+.warnText {
+  color: var(--cmp-warn-fg, #92400e);
+  background: var(--cmp-warn-bg, #fffbeb);
+  border: 1px solid var(--cmp-warn-bd, #fde68a);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 8px 0;
+}
+
+/* 社團列裡「這個社團屬於哪些身分」的小標籤 */
+.idTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.idTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--cmp-border, #d1d5db);
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  color: var(--cmp-sub, #4b5563);
+}
+.idTagOn {
+  border-color: var(--cmp-accent, #1877f2);
+  background: var(--cmp-accent-bg, #f5f9ff);
+  color: var(--cmp-text, #1c1e21);
+  font-weight: 600;
+}
+.idTag input {
+  margin: 0;
+}
 .card code {
   background: var(--cmp-card-soft, #eef2f7);
   padding: 1px 6px;
