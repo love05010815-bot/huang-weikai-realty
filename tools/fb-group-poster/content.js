@@ -174,13 +174,24 @@
       // 1. 打開發文框
       log("尋找發文框…");
       const trigRe = FBQ.anyRe(FBQ.words(L, "composerTrigger"));
-      const trigger = await firstVisible(
-        [
-          () => byRoleName("button", trigRe, 3)[0],
-          () => [...document.querySelectorAll('div[role="button"], span')].find((e) => trigRe.test(textOf(e)) && textOf(e).length < 40),
-        ],
-        10000,
-      );
+      // 🔴 安全鎖：發文框一定不在任何一則貼文裡面。少了這道，萬一沒找到發文框就可能誤點
+      //    別人貼文的「留言」，把廣告打進別人的留言欄。
+      const inPost = (el) => !!el.closest('[role="article"]');
+      const findTrigger = () => {
+        // 1) 按鈕／輸入框：文字、aria-label 或 placeholder 命中（FB 各社團用字不一，例如「留個言吧…」）
+        for (const el of document.querySelectorAll('[role="button"], [role="textbox"], [contenteditable="true"]')) {
+          if (el.offsetParent === null || inPost(el)) continue;
+          const t = textOf(el);
+          const al = el.getAttribute("aria-label") || el.getAttribute("placeholder") || "";
+          if ((trigRe.test(t) && t.length < 40) || trigRe.test(al)) return el;
+        }
+        // 2) 命中文字的小元素 → 找最近可點的祖先
+        const hit = [...document.querySelectorAll("span, div, a")].find(
+          (e) => e.offsetParent !== null && !inPost(e) && e.childElementCount <= 2 && trigRe.test(textOf(e)) && textOf(e).length < 40,
+        );
+        return hit ? hit.closest('[role="button"]') || hit : null;
+      };
+      const trigger = await firstVisible([findTrigger], 12000);
       if (!trigger) {
         const joinable = byRoleName("button", FBQ.anyRe(FBQ.words(L, "joinGroup")), 1)[0];
         log(joinable ? "找不到發文框：你（或粉專）還沒加入這個社團。" : "找不到發文框：社團可能不開放發文，或 Facebook 改版了。", "fbq-bad");
@@ -189,15 +200,29 @@
         controls(false);
         return;
       }
-      trigger.scrollIntoView({ block: "center" });
+      // 命中的可能是 placeholder 的 span，點它的可點祖先比較穩
+      const clickable = trigger.closest('[role="button"]') || trigger;
+      clickable.scrollIntoView({ block: "center" });
       await sleep(500);
-      trigger.click();
+      clickable.click();
 
-      // 2. 等發文視窗
-      const dialog = await firstVisible(
+      // 2. 等發文視窗（先等真正的 modal；等不到才用「就地展開」的退路，免得太早抓到收合狀態的輸入框）
+      let dialog = await firstVisible(
         [() => [...document.querySelectorAll('div[role="dialog"]')].reverse().find((d) => d.querySelector('div[role="textbox"]'))],
-        15000,
+        12000,
       );
+      if (!dialog) {
+        dialog = await firstVisible(
+          [
+            () => {
+              const tb = [...document.querySelectorAll('div[role="textbox"]')].find((t) => t.offsetParent !== null);
+              return tb ? tb.closest('form, div[role="dialog"]') || tb.parentElement : null;
+            },
+          ],
+          5000,
+        );
+        if (dialog) log("這個社團是就地展開的發文框（不是彈出視窗），照樣幫你填。", "");
+      }
       if (!dialog) {
         log("發文視窗沒有跳出來，可能是 Facebook 改版。可以按「跳過這個」。", "fbq-bad");
         await report("failed", "發文視窗未出現");

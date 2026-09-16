@@ -5,7 +5,9 @@
 (() => {
   const UI_TEXT = {
     "zh-TW": {
-      composerTrigger: ["寫些什麼", "撰寫貼文", "在這個社團發佈", "建立公開貼文", "發佈貼文", "分享你的想法"],
+      // ⚠️ 不要放單獨的「留言」「分享」——那是每則貼文底下的按鈕，萬一發文框沒找到會誤點、
+      //    最糟會把廣告打進別人貼文的留言欄。這裡只放發文框自己的招呼語。
+      composerTrigger: ["留個言", "寫些什麼", "撰寫貼文", "在這個社團發佈", "建立公開貼文", "發佈貼文", "分享你的想法", "在想什麼", "你在想什麼", "有什麼新鮮事", "說點什麼"],
       photoButton: ["相片/影片", "相片／影片", "新增相片/影片", "相片或影片"],
       postButton: ["發佈", "張貼"],
       pendingApproval: ["等待管理員審核", "待審核", "等待審核", "正在審核"],
@@ -17,7 +19,7 @@
       close: ["關閉"],
     },
     en: {
-      composerTrigger: ["Write something", "Create a public post", "Create post", "What's on your mind"],
+      composerTrigger: ["Write something", "Create a public post", "Create post", "What's on your mind", "Start a post", "Write to group"],
       photoButton: ["Photo/video", "Photo/Video", "Add photos/videos", "Photos/videos"],
       postButton: ["Post"],
       pendingApproval: ["pending approval", "pending review", "awaiting approval"],
