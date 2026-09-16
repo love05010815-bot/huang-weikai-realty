@@ -84,6 +84,12 @@ export async function GET(req: Request) {
           // 待產文案「派工寫稿」用的 OpenAI 金鑰（2026-09-15 加）。
           // 同樣的理由：那顆按鈕在登入牆後面，沒有這一項就只能請他點一次回報給我。
           openai: Boolean(process.env.OPENAI_API_KEY),
+          // 買方配對的識別碼簽章（2026-09-16 加）。沒有密鑰時 createBuyerToken 回 null，
+          // 官方帳號發出去的連結就不帶 ?k= —— 功能會**安靜地**退化成「換手機就變成另一個人」，
+          // 從外面完全看不出來，所以在這裡報一項。
+          matchToken: Boolean(
+            process.env.APPOINTMENT_TOKEN_SECRET || process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+          ),
           blob: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
         }
       : null;
