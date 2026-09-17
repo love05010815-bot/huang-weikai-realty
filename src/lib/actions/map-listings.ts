@@ -120,6 +120,12 @@ export type HouseolReadResult =
       community: string;
       /** 型錄上的照片網址，客戶端一張一張打去 /api/admin/map-listings/houseol-photo */
       photos: string[];
+      /**
+       * 型錄上帶的座標，給「沒有建案」的物件在地圖上放星號用。
+       * ⚠️ 只當**預填值**，畫面上一定要讓他點開 Google 地圖確認 —— 實測 10 案有 2 案差 3～4 公里。
+       */
+      lat: number | null;
+      lng: number | null;
       suggestions: ProjectSuggestion[];
       /** 有值＝夠確定，畫面直接幫他選起來 */
       autoProjectId: string | null;
@@ -177,6 +183,8 @@ export async function readHouseolAction(input: string): Promise<HouseolReadResul
     linkHref: l.catalogUrl,
     community: l.community,
     photos: l.photos,
+    lat: l.lat,
+    lng: l.lng,
     suggestions,
     autoProjectId: pickAuto(suggestions),
     missing,

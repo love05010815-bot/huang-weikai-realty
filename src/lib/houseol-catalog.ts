@@ -57,6 +57,14 @@ export type CatalogListing = {
   nearbyPark: string;
   /** 型錄「環境特色」逐行（很多物件是空的） */
   features: string[];
+  /**
+   * 型錄頁上帶的座標（「更多照片」那條連結裡的 google=緯度,經度）。
+   * ⚠️ **不能直接信**：2026-09-17 拿 10 案跟系統擁有者自己標的建案圖釘比對，
+   *    7 案差 14～54 公尺、1 案差 343 公尺、**2 案差 3.5～4 公里**（德光聚、兆登櫻）。
+   *    那是同事在愛屋後台自己拉的點，錯了也沒人會發現。**畫面上一定要讓他確認過再存**。
+   */
+  lat: number | null;
+  lng: number | null;
   /** 型錄頁上的照片網址（還沒下載，要另外處理） */
   photos: string[];
   /** 這一頁的網址，可以直接當「物件資訊」按鈕的連結 */
@@ -110,6 +118,9 @@ export function parseCatalogText(text: string, html = ""): CatalogListing | null
   const title = head >= 0 ? (lines[head + 1] ?? "") : "";
   const address = head >= 0 ? (lines[head + 2] ?? "") : "";
 
+  // 「更多照片」連結裡夾著愛屋自己存的座標：…EInfos.aspx?type=3&google=24.261195 ,120.536500&picstr=…
+  const coord = text.match(/google=\s*(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
+
   const layout = valueAfter(lines, "房/廳/衛").match(/(\d+)\s*\/\s*(\d+)\s*\/\s*(\d+)/);
   const sizeLine = valueAfter(lines, "登記坪數");
   const parkingArea = toNum(text.match(/含車位面積[\s\S]{0,12}?(\d+(?:\.\d+)?)\s*坪/)?.[1] ?? "") ?? 0;
@@ -141,6 +152,8 @@ export function parseCatalogText(text: string, html = ""): CatalogListing | null
     nearbyMarket: valueAfter(lines, "鄰近市場"),
     nearbyPark: valueAfter(lines, "鄰近公園"),
     features,
+    lat: coord ? Number(coord[1]) : null,
+    lng: coord ? Number(coord[2]) : null,
     photos: html ? extractPhotosFromHtml(html, caseId) : [],
     catalogUrl: catalogUrlFor(caseId),
   };

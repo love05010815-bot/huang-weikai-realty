@@ -727,3 +727,16 @@
   background: rgba(255, 255, 255, 0.1);
   color: #f8f4f3;
 }
+
+/* 座標確認連結（2026-09-17）。要顯眼 —— 型錄座標兩成是錯的，這條一定要點過 */
+.coordCheck {
+  display: inline-block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #f5c0c4;
+  text-decoration: underline;
+}
+
+.coordCheck:hover {
+  color: #f8f4f3;
+}

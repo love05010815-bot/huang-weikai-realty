@@ -40,6 +40,12 @@ export type MapListingRecord = {
    * 同一棟樓可能有好幾間長得一模一樣，光看標題認不出來。
    */
   address: string | null;
+  /**
+   * 沒有建案的物件用這組座標在 /map 上放星號（2026-09-17）。
+   * 有建案的留 null —— 位置沿用建案的圖釘，不要在兩個地方各存一份位置。
+   */
+  lat: number | null;
+  lng: number | null;
   points: string[];
   /** 第一張是封面。空陣列＝還沒有照片，畫面顯示佔位塊 */
   photos: string[];
@@ -56,6 +62,9 @@ export type MapListingInput = {
   title: string;
   /** 物件地址，可留空。後台辨識用，不對外顯示 */
   address: string;
+  /** 沒有建案的物件才要填；有建案就留 null */
+  lat: number | null;
+  lng: number | null;
   points: string[];
   photos: string[];
   linkHref: string;
@@ -114,6 +123,14 @@ export async function ensureMapListingTable(): Promise<void> {
     await db.$executeRawUnsafe(`ALTER TABLE map_listing ADD COLUMN address VARCHAR(255) NULL AFTER title`);
   }
 
+  // 2026-09-17 再補座標兩欄：沒有建案的物件要自己有位置，才畫得出星號。
+  // 有建案的物件不用填 —— 位置沿用建案的圖釘。
+  const hasLat = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM map_listing LIKE 'lat'`);
+  if (hasLat.length === 0) {
+    await db.$executeRawUnsafe(`ALTER TABLE map_listing ADD COLUMN lat DOUBLE NULL AFTER address`);
+    await db.$executeRawUnsafe(`ALTER TABLE map_listing ADD COLUMN lng DOUBLE NULL AFTER lat`);
+  }
+
   ensured = true;
 }
 
@@ -124,6 +141,8 @@ type Row = {
   project_id: string;
   title: string;
   address: string | null;
+  lat: number | null;
+  lng: number | null;
   points: string | null;
   photos: string | null;
   link_href: string | null;
@@ -149,6 +168,9 @@ function toRecord(r: Row): MapListingRecord {
     projectId: r.project_id,
     title: r.title,
     address: r.address?.trim() ? r.address.trim() : null,
+    // MySQL 的 DOUBLE 回來可能是字串，統一轉數字；壞值一律 null
+    lat: numOrNull(r.lat),
+    lng: numOrNull(r.lng),
     points: parseArray(r.points),
     photos: parseArray(r.photos),
     linkHref: r.link_href?.trim() ? r.link_href.trim() : null,
@@ -162,7 +184,7 @@ function toRecord(r: Row): MapListingRecord {
 export async function listAllMapListings(): Promise<MapListingRecord[]> {
   await ensureMapListingTable();
   const rows = await db.$queryRawUnsafe<Row[]>(
-    `SELECT id, project_id, title, address, points, photos, link_href, status, sort_order, updated_at
+    `SELECT id, project_id, title, address, lat, lng, points, photos, link_href, status, sort_order, updated_at
        FROM map_listing ORDER BY project_id ASC, sort_order ASC, created_at ASC`,
   );
   return rows.map(toRecord);
@@ -179,7 +201,7 @@ export async function getMapListingsByProject(): Promise<Map<string, PublicMapLi
   try {
     await ensureMapListingTable();
     const rows = await db.$queryRawUnsafe<Row[]>(
-      `SELECT id, project_id, title, address, points, photos, link_href, status, sort_order, updated_at
+      `SELECT id, project_id, title, address, lat, lng, points, photos, link_href, status, sort_order, updated_at
          FROM map_listing WHERE status = 'active' ORDER BY sort_order ASC, created_at ASC`,
     );
     for (const row of rows) {
@@ -218,7 +240,7 @@ export async function getPublicMapListingsByIds(
   try {
     await ensureMapListingTable();
     const rows = await db.$queryRawUnsafe<Row[]>(
-      `SELECT id, project_id, title, address, points, photos, link_href, status, sort_order, updated_at
+      `SELECT id, project_id, title, address, lat, lng, points, photos, link_href, status, sort_order, updated_at
          FROM map_listing
         WHERE status = 'active' AND id IN (${clean.map(() => "?").join(",")})`,
       ...clean,
@@ -237,12 +259,47 @@ export async function getPublicMapListingsByIds(
 
 // ---------------------------------------------------------------- 驗證
 
+/** 台灣本島的範圍。座標打錯（經緯度顛倒、少一位）大多會掉出這個框 */
+const TW_BOUNDS = { lat: [21.5, 26.5], lng: [118.0, 122.5] } as const;
+
+/** 字串或數字都接，不是有效數字就回 null */
+function numOrNull(v: unknown): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function validateMapListing(
   input: MapListingInput,
 ): { ok: true; value: MapListingInput } | { ok: false; error: string } {
   const projectId = input.projectId?.trim() ?? "";
   const title = input.title?.trim() ?? "";
-  if (!projectId) return { ok: false, error: "要先選這筆物件屬於哪個建案" };
+
+  /*
+   * 座標：**沒有建案的物件用它在地圖上放星號**（2026-09-17 他拍板）。
+   * 有建案的就沿用建案的圖釘，不需要自己的座標。
+   *
+   * 🔴 這裡擋的是「經緯度顛倒 / 少打一位」那種一眼看不出來的錯 —— 標錯位置比不標更糟，
+   *    那是 /map 上次被雪藏的原因（見 port-projects.ts 檔頭第 5 點）。
+   *    但擋不了「在台灣範圍內、只是標到隔壁區」那種，所以畫面上一定要讓他確認過位置。
+   */
+  const lat = numOrNull(input.lat);
+  const lng = numOrNull(input.lng);
+  if ((lat === null) !== (lng === null)) {
+    return { ok: false, error: "座標要嘛兩個都填、要嘛兩個都空" };
+  }
+  if (lat !== null && lng !== null) {
+    if (lat < TW_BOUNDS.lat[0] || lat > TW_BOUNDS.lat[1] || lng < TW_BOUNDS.lng[0] || lng > TW_BOUNDS.lng[1]) {
+      return {
+        ok: false,
+        error: `座標不在台灣範圍內（${lat}, ${lng}）—— 是不是經緯度打反了？緯度約 24、經度約 120`,
+      };
+    }
+  }
+
+  if (!projectId && lat === null) {
+    return { ok: false, error: "要選一個建案，或是填座標（沒有建案的物件用座標在地圖上放星號）" };
+  }
   if (!title) return { ok: false, error: "標題不能空白" };
   if (title.length > 255) return { ok: false, error: "標題太長（最多 255 字）" };
 
@@ -262,7 +319,7 @@ export function validateMapListing(
 
   return {
     ok: true,
-    value: { projectId, title, address, points, photos, linkHref, status: input.status === "sold" ? "sold" : "active" },
+    value: { projectId, title, address, lat, lng, points, photos, linkHref, status: input.status === "sold" ? "sold" : "active" },
   };
 }
 
@@ -278,12 +335,14 @@ export async function createMapListing(input: MapListingInput): Promise<string> 
   );
   const next = rows[0]?.next ?? 0;
   await db.$executeRawUnsafe(
-    `INSERT INTO map_listing (id, project_id, title, address, points, photos, link_href, status, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO map_listing (id, project_id, title, address, lat, lng, points, photos, link_href, status, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     input.projectId,
     input.title,
     input.address || null,
+    input.lat,
+    input.lng,
     JSON.stringify(input.points),
     JSON.stringify(input.photos),
     input.linkHref || null,
@@ -297,11 +356,13 @@ export async function updateMapListing(id: string, input: MapListingInput): Prom
   await ensureMapListingTable();
   await db.$executeRawUnsafe(
     `UPDATE map_listing
-        SET project_id = ?, title = ?, address = ?, points = ?, photos = ?, link_href = ?, status = ?
+        SET project_id = ?, title = ?, address = ?, lat = ?, lng = ?, points = ?, photos = ?, link_href = ?, status = ?
       WHERE id = ?`,
     input.projectId,
     input.title,
     input.address || null,
+    input.lat,
+    input.lng,
     JSON.stringify(input.points),
     JSON.stringify(input.photos),
     input.linkHref || null,

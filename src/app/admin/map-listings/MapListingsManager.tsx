@@ -52,6 +52,8 @@ type Draft = {
   title: string;
   address: string;
   pointsText: string;
+  /** 「24.2248, 120.5673」。沒有建案的物件才要填，用來在地圖上放星號 */
+  coordText: string;
   photos: string[];
   linkHref: string;
   status: MapListingStatus;
@@ -63,10 +65,22 @@ const EMPTY: Draft = {
   title: "",
   address: "",
   pointsText: "",
+  coordText: "",
   photos: [],
   linkHref: "",
   status: "active",
 };
+
+/**
+ * 「24.2248, 120.5673」→ { lat, lng }。讀不出來就兩個都 null（伺服器端會擋下來並說原因）。
+ *
+ * 刻意只認一格文字：Google 地圖上按右鍵「複製座標」出來就是這個格式，貼上就好。
+ */
+function parseCoord(text: string): { lat: number | null; lng: number | null } {
+  const m = text.match(/(-?\d+(?:\.\d+)?)\s*[,，\s]\s*(-?\d+(?:\.\d+)?)/);
+  if (!m) return { lat: null, lng: null };
+  return { lat: Number(m[1]), lng: Number(m[2]) };
+}
 
 function toDraft(r: MapListingRecord): Draft {
   return {
@@ -75,6 +89,7 @@ function toDraft(r: MapListingRecord): Draft {
     title: r.title,
     address: r.address ?? "",
     pointsText: r.points.join("\n"),
+    coordText: r.lat !== null && r.lng !== null ? `${r.lat}, ${r.lng}` : "",
     photos: [...r.photos],
     linkHref: r.linkHref ?? "",
     status: r.status,
@@ -214,6 +229,9 @@ export default function MapListingsManager({
         ...(res.pointsText ? { pointsText: res.pointsText } : {}),
         linkHref: res.linkHref,
         ...(res.autoProjectId ? { projectId: res.autoProjectId } : {}),
+        // 型錄座標先填進去，**但只是預填** —— 配到建案的話用不到（位置沿用建案圖釘），
+        // 沒配到建案時他要點開 Google 地圖確認過再存
+        ...(res.lat !== null && res.lng !== null ? { coordText: `${res.lat}, ${res.lng}` } : {}),
       });
       setReadInfo({
         caseId: res.caseId,
@@ -364,6 +382,9 @@ export default function MapListingsManager({
       title: draft.title,
       address: draft.address,
       points: draft.pointsText.split("\n").map((s) => s.trim()).filter(Boolean),
+      // 🔴 有建案就不存座標：位置沿用建案的圖釘，同一件事只留一個來源，
+      //    不然改了建案的圖釘、物件還停在舊座標，而且不會有人發現。
+      ...(draft.projectId ? { lat: null, lng: null } : parseCoord(draft.coordText)),
       photos: draft.photos,
       linkHref: draft.linkHref,
       status: draft.status,
@@ -448,7 +469,7 @@ export default function MapListingsManager({
             grouped.map(([pid, list]) => (
               <section key={pid} className={styles.group}>
                 <h3 className={styles.groupTitle}>
-                  {projectName.get(pid) ?? `（找不到建案：${pid}）`}
+                  {pid === "" ? "⭐ 沒有建案（地圖上用座標放星號）" : (projectName.get(pid) ?? `（找不到建案：${pid}）`)}
                   <span>{`${list.length} 間`}</span>
                 </h3>
                 <ul className={styles.items}>
@@ -602,7 +623,9 @@ export default function MapListingsManager({
                         </ul>
                       </>
                     ) : (
-                      <span className={styles.readWarn}>🏢 猜不出是哪個建案，請到下面自己搜一個</span>
+                      <span className={styles.readWarn}>
+                        🏢 猜不出是哪個建案 —— 到下面自己搜一個，或是不選建案、用座標在地圖上放星號
+                      </span>
                     )}
                     {readInfo.photos.length > 0 && (
                       <div className={styles.pasteRow}>
@@ -635,7 +658,7 @@ export default function MapListingsManager({
                   下面的欄位跑到畫面外，你會以為表單只有這幾格。 */}
               <div className={styles.projBlock}>
                 <span className={styles.fieldLabel}>
-                  屬於哪個建案 <em>必填</em>
+                  屬於哪個建案 <em>必填（或改填下面的座標）</em>
                 </span>
                 {selectedProject ? (
                   <div className={styles.projPicked}>
@@ -692,6 +715,38 @@ export default function MapListingsManager({
                   </>
                 )}
               </div>
+
+              {/* 沒有建案的物件（例如「大學之道」這種不在建案總表裡的社區）改用座標定位，
+                  地圖上會放一顆星號。有建案就不需要 —— 位置沿用建案的圖釘。 */}
+              {!draft.projectId && (
+                <label>
+                  <span>
+                    地圖位置（座標） <em>必填</em>
+                  </span>
+                  <input
+                    type="text"
+                    value={draft.coordText}
+                    onChange={(e) => patch({ coordText: e.target.value })}
+                    placeholder="24.2248, 120.5673"
+                  />
+                  {parseCoord(draft.coordText).lat !== null && (
+                    <a
+                      className={styles.coordCheck}
+                      href={`https://www.google.com/maps?q=${parseCoord(draft.coordText).lat},${parseCoord(draft.coordText).lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      🔍 在 Google 地圖打開這個點，確認位置對不對 ↗
+                    </a>
+                  )}
+                  <small>
+                    <b>存檔前一定要點上面那條確認一次。</b>
+                    型錄帶進來的座標**有兩成是錯的**（實測 10 筆有 2 筆差了 3～4 公里），
+                    標錯位置比不標更糟。要換座標：Google 地圖上對著正確位置按右鍵 →
+                    點最上面那串數字就複製好了，貼進來即可。
+                  </small>
+                </label>
+              )}
 
               <label>
                 <span>
