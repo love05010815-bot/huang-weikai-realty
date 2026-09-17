@@ -3192,7 +3192,6 @@ export const COORDS: Record<string, Coord> = {
      🔵 三對 30 公尺內的鄰居：大砌天下8 ↔ 大砌天下9 25m（同系列）、
         沅臻高境 ↔ 森堡富第3 20m、樂穥忠孝 ↔ 仁里時上 27m —— 清水市區這一帶本來就密。
      ⚠️ 剩幾案沒座標請用 `projectStats()` 算（寫下時：全站未標位置 95 筆，全在清水市區）。 */
-  "sanheyuan-muguang": { lat: 24.27745, lng: 120.56683, precision: "exact" }, // 三和圓沐光
   "weifeng-yipin-2": { lat: 24.26259, lng: 120.5451, precision: "exact" }, // 微風一品2
   "changlin-qingshidai-2": { lat: 24.26326, lng: 120.54565, precision: "exact" }, // 長霖青世代2
   "aofeng-guangchang": { lat: 24.26394, lng: 120.54795, precision: "exact" }, // 鰲豐廣場
@@ -3271,6 +3270,24 @@ export const COORDS: Record<string, Coord> = {
   "senbaofu-7": { lat: 24.26292, lng: 120.56078, precision: "exact" }, // 森堡富7
   "zhaoguo-zhuoyi": { lat: 24.26327, lng: 120.55885, precision: "exact" }, // 兆國琢藝
   "shangrui-shoufu": { lat: 24.26676, lng: 120.56098, precision: "exact" }, // 上睿首馥
+  /* ── 清水市區第三批 11 案（2026-09-17，系統擁有者用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、precision 全 exact、本批不重複、沒有覆蓋既有座標，
+     **11 筆全部落在清水市區色塊內**；30 公尺內零鄰居。
+     ⚠️ **同一次他說「已經標記的三和圓沐光移除重點」，那一筆座標已刪** ——
+        原本是 24.27745/120.56683（量過是落在清水市區色塊內的，所以不是我判錯，是他要換位置）。
+        **移除而不是留著等他覆蓋**是照他講的做：留著的話校正模式的下拉會標「（已標）」、
+        自動跳號也會跳過它，他反而不好找。 */
+  "yangming-guomao-bc": { lat: 24.27063, lng: 120.55994, precision: "exact" }, // 陽明果貿新城BC區
+  "yangming-guomao-a": { lat: 24.27194, lng: 120.55991, precision: "exact" }, // 陽明果貿新城A區
+  "zhifu-haohao-dalou": { lat: 24.27435, lng: 120.55682, precision: "exact" }, // 致富好好大樓區
+  "zhifu-haohao-toutian": { lat: 24.27467, lng: 120.55694, precision: "exact" }, // 致富好好透天區
+  "zhifu-haoyue": { lat: 24.27433, lng: 120.55747, precision: "exact" }, // 致富好悅
+  "zhangqing-yanyuan": { lat: 24.27165, lng: 120.56473, precision: "exact" }, // 彰慶晏苑
+  "wuxiu-yipin": { lat: 24.27553, lng: 120.56042, precision: "exact" }, // 武秀一品
+  "wuxiu-yipin-2": { lat: 24.27547, lng: 120.55997, precision: "exact" }, // 武秀一品2
+  "fuanju": { lat: 24.27652, lng: 120.56154, precision: "exact" }, // 富安居
+  "weixiao-zhenmei": { lat: 24.27696, lng: 120.56272, precision: "exact" }, // 微笑臻美
+  "jiuchao-diancang": { lat: 24.27642, lng: 120.56293, precision: "exact" }, // 玖晁典藏
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
