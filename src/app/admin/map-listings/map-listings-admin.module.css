@@ -684,3 +684,46 @@
   margin: 0 !important;
   max-width: none !important;
 }
+
+/* 清單搜尋（2026-09-17）。物件變多之後用翻的找太久 */
+.listSearch {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.listSearch input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #f8f4f3;
+  font-size: 13.5px;
+  font-family: inherit;
+}
+
+.listSearch input[type="text"]:focus {
+  outline: 2px solid #f26666;
+  outline-offset: 1px;
+  border-color: #f26666;
+}
+
+.listSearch button {
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #d0c6c4;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.listSearch button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8f4f3;
+}

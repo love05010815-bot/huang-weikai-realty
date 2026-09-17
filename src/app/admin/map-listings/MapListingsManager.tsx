@@ -97,6 +97,7 @@ export default function MapListingsManager({
   const [dirty, setDirty] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [listQuery, setListQuery] = useState("");
   const [projQuery, setProjQuery] = useState("");
   const [houseolInput, setHouseolInput] = useState("");
   const [reading, setReading] = useState(false);
@@ -133,10 +134,22 @@ export default function MapListingsManager({
     return m;
   }, [projects]);
 
+  /**
+   * 清單搜尋。建案名、標題、地址都比對 —— 同一棟樓好幾間時標題常常長得一樣，
+   * 用地址找比用標題快；打建案名則是一次看完那棟的全部。
+   */
+  const visibleRows = useMemo(() => {
+    const q = listQuery.trim();
+    if (!q) return rows;
+    return rows.filter((r) =>
+      `${projectName.get(r.projectId) ?? ""}${r.title}${r.address ?? ""}`.includes(q),
+    );
+  }, [rows, listQuery, projectName]);
+
   /** 依建案分組，方便一眼看出哪棟樓有幾間 */
   const grouped = useMemo(() => {
     const map = new Map<string, MapListingRecord[]>();
-    for (const r of rows) {
+    for (const r of visibleRows) {
       const list = map.get(r.projectId);
       if (list) list.push(r);
       else map.set(r.projectId, [r]);
@@ -144,7 +157,7 @@ export default function MapListingsManager({
     return [...map.entries()].sort((a, b) =>
       (projectName.get(a[0]) ?? a[0]).localeCompare(projectName.get(b[0]) ?? b[0], "zh-Hant")
     );
-  }, [rows, projectName]);
+  }, [visibleRows, projectName]);
 
   const patch = (p: Partial<Draft>) => {
     setDraft((d) => (d ? { ...d, ...p } : d));
@@ -397,7 +410,7 @@ export default function MapListingsManager({
         {/* ── 左：清單 ── */}
         <div className={styles.listCol}>
           <div className={styles.listHead}>
-            <h2>物件清單</h2>
+            <h2>{`物件清單（${rows.length}）`}</h2>
             <button
               type="button"
               className={styles.primaryBtn}
@@ -407,10 +420,30 @@ export default function MapListingsManager({
             </button>
           </div>
 
+          {/* 物件變多之後翻不完，打字縮小範圍（2026-09-17 他提的）。
+              建案名、標題、地址都能搜 —— 同一棟樓好幾間時標題常常長得一樣，用地址找比較快。 */}
+          {rows.length > 0 && (
+            <div className={styles.listSearch}>
+              <input
+                type="text"
+                placeholder="搜尋建案、標題或地址"
+                value={listQuery}
+                onChange={(e) => setListQuery(e.target.value)}
+              />
+              {listQuery.trim() && (
+                <button type="button" onClick={() => setListQuery("")}>
+                  清除
+                </button>
+              )}
+            </div>
+          )}
+
           {rows.length === 0 ? (
             <p className={styles.empty}>
               還沒有任何地圖物件。按「＋ 新增物件」開始 —— 選一個建案、填標題與賣點、傳照片就完成了。
             </p>
+          ) : visibleRows.length === 0 ? (
+            <p className={styles.empty}>{`沒有符合「${listQuery.trim()}」的物件。換個關鍵字，或按「清除」看全部。`}</p>
           ) : (
             grouped.map(([pid, list]) => (
               <section key={pid} className={styles.group}>
