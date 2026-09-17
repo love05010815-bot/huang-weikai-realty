@@ -79,6 +79,7 @@ export const OWNER = {
  *
  *      fb      https://www.facebook.com/你的粉專
  *      ig      https://www.instagram.com/你的帳號
+ *      threads https://www.threads.com/@你的帳號　（官方網域 2025 年從 threads.net 換成 threads.com）
  *      yt      https://www.youtube.com/@你的頻道
  *      tiktok  https://www.tiktok.com/@你的帳號
  */
@@ -87,6 +88,8 @@ export const SOCIAL = {
   fb: "https://www.facebook.com/108472157721504",
   yt: "https://www.youtube.com/@swujnuty0325",
   ig: "https://www.instagram.com/swujnuty0325/",
+  /** 脆。2026-09-17 他辦好後指定放上首頁。帳號跟 IG 不同支（house_hkai），不要拿 IG 的帳號去湊 */
+  threads: "https://www.threads.com/@house_hkai",
   tiktok: "https://www.tiktok.com/@show_787865",
 } as const;
 

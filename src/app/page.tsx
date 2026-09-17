@@ -179,7 +179,7 @@ const jsonLd = {
    * ⚠️ `filter(Boolean)` 不能拿掉 —— `SOCIAL` 沒填的欄位是空字串，
    *    空字串進到 sameAs 會變成無效的結構化資料，Search Console 會報錯。
    */
-  sameAs: [SOCIAL.line, SOCIAL.fb, SOCIAL.ig, SOCIAL.yt, SOCIAL.tiktok].filter(Boolean),
+  sameAs: [SOCIAL.line, SOCIAL.fb, SOCIAL.ig, SOCIAL.threads, SOCIAL.yt, SOCIAL.tiktok].filter(Boolean),
 };
 
 /**

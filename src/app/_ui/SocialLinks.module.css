@@ -321,4 +321,16 @@
     height: 48px;
     border-radius: 14px;
   }
+  /* /card 名片頁：2026-09-17 加了第五顆（Threads）之後，50px 磚＋16px 間距共 324px，
+     但名片內容只有 275px 寬，會折成「4 顆＋1 顆」看起來像壞掉。縮成 44px（連邊框 46px，
+     還在手指最小目標 44px 以上）＋8px 間距 = 262px，五顆排得完。
+     ⚠️ 再加第六顆就一定會折行，到時候要嘛換兩排對稱、要嘛捨一個平台，不要再往下縮。 */
+  .tilesLight .row {
+    gap: 8px;
+  }
+  .tilesLight .btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+  }
 }

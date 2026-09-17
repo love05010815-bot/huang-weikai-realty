@@ -124,7 +124,7 @@ export default function CardPage() {
             <ContactRow icon={<PinIcon size={18} />} label={ABIN.address} />
           </div>
 
-          {/* 社群。網址在 src/config/owner.ts 的 SOCIAL，四個都空的話整區不出現 */}
+          {/* 社群。網址在 src/config/owner.ts 的 SOCIAL，全部都空的話整區不出現 */}
           <div style={{ padding: "6px 26px 30px", borderTop: `1px solid ${RCIS.line}` }}>
             <SocialLinks variant="tiles" tone="light" />
           </div>

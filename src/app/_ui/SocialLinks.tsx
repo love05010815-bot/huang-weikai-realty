@@ -8,7 +8,7 @@
  *
  * ## 三種樣式，各有各的位置
  *
- *   `variant="bar"`   每一頁內容最上面那顆白底藥丸：粗體文案＋四顆 36px icon，
+ *   `variant="bar"`   每一頁內容最上面那顆白底藥丸：粗體文案＋五顆 36px icon，
  *                     **所有寬度都顯示**。2026-09-03 第一版在 1220px 以上會收掉讓位給直排，
  *                     結果系統擁有者在桌機上「找不到那句文案」、子頁「不明顯」——
  *                     文案只有這裡有，收掉等於桌機整個沒有。現在不收了。
@@ -29,7 +29,7 @@
  * ## ⚠️ 沒填網址的平台會整顆消失，不是變灰
  *
  * `href=""` 的 `<a>` 點下去是「重新整理本頁」，客戶會以為連結壞掉，所以沒填的直接不畫。
- * **四個都沒填的話整區（含標題）都不會出現**，這是刻意的，免得留下一塊只有標題的空白。
+ * **全部都沒填的話整區（含標題）都不會出現**，這是刻意的，免得留下一塊只有標題的空白。
  *
  * 副作用是：**網址填錯或漏填時，畫面上什麼都不會發生，也不會有錯誤訊息。**
  * 改完 `SOCIAL` 一定要實際看一眼首頁，不要只看 build 有沒有過。
@@ -40,13 +40,19 @@
  * 哪天 IG 換 logo 就會變成改一邊、另一邊還是舊的，而且不會有人發現。
  */
 import { OWNER, SOCIAL } from "@/config/owner";
-import { FacebookIcon, InstagramIcon, YoutubeIcon, TiktokIcon } from "../card/_icons";
+import { FacebookIcon, InstagramIcon, ThreadsIcon, YoutubeIcon, TiktokIcon } from "../card/_icons";
 import styles from "./SocialLinks.module.css";
 
-/** 顯示順序＝這個陣列的順序。系統擁有者提的順序是 FB→IG→YT→TikTok */
+/**
+ * 顯示順序＝這個陣列的順序。系統擁有者提的順序是 FB→IG→YT→TikTok；
+ * 2026-09-17 加的 Threads（脆）排在 IG 後面 —— 他實體名片上的 icon 也是這樣排（IG 旁邊就是脆）。
+ * ⚠️ 加平台之前先量藥丸放不放得下：一顆 icon 連內距是 48px，手機 480px 以下藥丸會變成
+ *    「文案一行＋icon 一行」，icon 那行超過畫面寬度就會擠掉。五顆在 375px 量過還有空間。
+ */
 const PLATFORMS = [
   { key: "fb", label: "Facebook", href: SOCIAL.fb, Icon: FacebookIcon },
   { key: "ig", label: "Instagram", href: SOCIAL.ig, Icon: InstagramIcon },
+  { key: "threads", label: "Threads", href: SOCIAL.threads, Icon: ThreadsIcon },
   { key: "yt", label: "YouTube", href: SOCIAL.yt, Icon: YoutubeIcon },
   { key: "tiktok", label: "TikTok", href: SOCIAL.tiktok, Icon: TiktokIcon },
 ] as const;
