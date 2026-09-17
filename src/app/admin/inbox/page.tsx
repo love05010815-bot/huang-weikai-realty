@@ -37,6 +37,7 @@ import {
 } from "@/lib/inbox-types";
 import { YOUTUBE_REDIRECT_URI, isYoutubeConfigured } from "@/lib/youtube";
 import { META_REDIRECT_URI, isMetaConfigured } from "@/lib/meta";
+import { THREADS_REDIRECT_URI, isThreadsConfigured } from "@/lib/threads";
 import { markAllLineHandledAction, markLineHandledAction } from "@/lib/actions/line-bot";
 import LineMedia from "@/app/admin/_components/LineMedia";
 import CommentReply from "./CommentReply";
@@ -51,6 +52,7 @@ const PLATFORM_ICON: Record<InboxPlatform, IconName> = {
   youtube: "play",
   facebook: "users",
   instagram: "camera",
+  threads: "threads",
   line: "chat",
 };
 
@@ -88,8 +90,9 @@ export default async function InboxPage({
 
   const ytConfigured = isYoutubeConfigured();
   const metaConfigured = isMetaConfigured();
+  const threadsConfigured = isThreadsConfigured();
 
-  const filter = (["youtube", "facebook", "instagram", "line"] as const).includes(sp.p as InboxPlatform)
+  const filter = (["youtube", "facebook", "instagram", "threads", "line"] as const).includes(sp.p as InboxPlatform)
     ? (sp.p as InboxPlatform)
     : null;
   const shown: InboxComment[] = filter
@@ -103,6 +106,7 @@ export default async function InboxPage({
   const ytSource = snapshot.sources.find((s) => s.platform === "youtube")!;
   const fbSource = snapshot.sources.find((s) => s.platform === "facebook")!;
   const igSource = snapshot.sources.find((s) => s.platform === "instagram")!;
+  const threadsSource = snapshot.sources.find((s) => s.platform === "threads")!;
   const lineSource = snapshot.sources.find((s) => s.platform === "line")!;
   const metaBound = fbSource.bound || igSource.bound;
 
@@ -114,7 +118,7 @@ export default async function InboxPage({
           留言收件匣
         </h1>
         <p className={styles.subtitle} style={{ color: CIS.textMute }}>
-          YouTube、Facebook 粉專、Instagram 的留言，加上 LINE 的一對一私訊，
+          YouTube、Facebook 粉專、Instagram、Threads 的留言，加上 LINE 的一對一私訊，
           全部收在這裡依時間排好，直接回。完整的 LINE 對話在
           <a href="/admin/line" style={{ color: CIS.blueSoft }}>「LINE 機器人」</a>那一頁。
         </p>
@@ -163,6 +167,19 @@ export default async function InboxPage({
             setupWhere="跟 Facebook 同一個 App，一次授權兩個都通"
             unbindTarget={null}
             sameAsFacebook
+          />
+          <SourceCard
+            platform="threads"
+            configured={threadsConfigured}
+            bound={threadsSource.bound}
+            accountName={threadsSource.accountName}
+            count={threadsSource.comments.length}
+            error={threadsSource.error}
+            authHref="/api/admin/threads/auth"
+            redirectUri={THREADS_REDIRECT_URI}
+            missingEnv="THREADS_APP_ID / THREADS_APP_SECRET"
+            setupWhere="developers.facebook.com → 你的 App → Threads API → 設定 → 重新導向回呼網址（跟 Facebook 那組不是同一個地方，金鑰也是那一頁的）"
+            unbindTarget="threads"
           />
           {/* LINE 不走 OAuth（金鑰在環境變數），所以不共用 SourceCard。
               這張卡的重點只有一句話：LINE 的「已回」判斷跟其他三家不一樣。 */}
@@ -215,7 +232,7 @@ export default async function InboxPage({
           <>
             <div className={styles.filterRow}>
               <FilterTab href="/admin/inbox" active={!filter} label="全部" count={snapshot.all.length} />
-              {(["youtube", "facebook", "instagram", "line"] as const).map((p) => {
+              {(["youtube", "facebook", "instagram", "threads", "line"] as const).map((p) => {
                 const src = snapshot.sources.find((s) => s.platform === p)!;
                 if (!src.bound) return null;
                 return (
@@ -448,7 +465,7 @@ function SourceCard({
   redirectUri: string;
   missingEnv: string;
   setupWhere: string;
-  unbindTarget: "youtube" | "meta" | null;
+  unbindTarget: "youtube" | "meta" | "threads" | null;
   sameAsFacebook?: boolean;
 }) {
   const color = PLATFORM_COLOR[platform];

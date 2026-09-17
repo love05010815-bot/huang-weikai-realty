@@ -15,6 +15,7 @@ import {
   type PlatformFetch,
 } from "@/lib/inbox-types";
 import { fetchFacebookComments, fetchInstagramComments } from "@/lib/meta";
+import { fetchThreadsComments } from "@/lib/threads";
 import { fetchLineComments } from "@/lib/line-bot/inbox";
 import { getBoundChannel, isYoutubeBound, listChannelComments } from "@/lib/youtube";
 
@@ -74,6 +75,33 @@ export type InboxSnapshot = {
   anyBound: boolean;
 };
 
+/**
+ * 依序跑幾家，任何一家爆掉都只影響自己那一格。
+ *
+ * 為什麼不用 Promise.all：見下面 loadInbox 裡那段「連線池只有 3 條」的說明。
+ */
+async function runSequentially<P extends InboxPlatform>(
+  order: readonly P[],
+  fetchers: Record<P, () => Promise<PlatformFetch>>,
+): Promise<PlatformFetch[]> {
+  const out: PlatformFetch[] = [];
+  for (const platform of order) {
+    try {
+      out.push(await fetchers[platform]());
+    } catch (e) {
+      console.error(`[inbox] ${platform} 抓取整個失敗:`, e);
+      out.push({
+        platform,
+        bound: false,
+        comments: [],
+        error: e instanceof Error ? e.message : String(e),
+        accountName: null,
+      });
+    }
+  }
+  return out;
+}
+
 /** 抓齊所有平台。任何一家失敗都不會讓整頁掛掉。 */
 export async function loadInbox(): Promise<InboxSnapshot> {
   const settled = await Promise.allSettled([
@@ -97,24 +125,19 @@ export async function loadInbox(): Promise<InboxSnapshot> {
     };
   });
 
-  // 🔴 LINE 刻意**排在後面依序跑**，不併進上面那個 allSettled。
+  // 🔴 Threads 與 LINE 刻意**排在後面依序跑**，不併進上面那個 allSettled。
   //
   //    上面三家各自也要讀資料庫（拿權杖與綁定狀態），而這個專案的連線池
-  //    只有 3 條（src/lib/db.ts）。再塞第四個併行的查詢就是自己跟自己搶，
-  //    撞到 P2024 時**四個平台會一起變空**，畫面上跟「真的沒留言」長得一模一樣。
+  //    只有 3 條（src/lib/db.ts）。再塞第四、第五個併行的查詢就是自己跟自己搶，
+  //    撞到 P2024 時**所有平台會一起變空**，畫面上跟「真的沒留言」長得一模一樣。
   //
-  //    LINE 讀的是自家資料庫、很快，多等這一下換來的是不會整頁誤判。
-  const lineResult = await fetchLineComments().catch((e) => {
-    console.error("[inbox] LINE 抓取整個失敗:", e);
-    return {
-      platform: "line" as const,
-      bound: false,
-      comments: [],
-      error: e instanceof Error ? e.message : String(e),
-      accountName: null,
-    };
+  //    這兩家多等這一下，換來的是不會整頁誤判。
+  //    （2026-09-17 加 Threads 時特別沒有塞進上面那組，就是為了這件事。）
+  const rest = await runSequentially(["threads", "line"] as const, {
+    threads: fetchThreadsComments,
+    line: fetchLineComments,
   });
-  sources.push(lineResult);
+  sources.push(...rest);
 
   const all = sortByNewest(sources.flatMap((s) => s.comments));
 

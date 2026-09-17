@@ -12,6 +12,7 @@ import { revalidatePath } from "next/cache";
 import { isCurrentUserAdmin } from "@/lib/admin-check";
 import type { InboxPlatform } from "@/lib/inbox-types";
 import { replyMetaComment, unbindMeta } from "@/lib/meta";
+import { replyThreadsComment, unbindThreads } from "@/lib/threads";
 import { sendLineReplyAction } from "@/lib/actions/line-bot";
 import { replyToComment as replyYoutube } from "@/lib/youtube";
 
@@ -47,6 +48,11 @@ export async function replyInboxCommentAction(
     case "instagram":
       r = await replyMetaComment(commentId, message);
       break;
+    case "threads":
+      // ⚠️ Threads 的回覆是「建草稿 → 發佈」兩步，都在 replyThreadsComment 裡面。
+      //    只做第一步不會報錯但留言不會出現，所以那支一定要兩步都成功才回 ok。
+      r = await replyThreadsComment(commentId, message);
+      break;
     case "line":
       // ⚠️ LINE 的 commentId 放的是 **lineUserId**（見 line-bot/inbox.ts）——
       //    LINE 沒有「回某一則訊息」這種事，回覆是推播給那個人。
@@ -71,6 +77,18 @@ export async function unbindMetaAction(): Promise<Result> {
   if (!(await isCurrentUserAdmin())) return { ok: false, error: "沒有權限" };
   try {
     await unbindMeta();
+    revalidatePath("/admin/inbox");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** 解除 Threads 綁定。只刪 threads_* 四個 key，不碰 Meta、YouTube 與日曆。 */
+export async function unbindThreadsAction(): Promise<Result> {
+  if (!(await isCurrentUserAdmin())) return { ok: false, error: "沒有權限" };
+  try {
+    await unbindThreads();
     revalidatePath("/admin/inbox");
     return { ok: true };
   } catch (e) {

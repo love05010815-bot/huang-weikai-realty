@@ -9,12 +9,13 @@
  * ⚠️ 這支檔案刻意不 import 任何東西：server 端的抓取與 client 端的回覆框都要用。
  */
 
-export type InboxPlatform = "youtube" | "facebook" | "instagram" | "line";
+export type InboxPlatform = "youtube" | "facebook" | "instagram" | "threads" | "line";
 
 export const PLATFORM_LABEL: Record<InboxPlatform, string> = {
   youtube: "YouTube",
   facebook: "Facebook",
   instagram: "Instagram",
+  threads: "Threads",
   line: "LINE",
 };
 
@@ -23,6 +24,8 @@ export const PLATFORM_COLOR: Record<InboxPlatform, string> = {
   youtube: "#ff4e45",
   facebook: "#4a90e2",
   instagram: "#e17bb0",
+  // Threads 的官方 icon 是純黑，在深色後台看不見，所以用淺灰白當代表色
+  threads: "#d7dde3",
   line: "#06c755",
 };
 

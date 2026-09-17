@@ -1,6 +1,6 @@
 "use client";
 /**
- * 解除平台綁定（YouTube／Meta 共用）。
+ * 解除平台綁定（YouTube／Meta／Threads 共用）。
  *
  * 會再問一次 —— 解綁本身不痛（重綁就好），但重綁要再跑一次授權同意頁，誤按很煩。
  * 解某一個平台不會動到其他平台，也不會動到 Google 日曆，確認框裡有講。
@@ -11,11 +11,12 @@ import { CIS } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
 import styles from "./inbox.module.css";
 
-export default function UnbindButton({ target }: { target: "youtube" | "meta" }) {
+export default function UnbindButton({ target }: { target: "youtube" | "meta" | "threads" }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
-  const label = target === "youtube" ? "YouTube" : "Facebook／Instagram";
+  const label =
+    target === "youtube" ? "YouTube" : target === "threads" ? "Threads" : "Facebook／Instagram";
 
   const run = async () => {
     if (busy) return;
@@ -30,6 +31,9 @@ export default function UnbindButton({ target }: { target: "youtube" | "meta" })
     if (target === "youtube") {
       const { unbindYoutubeAction } = await import("@/lib/actions/youtube");
       await unbindYoutubeAction();
+    } else if (target === "threads") {
+      const { unbindThreadsAction } = await import("@/lib/actions/inbox");
+      await unbindThreadsAction();
     } else {
       const { unbindMetaAction } = await import("@/lib/actions/inbox");
       await unbindMetaAction();
