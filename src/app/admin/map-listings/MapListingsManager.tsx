@@ -105,6 +105,7 @@ export default function MapListingsManager({
   const [readInfo, setReadInfo] = useState<ReadInfo | null>(null);
   const [pending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
+  const formColRef = useRef<HTMLDivElement>(null);
 
   /**
    * 建案挑選（2026-09-07 改）。原本是一顆 `<select>`，但建案有 500 多個，
@@ -149,6 +150,32 @@ export default function MapListingsManager({
   const patch = (p: Partial<Draft>) => {
     setDraft((d) => (d ? { ...d, ...p } : d));
     setDirty(true);
+  };
+
+  /**
+   * 打開表單（新增或編輯）。
+   *
+   * 🔴 **一定要捲過去**：表單在右欄，但視窗寬度 ≤960px 版面就變單欄，
+   *    表單會排到整份物件清單的**下面** —— 不捲過去，按了「編輯」畫面完全沒動靜，
+   *    使用者只會說「按了沒反應」（2026-09-17 他又回報一次，這是第四次踩到同一個坑，
+   *    見記憶 learning_silent_failure_pattern）。
+   *    要等 React 把表單畫出來才捲得到，所以放在 requestAnimationFrame 裡。
+   */
+  const openForm = (next: Draft) => {
+    setDraft(next);
+    setDirty(false);
+    setMsg(null);
+    setProjQuery("");
+    setHouseolInput("");
+    setReadInfo(null);
+    // ⚠️ 兩個都是實測踩出來的，不要「順手改漂亮一點」：
+    //    ① 用 setTimeout 不用 requestAnimationFrame —— 分頁在背景時 RAF 根本不會執行，
+    //       畫面就完全沒動靜（等於沒修）。setTimeout 不挑可見性。
+    //    ② 不要加 `behavior: "smooth"`，實測捲不動而且不報錯。
+    //    `block: "nearest"` 是為了寬螢幕兩欄時表單本來就看得到、不要平白跳動。
+    setTimeout(() => {
+      formColRef.current?.scrollIntoView({ block: "nearest" });
+    }, 0);
   };
 
   /**
@@ -327,14 +354,7 @@ export default function MapListingsManager({
             <button
               type="button"
               className={styles.primaryBtn}
-              onClick={() => {
-                setDraft({ ...EMPTY });
-                setDirty(false);
-                setMsg(null);
-                setProjQuery("");
-                setHouseolInput("");
-                setReadInfo(null);
-              }}
+              onClick={() => openForm({ ...EMPTY })}
             >
               ＋ 新增物件
             </button>
@@ -415,14 +435,7 @@ export default function MapListingsManager({
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            setDraft(toDraft(r));
-                            setDirty(false);
-                            setMsg(null);
-                            setProjQuery("");
-                            setHouseolInput("");
-                            setReadInfo(null);
-                          }}
+                          onClick={() => openForm(toDraft(r))}
                         >
                           編輯
                         </button>
@@ -443,7 +456,7 @@ export default function MapListingsManager({
         </div>
 
         {/* ── 右：編輯 ── */}
-        <div className={styles.formCol}>
+        <div className={styles.formCol} ref={formColRef}>
           {!draft ? (
             <p className={styles.empty}>左邊按「＋ 新增物件」或任一筆的「編輯」，表單會出現在這裡。</p>
           ) : (
