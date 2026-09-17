@@ -2340,7 +2340,10 @@ export const PROJECTS: Project[] = [
   { id: "changlin-qingshidai-2", name: "長霖青世代2", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
   { id: "chengyi", name: "澄邑", builder: "德邑建設", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
   { id: "hefeng-yijing-7", name: "和風逸境7", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2018", sources: ["owner"] },
-  { id: "qingkong-shu-2", name: "晴空墅2", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  /* ⚠️ 2026-09-17 他補建商「德光建設」時順手寫屋齡 6 年（＝約 2020），
+     但 9/17 早上那批他給的是 5 年（＝現在存的約 2021）。**差一年、維持現有、沒有蓋掉**，已回問。
+     🔵 同系列的「晴空墅」（無 2）是德邑建設 —— 德邑 vs 德光是兩家既有公司，不是打錯字。 */
+  { id: "qingkong-shu-2", name: "晴空墅2", builder: "德光建設", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
   { id: "renli-shishang", name: "仁里時上", builder: "和旺建設", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
   { id: "fuli-dayuan", name: "富禮大院", builder: "新富銘建設", area: "清水市區", status: "completed", completion: "約 2015", sources: ["owner"] },
   { id: "zhaoguo-zhuoyi", name: "兆國琢藝", builder: "待確認", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
@@ -2471,6 +2474,23 @@ export const PROJECTS: Project[] = [
   { id: "zhaodeng-shiguangxu", name: "兆登拾光序", builder: "兆登建設體系", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "deyu-shidai-chuanjia", name: "德育世代傳家", builder: "德育建設", area: "清水市區", status: "completed", completion: "約 2022", sources: ["owner"] },
   { id: "lidong-gongyuanyuan", name: "立東公園院", builder: "祖寶建設", area: "清水市區", status: "completed", completion: "約 2023", sources: ["owner"] },
+
+  /* ─────────── 清水市區第三批 9 案（2026-09-17 深夜）───────────
+     🔵 **「德川家康透天區／大樓區」照前例拆成兩筆**（同一組建商與屋齡）。
+     🔵 **陽明果貿新城A區／BC區、和平新城的建商是「國防部」** —— 那是眷改宅，他明講的；
+        同文化國宅＝台灣省政府住宅及都市發展局那次，**公部門的名字要他給才填，不准自己猜**。
+     ⚠️ 他這批又寫了一次「大美清泉（大樂建設5年）」，跟第一批完全一樣 —— **沒有重複建立**。
+     ⚠️ 「勝邦開發」對齊成既有的「勝邦開發建設」（梧棲市區的勝邦綠邑6）。
+     🔵 仁愛易境（昱壬建設）跟既有的仁愛易墅（檸檬樹建設）是兩案兩家，不要合併。 */
+  { id: "senbaofu-11", name: "森堡富11", builder: "華庭建設", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "renai-yijing", name: "仁愛易境", builder: "昱壬建設", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "zhangqing-yanyuan", name: "彰慶晏苑", builder: "彰慶建設", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "yangming-guomao-a", name: "陽明果貿新城A區", builder: "國防部", area: "清水市區", status: "completed", completion: "約 2005", sources: ["owner"] },
+  { id: "yangming-guomao-bc", name: "陽明果貿新城BC區", builder: "國防部", area: "清水市區", status: "completed", completion: "約 2006", sources: ["owner"] },
+  { id: "shengbang-lvyi-3", name: "勝邦綠邑3", builder: "勝邦開發建設", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "dechuan-jiakang-toutian", name: "德川家康透天區", builder: "興峰建設", area: "清水市區", status: "completed", completion: "約 1999", sources: ["owner"] },
+  { id: "dechuan-jiakang-dalou", name: "德川家康大樓區", builder: "興峰建設", area: "清水市區", status: "completed", completion: "約 1999", sources: ["owner"] },
+  { id: "heping-xincheng", name: "和平新城", builder: "國防部", area: "清水市區", status: "completed", completion: "約 2008", sources: ["owner"] },
 ];
 
 /* ─────────────── 座標 ─────────────── */
@@ -3208,6 +3228,49 @@ export const COORDS: Record<string, Coord> = {
   "daqi-tianxia-8": { lat: 24.25959, lng: 120.56965, precision: "exact" }, // 大砌天下8
   "daqi-tianxia-9": { lat: 24.25981, lng: 120.5696, precision: "exact" }, // 大砌天下9
   "fuyu-zhongyang-gongyuan": { lat: 24.26007, lng: 120.57051, precision: "exact" }, // 富宇中央公園
+  /* ── 清水市區第二批 40 案（2026-09-17，系統擁有者用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、precision 全 exact、本批不重複、沒有覆蓋既有座標，
+     **40 筆全部落在清水市區色塊內**；30 公尺內一對鄰居都沒有。 */
+  "dunpu-meixue": { lat: 24.26685, lng: 120.57154, precision: "exact" }, // 敦璞美學
+  "dunpu-meixue-2": { lat: 24.2659, lng: 120.57176, precision: "exact" }, // 敦璞美學2
+  "qingmeiju": { lat: 24.26729, lng: 120.57167, precision: "exact" }, // 清美居
+  "mingren-shijia-dalou": { lat: 24.26662, lng: 120.57696, precision: "exact" }, // 名人世家大樓區
+  "mingyuan-fuyu": { lat: 24.26703, lng: 120.57639, precision: "exact" }, // 名苑富域
+  "oudu-jingzuan": { lat: 24.26716, lng: 120.57745, precision: "exact" }, // 歐都晶鑽
+  "quanzhu-aofeng-moma": { lat: 24.26994, lng: 120.57925, precision: "exact" }, // 佺築鰲峰MOMA
+  "tianbao-shangye": { lat: 24.27172, lng: 120.57618, precision: "exact" }, // 天寶商業大樓
+  "qingsongzuan": { lat: 24.27359, lng: 120.5769, precision: "exact" }, // 清崧鑽
+  "xiangshangju": { lat: 24.27341, lng: 120.57538, precision: "exact" }, // 巷上居
+  "fuyu-dayue": { lat: 24.2731, lng: 120.57444, precision: "exact" }, // 富宇大悦
+  "hanyu-lvdi": { lat: 24.27264, lng: 120.57436, precision: "exact" }, // 漢宇綠第華廈區
+  "fuyu-daju": { lat: 24.27463, lng: 120.57507, precision: "exact" }, // 富宇大琚
+  "wuquan-jinghua-2": { lat: 24.27526, lng: 120.57475, precision: "exact" }, // 五權京華2
+  "changpin-zhuangyuan": { lat: 24.27508, lng: 120.57439, precision: "exact" }, // 昶品莊園
+  "jinbang-cangfu": { lat: 24.27791, lng: 120.57426, precision: "exact" }, // 金邦藏富
+  "dingjia-qianmei": { lat: 24.27255, lng: 120.57037, precision: "exact" }, // 鼎佳謙美
+  "rongyao-zhixing": { lat: 24.27214, lng: 120.56938, precision: "exact" }, // 榮耀之星
+  "senbao-tianguan": { lat: 24.27047, lng: 120.57112, precision: "exact" }, // 森堡天冠
+  "lvhuo-bali": { lat: 24.26997, lng: 120.57033, precision: "exact" }, // 綠活峇里
+  "damei-qingquan": { lat: 24.27023, lng: 120.56841, precision: "exact" }, // 大美清泉
+  "puyi-xilie-6": { lat: 24.26754, lng: 120.56903, precision: "exact" }, // 璞邑系列6
+  "puyi-jiufu": { lat: 24.26661, lng: 120.56668, precision: "exact" }, // 璞邑九賦
+  "pusen-yupinyuan": { lat: 24.26638, lng: 120.56729, precision: "exact" }, // 璞森御品苑
+  "yongshun-yafu-3": { lat: 24.266, lng: 120.56595, precision: "exact" }, // 勇順雅富3
+  "xiyan-5": { lat: 24.26548, lng: 120.56759, precision: "exact" }, // 喜硯5
+  "jiachang-xiyan-7": { lat: 24.26576, lng: 120.56778, precision: "exact" }, // 佳昌喜硯7
+  "xindouhui": { lat: 24.26601, lng: 120.56445, precision: "exact" }, // 新都匯
+  "qingyunfu": { lat: 24.2639, lng: 120.56371, precision: "exact" }, // 青雲賦
+  "leshu-nanshe": { lat: 24.26377, lng: 120.56435, precision: "exact" }, // 樂穥南社
+  "heyi-yafu-5": { lat: 24.26398, lng: 120.56543, precision: "exact" }, // 合億雅富5
+  "hesheng-riguang-senhuo": { lat: 24.26403, lng: 120.56182, precision: "exact" }, // 禾盛日光森活
+  "yuqing-fengge-2": { lat: 24.26439, lng: 120.56083, precision: "exact" }, // 餘慶豐閣2
+  "shishang-qingquan": { lat: 24.2637, lng: 120.56168, precision: "exact" }, // 石上清泉
+  "honglihui": { lat: 24.26391, lng: 120.56111, precision: "exact" }, // 鴻利匯
+  "fuhuayuan-toutian": { lat: 24.26402, lng: 120.56076, precision: "exact" }, // 馥花園透天區
+  "fuhuayuan-huaxia": { lat: 24.26415, lng: 120.56042, precision: "exact" }, // 馥花園華廈區
+  "senbaofu-7": { lat: 24.26292, lng: 120.56078, precision: "exact" }, // 森堡富7
+  "zhaoguo-zhuoyi": { lat: 24.26327, lng: 120.55885, precision: "exact" }, // 兆國琢藝
+  "shangrui-shoufu": { lat: 24.26676, lng: 120.56098, precision: "exact" }, // 上睿首馥
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
