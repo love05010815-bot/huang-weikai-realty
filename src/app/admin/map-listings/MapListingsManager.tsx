@@ -26,7 +26,6 @@ import type { ListingClickStats } from "@/lib/listing-clicks";
 import {
   deleteMapListingAction,
   moveMapListingAction,
-  importHouseolPhotoAction,
   readHouseolAction,
   saveMapListingAction,
   setMapListingStatusAction,
@@ -255,23 +254,39 @@ export default function MapListingsManager({
 
     setImporting(true);
     let added = 0;
+    let degraded = "";
     const failures: string[] = [];
     try {
       for (const [i, src] of targets.entries()) {
         setMsg({ kind: "ok", text: `抓照片中… 第 ${i + 1} 張／共 ${targets.length} 張` });
-        const res = await importHouseolPhotoAction(src);
-        if (res.ok) {
-          addPhoto(res.url);
+        // ⚠️ 走 API 路由不走 server action —— sharp 的原生檔只帶得進 API 路由那支函式，
+        //    寫成 server action 線上會噴「libvips-cpp.so cannot open shared object file」
+        //    （2026-09-17 踩過，詳見那支 route 的檔頭）
+        const res = await fetch("/api/admin/map-listings/houseol-photo", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ url: src }),
+        });
+        let data: { ok?: boolean; url?: string; error?: string; degraded?: string } | null = null;
+        try {
+          data = await res.json();
+        } catch {
+          data = null;
+        }
+        if (res.ok && data?.ok && data.url) {
+          addPhoto(data.url);
           added++;
+          // 降級（沒壓縮）要講出來，不要默默吞掉 —— 那代表 sharp 壞了，是要修的事
+          if (data.degraded) degraded = data.degraded;
         } else {
-          failures.push(res.error);
+          failures.push(data?.error ?? `上傳失敗（${res.status}）`);
         }
       }
       setMsg({
         kind: added > 0 ? "ok" : "err",
         text:
           added > 0
-            ? `已帶入 ${added} 張照片${failures.length ? `（${failures.length} 張失敗：${failures[0]}）` : ""}。⚠️ 記得按「儲存」才會寫進資料庫`
+            ? `已帶入 ${added} 張照片${failures.length ? `（${failures.length} 張失敗：${failures[0]}）` : ""}${degraded ? `⚠️ ${degraded}` : ""}。⚠️ 記得按「儲存」才會寫進資料庫`
             : `照片都沒帶成功：${failures[0] ?? "不明原因"}`,
       });
     } catch (e) {

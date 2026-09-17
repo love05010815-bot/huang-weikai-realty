@@ -22,9 +22,20 @@ const nextConfig: NextConfig = {
    */
   serverExternalPackages: ["sharp"],
 
-  /** 再保險一層：明確叫 Vercel 把 linux 的原生檔帶進上傳那支 route 的 bundle。 */
+  /**
+   * 再保險一層：明確叫 Vercel 把 linux 的原生檔帶進**每一支會用到 sharp 的 route**。
+   *
+   * ⚠️ 這份清單要跟著功能長。2026-09-17 就是漏了：「貼愛屋連結帶入照片」寫成 server action
+   *    跑在 `/admin/map-listings` 頁面路由上，那支沒被帶到原生檔，線上一按就噴
+   *    `libvips-cpp.so … cannot open shared object file`。
+   *    **新功能要用 sharp，就放 API 路由並在這裡補一條。**
+   */
   outputFileTracingIncludes: {
     "/api/admin/listings/photo": [
+      "./node_modules/@img/sharp-linux-x64/**",
+      "./node_modules/@img/sharp-libvips-linux-x64/**",
+    ],
+    "/api/admin/map-listings/houseol-photo": [
       "./node_modules/@img/sharp-linux-x64/**",
       "./node_modules/@img/sharp-libvips-linux-x64/**",
     ],

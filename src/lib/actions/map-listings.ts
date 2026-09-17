@@ -12,9 +12,8 @@
 import { revalidatePath } from "next/cache";
 import { isCurrentUserAdmin } from "@/lib/admin-check";
 import { PROJECTS } from "@/data/port-projects";
-import { buildPoints, fetchCatalog, isHouseolPhotoUrl } from "@/lib/houseol-catalog";
+import { buildPoints, fetchCatalog } from "@/lib/houseol-catalog";
 import { getHouseolAddressMap } from "@/lib/houseol-address";
-import { uploadListingPhoto } from "@/lib/listing-photos";
 import { matchProjects, pickAuto, type ProjectSuggestion } from "@/lib/project-match";
 import {
   createMapListing,
@@ -119,7 +118,7 @@ export type HouseolReadResult =
       pointsText: string;
       linkHref: string;
       community: string;
-      /** 型錄上的照片網址，客戶端一張一張送回來給 importHouseolPhotoAction */
+      /** 型錄上的照片網址，客戶端一張一張打去 /api/admin/map-listings/houseol-photo */
       photos: string[];
       suggestions: ProjectSuggestion[];
       /** 有值＝夠確定，畫面直接幫他選起來 */
@@ -184,36 +183,9 @@ export async function readHouseolAction(input: string): Promise<HouseolReadResul
   };
 }
 
-/**
- * 把型錄上的**一張**照片抓下來、壓好、存進 Blob，回可以直接放進表單的網址。
- *
- * 走的是後台上傳照片同一支 `uploadListingPhoto()`（縮到 1600px、壓 WebP、存 Blob），
- * 所以照片跟他自己傳的一模一樣，不是把愛屋的圖直接外連
- * —— 外連的話愛屋換網址或擋熱連結，地圖上的照片就默默變破圖。
- *
- * 🔴 **一次只做一張，迴圈放在瀏覽器端**（2026-09-17 改）。本來是一次做完 8 張，
- *    他按了「沒反應」：實測光是 Blob 上傳一張就 3 秒，8 張串起來會撞到函式的時間上限
- *    被砍掉，而且中途完全沒有進度。現在一張一次（約 1～3 秒），畫面每完成一張就多一張縮圖，
- *    某一張壞掉也只有那一張失敗。
- *
- * 🔴 `url` 是從瀏覽器端傳進來的 —— **一定要擋網域**，不然就是開一個「叫伺服器去打任意網址」的洞。
+/*
+ * 🔴 「把型錄照片抓進來」不在這裡 —— 它在 API 路由
+ *    src/app/api/admin/map-listings/houseol-photo/route.ts。
+ *    原因：sharp 的原生檔只帶得進 API 路由那支函式，寫成 server action 線上會噴
+ *    libvips-cpp.so 找不到（2026-09-17 實際踩到）。細節寫在那支 route 的檔頭。
  */
-export async function importHouseolPhotoAction(
-  url: string,
-): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
-  if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
-  if (!isHouseolPhotoUrl(url)) return { ok: false, error: "這不是愛屋的圖片網址" };
-
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) return { ok: false, error: `愛屋回應 ${res.status}` };
-    const buf = Buffer.from(await res.arrayBuffer());
-    const name = url.split("/").pop() || "houseol.jpg";
-    const uploaded = await uploadListingPhoto(
-      new File([buf], name, { type: res.headers.get("content-type") ?? "image/jpeg" }),
-    );
-    return { ok: true, url: uploaded.url };
-  } catch (e) {
-    return { ok: false, error: describeError(e) };
-  }
-}
