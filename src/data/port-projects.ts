@@ -3166,6 +3166,48 @@ export const COORDS: Record<string, Coord> = {
   "xinfuyu-fengsui-10": { lat: 24.25466, lng: 120.54412, precision: "exact" }, // 鑫富裕豐穗10
   "qingpu-yuan-2": { lat: 24.26111, lng: 120.54843, precision: "exact" }, // 青樸院2
   "deyi-chengyi-2": { lat: 24.26323, lng: 120.54741, precision: "exact" }, // 德邑澄邑2
+  /* ── 清水市區第一批 36 案（2026-09-17，系統擁有者用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、precision 全 exact、本批不重複、沒有覆蓋既有座標，
+     **36 筆全部落在清水市區色塊內**（每一筆比對它自己那一區，不是寫死單一區）。
+     🔵 三對 30 公尺內的鄰居：大砌天下8 ↔ 大砌天下9 25m（同系列）、
+        沅臻高境 ↔ 森堡富第3 20m、樂穥忠孝 ↔ 仁里時上 27m —— 清水市區這一帶本來就密。
+     ⚠️ 剩幾案沒座標請用 `projectStats()` 算（寫下時：全站未標位置 95 筆，全在清水市區）。 */
+  "sanheyuan-muguang": { lat: 24.27745, lng: 120.56683, precision: "exact" }, // 三和圓沐光
+  "weifeng-yipin-2": { lat: 24.26259, lng: 120.5451, precision: "exact" }, // 微風一品2
+  "changlin-qingshidai-2": { lat: 24.26326, lng: 120.54565, precision: "exact" }, // 長霖青世代2
+  "aofeng-guangchang": { lat: 24.26394, lng: 120.54795, precision: "exact" }, // 鰲豐廣場
+  "chengyi": { lat: 24.26439, lng: 120.54782, precision: "exact" }, // 澄邑
+  "qingshui-mashangfa": { lat: 24.2642, lng: 120.54973, precision: "exact" }, // 清水馬上發
+  "liangju-qishang": { lat: 24.26435, lng: 120.55055, precision: "exact" }, // 良鉅柒尚
+  "hefeng-yijing-8": { lat: 24.26258, lng: 120.55231, precision: "exact" }, // 和風逸境8
+  "xinrui-tiandi": { lat: 24.26062, lng: 120.55181, precision: "exact" }, // 新銳天地
+  "lanting-yan": { lat: 24.2609, lng: 120.55165, precision: "exact" }, // 蘭庭硯
+  "renai-yishu": { lat: 24.26066, lng: 120.55116, precision: "exact" }, // 仁愛易墅
+  "zhaoguo-i-style": { lat: 24.26145, lng: 120.55561, precision: "exact" }, // 兆國I Style
+  "likun-yuanman-12": { lat: 24.25981, lng: 120.55606, precision: "exact" }, // 立坤圓滿12
+  "guilin-zhuangyuan-3": { lat: 24.2593, lng: 120.55586, precision: "exact" }, // 貴臨狀元3
+  "xinye-zhiguang-senlin": { lat: 24.26268, lng: 120.55441, precision: "exact" }, // 新業織光森鄰
+  "xinfuming-yaqi-2": { lat: 24.26243, lng: 120.55601, precision: "exact" }, // 新富銘雅砌2
+  "hefeng-yijing-7": { lat: 24.26254, lng: 120.55696, precision: "exact" }, // 和風逸境7
+  "leshu-zhongxiao": { lat: 24.26066, lng: 120.55841, precision: "exact" }, // 樂穥忠孝
+  "renli-shishang": { lat: 24.26065, lng: 120.55868, precision: "exact" }, // 仁里時上
+  "fuli-dayuan": { lat: 24.26151, lng: 120.55892, precision: "exact" }, // 富禮大院
+  "renli-xinyuan-dalou": { lat: 24.25884, lng: 120.55702, precision: "exact" }, // 仁里欣願大樓
+  "renli-xinyuan-toutian": { lat: 24.2587, lng: 120.55769, precision: "exact" }, // 仁里欣願透天區
+  "senbaofu-8": { lat: 24.25814, lng: 120.56053, precision: "exact" }, // 森堡富8
+  "senbaofu-9": { lat: 24.25816, lng: 120.56202, precision: "exact" }, // 森堡富9
+  "langlang-tianqing": { lat: 24.2592, lng: 120.56247, precision: "exact" }, // 朗朗天晴
+  "jianyuan-yuzhishu": { lat: 24.26042, lng: 120.56403, precision: "exact" }, // 建元御之墅
+  "yuanzhen-gaojing": { lat: 24.26056, lng: 120.56511, precision: "exact" }, // 沅臻高境
+  "senbaofu-di-3": { lat: 24.26073, lng: 120.56516, precision: "exact" }, // 森堡富第3
+  "getai-fuyi": { lat: 24.26064, lng: 120.56569, precision: "exact" }, // 格太富邑
+  "shiguang-fika": { lat: 24.26028, lng: 120.56614, precision: "exact" }, // 蒔光FIKA
+  "junbang-zhiqing": { lat: 24.2605, lng: 120.56728, precision: "exact" }, // 俊邦植青
+  "junbang-zhiqing-2": { lat: 24.26047, lng: 120.56665, precision: "exact" }, // 俊邦植青2
+  "daqi-tianxia-6": { lat: 24.25919, lng: 120.56812, precision: "exact" }, // 大砌天下6
+  "daqi-tianxia-8": { lat: 24.25959, lng: 120.56965, precision: "exact" }, // 大砌天下8
+  "daqi-tianxia-9": { lat: 24.25981, lng: 120.5696, precision: "exact" }, // 大砌天下9
+  "fuyu-zhongyang-gongyuan": { lat: 24.26007, lng: 120.57051, precision: "exact" }, // 富宇中央公園
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
