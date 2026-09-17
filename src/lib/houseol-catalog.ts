@@ -63,6 +63,19 @@ export type CatalogListing = {
   catalogUrl: string;
 };
 
+/**
+ * 這個網址可不可以拿去抓圖。
+ * 🔴 **一定要擋**：網址是從瀏覽器端傳進來的，不擋就是開一個「叫伺服器去打任意網址」的洞。
+ */
+export function isHouseolPhotoUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    return (u.protocol === "https:" || u.protocol === "http:") && HOUSEOL_HOST.test(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
 export function catalogUrlFor(caseId: string): string {
   return `https://es.houseol.com.tw/Ecatalog.aspx?UID=SP123&UAID=H229&No=${encodeURIComponent(caseId)}&AID=H229&S1=&S2=`;
 }

@@ -25,6 +25,9 @@ import MapListingsManager from "./MapListingsManager";
 import styles from "./map-listings-admin.module.css";
 
 export const dynamic = "force-dynamic";
+// 貼愛屋連結要抓型錄、帶照片要抓圖＋壓縮＋存 Blob，都跑在這個路由的 server action 上。
+// 預設的函式時間上限對這種外連工作太短，給到 60 秒（跟 /api/match/sync 同一個理由）。
+export const maxDuration = 60;
 
 export default async function MapListingsAdminPage() {
   if (!process.env.AUTH_GOOGLE_ID || !process.env.AUTH_GOOGLE_SECRET) {

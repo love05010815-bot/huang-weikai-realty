@@ -26,7 +26,7 @@ import type { ListingClickStats } from "@/lib/listing-clicks";
 import {
   deleteMapListingAction,
   moveMapListingAction,
-  importHouseolPhotosAction,
+  importHouseolPhotoAction,
   readHouseolAction,
   saveMapListingAction,
   setMapListingStatusAction,
@@ -40,7 +40,7 @@ type ReadInfo = {
   caseId: string;
   community: string;
   addressSource: "門牌" | "型錄";
-  photoCount: number;
+  photos: string[];
   suggestions: ProjectSuggestion[];
   /** 自動選好的建案名，空字串＝沒自動選 */
   autoPicked: string;
@@ -159,7 +159,6 @@ export default function MapListingsManager({
    *    表單會排到整份物件清單的**下面** —— 不捲過去，按了「編輯」畫面完全沒動靜，
    *    使用者只會說「按了沒反應」（2026-09-17 他又回報一次，這是第四次踩到同一個坑，
    *    見記憶 learning_silent_failure_pattern）。
-   *    要等 React 把表單畫出來才捲得到，所以放在 requestAnimationFrame 裡。
    */
   const openForm = (next: Draft) => {
     setDraft(next);
@@ -208,7 +207,7 @@ export default function MapListingsManager({
         caseId: res.caseId,
         community: res.community,
         addressSource: res.addressSource,
-        photoCount: res.photoCount,
+        photos: res.photos,
         suggestions: res.suggestions,
         autoPicked: autoName,
         missing: res.missing,
@@ -224,7 +223,23 @@ export default function MapListingsManager({
     }
   };
 
-  /** 把型錄上的照片抓下來（走跟手動上傳同一支壓縮＋Blob，不是外連愛屋的圖） */
+  /**
+   * 加一張照片進草稿。
+   * ⚠️ 一定要用 setDraft 的函式版讀「當下的 draft」—— 迴圈裡連續加好幾張時，
+   *    閉包裡的 draft 是第一圈那份舊的，用它會讓後面幾張把前面幾張蓋掉。
+   */
+  const addPhoto = (url: string) => {
+    setDraft((d) => (d ? { ...d, photos: [...d.photos, url].slice(0, MAX_PHOTOS) } : d));
+    setDirty(true);
+  };
+
+  /**
+   * 把型錄上的照片抓進來（走跟手動上傳同一支壓縮＋Blob，不是外連愛屋的圖）。
+   *
+   * 🔴 **一張一張送，迴圈在這裡**（2026-09-17 改）：本來是叫伺服器一次做完 8 張，
+   *    他按了回報「沒反應」—— 實測光 Blob 上傳一張就 3 秒，8 張會撞到函式時間上限被砍，
+   *    而且整段沒有任何進度。現在每完成一張就馬上多一張縮圖，看得到它在動。
+   */
   const importPhotos = async () => {
     if (!draft || !readInfo || importing) return;
     const room = MAX_PHOTOS - draft.photos.length;
@@ -232,21 +247,38 @@ export default function MapListingsManager({
       setMsg({ kind: "err", text: `已經有 ${MAX_PHOTOS} 張了，先移除幾張再帶` });
       return;
     }
+    const targets = readInfo.photos.slice(0, room);
+    if (targets.length === 0) {
+      setMsg({ kind: "err", text: "這一頁型錄沒有照片" });
+      return;
+    }
+
     setImporting(true);
-    setMsg({ kind: "ok", text: `抓照片中…（最多 ${room} 張，一張一張處理，請等一下）` });
+    let added = 0;
+    const failures: string[] = [];
     try {
-      const res = await importHouseolPhotosAction(readInfo.caseId, room);
-      if (!res.ok || !res.urls) {
-        setMsg({ kind: "err", text: res.error ?? "照片帶入失敗" });
-        return;
+      for (const [i, src] of targets.entries()) {
+        setMsg({ kind: "ok", text: `抓照片中… 第 ${i + 1} 張／共 ${targets.length} 張` });
+        const res = await importHouseolPhotoAction(src);
+        if (res.ok) {
+          addPhoto(res.url);
+          added++;
+        } else {
+          failures.push(res.error);
+        }
       }
-      patch({ photos: [...draft.photos, ...res.urls].slice(0, MAX_PHOTOS) });
       setMsg({
-        kind: "ok",
-        text: `已帶入 ${res.urls.length} 張照片${res.failed ? `（${res.failed} 張失敗）` : ""}。⚠️ 記得按「儲存」才會寫進資料庫`,
+        kind: added > 0 ? "ok" : "err",
+        text:
+          added > 0
+            ? `已帶入 ${added} 張照片${failures.length ? `（${failures.length} 張失敗：${failures[0]}）` : ""}。⚠️ 記得按「儲存」才會寫進資料庫`
+            : `照片都沒帶成功：${failures[0] ?? "不明原因"}`,
       });
     } catch (e) {
-      setMsg({ kind: "err", text: e instanceof Error ? e.message : String(e) });
+      setMsg({
+        kind: "err",
+        text: `${added > 0 ? `帶了 ${added} 張之後中斷：` : "照片帶入失敗："}${e instanceof Error ? e.message : String(e)}`,
+      });
     } finally {
       setImporting(false);
     }
@@ -344,7 +376,7 @@ export default function MapListingsManager({
 
   return (
     <div className={styles.wrap}>
-      {msg && <p className={msg.kind === "ok" ? styles.ok : styles.error}>{msg.text}</p>}
+      {msg && !draft && <p className={msg.kind === "ok" ? styles.ok : styles.error}>{msg.text}</p>}
 
       <div className={styles.cols}>
         {/* ── 左：清單 ── */}
@@ -463,6 +495,12 @@ export default function MapListingsManager({
             <div className={styles.form}>
               <h2>{draft.id ? "編輯物件" : "新增物件"}</h2>
 
+              {/* 🔴 訊息一定要放在表單裡、而且黏住 —— 放在整頁最上面的話，
+                  他人在下面操作根本看不到「抓照片中…」或錯誤，回報就是「按了沒反應」 */}
+              {msg && (
+                <p className={`${msg.kind === "ok" ? styles.ok : styles.error} ${styles.formMsg}`}>{msg.text}</p>
+              )}
+
               {/* 貼一條愛屋連結，標題／地址／格局／特色一次帶進來，順便猜建案。
                   2026-09-16 取代原本「搜尋愛屋庫存快照」那塊 —— 快照要自己跑書籤更新，
                   而且沒有特色也不會挑建案。 */}
@@ -518,11 +556,21 @@ export default function MapListingsManager({
                     ) : (
                       <span className={styles.readWarn}>🏢 猜不出是哪個建案，請到下面自己搜一個</span>
                     )}
-                    {readInfo.photoCount > 0 && (
+                    {readInfo.photos.length > 0 && (
                       <div className={styles.pasteRow}>
-                        <span className={styles.readLine}>{`📷 型錄上有 ${readInfo.photoCount} 張照片`}</span>
-                        <button type="button" onClick={() => void importPhotos()} disabled={importing}>
-                          {importing ? "抓照片中…" : `帶入 ${Math.min(readInfo.photoCount, MAX_PHOTOS - draft.photos.length)} 張`}
+                        <span className={styles.readLine}>
+                          {`📷 型錄上有 ${readInfo.photos.length} 張｜表單目前 ${draft.photos.length} 張`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void importPhotos()}
+                          disabled={importing || draft.photos.length >= MAX_PHOTOS}
+                        >
+                          {importing
+                            ? "抓照片中…"
+                            : draft.photos.length >= MAX_PHOTOS
+                              ? `已滿 ${MAX_PHOTOS} 張`
+                              : `帶入 ${Math.min(readInfo.photos.length, MAX_PHOTOS - draft.photos.length)} 張`}
                         </button>
                       </div>
                     )}

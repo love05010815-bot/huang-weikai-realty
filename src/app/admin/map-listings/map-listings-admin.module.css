@@ -673,3 +673,14 @@
   line-height: 1.6;
   color: #fb7185;
 }
+
+/* 表單裡的訊息列（2026-09-17）。
+   🔴 黏在表單頂端 —— 整頁最上面那條他看不到：窄視窗時表單在清單下面，
+      他正在表單這裡操作，「抓照片中…」或錯誤訊息出現在一千多像素之外等於沒出現。 */
+.formMsg {
+  position: sticky;
+  top: 8px;
+  z-index: 5;
+  margin: 0 !important;
+  max-width: none !important;
+}

@@ -12,7 +12,7 @@
 import { revalidatePath } from "next/cache";
 import { isCurrentUserAdmin } from "@/lib/admin-check";
 import { PROJECTS } from "@/data/port-projects";
-import { buildPoints, fetchCatalog } from "@/lib/houseol-catalog";
+import { buildPoints, fetchCatalog, isHouseolPhotoUrl } from "@/lib/houseol-catalog";
 import { getHouseolAddressMap } from "@/lib/houseol-address";
 import { uploadListingPhoto } from "@/lib/listing-photos";
 import { matchProjects, pickAuto, type ProjectSuggestion } from "@/lib/project-match";
@@ -23,7 +23,6 @@ import {
   setMapListingStatus,
   updateMapListing,
   validateMapListing,
-  MAX_PHOTOS,
   type MapListingInput,
   type MapListingStatus,
 } from "@/lib/map-listings";
@@ -120,7 +119,8 @@ export type HouseolReadResult =
       pointsText: string;
       linkHref: string;
       community: string;
-      photoCount: number;
+      /** 型錄上的照片網址，客戶端一張一張送回來給 importHouseolPhotoAction */
+      photos: string[];
       suggestions: ProjectSuggestion[];
       /** 有值＝夠確定，畫面直接幫他選起來 */
       autoProjectId: string | null;
@@ -177,7 +177,7 @@ export async function readHouseolAction(input: string): Promise<HouseolReadResul
     pointsText: buildPoints(l).join("\n"),
     linkHref: l.catalogUrl,
     community: l.community,
-    photoCount: l.photos.length,
+    photos: l.photos,
     suggestions,
     autoProjectId: pickAuto(suggestions),
     missing,
@@ -185,42 +185,35 @@ export async function readHouseolAction(input: string): Promise<HouseolReadResul
 }
 
 /**
- * 把型錄上的照片抓下來、壓好、存進 Blob，回可以直接放進表單的網址。
+ * 把型錄上的**一張**照片抓下來、壓好、存進 Blob，回可以直接放進表單的網址。
  *
  * 走的是後台上傳照片同一支 `uploadListingPhoto()`（縮到 1600px、壓 WebP、存 Blob），
  * 所以照片跟他自己傳的一模一樣，不是把愛屋的圖直接外連
  * —— 外連的話愛屋換網址或擋熱連結，地圖上的照片就默默變破圖。
  *
- * ⚠️ 一張一張做不並行：sharp 同時解好幾張會把函式的記憶體吃爆
- *    （跟 lib/photo-upload-client.ts 同一個理由）。
+ * 🔴 **一次只做一張，迴圈放在瀏覽器端**（2026-09-17 改）。本來是一次做完 8 張，
+ *    他按了「沒反應」：實測光是 Blob 上傳一張就 3 秒，8 張串起來會撞到函式的時間上限
+ *    被砍掉，而且中途完全沒有進度。現在一張一次（約 1～3 秒），畫面每完成一張就多一張縮圖，
+ *    某一張壞掉也只有那一張失敗。
+ *
+ * 🔴 `url` 是從瀏覽器端傳進來的 —— **一定要擋網域**，不然就是開一個「叫伺服器去打任意網址」的洞。
  */
-export async function importHouseolPhotosAction(
-  caseId: string,
-  room: number,
-): Promise<{ ok: boolean; urls?: string[]; failed?: number; error?: string }> {
+export async function importHouseolPhotoAction(
+  url: string,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
-  const take = Math.max(0, Math.min(MAX_PHOTOS, Math.floor(room)));
-  if (take === 0) return { ok: false, error: `照片已經有 ${MAX_PHOTOS} 張了，先移除幾張再帶` };
+  if (!isHouseolPhotoUrl(url)) return { ok: false, error: "這不是愛屋的圖片網址" };
 
-  const read = await fetchCatalog(caseId);
-  if (!read.ok) return { ok: false, error: read.error };
-  const photos = read.listing.photos.slice(0, take);
-  if (photos.length === 0) return { ok: false, error: "這一頁的型錄沒有照片" };
-
-  const urls: string[] = [];
-  let failed = 0;
-  for (const src of photos) {
-    try {
-      const res = await fetch(src, { signal: AbortSignal.timeout(10000) });
-      if (!res.ok) throw new Error(String(res.status));
-      const buf = Buffer.from(await res.arrayBuffer());
-      const name = src.split("/").pop() || `${caseId}.jpg`;
-      const { url } = await uploadListingPhoto(new File([buf], name, { type: res.headers.get("content-type") ?? "image/jpeg" }));
-      urls.push(url);
-    } catch {
-      failed++;
-    }
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return { ok: false, error: `愛屋回應 ${res.status}` };
+    const buf = Buffer.from(await res.arrayBuffer());
+    const name = url.split("/").pop() || "houseol.jpg";
+    const uploaded = await uploadListingPhoto(
+      new File([buf], name, { type: res.headers.get("content-type") ?? "image/jpeg" }),
+    );
+    return { ok: true, url: uploaded.url };
+  } catch (e) {
+    return { ok: false, error: describeError(e) };
   }
-  if (urls.length === 0) return { ok: false, error: `${photos.length} 張都抓失敗，可能是愛屋擋了或圖檔壞了` };
-  return { ok: true, urls, failed };
 }
