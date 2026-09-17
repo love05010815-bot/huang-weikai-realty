@@ -2338,7 +2338,7 @@ export const PROJECTS: Project[] = [
   { id: "aofeng-guangchang", name: "鰲豐廣場", builder: "禾盛建設", area: "清水市區", status: "completed", completion: "約 2018", sources: ["owner"] },
   { id: "weifeng-yipin-2", name: "微風一品2", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2017", sources: ["owner"] },
   { id: "changlin-qingshidai-2", name: "長霖青世代2", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
-  { id: "chengyi", name: "澄邑", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "chengyi", name: "澄邑", builder: "德邑建設", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
   { id: "hefeng-yijing-7", name: "和風逸境7", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2018", sources: ["owner"] },
   { id: "qingkong-shu-2", name: "晴空墅2", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
   { id: "renli-shishang", name: "仁里時上", builder: "和旺建設", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
@@ -2391,6 +2391,86 @@ export const PROJECTS: Project[] = [
   { id: "leshu-nanshe", name: "樂穥南社", builder: "鋮豐建設", area: "清水市區", status: "newly", completion: "新成屋", sources: ["owner"] },
   { id: "senbaofu-8", name: "森堡富8", builder: "精展建設", area: "清水市區", status: "newly", completion: "約 2024", sources: ["owner"] },
   { id: "leshu-zhongxiao", name: "樂穥忠孝", builder: "鋮豐建設", area: "清水市區", status: "newly", completion: "新成屋", sources: ["owner"] },
+
+  /* ─────────── 清水市區第二批 60 案（2026-09-17 稍晚）───────────
+     清水市區 73 → 133 案。**這批他每一案都給了建商與屋齡，沒有一個待確認。**
+
+     🔵 **「A透天區／B大樓區(建商N年)」他寫成一行，照前例拆成兩筆**（同一組建商與屋齡）：
+        蔚藍之邑透天區／大樓區、馥花園透天區／華廈區、致富好好透天區／大樓區、時間之旅華廈區／透天區。
+        前例是上一批的仁里欣願大樓／透天區，以及既有的民安易境華廈區、名人世家大樓區。
+
+     🔵 **23 家建商沿用既有寫法**（金安／好宅製所建築／仁里／新富筑／和旺／鋐遠／勇順／新富銘／璞邑／
+        禾盛／餘慶堂／名璟／國泉／六億／佳美／啓碁／嘉麗／德邑／廣潤欣開發建設／三和圓／永築／富宇／久旺）。
+        另外兩個照通則對齊：**「廣潤欣開發」→ 廣潤欣開發建設**（中港真鑽那家）、
+        **「兆登建設」→ 兆登建設體系**（鹿寮的兆登櫻那家）—— 都只差尾巴兩個字。
+
+     ⚠️ **皇家新園3 他寫「中港皇品建設」，而皇家新園2期是「中港皇家建設」** —— 皇家 vs 皇品，差一個字，
+        同系列不同號卻是不同公司名。**照他寫的存、沒有自動併**（併錯就是把兩家說成一家），已回問。
+
+     ⚠️ **御墅家8＝新而雅建設，但梧棲市區的御墅家19＝御墅家建設** —— 同系列兩家，照他給的存。
+     ⚠️ **「森堡富第」這個案名看起來像被截斷**（全站另有森堡富第3），照他原文存，已回問。
+
+     🔴 這批一樣沒有座標。 */
+  { id: "changrui-mingriyao", name: "昌銳明日耀", builder: "昌銳建設", area: "清水市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "weilan-zhiyi-toutian", name: "蔚藍之邑透天區", builder: "金安建設", area: "清水市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "weilan-zhiyi-dalou", name: "蔚藍之邑大樓區", builder: "金安建設", area: "清水市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "qingshangqing", name: "清上青", builder: "好宅製所建築", area: "清水市區", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "renli-senguan", name: "仁里森觀", builder: "仁里建設", area: "清水市區", status: "completed", completion: "約 2016", sources: ["owner"] },
+  { id: "tiandishang", name: "天地賞", builder: "新富筑建設", area: "清水市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "shijian-zhilv-2", name: "時間之旅2", builder: "和旺建設", area: "清水市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "lvhuo-shiguang", name: "綠活蒔光", builder: "鋐遠建設", area: "清水市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "qingsongzuan", name: "清崧鑽", builder: "榮埕建設", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "yongshun-yafu-3", name: "勇順雅富3", builder: "勇順建設", area: "清水市區", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "xindouhui", name: "新都匯", builder: "新富銘建設", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "puyi-jiufu", name: "璞邑九賦", builder: "璞邑建設", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "pusen-yupinyuan", name: "璞森御品苑", builder: "璞森建設", area: "清水市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "hesheng-riguang-senhuo", name: "禾盛日光森活", builder: "禾盛建設", area: "清水市區", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "yuqing-fengge-2", name: "餘慶豐閣2", builder: "餘慶堂建設", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "honglihui", name: "鴻利匯", builder: "鴻利匯興業", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "shishang-qingquan", name: "石上清泉", builder: "鴻祥開發", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "senbaofu-7", name: "森堡富7", builder: "名璟建設", area: "清水市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "fuhuayuan-toutian", name: "馥花園透天區", builder: "新富筑建設", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "fuhuayuan-huaxia", name: "馥花園華廈區", builder: "新富筑建設", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "yicheng-pinyan", name: "億承品硯", builder: "億承建設", area: "清水市區", status: "completed", completion: "約 2015", sources: ["owner"] },
+  { id: "shangrui-shoufu", name: "上睿首馥", builder: "上睿建設", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "zhenfuyu", name: "臻富御", builder: "三鼎豐建設", area: "清水市區", status: "completed", completion: "約 2015", sources: ["owner"] },
+  { id: "weixiao-shanghao", name: "微笑上好", builder: "國泉建設", area: "清水市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "liuyi-wodejia-2", name: "六億我的家2", builder: "六億建設", area: "清水市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "huangjia-xinyuan-3", name: "皇家新園3", builder: "中港皇品建設", area: "清水市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "jiamei-bilu-2", name: "佳美碧綠2", builder: "佳美建設", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "qiqi-yueshe-9", name: "啓碁悅舍9", builder: "啓碁建設", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "lisheng-shouxi", name: "勵盛首璽", builder: "勵盛營造開發", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "jinan-yongyi", name: "金安詠邑", builder: "金安建設", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "jiali-winner", name: "嘉麗Winner", builder: "嘉麗建設", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "lidong-fuyuandi", name: "立東富園邸", builder: "祖寶建設", area: "清水市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "zhifu-haohao-toutian", name: "致富好好透天區", builder: "德邑建設", area: "清水市區", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "zhifu-haohao-dalou", name: "致富好好大樓區", builder: "德邑建設", area: "清水市區", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "zhifu-haoyue", name: "致富好悅", builder: "德邑建設", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "jipin-shu", name: "集品墅", builder: "金永騏建設", area: "清水市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "wuxiu-yipin", name: "武秀一品", builder: "育堂建設", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "wuxiu-yipin-2", name: "武秀一品2", builder: "育堂建設", area: "清水市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "fuanju", name: "富安居", builder: "建利建設", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "wuquan-zhenzuan", name: "五權真鑽", builder: "廣潤欣開發建設", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "jiuchao-diancang", name: "玖晁典藏", builder: "玖晁建設", area: "清水市區", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "sanheyuan-muguang", name: "三和圓沐光", builder: "三和圓建設", area: "清水市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "xiangyi-zhenpin-9", name: "祥邑臻品9", builder: "真誼建設", area: "清水市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "senbaofu-di", name: "森堡富第", builder: "名璟建設", area: "清水市區", status: "completed", completion: "約 2017", sources: ["owner"] },
+  { id: "yushu-dengfeng", name: "御墅登峰", builder: "新而雅建設", area: "清水市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "yongzhu-zhencheng", name: "永築臻澄", builder: "永築建設", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "jinbang-cangfu", name: "金邦藏富", builder: "金邦建設", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "fuyu-shiguang", name: "富宇蒔光", builder: "富宇建設", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "shijian-zhilv-huaxia", name: "時間之旅華廈區", builder: "仁里建設", area: "清水市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "shijian-zhilv-toutian", name: "時間之旅透天區", builder: "仁里建設", area: "清水市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "yushujia-8", name: "御墅家8", builder: "新而雅建設", area: "清水市區", status: "completed", completion: "約 2016", sources: ["owner"] },
+  { id: "ruixin-junpin", name: "瑞鑫君品", builder: "瑞鑫建設", area: "清水市區", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "shangrui-aiyue", name: "上睿愛閱", builder: "上睿建設", area: "清水市區", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "fengsheng-fuhua-2", name: "豐陞馥華2", builder: "豐陞建設", area: "清水市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "siji-feng", name: "四季豐", builder: "振昇建設", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "weixiao-zhenmei", name: "微笑臻美", builder: "國泉建設", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "jiuwang-dibao-5", name: "久旺帝堡5", builder: "久旺建設", area: "清水市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "zhaodeng-shiguangxu", name: "兆登拾光序", builder: "兆登建設體系", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "deyu-shidai-chuanjia", name: "德育世代傳家", builder: "德育建設", area: "清水市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "lidong-gongyuanyuan", name: "立東公園院", builder: "祖寶建設", area: "清水市區", status: "completed", completion: "約 2023", sources: ["owner"] },
 ];
 
 /* ─────────────── 座標 ─────────────── */
