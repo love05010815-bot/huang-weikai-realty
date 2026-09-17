@@ -25,7 +25,7 @@ import Link from "next/link";
 import { OWNER, SITE_URL } from "@/config/owner";
 import { DISTRICT, PROJECTS, SOURCES, projectStats, AREA_FILTERS } from "@/data/port-projects";
 import { ZONES } from "@/data/port-zones";
-import { getMapListingsByProject } from "@/lib/map-listings";
+import { getMapListingsByProject, getSoloMapListings } from "@/lib/map-listings";
 import ProjectExplorer, { type ProjectListing } from "./ProjectExplorer";
 import styles from "./Map.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
@@ -225,6 +225,8 @@ export default async function MapPage() {
   // 地圖上的在售物件是獨立的一套（map_listing 表，後台 /admin/map-listings），
   // 跟「精選好案」不共用 —— 2026-08-23 系統擁有者拍板。
   const byProject = await getMapListingsByProject();
+  // ⭐ 不屬於任何建案的物件（社區不在建案總表裡），自己帶座標、地圖上畫星號
+  const solo = await getSoloMapListings();
 
   const listings: Record<string, ProjectListing[]> = {};
   for (const [projectId, list] of byProject) {
@@ -325,7 +327,7 @@ export default async function MapPage() {
             }點大樓圖示看建案資訊，我有物件在售的建案會一併列出物件。`}
           </p>
 
-          <ProjectExplorer listings={listings} />
+          <ProjectExplorer listings={listings} solo={solo} />
         </div>
       </section>
 

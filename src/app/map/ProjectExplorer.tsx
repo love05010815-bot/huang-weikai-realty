@@ -136,14 +136,23 @@ const BADGE_CLASS: Record<ProjectStatus, string> = {
   unknown: styles.badgeUnknown,
 };
 
+/**
+ * 沒有建案、自己帶座標的在售物件（2026-09-17）。
+ * 地圖上是一顆星號，點了在下方顯示這一戶 —— 沒有建案資訊可以顯示，所以只有物件本身。
+ */
+export type SoloMapListing = ProjectListing & { lat: number; lng: number };
+
 export default function ProjectExplorer({
   listings = {},
+  solo = [],
 }: {
   listings?: Record<string, ProjectListing[]>;
+  solo?: SoloMapListing[];
 }) {
   const [area, setArea] = useState<AreaFilter>("all");
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedSoloId, setSelectedSoloId] = useState<string | null>(null);
 
   const stats = useMemo(() => projectStats(), []);
   const mine = useMemo(() => {
@@ -238,7 +247,19 @@ export default function ProjectExplorer({
   );
   const selectedListings = selected ? listings[selected.id] ?? [] : [];
 
-  const onSelect = useCallback((p: Project) => setSelectedId(p.id), []);
+  /** 選建案與選星號互斥 —— 下方只有一塊詳情區，兩個都選會不知道要顯示誰 */
+  const onSelect = useCallback((p: Project) => {
+    setSelectedId(p.id);
+    setSelectedSoloId(null);
+  }, []);
+  const onSelectSolo = useCallback((id: string) => {
+    setSelectedSoloId(id);
+    setSelectedId(null);
+  }, []);
+  const selectedSolo = useMemo(
+    () => solo.find((s) => s.id === selectedSoloId) ?? null,
+    [solo, selectedSoloId],
+  );
 
   /**
    * 🔀 物件比較（2026-09-10 系統擁有者指定）：卡片上「＋ 比較」勾起來、畫面底下浮一條比較列、
@@ -407,6 +428,9 @@ export default function ProjectExplorer({
             selectedId={selectedId}
             onSelect={onSelect}
             mine={mine}
+            solo={solo}
+            selectedSoloId={selectedSoloId}
+            onSelectSolo={onSelectSolo}
           />
           <div className={styles.lmBar}>
             <div className={styles.lmLegend}>
@@ -657,9 +681,58 @@ export default function ProjectExplorer({
                 </div>
               )}
             </>
+          ) : selectedSolo ? (
+            /* ⭐ 沒有建案的物件（社區不在建案總表裡，例如「大學之道」）。
+               只顯示物件本身 —— 沒有建案可以介紹，硬湊一個「建案資訊」區塊反而像資料缺漏。 */
+            <>
+              <header className={styles.detailHead}>
+                <div>
+                  <h3 className={styles.detailTitle}>{selectedSolo.title}</h3>
+                </div>
+              </header>
+              <div className={styles.saleList}>
+                <article className={styles.saleRow}>
+                  <div className={styles.saleThumb}>
+                    <PhotoCarousel photos={selectedSolo.photos} alt={selectedSolo.title} />
+                  </div>
+                  <div className={styles.saleBody}>
+                    <span className={styles.saleArea}>⭐ 單獨標示的物件</span>
+                    <h5 className={styles.saleTitle}>{selectedSolo.title}</h5>
+                    <ul className={styles.salePoints}>
+                      {selectedSolo.points.map((p) => (
+                        <li key={p}>{p}</li>
+                      ))}
+                    </ul>
+                    <div className={styles.saleBtns}>
+                      {selectedSolo.linkHref && (
+                        <a
+                          className={styles.saleLink}
+                          href={selectedSolo.linkHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          data-listing-slug={selectedSolo.id}
+                          data-listing-action="link"
+                        >
+                          物件介紹 ↗
+                        </a>
+                      )}
+                      <Link
+                        className={styles.saleBtn}
+                        href="/card/booking"
+                        data-listing-slug={selectedSolo.id}
+                        data-listing-action="booking"
+                      >
+                        預約諮詢
+                      </Link>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </>
           ) : (
             <p className={styles.detailEmpty}>
               點清單裡的建案、或地圖上的大樓圖示，這裡就會顯示建案資訊與我在那個建案的在售物件。
+              地圖上的 <b>⭐ 星號</b>是不屬於任何建案的單獨物件，點了也會顯示在這裡。
             </p>
           )}
         </section>

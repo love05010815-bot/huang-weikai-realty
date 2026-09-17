@@ -196,6 +196,44 @@ export async function listAllMapListings(): Promise<MapListingRecord[]> {
  * 資料庫連不上時回空 Map 而不是丟例外 —— `/map` 的建案資訊是靜態的，
  * 不該因為物件讀不到就整頁開天窗。
  */
+/**
+ * 前台用：**沒有建案、自己帶座標**的上架物件，地圖上畫成星號（2026-09-17）。
+ *
+ * 沒有座標的就不回 —— 畫不出來的東西不要送到前台，免得前台還要再判斷一次。
+ * 跟 `getMapListingsByProject()` 一樣，讀不到就回空陣列，不讓 /map 開天窗。
+ */
+export async function getSoloMapListings(): Promise<
+  Array<PublicMapListing & { lat: number; lng: number }>
+> {
+  try {
+    await ensureMapListingTable();
+    const rows = await db.$queryRawUnsafe<Row[]>(
+      `SELECT id, project_id, title, address, lat, lng, points, photos, link_href, status, sort_order, updated_at
+         FROM map_listing
+        WHERE status = 'active' AND (project_id = '' OR project_id IS NULL)
+          AND lat IS NOT NULL AND lng IS NOT NULL
+        ORDER BY sort_order ASC, created_at ASC`,
+    );
+    const out: Array<PublicMapListing & { lat: number; lng: number }> = [];
+    for (const row of rows) {
+      const r = toRecord(row);
+      if (r.lat === null || r.lng === null) continue;
+      out.push({
+        id: r.id,
+        title: r.title,
+        points: r.points,
+        photos: r.photos,
+        linkHref: r.linkHref,
+        lat: r.lat,
+        lng: r.lng,
+      });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 export async function getMapListingsByProject(): Promise<Map<string, PublicMapListing[]>> {
   const out = new Map<string, PublicMapListing[]>();
   try {

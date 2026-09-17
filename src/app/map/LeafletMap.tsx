@@ -245,12 +245,30 @@ function pinIcon(L: typeof import("leaflet"), p: Project, hasMine: boolean, on: 
 /** 有星星的往上疊 —— 星星在右上角，很容易被右上方那顆圖釘蓋掉。選中的再往上 */
 const pinZ = (on: boolean, hasMine: boolean) => (on ? 1000 : hasMine ? 500 : 0);
 
+/**
+ * 沒有建案的在售物件 —— 地圖上單獨放一顆星號（2026-09-17 系統擁有者拍板）。
+ *
+ * 由來：像「大學之道」這種社區不在建案總表（`port-projects.ts`）裡，物件掛不上任何一棟樓。
+ * 這些物件自己帶座標（`map_listing` 的 lat/lng，後台輸入時要他在 Google 地圖確認過）。
+ *
+ * ⚠️ **不跟著篩選臉走**：它們沒有 `area`，篩下去會整批消失，而使用者不會知道為什麼。
+ */
+export type SoloListing = {
+  id: string;
+  title: string;
+  lat: number;
+  lng: number;
+};
+
 export default function LeafletMap({
   projects,
   area,
   selectedId,
   onSelect,
   mine = {},
+  solo = [],
+  selectedSoloId = null,
+  onSelectSolo,
 }: {
   /** 要畫的建案（已經過篩選） */
   projects: Project[];
@@ -266,8 +284,15 @@ export default function LeafletMap({
   onSelect: (p: Project) => void;
   /** 建案 id → 在售物件數，有的話圖釘右上加一顆深藍點 */
   mine?: Record<string, number>;
+  /** 沒有建案、自己帶座標的物件，畫成星號 */
+  solo?: SoloListing[];
+  selectedSoloId?: string | null;
+  onSelectSolo?: (id: string) => void;
 }) {
   const boxRef = useRef<HTMLDivElement>(null);
+  // 跟 selectedRef 同一招：畫圖釘時要讀「目前選到哪顆星」，但不想為了它整批重畫
+  const selectedSoloRef = useRef<string | null>(selectedSoloId);
+  selectedSoloRef.current = selectedSoloId;
   const mapRef = useRef<LeafletMapType | null>(null);
   const LRef = useRef<typeof import("leaflet") | null>(null);
   const markersRef = useRef<Map<string, Marker>>(new Map());
@@ -576,11 +601,30 @@ export default function LeafletMap({
       markersRef.current.set(p.id, marker);
     }
 
+    /* ── 沒有建案的物件：單獨一顆星號 ──
+       ⚠️ 不做 spread（錯開重疊）也不進 cluster：數量少，而且它們是「這一戶就在這個點」，
+          被挪開或收進膠囊反而失真。key 加前綴，免得跟建案 id 撞。 */
+    for (const s of solo) {
+      const star = L.marker([s.lat, s.lng], {
+        title: s.title,
+        zIndexOffset: 900,
+        icon: L.divIcon({
+          className: s.id === selectedSoloRef.current ? styles.lmStarOn : styles.lmStar,
+          html: "★",
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
+        }),
+      })
+        .addTo(map)
+        .on("click", () => onSelectSolo?.(s.id));
+      markersRef.current.set(`__solo_${s.id}__`, star);
+    }
+
     // 初始視野在「建立地圖」那一步就框好了（含商圈），這裡只管畫圖釘。
     // `projects` 與 `zoom` 不在相依裡是對的 —— 兩者都已經吃進 clusters／loose 了
     // （見上面的 useMemo），再列一次只會多重畫一輪。
     // ⚠️ `selectedId` 刻意不在相依裡 —— 見 selectedRef 的註解。
-  }, [clusters, loose, mine, onSelect, ready]);
+  }, [clusters, loose, mine, onSelect, ready, solo, onSelectSolo, selectedSoloId]);
 
   /* ── 換選取：只動上一根與這一根，不重畫 ── */
   useEffect(() => {
