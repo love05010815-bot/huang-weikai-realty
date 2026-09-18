@@ -45,12 +45,22 @@
   opacity: 0.75;
 }
 
-/* ---------- 卡片共用 ---------- */
+/* ---------- 卡片共用 ----------
+
+   🔴 封面框是 **1:1 正方形**，因為他做的圖就是 1:1（FB／IG 版型）。
+   2026-09-18 第一版是 16:9，實測他那張 1254×1254 被裁掉上下、
+   「最高7成」那行剛好切在邊緣 —— 他自己做的主視覺被系統裁掉是最不該發生的事。
+   同一天他指定「依照我的圖 1:1 的大小，改成相同比例的正方形或直式長方形」。
+
+   ⚠️ 要改成直式（例如 IG 的 4:5）只改下面這一行 `aspect-ratio`，
+      但**他現在的圖是 1:1，改成 4:5 反而會開始裁左右**。要換之前先看他的圖變了沒。
+   非正方形的圖（隨手拍的照片）放進來會置中裁切，那是刻意的：
+   卡片高度要一致，不然整排會參差不齊。 */
 .cover {
   position: relative;
   display: block;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
   background: linear-gradient(135deg, #cfe2f3 0%, #fde7d6 100%);
 }
@@ -129,9 +139,14 @@
 }
 
 /* ---------- 頭條 ---------- */
+
+/* ⚠️ 左欄給**固定寬**，不是 fr。封面改成 1:1 之後，
+   用 1.05fr 的話左欄會長到 530px 寬、整張卡就 530px 高，
+   右邊兩百多 px 的文字浮在中間、上下一大片空白。
+   鎖 360px：封面 360×360，文字欄吃掉剩下的寬度，高度才配得起來。 */
 .feature {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
   gap: 0;
   border: 1px solid var(--line-warm, #d3e2e9);
   border-radius: var(--radius, 14px);
