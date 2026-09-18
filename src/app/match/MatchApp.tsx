@@ -19,6 +19,8 @@ type Meta = {
   features: readonly string[];
   /** 希望樓層的級距，由 matcher 的 FLOOR_RANGES 產生 */
   floors: { value: string; label: string }[];
+  /** 屋齡級距，由 matcher 的 AGE_RANGES 產生 */
+  ages: { value: string; label: string }[];
   landCategories: readonly string[];
   threshold: number;
   addFriendUrl: string;
@@ -60,6 +62,8 @@ type ApiPreference = {
   sizeMin?: number;
   sizeMax?: number;
   types?: string[];
+  ageRange?: string;
+  /** 2026-09-18 之前存的舊欄位「幾年以內」；表單已經改成區間，只用來判斷要不要顯示 */
   maxAge?: number;
   features?: string[];
   floor?: string;
@@ -85,18 +89,6 @@ const ROOMS = [
   { v: 2, l: "2 房" },
   { v: 3, l: "3 房" },
   { v: 4, l: "4 房以上" },
-];
-/**
- * 屋齡上限。v 是「幾年以內」，所以每個選項都是從新成屋起算 ——
- * 2026-09-18 他要一個「0-5 年」的選項，原本的「5 年內」其實就是它，
- * 只是字面上看不出新成屋算不算，所以整組改成寫出起點。語意沒變，存下來的值也沒變。
- */
-const AGES = [
-  { v: 0, l: "不限" },
-  { v: 5, l: "0–5 年" },
-  { v: 10, l: "0–10 年" },
-  { v: 20, l: "0–20 年" },
-  { v: 30, l: "0–30 年" },
 ];
 const SLOTS = ["上午 10:00–12:00", "下午 14:00–17:00", "晚上 18:00–20:00"];
 const BUYER_KEY = "match_buyer_id";
@@ -154,7 +146,7 @@ type PrefState = {
   sizeMin: string;
   sizeMax: string;
   types: string[];
-  maxAge: number;
+  ageRange: string;
   features: string[];
   floor: string;
   landMin: string;
@@ -170,7 +162,7 @@ const EMPTY_PREF: PrefState = {
   sizeMin: "",
   sizeMax: "",
   types: [],
-  maxAge: 0,
+  ageRange: "",
   features: [],
   floor: "",
   landMin: "",
@@ -192,7 +184,7 @@ function toPrefState(p: ApiPreference): PrefState {
     sizeMin: numText(p.sizeMin),
     sizeMax: numText(p.sizeMax),
     types: Array.isArray(p.types) ? p.types : [],
-    maxAge: Number(p.maxAge) || 0,
+    ageRange: typeof p.ageRange === "string" ? p.ageRange : "",
     features: Array.isArray(p.features) ? p.features : [],
     floor: typeof p.floor === "string" ? p.floor : "",
     landMin: numText(p.landMin),
@@ -231,7 +223,7 @@ export default function MatchApp() {
     setBuyerId(readBuyerId());
     api<Meta>("/api/match/meta")
       .then(setMeta)
-      .catch(() => setMeta({ cities: [], types: [], features: [], floors: [], landCategories: [], threshold: 60, addFriendUrl: "" }));
+      .catch(() => setMeta({ cities: [], types: [], features: [], floors: [], ages: [], landCategories: [], threshold: 60, addFriendUrl: "" }));
 
     const params = new URLSearchParams(window.location.search);
 
@@ -296,7 +288,9 @@ export default function MatchApp() {
         sizeMin: Number(pref.sizeMin) || 0,
         sizeMax: Number(pref.sizeMax) || 0,
         types: pref.types,
-        maxAge: pref.maxAge,
+        ageRange: pref.ageRange,
+        // 舊欄位歸零：他重填了條件，之前存的「幾年以內」就不該再跟著跑
+        maxAge: 0,
         features: pref.features,
         floor: pref.floor,
         // 沒勾土地就不送土地條件 —— 欄位藏起來了，值還跟著跑會變成看不見的篩選器
@@ -467,11 +461,12 @@ export default function MatchApp() {
           )}
 
           <label className={styles.field}>
-            屋齡上限
-            <select className={styles.select} value={pref.maxAge} onChange={(e) => setPref((p) => ({ ...p, maxAge: Number(e.target.value) }))}>
-              {AGES.map((a) => (
-                <option key={a.v} value={a.v}>
-                  {a.l}
+            屋齡
+            <select className={styles.select} value={pref.ageRange} onChange={(e) => setPref((p) => ({ ...p, ageRange: e.target.value }))}>
+              <option value="">不限</option>
+              {(meta?.ages ?? []).map((a) => (
+                <option key={a.value} value={a.value}>
+                  {a.label}
                 </option>
               ))}
             </select>

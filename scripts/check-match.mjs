@@ -11,6 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  AGE_RANGES,
   describePreference,
   floorOf,
   landCategoryOf,
@@ -291,6 +292,40 @@ test("解析：標題有「平車」就標平面車位，沒有機械字樣就�
   for (const i of items) {
     if (i.features.includes("機械車位")) assert.ok(/機械/.test(i.title), `${i.title} 不該被標機械車位`);
   }
+});
+
+test("屋齡改成真區間：選 5–10 年時新成屋不算符合", () => {
+  const pref = { ageRange: "a5" }; // 5–10 年
+  assert.ok(scoreListing(pref, listing({ age: 7 })).reasons.some((r) => r.includes("屋齡 7 年符合")));
+  assert.ok(scoreListing(pref, listing({ age: 0.5 })).misses.some((m) => m.includes("屋齡不符")));
+  assert.ok(scoreListing(pref, listing({ age: 25 })).misses.some((m) => m.includes("屋齡不符")));
+  // 邊界兩端都含：10 年同時屬於 5–10 與 10–15
+  assert.ok(scoreListing(pref, listing({ age: 10 })).reasons.some((r) => r.includes("屋齡")));
+  assert.ok(scoreListing({ ageRange: "a10" }, listing({ age: 10 })).reasons.some((r) => r.includes("屋齡")));
+  // 30 年以上沒有上界
+  assert.ok(scoreListing({ ageRange: "a30" }, listing({ age: 55 })).reasons.some((r) => r.includes("屋齡 55 年符合")));
+});
+
+test("屋齡：店網沒給屋齡的（土地）只扣一半，不是當成新成屋", () => {
+  const noAge = scoreListing({ ageRange: "a0" }, listing({ age: 0 }));
+  const wrongAge = scoreListing({ ageRange: "a0" }, listing({ age: 30 }));
+  assert.ok(noAge.misses.some((m) => m.includes("沒有屋齡資料")));
+  assert.ok(noAge.score > wrongAge.score, `沒屋齡 ${noAge.score} 應該高於屋齡不符 ${wrongAge.score}`);
+  // 真的新成屋（解析時記 0.5）要算在 0–5 年裡
+  assert.ok(scoreListing({ ageRange: "a0" }, listing({ age: 0.5 })).reasons.some((r) => r.includes("新成屋")));
+});
+
+test("屋齡：舊的『幾年以內』還認得（資料庫裡的舊買方條件不能靜靜失效）", () => {
+  const old = { maxAge: 20 };
+  assert.ok(scoreListing(old, listing({ age: 3 })).reasons.some((r) => r.includes("屋齡 3 年符合")));
+  assert.ok(scoreListing(old, listing({ age: 40 })).misses.some((m) => m.includes("屋齡過高")));
+  // 兩個都有時以新的區間為準
+  assert.ok(scoreListing({ ageRange: "a5", maxAge: 20 }, listing({ age: 3 })).misses.some((m) => m.includes("屋齡不符")));
+});
+
+test("AGE_RANGES：他指定的五段，20–30 年目前刻意沒有", () => {
+  assert.deepEqual(Object.values(AGE_RANGES).map((r) => r.label), ["0–5 年", "5–10 年", "10–15 年", "15–20 年", "30 年以上"]);
+  assert.ok(describePreference({ ageRange: "a15" }).includes("屋齡 15–20 年"));
 });
 
 if (process.exitCode) {
