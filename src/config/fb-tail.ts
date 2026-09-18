@@ -7,15 +7,12 @@
  *
  * ⚠️ 排版照他給的一字不改（含空行、全形｜、行首空格）—— 這是他自己的營業版型，不要順手「修排版」。
  *
- * 🔴 他貼過來時有三條網址是**被畫面截斷的**（結尾是 …），照貼會變成點不開的死連結：
- *      樂屋網   https://vip.rakuya.com.tw/0909787865/...
- *      FB粉專   https://www.facebook.com/wei.kai.drea...
- *      YouTube  https://www.youtube.com/channel/UCY9V...
- *    這裡先照他給的原樣放（不替他猜網址），後台會把「… 結尾的連結」標紅、按發佈前再問一次。
- *    他自己網站設定 `owner.ts` 的 SOCIAL 有已驗證的完整版可以用：
- *      fb  https://www.facebook.com/108472157721504
- *      yt  https://www.youtube.com/@swujnuty0325
- *    樂屋那條 repo 裡沒有，只有他自己知道完整網址。
+ * 他第一次貼過來時，樂屋／FB粉專／YouTube 三條網址是被畫面截斷的（結尾 …），會變成點不開的死連結；
+ * 2026-09-18 他自己補了完整網址，下面用的就是他補的版本：
+ *      樂屋網   https://vip.rakuya.com.tw/0909787865
+ *      FB粉專   https://www.facebook.com/wei.kai.dream.home/
+ *      YouTube  https://www.youtube.com/@swujnuty0325
+ * `truncatedLinks()` 那道檢查留著——他之後自己在後台改尾段時一樣會被截斷連結坑到。
  */
 export const FB_AD_TAIL = `☀️☀️☀️歡迎來電預約看屋☀️☀️☀️
 📲0909-787-865 黃瑋凱🙋‍♂️
@@ -28,11 +25,11 @@ Line: https://line.me/ti/p/@a8865
 🎖️591個人店鋪
 https://www.591.com.tw/broker1019
 🎖️樂屋網個人店鋪
-https://vip.rakuya.com.tw/0909787865/...
+https://vip.rakuya.com.tw/0909787865
 🎖️FB粉絲專頁
-https://www.facebook.com/wei.kai.drea...
+https://www.facebook.com/wei.kai.dream.home/
 🎖️YouTube影音搶先看
-https://www.youtube.com/channel/UCY9V...
+https://www.youtube.com/@swujnuty0325
 
 ❤️記得幫我按讚+訂閱+分享❤️
 🌟歡迎詢問案件我將為你的需求做配對🌟
@@ -67,6 +64,23 @@ export function withTail(adText: string, tail: string): string {
   const firstLine = t.split("\n").find((l) => l.trim());
   if (firstLine && body.includes(firstLine.trim())) return body;
   return body ? `${body}\n\n${t}` : t;
+}
+
+/**
+ * 舊資料補丁：把他 2026-09-18 之前存進瀏覽器的那三條截斷網址換成完整版。
+ * 改上面的預設值救不到「已經存在他 IndexedDB 的尾段」，所以開頁時順手換掉；
+ * 只動這三條被截斷的，他自己改過的其他內容一個字都不碰（換完也不會再換第二次）。
+ */
+const LINK_FIXES: Array<[RegExp, string]> = [
+  [/https:\/\/vip\.rakuya\.com\.tw\/0909787865\S*(?:\.\.\.|…)/g, "https://vip.rakuya.com.tw/0909787865"],
+  [/https:\/\/www\.facebook\.com\/wei\.kai\.drea\S*(?:\.\.\.|…)/g, "https://www.facebook.com/wei.kai.dream.home/"],
+  [/https:\/\/www\.youtube\.com\/channel\/UC\S*(?:\.\.\.|…)/g, "https://www.youtube.com/@swujnuty0325"],
+];
+
+export function fixTruncatedTail(tail: string): string {
+  let out = String(tail || "");
+  for (const [re, full] of LINK_FIXES) out = out.replace(re, full);
+  return out;
 }
 
 /** 找出被截斷、點不開的連結（結尾是 ... 或 …）。回傳整行，方便直接顯示給他看。 */

@@ -11,7 +11,7 @@
  * 🔴 圖片交給外掛時轉成 dataURL 放進 payload；存進 IndexedDB 前先縮到長邊 1600px，控制大小。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FB_AD_TAIL, truncatedLinks, withTail } from "@/config/fb-tail";
+import { FB_AD_TAIL, fixTruncatedTail, truncatedLinks, withTail } from "@/config/fb-tail";
 import { idbGet, idbSet } from "./idb";
 import styles from "./fb.module.css";
 
@@ -128,6 +128,8 @@ export default function FbGroupManager() {
       setAds(await idbGet<Ad[]>("ads", []));
       setGroups(await idbGet<Group[]>("groups", []));
       const s = { ...DEFAULT_SETTINGS, ...(await idbGet<Partial<Settings>>("settings", {})) };
+      // 他 9/18 之前存的尾段裡有三條被截斷的死連結（樂屋／FB粉專／YouTube）→ 開頁時換成完整網址
+      s.tailText = fixTruncatedTail(s.tailText);
       setSettings(s);
       // 舊資料只有單一「粉專名稱」→ 自動升級成第一個發文身分，不用他重打
       let ids = await idbGet<Identity[]>("identities", []);
