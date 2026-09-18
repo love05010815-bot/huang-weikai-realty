@@ -25,6 +25,7 @@ import {
   type NewsTaskCounts,
   type NewsTaskRecord,
 } from "@/lib/news";
+import AddNewsByUrl from "./AddNewsByUrl";
 import ContentQueue from "./ContentQueue";
 import styles from "@/app/admin/listings/listings-admin.module.css";
 
@@ -79,6 +80,8 @@ export default async function ContentAdminPage({ searchParams }: { searchParams:
             讀不到資料庫：{loadError}
           </div>
         )}
+
+        <AddNewsByUrl />
 
         <ContentQueue tasks={tasks} counts={counts} drafts={drafts} configured={isCopywriterConfigured()} model={copywriterModel()} focus={focus} />
       </div>

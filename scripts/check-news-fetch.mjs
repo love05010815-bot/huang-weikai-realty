@@ -38,6 +38,19 @@ ok(NF.isHousingNews("超級央行週將登場！美日升息機率飆", "") === 
 ok(NF.isHousingNews("央行理監事會周四登場 6成民眾支持信用管制鬆綁", "") === true, "信用管制 → 收", NF.isHousingNews("央行理監事會周四登場 6成民眾支持信用管制鬆綁", ""), "true");
 ok(NF.isHousingNews("中山站赤峰街租金漲5倍 知名店家扛不住出走", "") === true, "租金 → 收", NF.isHousingNews("中山站赤峰街租金漲5倍 知名店家扛不住出走", ""), "true");
 
+// 2026-09-18 他指定「規範要包含房屋貸款、央行、房屋買賣、房市、建案、租金」。
+// 央行／升息／利率／貸款是「要有伴」的詞：同篇要提到房地產的字才收，不然股匯市新聞整批灌進來。
+const H = (t) => NF.isHousingNews(t, "");
+ok(H("房屋貸款利率明年恐再降") === true, "房屋貸款 → 收", H("房屋貸款利率明年恐再降"), "true");
+ok(H("房屋買賣移轉棟數創新低") === true, "房屋買賣 → 收", H("房屋買賣移轉棟數創新低"), "true");
+ok(H("央行：不動產放款集中度仍偏高") === true, "央行＋不動產 → 收", H("央行：不動產放款集中度仍偏高"), "true");
+ok(H("央行今日召開理監事會議 市場關注房貸水位") === true, "央行＋房貸 → 收", H("央行今日召開理監事會議 市場關注房貸水位"), "true");
+ok(H("央行下修今年經濟成長率至3.05%") === false, "央行＋經濟成長率 → 不收", H("央行下修今年經濟成長率至3.05%"), "false");
+ok(H("美國聯準會降息一碼 台股開高走高") === false, "降息＋台股 → 不收", H("美國聯準會降息一碼 台股開高走高"), "false");
+ok(H("升息循環結束 首購族購屋信心回升") === true, "升息＋購屋 → 收", H("升息循環結束 首購族購屋信心回升"), "true");
+ok(H("利率走揚 租屋族面臨轉嫁壓力") === true, "利率＋租 → 收", H("利率走揚 租屋族面臨轉嫁壓力"), "true");
+ok(H("學生貸款申請人數創高") === false, "貸款但跟房無關 → 不收", H("學生貸款申請人數創高"), "false");
+
 console.log("=== E RSS 解析 ===");
 const xml = `<rss><channel><item><title><![CDATA[標題 A &amp; B - 富聯網]]></title><link>https://example.com/a</link><pubDate>Mon,14 Sep 2026 18:13:00 +0800</pubDate><description><![CDATA[<p>摘要<b>粗</b></p>]]></description><source url="https://x">富聯網</source></item><item><title>只有 guid</title><guid isPermaLink="true">https://example.com/b</guid></item></channel></rss>`;
 const parsed = NF.parseRssItems(xml);
@@ -51,6 +64,36 @@ console.log("=== F 全文擷取 ===");
 const html = `<html><head><style>p{}</style><script>x()</script></head><body><nav><p>選單選單選單選單選單選單選單</p></nav><article><p>第一段內文，超過十五個字的一段文字，用來測試。</p><p>短</p><p>第二段內文，同樣超過十五個字，應該被留下來。</p></article></body></html>`;
 const text = NF.extractMainText(html);
 ok(text.includes("第一段內文") && text.includes("第二段內文") && !text.includes("選單"), "只留 article 的長段落", JSON.stringify(text.slice(0, 30)), "含第一段與第二段、不含選單");
+
+console.log("=== G 貼連結：從 HTML 挖標題／來源／時間 ===");
+const page = `<html><head>
+<meta property="og:title" content="青埔都市發展關鍵拼圖 亞矽創研中心啟動實質招商 | 房市話題 | 房市 | 經濟日報">
+<meta content="2026-09-17T17:12:00+08:00" property="article:published_time">
+<meta property="og:site_name" content="經濟日報">
+<title>不該用到的 title</title></head><body><p>內文</p></body></html>`;
+ok(NF.extractTitle(page) === "青埔都市發展關鍵拼圖 亞矽創研中心啟動實質招商", "og:title 優先＋剝掉分類與站名", NF.extractTitle(page), "青埔都市發展關鍵拼圖 亞矽創研中心啟動實質招商");
+ok(NF.extractSource(page, "https://money.udn.com/a") === "經濟日報", "og:site_name 當來源", NF.extractSource(page, "https://money.udn.com/a"), "經濟日報");
+ok(NF.extractPublishedAt(page) === "2026-09-17 17:12:00", "屬性順序反過來也讀得到時間", NF.extractPublishedAt(page), "2026-09-17 17:12:00");
+ok(NF.extractSource("<html></html>", "https://www.watchmedia01.com/x") === "watchmedia01.com", "沒 og 就用網域", NF.extractSource("<html></html>", "https://www.watchmedia01.com/x"), "watchmedia01.com");
+ok(NF.extractTitle("<html><head><title>台中10大中古屋熱區 - 觀傳媒</title></head></html>") === "台中10大中古屋熱區", "退回 <title> 也剝站名", NF.extractTitle("<html><head><title>台中10大中古屋熱區 - 觀傳媒</title></head></html>"), "台中10大中古屋熱區");
+ok(NF.extractTitle("<html><head><title>房市 | 房價</title></head></html>") === "房市 | 房價", "太短就不剝（免得吃掉真標題）", NF.extractTitle("<html><head><title>房市 | 房價</title></head></html>"), "房市 | 房價");
+ok(NF.extractPublishedAt("<html><body><time datetime='2026-09-18T07:54:36+08:00'>今天</time></body></html>") === "2026-09-18 07:54:36", "沒 meta 就看 <time>", NF.extractPublishedAt("<html><body><time datetime='2026-09-18T07:54:36+08:00'>今天</time></body></html>"), "2026-09-18 07:54:36");
+
+console.log("=== H 貼連結：擋下來的情況 ===");
+const grabFails = async (url, why) => {
+  try {
+    await NF.fetchArticleByUrl(url);
+    return `沒有擋下來（${why}）`;
+  } catch (e) {
+    return e;
+  }
+};
+const g1 = await grabFails("https://www.591.com.tw/home/livesearch/rent", "591");
+ok(g1 instanceof NF.BlockedHostError, "591 的連結直接擋掉（服務條款禁止自動抓取）", g1?.message?.slice(0, 40), "BlockedHostError");
+const g2 = await grabFails("看到一則新聞", "不是網址");
+ok(g2 instanceof Error && !(g2 instanceof NF.BlockedHostError) && g2.message.includes("完整的網址"), "不是網址 → 講人話", g2?.message?.slice(0, 20), "請貼完整的網址…");
+const g3 = await grabFails("ftp://example.com/a", "協定不對");
+ok(g3 instanceof Error && g3.message.includes("完整的網址"), "非 http(s) → 擋掉", g3?.message?.slice(0, 20), "請貼完整的網址…");
 
 if (process.argv.includes("--live")) {
   console.log("=== G 真的抓一次（不進資料庫）===");

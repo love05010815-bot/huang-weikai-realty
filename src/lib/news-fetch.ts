@@ -154,11 +154,17 @@ export function classifyRegion(item: Pick<FetchedNews, "title" | "summary" | "co
   return "national";
 }
 
-/** 標題或摘要有沒有房地產用語。 */
+/**
+ * 標題或摘要有沒有房地產用語。
+ *
+ * 兩種算法：`housingTerms`／`topicTerms` 出現就算；`qualifiedTerms`（央行、升息、利率…）
+ * 還要同篇提到房地產的字才算 —— 不然講美日升息的股匯市新聞會整批灌進來。
+ */
 export function isHousingNews(title: string, summary: string): boolean {
   const head = `${title} ${summary}`;
   const terms: readonly string[] = [...NEWS_CONFIG.housingTerms, ...NEWS_CONFIG.topicTerms];
-  return terms.some((t) => head.includes(t));
+  if (terms.some((t) => head.includes(t))) return true;
+  return NEWS_CONFIG.qualifiedTerms.some((q) => head.includes(q.term) && q.needs.some((n) => head.includes(n)));
 }
 
 export function isGoogleLink(url: string): boolean {
@@ -404,6 +410,126 @@ async function fetchArticleText(url: string): Promise<string> {
   if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
   if (!/html|xml/i.test(res.contentType)) return "";
   return extractMainText(res.text);
+}
+
+// ---------------------------------------------------------------- 貼一條連結進來
+
+/** `<meta property="og:title" content="…">` 這種，屬性順序反過來也要讀得到。 */
+function metaContent(html: string, key: string): string {
+  const k = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const patterns = [
+    new RegExp(`<meta[^>]+(?:property|name)=["']${k}["'][^>]*\\scontent=["']([^"']*)["']`, "i"),
+    new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]*\\s(?:property|name)=["']${k}["']`, "i"),
+  ];
+  for (const re of patterns) {
+    const m = re.exec(html);
+    if (m?.[1]) return cleanText(m[1]);
+  }
+  return "";
+}
+
+/**
+ * 去掉標題尾巴的分類與站名：
+ * 「青埔…啟動實質招商 | 房市話題 | 房市 | 經濟日報」→「青埔…啟動實質招商」。
+ * 一次剝一段，最多三段；剝到剩不到 8 個字就停手（免得把真標題吃掉）。
+ */
+function trimTitleTail(raw: string): string {
+  let t = raw.trim();
+  for (let i = 0; i < 3; i += 1) {
+    const m = /^(.*\S)\s*[|｜]\s*[^|｜]{1,20}$/.exec(t) || /^(.{8,}\S)\s+[-–—]\s+[^-–—]{1,12}$/.exec(t);
+    if (!m || m[1].trim().length < 8) break;
+    t = m[1].trim();
+  }
+  return t;
+}
+
+/** 標題：og:title 最準，再退回 <title>、<h1>。三種都會剝掉站名尾巴。 */
+export function extractTitle(html: string): string {
+  const og = metaContent(html, "og:title");
+  if (og) return trimTitleTail(og);
+  const t = tagText(html, "title");
+  if (t) return trimTitleTail(t);
+  const h1 = /<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(html)?.[1];
+  return h1 ? trimTitleTail(cleanText(h1)) : "";
+}
+
+/** 來源：og:site_name 最準，沒有就用網域（去掉 www 與 .com.tw 這類尾巴）。 */
+export function extractSource(html: string, url: string): string {
+  const site = metaContent(html, "og:site_name");
+  if (site) return site;
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+/** 發布時間：各家 meta 名稱不一，挑第一個解得出來的。 */
+export function extractPublishedAt(html: string): string | null {
+  for (const key of ["article:published_time", "pubdate", "publishdate", "date", "og:published_time"]) {
+    const raw = metaContent(html, key);
+    const parsed = raw ? parseDateToTaipei(raw) : null;
+    if (parsed) return parsed;
+  }
+  const dt = /<time[^>]+datetime=["']([^"']+)["']/i.exec(html)?.[1];
+  return dt ? parseDateToTaipei(dt) : null;
+}
+
+export class BlockedHostError extends Error {}
+
+/**
+ * 貼一條新聞連結進來，抓成一筆 FetchedNews。
+ *
+ * 跟排程抓取共用同一套擷取邏輯（extractMainText、classifyRegion），差別只在
+ * 這是他手動指定的一篇 —— 所以**不過房產相關性那一關**：他都特地貼了，就是他要的。
+ * Google 新聞的轉址會先解開，存進資料庫的是真正的原文網址。
+ */
+export async function fetchArticleByUrl(raw: string): Promise<FetchedNews> {
+  const input = (raw || "").trim();
+  if (!/^https?:\/\//i.test(input)) throw new Error("請貼完整的網址（要以 http:// 或 https:// 開頭）。");
+
+  let target: URL;
+  try {
+    target = new URL(input);
+  } catch {
+    throw new Error("這不是一個看得懂的網址。");
+  }
+  const host = target.hostname.toLowerCase();
+  if (NEWS_CONFIG.blockedHosts.some((h) => host === h || host.endsWith(`.${h}`))) {
+    throw new BlockedHostError(`${host} 不允許程式自動抓取，請改用「貼內文」把文字自己貼進來。`);
+  }
+
+  // Google 新聞的連結先解回原文，不然抓到的是轉址頁
+  let url = input;
+  if (isGoogleLink(url)) {
+    try {
+      url = await decodeGoogleUrl(url);
+    } catch {
+      // 解不開就照原樣抓，頂多內文抓不到，不要整支失敗
+    }
+  }
+
+  const res = await fetchText(url, 12_000);
+  if (res.status !== 200) {
+    throw new Error(`那個網站回 HTTP ${res.status}，抓不到內容。可以改用「貼內文」自己把文字貼進來。`);
+  }
+  if (!/html/i.test(res.contentType)) throw new Error("那個網址不是網頁（可能是 PDF 或圖片），抓不到內文。");
+
+  const html = res.text;
+  const title = extractTitle(html);
+  if (!title) throw new Error("抓不到標題，這頁可能要登入才看得到。可以改用「貼內文」自己貼。");
+
+  const item: FetchedNews = {
+    title,
+    url: res.url || url,
+    source: extractSource(html, res.url || url),
+    summary: metaContent(html, "og:description") || metaContent(html, "description"),
+    content: extractMainText(html) || null,
+    publishedAt: extractPublishedAt(html),
+    region: "national",
+  };
+  item.region = classifyRegion(item);
+  return item;
 }
 
 // ---------------------------------------------------------------- 第二步：解碼＋全文（有時間預算）

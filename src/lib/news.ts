@@ -33,9 +33,11 @@ import { createHash, randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { NEWS_CONFIG, type NewsRegion } from "@/config/news";
 import {
+  classifyRegion,
   collectNews,
   countByRegion,
   enrichNews,
+  fetchArticleByUrl,
   normalizeTitle,
   reclassifyWithContent,
   taipeiStamp,
@@ -442,6 +444,108 @@ export async function addNewsTask(newsId: string, line: NewsLine): Promise<{ tas
   if (rows[0].status !== "todo") await setNewsTaskStatus(rows[0].id, "todo");
   else await syncNewsStatus(newsId);
   return { taskId: rows[0].id, created: false };
+}
+
+/**
+ * 貼一條新聞連結進來，抓好存進 news_item，再排進待產文案的某一條線。
+ *
+ * 同一個網址已經在資料庫裡（不管是排程抓的還是他自己貼過的）就沿用那一筆，
+ * 不會產生第二則一樣的新聞 —— 他只會多一條線，或者被告知早就排過了。
+ * 手動貼的**不過房產相關性那一關**：他都特地貼了，就是他要的。
+ */
+export type AddNewsOutcome = {
+  taskId: string;
+  newsId: string;
+  title: string;
+  region: NewsRegion;
+  hasContent: boolean;
+  /** 這個網址資料庫裡本來就有（排程抓過，或他貼過） */
+  newsExisted: boolean;
+  /** 這條線是這次新排的；false = 本來就排過了 */
+  taskCreated: boolean;
+};
+
+/** 存成 news_item（同網址就沿用舊的那筆）再排進待產文案。兩條路（抓網頁／自己貼）共用。 */
+async function saveAndQueue(item: FetchedNews, line: NewsLine): Promise<AddNewsOutcome> {
+  const hash = sha1(item.url);
+  const existing = await withSchema(() =>
+    db.$queryRawUnsafe<{ id: string }[]>("SELECT id FROM news_item WHERE url_hash = ? LIMIT 1", hash),
+  );
+
+  let newsId: string;
+  const newsExisted = existing.length > 0;
+  if (newsExisted) {
+    newsId = existing[0].id;
+    // 舊那筆可能只有標題（排程沒抓到全文），這次有內文就補上；原本就有的不覆蓋
+    if (item.content) {
+      await withSchema(() =>
+        db.$executeRawUnsafe(
+          "UPDATE news_item SET content = COALESCE(content, ?), updated_at = ? WHERE id = ?",
+          item.content,
+          taipeiStamp(),
+          newsId,
+        ),
+      );
+    }
+  } else {
+    newsId = randomUUID();
+    await withSchema(() =>
+      db.$executeRawUnsafe(
+        "INSERT INTO news_item (id, url_hash, title_norm, title, url, source, region, published_at, summary, content, status, fetched_at) " +
+          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?)",
+        newsId,
+        hash,
+        normalizeTitle(item.title).slice(0, 191),
+        item.title.slice(0, 500),
+        item.url.slice(0, 2000),
+        item.source.slice(0, 120) || null,
+        item.region,
+        item.publishedAt,
+        item.summary || null,
+        item.content,
+        taipeiStamp(),
+      ),
+    );
+  }
+
+  const { taskId, created } = await addNewsTask(newsId, line);
+  return { taskId, newsId, title: item.title, region: item.region, hasContent: !!item.content, newsExisted, taskCreated: created };
+}
+
+export async function addNewsFromUrl(rawUrl: string, line: NewsLine): Promise<AddNewsOutcome> {
+  return saveAndQueue(await fetchArticleByUrl(rawUrl), line);
+}
+
+/**
+ * 備援：那個網站擋程式抓取（或要登入）時，他自己把標題與內文貼進來。
+ * 網址仍然要給 —— 去重、之後回去看原文都靠它。
+ */
+export async function addNewsFromText(rawUrl: string, title: string, text: string, line: NewsLine): Promise<AddNewsOutcome> {
+  const url = (rawUrl || "").trim();
+  if (!/^https?:\/\//i.test(url)) throw new Error("請貼完整的網址（要以 http:// 或 https:// 開頭）。");
+  const cleanTitle = (title || "").trim();
+  if (!cleanTitle) throw new Error("請填標題。");
+  const content = (text || "").trim();
+  if (content.length < 50) throw new Error("內文太短（至少 50 字），確認有把新聞的內容複製到嗎？");
+
+  let source = "";
+  try {
+    source = new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    throw new Error("這不是一個看得懂的網址。");
+  }
+
+  const item: FetchedNews = {
+    title: cleanTitle,
+    url,
+    source,
+    summary: "",
+    content: content.slice(0, NEWS_CONFIG.maxContentChars),
+    publishedAt: null,
+    region: "national",
+  };
+  item.region = classifyRegion(item);
+  return saveAndQueue(item, line);
 }
 
 async function taskNewsId(taskId: string): Promise<string | null> {

@@ -1,6 +1,7 @@
 "use server";
 /**
- * 房產新聞後台的動作：立即抓取、「拿去做」（排進待產文案）、待產文案的完成／復原／退回。
+ * 房產新聞後台的動作：立即抓取、貼連結加進來、「拿去做」（排進待產文案）、
+ * 待產文案的寫稿（自動／手動貼回）與完成／復原／退回。
  *
  * 每一個都先擋權限再做事 —— server action 是可以被直接 POST 的，
  * 「畫面上沒有按鈕」不等於「外面的人叫不到」。
@@ -10,6 +11,8 @@ import { isCurrentUserAdmin } from "@/lib/admin-check";
 import { COPYWRITER, MANUAL_MODEL } from "@/config/copywriter";
 import { generateCopy, isCopywriterConfigured } from "@/lib/copywriter";
 import {
+  addNewsFromText,
+  addNewsFromUrl,
   addNewsTask,
   getNewsTask,
   insertNewsDraft,
@@ -57,6 +60,47 @@ export async function runNewsFetchAction(): Promise<Result & { summary?: string 
       `抓到 ${r.found} 則、新增 ${r.inserted} 則` +
       `（海線 ${c.coast}、中部 ${c.central}、全台 ${c.national}），花了 ${Math.round((r.ms || 0) / 1000)} 秒`,
   };
+}
+
+/**
+ * 貼一條新聞連結，抓回來直接排進待產文案。
+ *
+ * 給「在外面看到一則新聞、想拿來寫」用的：不用等明天排程、也不用管它是不是房產新聞。
+ * 回傳那一題的 id 好讓畫面跳過去、框起來。
+ */
+export async function addNewsByUrlAction(
+  url: string,
+  line: NewsLine,
+): Promise<Result & { taskId?: string; title?: string; hasContent?: boolean; newsExisted?: boolean; taskCreated?: boolean }> {
+  if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
+  if (typeof url !== "string" || !url.trim() || !isNewsLine(line)) return { ok: false, error: "參數不對" };
+  try {
+    const r = await addNewsFromUrl(url.trim(), line);
+    revalidateNewsPages();
+    return { ok: true, taskId: r.taskId, title: r.title, hasContent: r.hasContent, newsExisted: r.newsExisted, taskCreated: r.taskCreated };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}
+
+/** 備援：那個網站抓不到（擋程式、要登入）時，他自己把標題與內文貼進來。 */
+export async function addNewsByTextAction(
+  url: string,
+  title: string,
+  text: string,
+  line: NewsLine,
+): Promise<Result & { taskId?: string; title?: string; taskCreated?: boolean }> {
+  if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
+  if (typeof url !== "string" || typeof title !== "string" || typeof text !== "string" || !isNewsLine(line)) {
+    return { ok: false, error: "參數不對" };
+  }
+  try {
+    const r = await addNewsFromText(url, title, text, line);
+    revalidateNewsPages();
+    return { ok: true, taskId: r.taskId, title: r.title, taskCreated: r.taskCreated };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
 }
 
 /** 「拿去做」：把一則新聞排進知識文章或短影音那條線，回傳那一題的 id 好讓畫面跳過去。 */
