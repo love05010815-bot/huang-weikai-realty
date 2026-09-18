@@ -42,6 +42,18 @@ export const MATCH = {
   maxNotifyBuyersPerSync: 20,
   /** 每位買方一則推播最多帶幾個物件（Flex carousel 上限 10，太多也看不完） */
   maxListingsPerNotify: 5,
+  /**
+   * 同步時比對價格，有異動就通知條件相符的買方（2026-09-18 他要的）。
+   * 關掉的話只剩新物件通知。
+   */
+  notifyPriceChanges: true,
+  /**
+   * 一次同步偵測到超過這個數量的價格異動，就**不發通知**、只記在同步結果裡。
+   *
+   * 這是防呆：愛屋改版或解析壞掉時，價格可能整批跑掉，那不是真的降價 ——
+   * 沒這道閘門就會一次把幾百則錯誤推播送出去，額度燒光又要跟客戶道歉。
+   */
+  maxPriceChangesPerSync: 30,
 } as const;
 
 /** 表單「類型」選項。愛屋店網的型態會對應到這幾個（見 lib/match/houseol-parse.ts 的 TYPE_MAP） */

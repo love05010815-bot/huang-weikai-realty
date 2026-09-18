@@ -20,6 +20,7 @@ import {
   scoreListing,
   WEIGHTS,
 } from "../src/lib/match/matcher.ts";
+import { detectPriceChanges } from "../src/lib/match/diff.ts";
 import { parseBlocks, splitAddress, splitResponse, toListingUpsert } from "../src/lib/match/houseol-parse.ts";
 import { createBuyerToken, verifyBuyerToken } from "../src/lib/match/token.ts";
 
@@ -326,6 +327,41 @@ test("屋齡：舊的『幾年以內』還認得（資料庫裡的舊買方條�
 test("AGE_RANGES：他指定的五段，20–30 年目前刻意沒有", () => {
   assert.deepEqual(Object.values(AGE_RANGES).map((r) => r.label), ["0–5 年", "5–10 年", "10–15 年", "15–20 年", "30 年以上"]);
   assert.ok(describePreference({ ageRange: "a15" }).includes("屋齡 15–20 年"));
+});
+
+// ---------------------------------------------------------------- 價格異動
+//
+// 這段錯了不會有任何錯誤訊息，只會有一批買方收到莫名其妙的「降價通知」，
+// 而且推播是計費的、收回不來。所以每一種「不該算異動」的情況都測。
+
+test("價格異動：只抓真的變了價、而且兩邊價格都正常的", () => {
+  const before = new Map([
+    ["a", { status: "available", price: 1000 }],
+    ["b", { status: "available", price: 1000 }],
+    ["c", { status: "available", price: 1000 }],
+    ["d", { status: "hidden", price: 1000 }],
+    ["e", { status: "available", price: 0 }],
+  ]);
+  const now = [
+    { id: "a", price: 900 }, // 降價
+    { id: "b", price: 1200 }, // 調漲
+    { id: "c", price: 1000 }, // 沒變
+    { id: "d", price: 800 }, // 上次是下架的，不算
+    { id: "e", price: 800 }, // 上次沒有價格（解析失敗），不算
+    { id: "f", price: 700 }, // 這次才第一次出現＝新物件，不算
+  ];
+  const changes = detectPriceChanges(before, now);
+  assert.deepEqual(changes.map((c) => c.listing.id), ["a", "b"]);
+  assert.equal(changes[0].priceFrom, 1000);
+});
+
+test("價格異動：解析壞掉把價格變成 0 時，不能判定成全店降價", () => {
+  const before = new Map(
+    ["a", "b", "c"].map((id) => [id, { status: "available", price: 1500 }]),
+  );
+  // 愛屋改版 → 價格全解析成 0
+  const broken = ["a", "b", "c"].map((id) => ({ id, price: 0 }));
+  assert.deepEqual(detectPriceChanges(before, broken), []);
 });
 
 if (process.exitCode) {

@@ -309,7 +309,7 @@ export default function MatchAdmin({
                   <div style={{ color: CIS.textSub, fontSize: 13, marginTop: 8 }}>
                     {lastShown.ran
                       ? lastShown.ok
-                        ? `上次同步 ${fmt(lastShown.at ?? null)}：店網 ${lastShown.total} 筆，新增 ${lastShown.added}、更新 ${lastShown.updated}、下架 ${lastShown.hidden}${lastShown.complete === false ? "（這次沒抓完整，未做下架判斷）" : ""}${lastShown.notifiedBuyers ? `，推播 ${lastShown.notifiedBuyers} 位買方` : ""}${lastShown.baseline ? "（第一次建立基準，不推播）" : ""}，${Math.round((lastShown.ms ?? 0) / 1000)} 秒`
+                        ? `上次同步 ${fmt(lastShown.at ?? null)}：店網 ${lastShown.total} 筆，新增 ${lastShown.added}、更新 ${lastShown.updated}、下架 ${lastShown.hidden}${lastShown.priceChanged ? `、價格異動 ${lastShown.priceChanged}` : ""}${lastShown.priceChangeSkipped && lastShown.priceChanged ? "（異動筆數異常，沒有發價格通知）" : ""}${lastShown.complete === false ? "（這次沒抓完整，未做下架判斷）" : ""}${lastShown.notifiedBuyers ? `，推播 ${lastShown.notifiedBuyers} 位買方` : ""}${lastShown.baseline ? "（第一次建立基準，不推播）" : ""}，${Math.round((lastShown.ms ?? 0) / 1000)} 秒`
                         : `上次同步失敗：${lastShown.reason}`
                       : `沒有跑：${lastShown.reason}`}
                   </div>

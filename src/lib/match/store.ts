@@ -256,13 +256,19 @@ export async function listListingsForAdmin(limit = 500): Promise<MatchListing[]>
 }
 
 /** 同步用：這家店目前庫裡有哪些物件（id → status） */
-export async function getListingStatusMap(storeId: string): Promise<Map<string, string>> {
+/**
+ * 同步前的快照：目前資料庫裡每一筆的狀態與價格。
+ *
+ * 價格是給「價格異動通知」比對用的 —— 抓回來的新價格跟這裡不一樣就是異動。
+ * 同步當下就要先拿，upsert 之後舊價格就被蓋掉了。
+ */
+export async function getListingSnapshot(storeId: string): Promise<Map<string, { status: string; price: number }>> {
   await ensureMatchTables();
-  const rows = await db.$queryRawUnsafe<{ id: string; status: string }[]>(
-    `SELECT id, status FROM match_listing WHERE store_id = ?`,
+  const rows = await db.$queryRawUnsafe<{ id: string; status: string; price: number }[]>(
+    `SELECT id, status, price FROM match_listing WHERE store_id = ?`,
     storeId,
   );
-  return new Map(rows.map((r) => [r.id, r.status]));
+  return new Map(rows.map((r) => [r.id, { status: r.status, price: n(r.price) }]));
 }
 
 /**

@@ -120,7 +120,24 @@ const row = (label: string, value: string) => ({
   ],
 });
 
-export function listingBubble(listing: ListingLike, opts: { score?: number; reasons?: string[]; token?: string | null } = {}) {
+/** 價格異動通知用：原價 → 現價 的那一行字（降價橘色、調漲綠色，跟賣方立場無關，只是好認） */
+function priceChangeLine(from: number, to: number): Record<string, unknown> {
+  const diff = Math.abs(to - from);
+  const down = to < from;
+  return {
+    type: "text",
+    text: `${down ? "🔻 降價" : "🔺 調漲"} ${fmtWan(diff)}（原 ${fmtWan(from)}）`,
+    size: "sm",
+    weight: "bold",
+    color: down ? "#E8590C" : "#1f7a68",
+    wrap: true,
+  };
+}
+
+export function listingBubble(
+  listing: ListingLike,
+  opts: { score?: number; reasons?: string[]; token?: string | null; priceFrom?: number } = {},
+) {
   const image = listing.images?.[0];
   const bubble: Record<string, unknown> = {
     type: "bubble",
@@ -132,6 +149,7 @@ export function listingBubble(listing: ListingLike, opts: { score?: number; reas
         opts.score != null ? { type: "text", text: `配對度 ${opts.score}%`, size: "xs", color: GREEN, weight: "bold" } : null,
         { type: "text", text: safe(listing.title, "物件"), weight: "bold", size: "lg", wrap: true },
         { type: "text", text: fmtWan(listing.price), size: "xl", weight: "bold", color: "#E8590C" },
+        opts.priceFrom && opts.priceFrom !== listing.price ? priceChangeLine(opts.priceFrom, listing.price) : null,
         { type: "text", text: safe(metaLine(listing)), size: "sm", color: "#666666", wrap: true },
         opts.reasons?.length ? { type: "text", text: `✔ ${opts.reasons.slice(0, 3).join("、")}`, size: "xs", color: "#888888", wrap: true } : null,
       ].filter(Boolean),
@@ -157,6 +175,21 @@ export function listingCarousel(items: { listing: ListingLike; score: number; re
   return {
     type: "flex",
     altText: `有 ${items.length} 個新物件符合您的條件`,
+    contents: { type: "carousel", contents: bubbles },
+  };
+}
+
+/** 價格異動通知：跟新物件同一種卡，多一行「原價 → 現價」 */
+export function priceChangeCarousel(
+  items: { listing: ListingLike; score: number; reasons: string[]; priceFrom: number }[],
+  token?: string | null,
+): LineMessage {
+  const bubbles = items
+    .slice(0, 10)
+    .map((m) => listingBubble(m.listing, { score: m.score, reasons: m.reasons, token, priceFrom: m.priceFrom }));
+  return {
+    type: "flex",
+    altText: `有 ${items.length} 個物件價格異動`,
     contents: { type: "carousel", contents: bubbles },
   };
 }
