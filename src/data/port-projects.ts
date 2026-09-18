@@ -2491,6 +2491,20 @@ export const PROJECTS: Project[] = [
   { id: "dechuan-jiakang-toutian", name: "德川家康透天區", builder: "興峰建設", area: "清水市區", status: "completed", completion: "約 1999", sources: ["owner"] },
   { id: "dechuan-jiakang-dalou", name: "德川家康大樓區", builder: "興峰建設", area: "清水市區", status: "completed", completion: "約 1999", sources: ["owner"] },
   { id: "heping-xincheng", name: "和平新城", builder: "國防部", area: "清水市區", status: "completed", completion: "約 2008", sources: ["owner"] },
+
+  /* ─────────── 2026-09-18 他補的 2 案 ───────────
+     ⚠️ **同一則訊息他還寫了勝邦綠邑3、德川家康透天區／大樓區、和平新城** ——
+        那 4 案 9/17 深夜就建好了，建商與屋齡跟他這次寫的逐字相同（勝邦開發建設／興峰建設／國防部，
+        約 2021／約 1999／約 2008），**所以沒有重複建立、也沒有覆蓋**。
+     ⚠️ **御墅青安**：他寫「梧棲區補」，不是他慣用的「梧棲市區補」。梧棲區底下有兩塊
+        （梧棲市區 ＋ 梧棲重劃區），**先放梧棲市區**（他前 11 批都是這塊；重劃區是 23 案的固定名單、沒有這案）。
+        他在 /map?fix=1 點座標時 v4 會拿圖釘比對梧棲市區色塊，落在別塊就會叫出來。
+     ⚠️ **案名存「御墅青安」，沒有把「建案」兩個字吃進案名** —— 全站 659 案沒有任何一案的名字含「建案」，
+        讀成「御墅青安　建案（新而雅建設　新成屋）」才通。若真的叫「御墅青安建案」再改。
+     🔵 御墅系列兩家建商：清水市區的御墅登峰／御墅家8＝新而雅建設，梧棲市區的御墅天地／御墅家19＝御墅家建設。
+        這案他指定新而雅建設，**照他給的存，不照案名或所在區猜**。 */
+  { id: "yushu-qingan", name: "御墅青安", builder: "新而雅建設", area: "梧棲市區", status: "newly", completion: "新成屋", sources: ["owner"] },
+  { id: "zhifu-zhongqing", name: "致富中清", builder: "僑邑建設", area: "清水市區", status: "completed", completion: "約 2017", sources: ["owner"] },
 ];
 
 /* ─────────────── 座標 ─────────────── */
