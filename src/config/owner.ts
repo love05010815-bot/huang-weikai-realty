@@ -49,7 +49,7 @@ export const OWNER = {
    */
   brokerage: "馥勵不動產經紀有限公司",
   brokerName: "嚴意情",
-  brokerLicense: "(101)中市經證字第00887號",
+  brokerLicense: "(101)年中市經證字第00887號",
   /**
    * 大頭照放 public/card/ 底下。名片頁 /card 用 150px 的圓形顯示，也是那頁的分享預覽圖（OG）。
    * 2026-09-03 換成新的坐姿照裁的頭肩正方形（800×800）。
