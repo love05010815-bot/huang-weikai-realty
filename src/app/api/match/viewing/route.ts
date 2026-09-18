@@ -15,6 +15,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { addFriendUrl, notifyOwnerNewViewing, oaMessageUrl } from "@/lib/match/line";
+import { qrDataUrl } from "@/lib/match/qr";
 import { createViewing, getListings, upsertBuyer } from "@/lib/match/store";
 import { verifyBuyerToken } from "@/lib/match/token";
 
@@ -89,7 +90,13 @@ export async function POST(req: NextRequest) {
         buyerId: buyer.id,
         listings: listings.map((l) => ({ id: l.id, title: l.title, city: l.city, district: l.district, address: l.address, price: l.price })),
         dropped,
-        line: { confirmText, oaMessageUrl: oaMessageUrl(confirmText), addFriendUrl: addFriendUrl() },
+        line: {
+          confirmText,
+          oaMessageUrl: oaMessageUrl(confirmText),
+          addFriendUrl: addFriendUrl(),
+          // 桌機按那顆按鈕會被 LINE 導到官網首頁（深層連結只在手機有效），所以一併給 QR
+          qrDataUrl: qrDataUrl(oaMessageUrl(confirmText)),
+        },
       },
       { status: 201 },
     );

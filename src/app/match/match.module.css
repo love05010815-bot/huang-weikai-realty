@@ -141,6 +141,18 @@
   margin: 0 0 10px;
 }
 
+/* 預約完成頁的 QR（只有電腦版會顯示）。白底留白是掃描成功率的關鍵，
+   深色卡片上直接放圖某些相機對不到。 */
+.qr {
+  display: block;
+  width: 220px;
+  height: 220px;
+  margin: 10px auto 0;
+  background: #fff;
+  border-radius: 10px;
+  image-rendering: pixelated;
+}
+
 /* 結果頁底部的「一起預約」固定列。買方可以一次勾好幾間，整批只拿一個預約編號。
    position: sticky 貼在視窗底部，捲動時一直看得到自己選了幾間。 */
 .pickBar {

@@ -81,7 +81,7 @@ type Booking = {
   listings: { id: string; title: string; city: string; district: string; address: string; price: number }[];
   /** 送出時已經下架、被剔除的間數 */
   dropped: number;
-  line: { confirmText: string; oaMessageUrl: string; addFriendUrl: string };
+  line: { confirmText: string; oaMessageUrl: string; addFriendUrl: string; qrDataUrl: string };
 };
 
 type Step = "form" | "results" | "booking" | "success";
@@ -219,6 +219,12 @@ export default function MatchApp() {
   /** 從官方帳號連結帶進來的買方識別碼；有它就不靠瀏覽器記的編號 */
   const [token, setToken] = useState<string | null>(null);
   const [loaded, setLoaded] = useState<string | null>(null);
+  /**
+   * 是不是用電腦看這一頁。
+   * 導到官方 LINE 的深層連結（line.me/R/…）**只在手機有效**，桌機按了會被丟到 line.me 官網首頁，
+   * 所以電腦上要改成請他用手機掃 QR。用 pointer:coarse 判斷比看 UA 可靠。
+   */
+  const [isDesktop, setIsDesktop] = useState(false);
 
   const go = useCallback((next: Step) => {
     setStep(next);
@@ -227,6 +233,7 @@ export default function MatchApp() {
   }, []);
 
   useEffect(() => {
+    setIsDesktop(typeof window.matchMedia === "function" && !window.matchMedia("(pointer: coarse)").matches);
     setBuyerId(readBuyerId());
     api<Meta>("/api/match/meta")
       .then(setMeta)
@@ -694,23 +701,50 @@ export default function MatchApp() {
           <p className={styles.hint}>其中 {booking.dropped} 間在送出時已經下架，沒有列入這次預約。</p>
         )}
         <div className={styles.box}>
-          最後一步：
-          <ol>
-            <li>點下方按鈕開啟官方 LINE（尚未加好友會先引導加入）</li>
-            <li>直接送出已預先填好的「{booking.line.confirmText}」</li>
-            <li>立即收到預約確認卡，專員將與您聯繫</li>
-          </ol>
+          您的預約已經送出，專員已經收到通知，會盡快與您聯繫。
+          <br />
+          下面這一步是為了讓您在官方 LINE 收到確認卡，之後有新物件也能第一時間通知您。
         </div>
-        <a className={`${styles.btn} ${styles.btnLine}`} href={booking.line.oaMessageUrl}>
-          前往官方 LINE 完成預約
-        </a>
-        <p className={styles.hint}>
-          若按鈕沒有反應，請先{" "}
-          <a href={booking.line.addFriendUrl} target="_blank" rel="noopener noreferrer">
-            加入官方帳號好友
-          </a>
-          ，再傳送「{booking.line.confirmText}」。
-        </p>
+        {isDesktop ? (
+          <>
+            {/* 電腦上 line.me/R/… 會被導到 LINE 官網首頁，只能請他用手機掃 */}
+            <div className={styles.box}>
+              <b>用手機掃這個 QR code</b>
+              <ol>
+                <li>掃描後會開啟官方 LINE，訊息已經填好</li>
+                <li>直接按送出「{booking.line.confirmText}」</li>
+                <li>立即收到預約確認卡</li>
+              </ol>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className={styles.qr} src={booking.line.qrDataUrl} alt="用手機掃描開啟官方 LINE" width={220} height={220} />
+            </div>
+            <p className={styles.hint}>
+              手機上才能直接開啟 LINE。若您正在用手機看這頁，可以按{" "}
+              <a href={booking.line.oaMessageUrl}>這裡前往官方 LINE</a>。
+            </p>
+          </>
+        ) : (
+          <>
+            <div className={styles.box}>
+              最後一步：
+              <ol>
+                <li>點下方按鈕開啟官方 LINE（尚未加好友會先引導加入）</li>
+                <li>直接送出已預先填好的「{booking.line.confirmText}」</li>
+                <li>立即收到預約確認卡，專員將與您聯繫</li>
+              </ol>
+            </div>
+            <a className={`${styles.btn} ${styles.btnLine}`} href={booking.line.oaMessageUrl}>
+              前往官方 LINE 完成預約
+            </a>
+            <p className={styles.hint}>
+              若按鈕沒有反應，請先{" "}
+              <a href={booking.line.addFriendUrl} target="_blank" rel="noopener noreferrer">
+                加入官方帳號好友
+              </a>
+              ，再傳送「{booking.line.confirmText}」。
+            </p>
+          </>
+        )}
         <button type="button" className={styles.linkBtn} onClick={() => go("form")}>
           再找其他物件
         </button>
