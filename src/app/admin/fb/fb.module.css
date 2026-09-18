@@ -263,6 +263,17 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* 「從愛屋帶入」那一列：網址框吃滿、按鈕貼在右邊 */
+.impRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+.impRow input {
+  flex: 1;
+  min-width: 0;
+}
 /* 從 FB 抓回來的社團可能上百個 —— 給固定高度自己捲，不要把整頁撐到看不完 */
 .scanList {
   max-height: 340px;

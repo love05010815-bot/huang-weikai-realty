@@ -21,7 +21,8 @@
     "check:posts": "node --experimental-strip-types scripts/check-posts.mjs",
     "build:post591-ext": "tsc -p tools/post591-extension/tsconfig.lib.json && node tools/post591-extension/strip-template.mjs",
     "check:match": "node --experimental-strip-types scripts/check-match.mjs",
-    "check:threads": "node --experimental-strip-types scripts/check-threads.mjs"
+    "check:threads": "node --experimental-strip-types scripts/check-threads.mjs",
+    "check:fb-ad": "node --experimental-strip-types scripts/check-fb-ad.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",

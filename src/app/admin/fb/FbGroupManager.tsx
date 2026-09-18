@@ -231,17 +231,50 @@ export default function FbGroupManager() {
   const [draftImages, setDraftImages] = useState<AdImage[]>([]);
   const editingAd = ads.find((a) => a.id === editingAdId) || null;
 
+  /* 從愛屋連結帶入這一戶的資料（案名／開價／路名／格局／坪數／樓別／屋齡／車位／環境特色）。
+   * 真正去抓型錄的是 `/api/admin/fb/houseol`（伺服器端，網域擋在 lib 裡）。 */
+  const [impInput, setImpInput] = useState("");
+  const [impBusy, setImpBusy] = useState(false);
+  const [impMissing, setImpMissing] = useState<string[]>([]);
+
   function newAd() {
     setEditingAdId(null);
     setDraftTitle("");
     setDraftText("");
     setDraftImages([]);
+    setImpMissing([]);
   }
   function editAd(a: Ad) {
     setEditingAdId(a.id);
     setDraftTitle(a.title);
     setDraftText(a.text);
     setDraftImages(a.images);
+    setImpMissing([]);
+  }
+  async function importFromHouseol() {
+    const input = impInput.trim();
+    if (!input) return showToast("先貼愛屋的物件連結，或直接打案號（例：AA6352434）", "warn");
+    // 打字打到一半被蓋掉最嘔，先問過
+    if ((draftText.trim() || draftTitle.trim()) && !confirm("帶入會蓋掉現在這篇的標題與內容，確定嗎？")) return;
+    setImpBusy(true);
+    setImpMissing([]);
+    try {
+      const res = await fetch("/api/admin/fb/houseol", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ input }),
+      });
+      const j = (await res.json()) as { ok: boolean; error?: string; caseId?: string; draft?: { title: string; text: string; missing: string[] } };
+      if (!j.ok || !j.draft) return showToast(j.error || "帶入失敗", "bad");
+      setDraftTitle(j.draft.title);
+      setDraftText(j.draft.text);
+      setImpMissing(j.draft.missing || []);
+      showToast(`已帶入 ${j.caseId || ""}，記得看一下再存`, "ok");
+    } catch (e) {
+      showToast(`連不上伺服器：${e instanceof Error ? e.message : String(e)}`, "bad");
+    } finally {
+      setImpBusy(false);
+    }
   }
   async function onPickImages(files: FileList | null) {
     if (!files) return;
@@ -733,6 +766,30 @@ export default function FbGroupManager() {
           </section>
           <section className={styles.card}>
             <h2 className={styles.h2}>{editingAd ? "編輯文案" : "新文案"}</h2>
+            <label className={styles.lbl}>從愛屋帶入（貼物件連結或案號）</label>
+            <div className={styles.impRow}>
+              <input
+                className={styles.input}
+                value={impInput}
+                onChange={(e) => setImpInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    importFromHouseol();
+                  }
+                }}
+                placeholder="https://www.houseol.com.tw/sell_item/… 或 AA6352434"
+                spellCheck={false}
+              />
+              <button type="button" className={styles.btnSm} onClick={importFromHouseol} disabled={impBusy}>
+                {impBusy ? "讀取中…" : "帶入"}
+              </button>
+            </div>
+            <p className={styles.hint}>
+              會帶入<b>案名、開價、路名、格局、登記坪數、主＋附屬、樓別/樓高、屋齡、車位與車位型式、環境特色</b>，帶進來就是可以改的草稿。
+              地址只到路名（型錄本來就沒有門牌號）。
+            </p>
+            {impMissing.length > 0 && <p className={styles.warnText}>型錄上沒讀到：{impMissing.join("、")} —— 這幾項要自己補或刪掉那一行。</p>}
             <label className={styles.lbl}>標題（只給自己看，方便辨認）</label>
             <input className={styles.input} value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="例：9月 梧棲藍線捷運宅" />
             <label className={styles.lbl}>貼文內容（只寫這一戶的部分）</label>

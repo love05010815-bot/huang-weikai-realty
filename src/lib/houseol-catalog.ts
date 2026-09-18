@@ -46,12 +46,27 @@ export type CatalogListing = {
   /** 「12/13」= 12 樓、共 13 層 */
   floor: string;
   age: number | null;
+  /**
+   * 型錄「屋　　齡」那一格的原文。**新成屋寫的是「未滿一年」不是數字**（2026-09-18 實測），
+   * 所以 `age` 會是 null 但這裡有字 —— 要顯示給人看就用這個，不要用 age 再加「年」。
+   */
+  ageText: string;
+  /** 主建物＋附屬建物的坪數（型錄的「主 +附屬」） */
+  mainPlusAux: number | null;
   /** 華廈／大樓／透天… */
   kind: string;
   /** 空屋／自住／出租中… */
   state: string;
-  /** 有沒有車位（登記坪數那行的「含車位面積 X 坪」＞0，或產權車位有值） */
+  /** 有沒有車位（含車位面積＞0、產權車位、車位型式、車位/編號 任一個有值） */
   hasParking: boolean;
+  /** 車位型式，例「坡道/平面」。**沒有車位的物件型錄上根本沒有這一格** */
+  parkingType: string;
+  /**
+   * 型錄上到底有沒有講車位這件事。
+   * 🔴 `hasParking === false` 有兩種：型錄說了「0 坪／沒有」，或型錄根本沒這一格。
+   *    要對外寫「無車位」只能用前者 —— 這裡是 true 才算問過。
+   */
+  parkingKnown: boolean;
   nearbySchool: string;
   nearbyMarket: string;
   nearbyPark: string;
@@ -125,6 +140,11 @@ export function parseCatalogText(text: string, html = ""): CatalogListing | null
   const sizeLine = valueAfter(lines, "登記坪數");
   const parkingArea = toNum(text.match(/含車位面積[\s\S]{0,12}?(\d+(?:\.\d+)?)\s*坪/)?.[1] ?? "") ?? 0;
   const kindState = valueAfter(lines, "類型/現況").split("/");
+  // 車位：有車位的物件才有「車位型式」「車位/編號」，沒車位的只有「公設車位 0 坪」「產權車位（空的）」
+  const parkingType = valueAfter(lines, "車位型式");
+  const parkingNo = valueAfter(lines, "車位/編號");
+  const ownedParking = valueAfter(lines, "產權車位");
+  const parkingKnown = !!(parkingType || parkingNo || ownedParking || /含車位面積|公設車位|產權車位/.test(text));
 
   // 環境特色：抓到下一個已知區塊為止。⚠️ 型錄最後那排 [地圖][街景][更多照片] 不能混進來
   const featureBlock = text.match(/環境特色[\s:：]*\n([\s\S]*?)(?=\n\s*(?:物件編號|\[地圖\]|經紀人員)|$)/);
@@ -145,9 +165,13 @@ export function parseCatalogText(text: string, html = ""): CatalogListing | null
     baths: layout ? Number(layout[3]) : null,
     floor: valueAfter(lines, "樓別/樓高").replace(/\s+/g, ""),
     age: toNum(valueAfter(lines, "屋齡")),
+    ageText: valueAfter(lines, "屋齡"),
+    mainPlusAux: toNum(valueAfter(lines, "主 +附屬")),
     kind: (kindState[0] ?? "").trim(),
     state: (kindState[1] ?? "").trim(),
-    hasParking: parkingArea > 0 || !!valueAfter(lines, "產權車位"),
+    hasParking: parkingArea > 0 || !!ownedParking || !!parkingType || !!parkingNo,
+    parkingType,
+    parkingKnown,
     nearbySchool: valueAfter(lines, "鄰近學校"),
     nearbyMarket: valueAfter(lines, "鄰近市場"),
     nearbyPark: valueAfter(lines, "鄰近公園"),
@@ -223,6 +247,102 @@ export async function fetchCatalog(input: string): Promise<{ ok: true; listing: 
   const listing = parseCatalogText(houseolHtmlToText(page.text), page.text);
   if (!listing) return { ok: false, error: `${resolved.caseId} 這一頁讀不出物件資料（愛屋可能改版了）` };
   return { ok: true, listing };
+}
+
+/** 看起來是欄位標籤、不是案名的字（型錄抬頭讀壞時會抓到這些） */
+const LABEL_LOOKALIKE = /^(委託總價|登記坪數|建物面積|主\s*\+\s*附屬|主建物坪|附屬建物|公設建坪|公設比|每坪單價|土地登記|使用分區|總基地坪|樓別\/樓高|房\/廳\/衛|車位型式|車位\/編號|公設車位|產權車位|現況類別\/謄本用途|類型\/現況|社區|管理費用.*|竣工日期|屋\s*齡|建物外觀|建物結構|鄰近學校|鄰近市場|鄰近公園|生\s*活\s*圈|物件編號|鑰匙\/帶看|環境特色)$/;
+
+/** 台灣地址至少有區／鄉／鎮／里或路／街／巷／段。擋掉滑進地址那一格的數字（「768萬」） */
+const LOOKS_LIKE_ADDRESS = /[縣市區鄉鎮村里]|[路街道巷弄段]/;
+
+export type AdDraft = {
+  /** 後台文案的標題欄＝型錄第一行（他說的「愛屋案名」） */
+  title: string;
+  /** 貼文內容（只有這一戶的部分，固定尾段由 /admin/fb 自己接） */
+  text: string;
+  /** 型錄上讀不到、要他自己補的欄位名稱 */
+  missing: string[];
+};
+
+/**
+ * 愛屋型錄 → FB 社團廣告草稿。
+ *
+ * 欄位與順序是他 2026-09-18 指定的：
+ *   標題（案名）／開價／路名／格局／登記坪數／主+附屬／樓別-樓高／屋齡／車位／車位型式／環境特色
+ *
+ * 🔴 **讀不到的欄位就不寫**，改列進 `missing` 讓他自己補 —— 廣告是對外的，
+ *    猜一個「約」「左右」出去就是不實資訊。同理「無車位」只有在型錄真的講了車位
+ *    （`parkingKnown`）才寫，型錄沒這一格時只算沒讀到。
+ * 🔴 地址只到路名（型錄本來就沒門牌號）—— 他要的就是「沙鹿區光明街」這種程度。
+ */
+export function buildAdDraft(l: CatalogListing): AdDraft {
+  const lines: string[] = [];
+  const missing: string[] = [];
+
+  // 型錄抬頭讀壞時（愛屋改版），標題會抓到緊接著的欄位標籤 —— 【委託總價】不是案名，
+  // 寧可留空讓他自己打，也不要把它發到社團去
+  const title = LABEL_LOOKALIKE.test(l.title.trim()) ? "" : l.title.trim();
+  if (title) lines.push(`【${title}】`);
+  else missing.push("標題");
+
+  const facts: string[] = [];
+  if (l.price !== null) facts.push(`💰 開價 ${l.price} 萬`);
+  else missing.push("開價");
+
+  // 地址跟標題一樣是「照位置讀」的（型錄第 2、3 行）。抬頭一改版整批往上滑，
+  // 標題會變成欄位標籤、地址會變成那個標籤的**值**（例「768萬」）——所以除了擋標籤，
+  // 還要求它至少長得像地址，不然廣告上會出現「📍 768萬」。
+  const addr = l.address.trim();
+  const address = addr && !LABEL_LOOKALIKE.test(addr) && LOOKS_LIKE_ADDRESS.test(addr) ? addr : "";
+  if (address) facts.push(`📍 ${address}`);
+  else missing.push("路名");
+
+  if (l.rooms !== null) facts.push(`🏠 ${l.rooms}房${l.halls ?? 0}廳${l.baths ?? 0}衛`);
+  else missing.push("格局");
+
+  if (l.ping !== null) {
+    facts.push(l.mainPlusAux !== null ? `📐 登記 ${l.ping} 坪（主＋附屬 ${l.mainPlusAux} 坪）` : `📐 登記 ${l.ping} 坪`);
+    if (l.mainPlusAux === null) missing.push("主+附屬");
+  } else {
+    missing.push("登記坪數");
+    if (l.mainPlusAux !== null) facts.push(`📐 主＋附屬 ${l.mainPlusAux} 坪`);
+    else missing.push("主+附屬");
+  }
+
+  // 型錄的「8/15」＝ 8 樓、共 15 層；看不懂就照原字放，不要自己拆錯
+  const fl = l.floor.match(/^(\S+?)\s*\/\s*(\S+)$/);
+  if (fl) facts.push(`🏢 ${fl[1]}樓／共 ${fl[2]} 樓`);
+  else if (l.floor) facts.push(`🏢 樓別 ${l.floor}`);
+  else missing.push("樓別/樓高");
+
+  // 新成屋型錄寫「未滿一年」不是數字 → 用原文，不要拿 age 再接「年」
+  if (l.ageText) facts.push(`🗓 屋齡 ${l.ageText}`);
+  else missing.push("屋齡");
+
+  if (l.parkingType) facts.push(`🚗 車位：${l.parkingType}`);
+  else if (l.hasParking) {
+    facts.push("🚗 含車位");
+    missing.push("車位型式");
+  } else if (l.parkingKnown) facts.push("🚗 無車位");
+  else missing.push("車位");
+
+  // 標題讀不到時不要開頭就空一行
+  const gap = () => (lines.length ? [""] : []);
+  if (facts.length) lines.push(...gap(), ...facts);
+
+  if (l.features.length) {
+    lines.push(...gap(), "✨ 環境特色", ...l.features.map((f) => `・${f}`));
+  } else {
+    const nearby = [
+      l.nearbyPark && `・公園：${l.nearbyPark}`,
+      l.nearbyMarket && `・生活：${l.nearbyMarket}`,
+      l.nearbySchool && `・學校：${l.nearbySchool}`,
+    ].filter(Boolean) as string[];
+    if (nearby.length) lines.push(...gap(), "✨ 生活機能", ...nearby);
+    else missing.push("環境特色");
+  }
+
+  return { title: title || l.community || l.caseId, text: lines.join("\n"), missing };
 }
 
 /** 帶進「賣點」欄的文字：一行規格 ＋ 型錄的環境特色（沒有特色就補一行生活機能） */
