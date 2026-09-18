@@ -65,6 +65,7 @@ export const TYPE_MAP: Record<string, string> = {
 export const FEATURE_MAP: Record<string, string> = {
   近學校: "學區",
   近捷運: "近捷運",
+  近捷運站: "近捷運",
   近火車站: "近捷運",
   近車站: "近捷運",
   近公園: "近公園",
@@ -182,6 +183,12 @@ export function toListingUpsert(raw: RawHouseolItem, storeId: string): ListingUp
   const typeKey = Object.keys(TYPE_MAP).find((k) => raw.kind.includes(k));
   const features = new Set(raw.features.map((f) => FEATURE_MAP[f] ?? f));
   if (/車位/.test(raw.priceNote) || /車位|平車|坡平|機械/.test(raw.title)) features.add("車位");
+  // 平面／機械店網沒有獨立欄位，只能看標題。海線的寫法是「平車」（＝平面車位），
+  // 278 筆裡沒有一筆寫機械。判斷不出來的就只留「車位」，別亂貼標籤 ——
+  // 配對時買方要「平面車位」會把只標「車位」的也算進來（見 matcher 的 featureSatisfied）。
+  // 「機車位」是機車停車位，跟「機械」不會互相誤判。
+  if (/平車|平面車|坡平|坡道平面/.test(raw.title)) features.add("平面車位");
+  if (/機械/.test(raw.title)) features.add("機械車位");
   if (/大樓|華廈/.test(raw.kind) || /電梯/.test(raw.title)) features.add("電梯");
   if (/裝潢|精裝|全新整理/.test(raw.title)) features.add("含裝潢");
   return {

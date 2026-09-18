@@ -47,8 +47,16 @@ export const MATCH = {
 /** 表單「類型」選項。愛屋店網的型態會對應到這幾個（見 lib/match/houseol-parse.ts 的 TYPE_MAP） */
 export const MATCH_TYPES = ["電梯大樓", "華廈", "公寓", "透天厝", "套房", "土地"] as const;
 
-/** 表單「其他需求」選項。店網的特色標籤（近學校→學區…）會對應過來 */
-export const MATCH_FEATURES = ["車位", "電梯", "近捷運", "近公園", "學區", "含裝潢", "可養寵物"] as const;
+/**
+ * 表單「其他需求」選項。
+ *
+ * 2026-09-18 他改的：車位拆成平面／機械，並拿掉近公園、學區、含裝潢、可養寵物
+ * （物件本來就大多有，勾了等於沒篩）。希望樓層改成獨立的下拉，不再是這裡的標籤。
+ *
+ * ⚠️ 店網只給一個「車位」標籤，平面／機械是從標題猜的（海線都寫「平車」）——
+ *    詳見 lib/match/houseol-parse.ts 與 matcher 的 featureSatisfied()。
+ */
+export const MATCH_FEATURES = ["平面車位", "機械車位", "電梯", "近捷運"] as const;
 
 /** 預約看屋的狀態與顯示文字（後台下拉、LINE「我的預約」共用） */
 export const VIEWING_STATUS: Record<string, string> = {

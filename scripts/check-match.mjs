@@ -10,7 +10,15 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describePreference, normalizePreference, rankListings, scoreListing } from "../src/lib/match/matcher.ts";
+import {
+  describePreference,
+  floorOf,
+  landCategoryOf,
+  normalizePreference,
+  rankListings,
+  scoreListing,
+  WEIGHTS,
+} from "../src/lib/match/matcher.ts";
 import { parseBlocks, splitAddress, splitResponse, toListingUpsert } from "../src/lib/match/houseol-parse.ts";
 import { createBuyerToken, verifyBuyerToken } from "../src/lib/match/token.ts";
 
@@ -162,6 +170,127 @@ test("買方識別碼：買方編號格式不對就不簽", () => {
   process.env.APPOINTMENT_TOKEN_SECRET = "check-match-secret";
   assert.equal(createBuyerToken("abc"), null);
   assert.equal(createBuyerToken(""), null);
+});
+
+// ---------------------------------------------------------------- 2026-09-18 新增的條件
+//
+// 樓層級距、土地類別、平面／機械車位、土地坪數。這幾項都會安靜地算錯 ——
+// 買方只會覺得「推薦的怎麼都不對」，不會有任何錯誤訊息，所以這裡測死。
+
+/** 評分用的物件；新欄位有預設值，舊測試不用改 */
+const listing = (o = {}) => ({
+  city: "台中市",
+  district: "沙鹿區",
+  price: 900,
+  rooms: 3,
+  size: 30,
+  type: "電梯大樓",
+  age: 5,
+  features: ["電梯"],
+  floor: "8/15",
+  landSize: 0,
+  usageType: "住家",
+  ...o,
+});
+
+test("權重加起來剛好 100（少一分多一分都會讓滿分不是滿分）", () => {
+  assert.equal(
+    Object.values(WEIGHTS).reduce((a, b) => a + b, 0),
+    100,
+  );
+});
+
+test("floorOf：14/15 取 14、透天 1-4/4 取 1、土地的「/」取 0", () => {
+  assert.equal(floorOf("14/15"), 14);
+  assert.equal(floorOf("1-4/4"), 1);
+  assert.equal(floorOf("/"), 0);
+  assert.equal(floorOf(""), 0);
+  assert.equal(floorOf(null), 0);
+});
+
+test("希望樓層：級距邊界兩邊都含，沒有樓層資料給一半不是 0", () => {
+  const wantMid = { floor: "mid" }; // 5–10 樓
+  assert.ok(scoreListing(wantMid, listing({ floor: "8/15" })).reasons.some((r) => r.includes("樓層符合")));
+  assert.ok(scoreListing(wantMid, listing({ floor: "5/15" })).reasons.some((r) => r.includes("樓層符合")));
+  assert.ok(scoreListing(wantMid, listing({ floor: "10/15" })).reasons.some((r) => r.includes("樓層符合")));
+  assert.ok(scoreListing(wantMid, listing({ floor: "12/15" })).misses.some((m) => m.includes("樓層不符")));
+
+  // 10 樓同時屬於「5–10」與「10–15」
+  assert.ok(scoreListing({ floor: "high" }, listing({ floor: "10/15" })).reasons.some((r) => r.includes("樓層符合")));
+
+  // 沒有樓層的（土地）只扣一半，不能把整批土地洗掉
+  const noFloor = scoreListing(wantMid, listing({ floor: "/" }));
+  const wrongFloor = scoreListing(wantMid, listing({ floor: "12/15" }));
+  assert.ok(noFloor.score > wrongFloor.score, `沒樓層 ${noFloor.score} 應該高於樓層不符 ${wrongFloor.score}`);
+});
+
+test("landCategoryOf：農建地要先判斷，不能被「農」先接走", () => {
+  assert.equal(landCategoryOf("土地:農建地"), "農建地");
+  assert.equal(landCategoryOf("土地:農地"), "農地");
+  assert.equal(landCategoryOf("土地:農牧用地"), "農地");
+  assert.equal(landCategoryOf("土地:建地"), "建地");
+  assert.equal(landCategoryOf("土地:住宅用地"), "建地");
+  assert.equal(landCategoryOf("土地:商業地"), "商業地");
+  assert.equal(landCategoryOf("土地:其他"), "");
+  assert.equal(landCategoryOf("住家"), "");
+  assert.equal(landCategoryOf("廠房:其他"), "");
+});
+
+test("土地類別：要農地時，建地拿不到那一半的類型分", () => {
+  const pref = { types: ["土地"], landCategories: ["農地"] };
+  const farm = listing({ type: "土地", usageType: "土地:農地", floor: "/", landSize: 300, size: 300 });
+  const build = listing({ type: "土地", usageType: "土地:建地", floor: "/", landSize: 300, size: 300 });
+  const a = scoreListing(pref, farm);
+  const b = scoreListing(pref, build);
+  assert.ok(a.reasons.some((r) => r.includes("土地類別符合（農地）")));
+  assert.ok(b.misses.some((m) => m.includes("土地類別不符（建地）")));
+  assert.ok(a.score > b.score, `農地 ${a.score} 應該高於建地 ${b.score}`);
+});
+
+test("平面／機械車位：只標「車位」算平面、不算機械", () => {
+  const onlyParking = listing({ features: ["車位", "電梯"] });
+  const flat = listing({ features: ["車位", "平面車位"] });
+  const mech = listing({ features: ["車位", "機械車位"] });
+
+  assert.ok(scoreListing({ features: ["平面車位"] }, onlyParking).reasons.some((r) => r.includes("平面車位")));
+  assert.ok(scoreListing({ features: ["平面車位"] }, flat).reasons.some((r) => r.includes("平面車位")));
+  assert.ok(scoreListing({ features: ["機械車位"] }, onlyParking).misses.some((m) => m.includes("機械車位")));
+  assert.ok(scoreListing({ features: ["機械車位"] }, mech).reasons.some((r) => r.includes("機械車位")));
+  // 明講機械的，就不能再被當成平面
+  assert.ok(scoreListing({ features: ["平面車位"] }, mech).misses.some((m) => m.includes("平面車位")));
+});
+
+test("土地坪數：範圍內滿分、差一點給一半、沒有地坪資料算不符", () => {
+  const pref = { landMin: 100, landMax: 200 };
+  assert.ok(scoreListing(pref, listing({ landSize: 150 })).reasons.some((r) => r.includes("土地坪數符合")));
+  assert.ok(scoreListing(pref, listing({ landSize: 210 })).misses.some((m) => m.includes("略有出入")));
+  assert.ok(scoreListing(pref, listing({ landSize: 500 })).misses.some((m) => m.includes("土地坪數不符")));
+  assert.ok(scoreListing(pref, listing({ landSize: 0 })).misses.some((m) => m.includes("沒有土地坪數資料")));
+});
+
+test("describePreference：新欄位會出現在摘要裡", () => {
+  const s = describePreference({
+    city: "台中市",
+    types: ["土地"],
+    landCategories: ["農地", "建地"],
+    landMin: 100,
+    floor: "low",
+    features: ["平面車位"],
+  });
+  assert.ok(s.includes("5 樓以下"), s);
+  assert.ok(s.includes("地坪 100–不限 坪"), s);
+  assert.ok(s.includes("農地/建地"), s);
+  assert.ok(s.includes("平面車位"), s);
+});
+
+test("解析：標題有「平車」就標平面車位，沒有機械字樣就不標機械", () => {
+  const items = parseBlocks(html).map((it) => toListingUpsert(it, "4817"));
+  const flat = items.filter((i) => i.features.includes("平面車位"));
+  assert.ok(flat.length > 0, "這一頁應該有帶平車的物件");
+  for (const i of flat) assert.ok(/平車|平面車|坡平/.test(i.title), `${i.title} 不該被標平面車位`);
+  for (const i of items) {
+    if (i.features.includes("機械車位")) assert.ok(/機械/.test(i.title), `${i.title} 不該被標機械車位`);
+  }
 });
 
 if (process.exitCode) {

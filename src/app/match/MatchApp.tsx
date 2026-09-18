@@ -17,6 +17,9 @@ type Meta = {
   cities: { city: string; districts: string[] }[];
   types: readonly string[];
   features: readonly string[];
+  /** 希望樓層的級距，由 matcher 的 FLOOR_RANGES 產生 */
+  floors: { value: string; label: string }[];
+  landCategories: readonly string[];
   threshold: number;
   addFriendUrl: string;
 };
@@ -59,6 +62,10 @@ type ApiPreference = {
   types?: string[];
   maxAge?: number;
   features?: string[];
+  floor?: string;
+  landMin?: number;
+  landMax?: number;
+  landCategories?: string[];
 };
 
 type Me = { buyerId: string; preference: ApiPreference | null; name: string | null; phone: string | null; notify: boolean };
@@ -144,9 +151,30 @@ type PrefState = {
   types: string[];
   maxAge: number;
   features: string[];
+  floor: string;
+  landMin: string;
+  landMax: string;
+  landCategories: string[];
 };
 
-const EMPTY_PREF: PrefState = { city: "", districts: [], budgetMax: "", rooms: 0, sizeMin: "", sizeMax: "", types: [], maxAge: 0, features: [] };
+const EMPTY_PREF: PrefState = {
+  city: "",
+  districts: [],
+  budgetMax: "",
+  rooms: 0,
+  sizeMin: "",
+  sizeMax: "",
+  types: [],
+  maxAge: 0,
+  features: [],
+  floor: "",
+  landMin: "",
+  landMax: "",
+  landCategories: [],
+};
+
+/** 土地專屬的欄位只有勾了「土地」才出現，也只有那時候才送出去 */
+const LAND_TYPE = "土地";
 
 /** 資料庫存的條件 → 表單狀態。0 代表「不限」，輸入框要留白而不是顯示 0。 */
 function toPrefState(p: ApiPreference): PrefState {
@@ -161,6 +189,10 @@ function toPrefState(p: ApiPreference): PrefState {
     types: Array.isArray(p.types) ? p.types : [],
     maxAge: Number(p.maxAge) || 0,
     features: Array.isArray(p.features) ? p.features : [],
+    floor: typeof p.floor === "string" ? p.floor : "",
+    landMin: numText(p.landMin),
+    landMax: numText(p.landMax),
+    landCategories: Array.isArray(p.landCategories) ? p.landCategories : [],
   };
 }
 
@@ -194,7 +226,7 @@ export default function MatchApp() {
     setBuyerId(readBuyerId());
     api<Meta>("/api/match/meta")
       .then(setMeta)
-      .catch(() => setMeta({ cities: [], types: [], features: [], threshold: 60, addFriendUrl: "" }));
+      .catch(() => setMeta({ cities: [], types: [], features: [], floors: [], landCategories: [], threshold: 60, addFriendUrl: "" }));
 
     const params = new URLSearchParams(window.location.search);
 
@@ -233,6 +265,18 @@ export default function MatchApp() {
   }, []);
 
   const districts = meta?.cities.find((c) => c.city === pref.city)?.districts ?? [];
+  const wantsLand = pref.types.includes(LAND_TYPE);
+
+  /** 勾／取消類型。取消「土地」時順手把土地專屬的欄位清空，不然藏起來的值還會跟著送出去。 */
+  function toggleType(t: string) {
+    setPref((p) => {
+      const types = toggle(p.types, t);
+      if (t === LAND_TYPE && !types.includes(LAND_TYPE)) {
+        return { ...p, types, landCategories: [], landMin: "", landMax: "" };
+      }
+      return { ...p, types };
+    });
+  }
 
   async function onSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -249,6 +293,11 @@ export default function MatchApp() {
         types: pref.types,
         maxAge: pref.maxAge,
         features: pref.features,
+        floor: pref.floor,
+        // 沒勾土地就不送土地條件 —— 欄位藏起來了，值還跟著跑會變成看不見的篩選器
+        landMin: wantsLand ? Number(pref.landMin) || 0 : 0,
+        landMax: wantsLand ? Number(pref.landMax) || 0 : 0,
+        landCategories: wantsLand ? pref.landCategories : [],
       };
       const data = await api<SearchResult>("/api/match/search", { method: "POST", body: JSON.stringify({ preference, buyerId, token }) });
       if (data.buyerId) {
@@ -359,11 +408,11 @@ export default function MatchApp() {
 
           <div className={`${styles.field} ${styles.two}`}>
             <label>
-              坪數下限
+              建物坪數下限
               <input className={styles.input} type="number" inputMode="decimal" min={0} placeholder="不限" value={pref.sizeMin} onChange={(e) => setPref((p) => ({ ...p, sizeMin: e.target.value }))} />
             </label>
             <label>
-              坪數上限
+              建物坪數上限
               <input className={styles.input} type="number" inputMode="decimal" min={0} placeholder="不限" value={pref.sizeMax} onChange={(e) => setPref((p) => ({ ...p, sizeMax: e.target.value }))} />
             </label>
           </div>
@@ -372,12 +421,45 @@ export default function MatchApp() {
             <div className={styles.label}>類型（可複選）</div>
             <div className={styles.chips}>
               {(meta?.types ?? []).map((t) => (
-                <button key={t} type="button" className={`${styles.chip} ${pref.types.includes(t) ? styles.chipOn : ""}`} onClick={() => setPref((p) => ({ ...p, types: toggle(p.types, t) }))}>
+                <button key={t} type="button" className={`${styles.chip} ${pref.types.includes(t) ? styles.chipOn : ""}`} onClick={() => toggleType(t)}>
                   {t}
                 </button>
               ))}
             </div>
           </div>
+
+          {/* 土地專屬的兩項，只有勾了「土地」才出現 —— 買公寓的人不需要看到農地建地。
+              店網只有土地物件會給地坪（透天那些都是 0），所以土地坪數也放在這裡。 */}
+          {wantsLand && (
+            <>
+              <div className={styles.field}>
+                <div className={styles.label}>土地類別（可複選）</div>
+                <div className={styles.chips}>
+                  {(meta?.landCategories ?? []).map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className={`${styles.chip} ${pref.landCategories.includes(c) ? styles.chipOn : ""}`}
+                      onClick={() => setPref((p) => ({ ...p, landCategories: toggle(p.landCategories, c) }))}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className={`${styles.field} ${styles.two}`}>
+                <label>
+                  土地坪數下限
+                  <input className={styles.input} type="number" inputMode="decimal" min={0} placeholder="不限" value={pref.landMin} onChange={(e) => setPref((p) => ({ ...p, landMin: e.target.value }))} />
+                </label>
+                <label>
+                  土地坪數上限
+                  <input className={styles.input} type="number" inputMode="decimal" min={0} placeholder="不限" value={pref.landMax} onChange={(e) => setPref((p) => ({ ...p, landMax: e.target.value }))} />
+                </label>
+              </div>
+            </>
+          )}
 
           <label className={styles.field}>
             屋齡上限
@@ -385,6 +467,18 @@ export default function MatchApp() {
               {AGES.map((a) => (
                 <option key={a.v} value={a.v}>
                   {a.l}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.field}>
+            希望樓層
+            <select className={styles.select} value={pref.floor} onChange={(e) => setPref((p) => ({ ...p, floor: e.target.value }))}>
+              <option value="">不限</option>
+              {(meta?.floors ?? []).map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.label}
                 </option>
               ))}
             </select>
