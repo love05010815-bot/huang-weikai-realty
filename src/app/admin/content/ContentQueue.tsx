@@ -17,10 +17,16 @@
  *
  * ## 放到前台（2026-09-18 加）
  *
- * 知識文章那條線的每一版文案底下有一顆「放到前台」：挑一個平台的版本（預設 Facebook，
- * 那版最像一篇文章），按下去會存成 `/news` 的一篇**草稿**、跳到 `/admin/posts`。
+ * 知識文章那條線在**上面那排按鈕**（複製指令 → 開 ChatGPT → 貼回結果 → 放到前台）
+ * 最後有一顆「放到前台」：挑一個平台的版本（預設 Facebook，那版最像一篇文章），
+ * 按下去會存成 `/news` 的一篇**草稿**、跳到 `/admin/posts`。
  * 刻意不直接發佈 —— 模型寫的東西他一定要自己看過一遍，而且還沒配封面圖。
  * 短影音那條線不走這裡（口播稿不是給人讀的文章），拍好之後上 `/admin/videos`。
+ *
+ * 🔴 **那顆按鈕一定要留在那一排。** 2026-09-18 第一版放在下面「寫好的文案」那一塊裡，
+ *    結果被上一題那塊 720px 高的文稿擋住，他直接回報「沒看到放到前台按鈕」——
+ *    按鈕存在但在畫面外，跟不存在是一樣的（這個專案第四次踩同一個坑）。
+ *    還沒有文案時按鈕是灰的，滑過去會說「要先有一版文案」，而不是整顆消失。
  *
  * 從房產新聞按過來時網址帶 `?focus=<題的 id>`：那一筆會框起來、捲到畫面中間，
  * 而且狀態篩選會自動切到它所在的那一邊（不然剛完成的題按過來會「找不到」）。
@@ -144,22 +150,16 @@ function DraftPanel({
   selectedId,
   onSelect,
   onCopy,
-  onPublish,
-  busy,
 }: {
   task: NewsTaskRecord;
   list: NewsDraftRecord[];
   selectedId: string | undefined;
   onSelect: (id: string) => void;
   onCopy: (d: NewsDraftRecord) => void;
-  /** 把這一版的某一段放到前台 `/news`（會先存成草稿） */
-  onPublish: (d: NewsDraftRecord, section: string) => void;
-  busy: boolean;
 }) {
   const draft = list.find((d) => d.id === selectedId) ?? list[0];
   const version = list.length - list.indexOf(draft);
   const stats = useMemo(() => analyzeDraft(task.line, draft.content), [task.line, draft.content]);
-  const [section, setSection] = useState(DEFAULT_PUBLISH_SECTION);
   const fieldStyle: React.CSSProperties = { background: CIS.card, borderColor: CIS.cardBorder, color: CIS.text };
   return (
     <div style={{ marginTop: 12, padding: "12px 14px", border: `1px solid ${CIS.cardBorder}`, borderRadius: 10, background: CIS.bgSoft }}>
@@ -193,54 +193,13 @@ function DraftPanel({
       )}
       <StatsLine stats={stats} />
 
-      {/* ---------- 放到前台 ----------
-          知識文章這條線才有。短影音那條線的產出是口播稿，不是給人讀的文章 ——
-          拍好之後走「影音」後台（/admin/videos），不要硬塞進 /news。 */}
-      {task.line === "article" ? (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            flexWrap: "wrap",
-            marginTop: 10,
-            paddingTop: 10,
-            borderTop: `1px solid ${CIS.divider}`,
-          }}
-        >
-          <span style={{ color: CIS.textMute, fontSize: 13.5 }}>放到前台，用</span>
-          <select
-            className={styles.select}
-            style={{ ...fieldStyle, width: "auto", minHeight: 32, fontSize: 13 }}
-            value={section}
-            onChange={(e) => setSection(e.target.value)}
-          >
-            {PLATFORM_RULES.map((p) => (
-              <option key={p.key} value={p.heading}>
-                {p.heading} 那一版
-              </option>
-            ))}
-            <option value="__all__">整篇全部（六個平台都帶過去）</option>
-          </select>
-          <button
-            type="button"
-            className={styles.btn}
-            style={{ borderColor: CHIP.success.border, color: CHIP.success.color }}
-            disabled={busy}
-            onClick={() => onPublish(draft, section)}
-          >
-            <Icon name="rocket" size={14} />
-            放到前台
-          </button>
-          <span style={{ color: CIS.textMute, fontSize: 12.5 }}>
-            會先存成<b style={{ color: CIS.textSub }}>草稿</b>並跳到「房產消息」，確認過再發佈。
-          </span>
-        </div>
-      ) : (
+      {/* 短影音那條線的產出是口播稿，不是給人讀的文章 —— 拍好之後走「影音」後台。
+          知識文章的「放到前台」**不在這裡**，在上面那排按鈕裡（見檔頭）。 */}
+      {task.line === "video" ? (
         <p className={styles.msg} style={{ color: CIS.textMute, marginTop: 10 }}>
           短影音拍好之後放到「影音」後台（/admin/videos），前台會出現在影音專區。
         </p>
-      )}
+      ) : null}
 
       <pre style={{ ...preStyle, background: CIS.card, maxHeight: 720 }}>{draft.content}</pre>
     </div>
@@ -256,6 +215,8 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   /** 每一題目前看的是哪一版文案（沒選就是最新那版） */
   const [selectedDraft, setSelectedDraft] = useState<Record<string, string>>({});
+  /** 每一題「放到前台」要帶哪一個平台的版本（沒選就是 Facebook） */
+  const [publishSection, setPublishSection] = useState<Record<string, string>>({});
   /** 剛寫好、伺服器還沒重新讀回來的文案，先塞進畫面 */
   const [freshDrafts, setFreshDrafts] = useState<NewsDraftRecord[]>([]);
   /** 哪一題打開了「貼回結果」的框 */
@@ -499,6 +460,8 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
           const pasting = pastingId === t.id;
           const otherLines = t.news.tasks.filter((x) => x.line !== t.line);
           const list = allDrafts[t.id] ?? [];
+          /** 目前選的那一版文案（沒選就是最新那版）。沒有文案的話「放到前台」不給按。 */
+          const latestDraft = list.find((d) => d.id === selectedDraft[t.id]) ?? list[0];
           const hasSource = !!(t.news.content || t.news.summary);
           return (
             <article
@@ -572,6 +535,55 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
                     <Icon name="edit" size={14} />
                     {pasting ? "收起貼回框" : "貼回結果"}
                   </button>
+
+                  {/* ---------- 放到前台 ----------
+                      🔴 這顆**一定要放在這一排**（複製指令 → 開 ChatGPT → 貼回結果 → 放到前台，
+                         就是他實際做事的順序）。2026-09-18 第一版放在下面「寫好的文案」那一塊裡，
+                         結果被上一題那塊 720px 高的文稿擋住，他直接回報「沒看到放到前台按鈕」——
+                         按鈕存在但在畫面外，跟不存在是一樣的。
+                      知識文章才有；短影音的產出是口播稿，走 /admin/videos。 */}
+                  {t.line === "article" ? (
+                    <>
+                      <select
+                        className={styles.select}
+                        style={{ ...fieldStyle, width: "auto", minHeight: 38, fontSize: 13 }}
+                        value={publishSection[t.id] ?? DEFAULT_PUBLISH_SECTION}
+                        disabled={busy || !latestDraft}
+                        title="要把哪一個平台的版本放到前台"
+                        onChange={(e) => setPublishSection((s) => ({ ...s, [t.id]: e.target.value }))}
+                      >
+                        {PLATFORM_RULES.map((p) => (
+                          <option key={p.key} value={p.heading}>
+                            {p.heading} 那一版
+                          </option>
+                        ))}
+                        <option value="__all__">整篇全部</option>
+                      </select>
+                      <button
+                        type="button"
+                        className={styles.btn}
+                        style={
+                          latestDraft
+                            ? { borderColor: CHIP.success.border, color: CHIP.success.color }
+                            : { ...btnQuiet, fontSize: 14 }
+                        }
+                        disabled={busy || !latestDraft}
+                        title={
+                          latestDraft
+                            ? "存成前台『房產消息』的草稿，跳過去潤稿、配封面圖，再按發佈"
+                            : "要先有一版文案：複製指令 → 貼進 ChatGPT → 貼回結果"
+                        }
+                        onClick={() =>
+                          latestDraft &&
+                          void publishToSite(t, latestDraft, publishSection[t.id] ?? DEFAULT_PUBLISH_SECTION)
+                        }
+                      >
+                        <Icon name="rocket" size={14} />
+                        放到前台
+                      </button>
+                    </>
+                  ) : null}
+
                   <span className={styles.spacer} />
                   <button
                     type="button"
@@ -667,8 +679,6 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
                     selectedId={selectedDraft[t.id]}
                     onSelect={(id) => setSelectedDraft((s) => ({ ...s, [t.id]: id }))}
                     onCopy={(d) => void copyText(d.content, "已複製整份文案。")}
-                    onPublish={(d, section) => void publishToSite(t, d, section)}
-                    busy={busy}
                   />
                 )}
               </div>
