@@ -54,7 +54,19 @@ export const metadata: Metadata = {
 export const revalidate = 300;
 
 export default async function ListingsPage() {
-  const listings = await getPublicListings();
+  /**
+   * 2026-09-18 系統擁有者拍板：這頁（客戶實際瀏覽的完整清單）改成依售價由低到高排序。
+   * 只動這一頁 —— 首頁「精選好案」只挑前 HOME_FEATURED_COUNT 筆，是用來介紹主打物件的，
+   * 照售價排會變成永遠只秀最便宜那幾戶，跟「精選」的用意不合，所以維持後台手動排的順序；
+   * LINE 機器人與地圖的建案比對也都吃 getPublicListings() 原始順序，不要動那支函式本身。
+   * 沒有售價（連結不是愛屋、或抓不到）的排在最後，彼此之間維持後台原本排的順序。
+   */
+  const listings = [...(await getPublicListings())].sort((a, b) => {
+    if (a.price == null && b.price == null) return 0;
+    if (a.price == null) return 1;
+    if (b.price == null) return -1;
+    return a.price - b.price;
+  });
   return (
     <div className={styles.page}>
       <header className={styles.header}>
