@@ -11,6 +11,7 @@
  * 🔴 圖片交給外掛時轉成 dataURL 放進 payload；存進 IndexedDB 前先縮到長邊 1600px，控制大小。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { FB_AD_TAIL, truncatedLinks, withTail } from "@/config/fb-tail";
 import { idbGet, idbSet } from "./idb";
 import styles from "./fb.module.css";
 
@@ -24,7 +25,8 @@ type Group = { id: string; name: string; url: string; note: string; enabled: boo
  * kind="account" 另一個 FB 帳號（要你自己換 Chrome 使用者／登入，工具只負責認人、不碰密碼）
  */
 type Identity = { id: string; name: string; kind: "page" | "account"; note: string };
-type Settings = { pageName: string; locale: "zh-TW" | "en"; dailyLimit: number };
+/** tailText＝固定尾段，每則廣告自動接在文案後面（預設值在 config/fb-tail.ts） */
+type Settings = { pageName: string; locale: "zh-TW" | "en"; dailyLimit: number; tailText: string };
 type ResultRow = { groupId: string; groupName: string; status: string; message: string; at: string };
 type HistoryJob = { id: string; at: number; adTitle: string; identityName?: string; total: number; results: ResultRow[]; status: string };
 type Progress = {
@@ -39,7 +41,7 @@ type Progress = {
   finishedAt?: number;
 };
 
-const DEFAULT_SETTINGS: Settings = { pageName: "", locale: "zh-TW", dailyLimit: 10 };
+const DEFAULT_SETTINGS: Settings = { pageName: "", locale: "zh-TW", dailyLimit: 10, tailText: FB_AD_TAIL };
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const STATUS_LABEL: Record<string, [string, string]> = {
   posted: ["已發佈", "ok"],
@@ -346,6 +348,8 @@ export default function FbGroupManager() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pubIdentityId, loaded]);
   const pubAd = ads.find((a) => a.id === pubAdId) || null;
+  /** 真正會貼到 FB 的內容＝這一戶的文案 ＋ 固定尾段。預覽跟發佈用同一個值，看到什麼就發什麼。 */
+  const finalText = pubAd ? withTail(pubAd.text, settings.tailText) : "";
   const checkedCount = visibleGroups.filter((g) => checked.has(g.id)).length;
 
   async function launch() {
@@ -360,6 +364,10 @@ export default function FbGroupManager() {
       !confirm(`這批要用「${pubIdentity.name}」這個帳號發。請先確認 Chrome 目前登入的就是它（工具不會、也不能替你切換帳號）。現在就是這個帳號嗎？`)
     )
       return;
+    // 固定尾段裡有被截斷的連結就先問一次 —— 發出去是死連結，客戶點不到
+    const bad = truncatedLinks(finalText);
+    if (bad.length && !confirm(`固定尾段裡有 ${bad.length} 條連結是截斷的（… 結尾），發出去客戶點不開：\n\n${bad.join("\n")}\n\n到「設定 → 固定尾段」貼完整網址比較好。仍要照發嗎？`))
+      return;
 
     currentAdTitle.current = pubAd.title;
     currentIdentityName.current = pubIdentity.name;
@@ -370,7 +378,7 @@ export default function FbGroupManager() {
       locale: settings.locale,
       dailyLimit: settings.dailyLimit,
       requirePageIdentity: true,
-      ad: { text: pubAd.text, images: pubAd.images.map((im) => im.dataUrl) },
+      ad: { text: finalText, images: pubAd.images.map((im) => im.dataUrl) },
       groups: picked.map((g) => ({ id: g.id, name: g.name, url: g.url })),
     };
     const ok = await new Promise<boolean>((resolve) => {
@@ -467,7 +475,9 @@ export default function FbGroupManager() {
               </select>
               {pubAd ? (
                 <div className={styles.preview}>
-                  <div className={styles.pre}>{pubAd.text}</div>
+                  {/* 預覽＝真正會貼出去的全文（含固定尾段），所見即所發 */}
+                  <div className={styles.pre}>{finalText}</div>
+                  {settings.tailText.trim() && <p className={styles.hintInline}>↑ 尾段是「設定」裡的固定尾段，每則自動接上。</p>}
                   {pubAd.images.length > 0 && (
                     <div className={styles.thumbsSm}>
                       {pubAd.images.map((im, i) => (
@@ -645,9 +655,12 @@ export default function FbGroupManager() {
             <h2 className={styles.h2}>{editingAd ? "編輯文案" : "新文案"}</h2>
             <label className={styles.lbl}>標題（只給自己看，方便辨認）</label>
             <input className={styles.input} value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="例：9月 梧棲藍線捷運宅" />
-            <label className={styles.lbl}>貼文內容（會原封不動發到每個社團）</label>
+            <label className={styles.lbl}>貼文內容（只寫這一戶的部分）</label>
             <textarea className={styles.ta} rows={12} value={draftText} onChange={(e) => setDraftText(e.target.value)} placeholder="貼文文字，可換行、可用 emoji 與 #標籤" spellCheck={false} />
-            <div className={styles.hintInline}>{[...draftText].length} 字</div>
+            <div className={styles.hintInline}>
+              {[...draftText].length} 字
+              {settings.tailText.trim() && <>　·　發佈時會自動接上<b>固定尾段</b>（電話／LINE／個人店鋪那一段），這裡不用再貼一次。</>}
+            </div>
             <label className={styles.lbl}>圖片（最多 10 張，依順序上傳）</label>
             <input type="file" accept="image/*" multiple onChange={(e) => { onPickImages(e.target.files); e.currentTarget.value = ""; }} />
             {draftImages.length > 0 && (
@@ -916,6 +929,47 @@ export default function FbGroupManager() {
                 }}
               >
                 ＋ 新增身分
+              </button>
+            </div>
+          </section>
+
+          <section className={styles.card}>
+            <h2 className={styles.h2}>固定尾段（每則廣告自動接在文案後面）</h2>
+            <p className={styles.hint}>
+              電話、LINE、個人店鋪那一整段放這裡，<b>不用每次重打</b>。寫文案時只寫那一戶的內容，發佈時自動接上（中間空一行）。
+              改這裡，之後每一則都跟著變。排版原封不動照貼，空行也會保留。
+            </p>
+            {(() => {
+              const bad = truncatedLinks(settings.tailText);
+              return bad.length ? (
+                <p className={styles.warnText}>
+                  ⚠ 有 {bad.length} 條連結是<b>截斷的</b>（… 結尾），發出去客戶點不開，請貼完整網址：
+                  {bad.map((l) => (
+                    <span key={l} style={{ display: "block", wordBreak: "break-all" }}>
+                      · {l}
+                    </span>
+                  ))}
+                </p>
+              ) : null;
+            })()}
+            <textarea
+              className={styles.ta}
+              rows={16}
+              value={settings.tailText}
+              onChange={(e) => setSettings((s) => ({ ...s, tailText: e.target.value }))}
+              placeholder="留空就不接任何東西"
+              spellCheck={false}
+            />
+            <div className={styles.actions}>
+              <span className={styles.hintInline}>{[...settings.tailText].length} 字</span>
+              <button
+                type="button"
+                className={styles.btnSm}
+                onClick={() => {
+                  if (confirm("把固定尾段還原成一開始的版本？你現在改過的內容會被蓋掉。")) setSettings((s) => ({ ...s, tailText: FB_AD_TAIL }));
+                }}
+              >
+                還原成預設
               </button>
             </div>
           </section>
