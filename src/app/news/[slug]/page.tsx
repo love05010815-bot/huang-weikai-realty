@@ -1,5 +1,5 @@
 /**
- * /news/[slug] —— 一篇房市新知
+ * /news/[slug] —— 一篇房產消息
  *
  * 這頁存在的理由跟單一物件頁（/listings/[slug]）同一個：**要傳給客戶**。
  * LINE、FB 的連結預覽會吃這頁的 og:title 與 og:image，
@@ -223,7 +223,7 @@ export default async function NewsPostPage({ params }: { params: Promise<Params>
               ) : null}
 
               <Link href="/news" className={nw.backLink}>
-                ← 回房市新知
+                ← 回房產消息
               </Link>
             </article>
           </div>

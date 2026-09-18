@@ -2,7 +2,7 @@
  * /news/<不存在的 slug> —— 找不到這篇。
  *
  * 兩種情況會走到這裡：網址打錯，或那篇被收回成草稿／刪掉了。
- * 不讓客戶撞牆：給「回房市新知」與「線上預約」兩條路。
+ * 不讓客戶撞牆：給「回房產消息」與「線上預約」兩條路。
  */
 import Link from "next/link";
 import SiteFooter from "@/app/_ui/SiteFooter";
@@ -22,7 +22,7 @@ export default function NewsPostNotFound() {
             </p>
             <div className={nw.ctaBtns} style={{ marginTop: 24 }}>
               <Link className={`${styles.btn} ${styles.btnPrimary}`} href="/news">
-                回房市新知
+                回房產消息
               </Link>
               <Link className={`${styles.btn} ${styles.btnOutline}`} href="/card/booking">
                 線上預約諮詢

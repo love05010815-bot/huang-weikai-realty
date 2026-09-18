@@ -63,7 +63,7 @@ const ITEMS: readonly NavItem[] = [
   // 2026-09-18 系統擁有者要的新分頁：房市最新消息與房產知識（文章在 /admin/posts 後台）。
   // ⚠️ 這是第七項。加完有照檔頭的規矩重掃過斷點：1045px 還是放得下，**斷點不用動**
   //    （量到的數字見 SiteNav.module.css）。要再加第八項就得再掃一次。
-  { label: "房市新知", kind: "route", href: "/news" },
+  { label: "房產消息", kind: "route", href: "/news" },
   { label: "預約諮詢", kind: "anchor", hash: "#booking" },
 ];
 

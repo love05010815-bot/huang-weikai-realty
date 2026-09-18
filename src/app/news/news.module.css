@@ -1,4 +1,4 @@
-/* /news —— 房市新知（列表 ＋ 內頁）
+/* /news —— 房產消息（列表 ＋ 內頁）
    版面骨架（header／section／container）沿用 home.module.css，
    顏色一律吃 `.page` 傳下來的 CSS 變數，後面都補 fallback。 */
 

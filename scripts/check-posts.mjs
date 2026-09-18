@@ -1,5 +1,5 @@
 /**
- * 房市新知的煙霧測試 —— 內文排版規則切得對不對。不碰資料庫、不連網。
+ * 房產消息的煙霧測試 —— 內文排版規則切得對不對。不碰資料庫、不連網。
  * 用法：node --experimental-strip-types scripts/check-posts.mjs
  * 改 src/lib/posts-text.ts 前後都跑一次。
  *

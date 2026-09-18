@@ -34,7 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: SITE_URL + "/map", lastModified, changeFrequency: "weekly", priority: 0.8 },
     // 影音。內容是系統擁有者自己拍的，Google 對「有原創影音的在地商家」評價較好
     { url: SITE_URL + "/videos", lastModified, changeFrequency: "weekly", priority: 0.8 },
-    // 2026-09-18 房市新知。原創文章是這個網站最容易長出搜尋流量的一塊，更新也最頻繁
+    // 2026-09-18 房產消息。原創文章是這個網站最容易長出搜尋流量的一塊，更新也最頻繁
     { url: SITE_URL + "/news", lastModified, changeFrequency: "weekly", priority: 0.8 },
   ];
 
@@ -53,7 +53,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     listings = [];
   }
 
-  // 房市新知的每一篇。⚠️ 只有已發佈的會進來（`getPublicPosts()` 自己過濾），
+  // 房產消息的每一篇。⚠️ 只有已發佈的會進來（`getPublicPosts()` 自己過濾），
   // 草稿列進 sitemap 的話 Google 會報「已提交的網址回傳 404」。
   // ⚠️ 刻意不跟上面的 listAllListings() 並行 —— 這個專案的連線池只有 3 條（P2024）。
   let posts: MetadataRoute.Sitemap = [];

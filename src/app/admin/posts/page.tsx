@@ -1,5 +1,5 @@
 /**
- * /admin/posts —— 房市新知（前台 `/news` 那一頁的文章）
+ * /admin/posts —— 房產消息（前台 `/news` 那一頁的文章）
  *
  * 這是「房產新聞 → 待產文案」的最後一段。文章有兩條路進來，都落在 `site_post`：
  *   ① `/admin/content` 改寫好的稿按「放到前台」（會帶 `?focus=<文章 id>` 跳到這裡）
@@ -50,7 +50,7 @@ export default async function PostsAdminPage({ searchParams }: { searchParams: P
           <div>
             <h1 className={styles.title}>
               <Icon name="news" size={25} />
-              房市新知
+              房產消息
             </h1>
             <p className={styles.subtitle} style={{ color: CIS.textMute }}>
               前台 <Link href="/news" target="_blank" style={{ color: CIS.blueSoft }}>/news</Link>{" "}

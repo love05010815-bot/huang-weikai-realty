@@ -233,7 +233,7 @@ function DraftPanel({
             放到前台
           </button>
           <span style={{ color: CIS.textMute, fontSize: 12.5 }}>
-            會先存成<b style={{ color: CIS.textSub }}>草稿</b>並跳到「房市新知」，確認過再發佈。
+            會先存成<b style={{ color: CIS.textSub }}>草稿</b>並跳到「房產消息」，確認過再發佈。
           </span>
         </div>
       ) : (
@@ -374,7 +374,7 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
   }
 
   /**
-   * 「放到前台」：把這一版文案的某一段存成 `/news` 的一篇**草稿**，然後跳到房市新知後台。
+   * 「放到前台」：把這一版文案的某一段存成 `/news` 的一篇**草稿**，然後跳到房產消息後台。
    *
    * 刻意不直接發佈 —— 模型寫的東西他一定要自己看過一遍（紅線、數字、口氣），
    * 而且還沒配封面圖。那一頁會帶 `?focus=` 自動展開這一篇。

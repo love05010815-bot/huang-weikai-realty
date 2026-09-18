@@ -1,5 +1,5 @@
 /**
- * /news —— 房市新知（房市最新消息 ＋ 房產知識）
+ * /news —— 房產消息（房市最新消息 ＋ 房產知識）
  *
  * 2026-09-18 系統擁有者要的：「前台要做一個頁面放房產最新消息及知識，
  * 後台做好文案後可以上傳到前台」。所以這頁**完全吃資料庫**（`site_post`），
@@ -31,7 +31,7 @@ import NewsBoard from "./NewsBoard";
  * 標題用客戶真的會搜的字：行政區名 ＋「房市」「房貸」這種詞。
  * 規矩見 `feedback_seo_use_search_terms`（正式名稱讓位給行政區名、行政區的下一層不進標題）。
  */
-const TITLE = `房市新知｜台中海線房市消息與房產知識｜沙鹿梧棲清水龍井`;
+const TITLE = `房產消息｜台中海線房市動態與房產知識｜沙鹿梧棲清水龍井`;
 const DESCRIPTION = `台中海線房仲${OWNER.name}整理的房市消息與房產知識：央行政策、房貸成數、稅費與買賣流程，用人話講一遍。沙鹿、梧棲、清水、龍井。`;
 
 export const metadata: Metadata = {
@@ -99,7 +99,7 @@ export default async function NewsPage() {
           <div className={`${styles.container} ${styles.center}`}>
             <SocialLinks variant="bar" align="center" />
             <span className={styles.eyebrow}>NEWS &amp; KNOW-HOW</span>
-            <h1 className={styles.sectionTitle}>房市新知</h1>
+            <h1 className={styles.sectionTitle}>房產消息</h1>
             <p className={styles.sectionDesc}>
               政策一變、成數一改，最先受影響的是正在看房的人。
               我把跟買賣真的有關的消息挑出來，用人話寫一遍，順便把該注意的地方講清楚。
