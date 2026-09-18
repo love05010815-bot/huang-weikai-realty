@@ -335,8 +335,15 @@ export type NewsFilter = {
   region?: NewsRegion;
   /** 指定狀態；"active" = 除了隱藏的全部 */
   status?: NewsStatus | "active";
+  /** 關鍵字：標題、來源、摘要、內文都找。給了就別再給 days，不然搜不到舊的 */
+  q?: string;
   limit?: number;
 };
+
+/** `%` 與 `_` 在 LIKE 裡是萬用字元，使用者打進去要當成一般字元。 */
+function escapeLike(s: string): string {
+  return s.replace(/[\\%_]/g, "\\$&");
+}
 
 /** 後台清單：海線 → 中部 → 全台，各區內新到舊。 */
 export async function listNews(filter: NewsFilter = {}): Promise<NewsRecord[]> {
@@ -355,6 +362,13 @@ export async function listNews(filter: NewsFilter = {}): Promise<NewsRecord[]> {
   } else if (filter.status) {
     where.push("n.status = ?");
     params.push(filter.status);
+  }
+  const q = filter.q?.trim();
+  if (q) {
+    // 內文也找 —— 他要找的常常是「某一篇講到沙鹿的」，那三個字多半在內文不在標題
+    where.push("(n.title LIKE ? OR n.source LIKE ? OR n.summary LIKE ? OR n.content LIKE ?)");
+    const like = `%${escapeLike(q)}%`;
+    params.push(like, like, like, like);
   }
   params.push(Math.min(1000, Math.max(1, filter.limit ?? 300)));
   const sql =

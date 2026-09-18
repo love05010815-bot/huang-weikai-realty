@@ -32,6 +32,24 @@ const MONETARY_NEEDS = [
   "信用管制", "限貸", "青安", "租", "坪", "預售", "都更", "危老", "重劃", "地價", "打炒房",
 ] as const;
 
+/**
+ * 外國央行的記號。出現任何一個就當成「不是台灣央行的事」。
+ *
+ * 2026-09-18 實測：「央行」無條件收，一天多 74 則，幾乎整批是日本央行升息、Fed、日圓、
+ * 台股、黃金代幣 —— 跟他的買方一點關係都沒有。但同一批裡「台灣央行走自己的路 利率連10凍」
+ * 這種他要。所以改成：**講台灣央行的就收，講外國央行的不收**，74 則降到 3、4 則。
+ */
+const FOREIGN_MONETARY = [
+  "日本", "日銀", "日央行", "日圓", "日股", "日經", "Fed", "聯準會", "美日", "美國", "美股", "美元", "美銀",
+  "歐洲", "歐元", "歐央行", "英國", "英央行", "韓國", "人民銀行", "人民幣", "道瓊", "那斯達克",
+] as const;
+
+/**
+ * 明講是台灣央行的記號。有這些就收，即使同一句話裡拿美日做對照
+ * （「美升息1碼…我央行利率連10凍」是他要的，不是外電）。
+ */
+const TAIWAN_MONETARY = ["台灣", "臺灣", "我央行", "楊金龍", "中央銀行", "國銀", "理監事", "新青安"] as const;
+
 export const NEWS_CONFIG = {
   /** 每天幾點（台北時間）之後才算「該抓了」。保溫排程每 10 分鐘會來問一次。 */
   startHour: 9,
@@ -83,18 +101,24 @@ export const NEWS_CONFIG = {
    * 為什麼不直接丟進 housingTerms：2026-09-15 實測「央行」單獨收，一次帶進 99 則，
    * 裡面 0 則跟房市有關 —— 美日央行、股匯市、經濟成長率全部進來，清單直接被淹掉。
    *
-   * 2026-09-18 系統擁有者指定「抓取規範要包含央行」，所以改成這種收法：
-   * 央行講到房貸、信用管制、不動產才算房產新聞；講美日升息機率的不算。
-   * 要改成無條件收（代價是每天多上百則股匯市新聞），把這裡的詞搬去 housingTerms 就好。
+   * 2026-09-18 系統擁有者兩次指定「抓取規範要包含央行」，所以改成這種收法：
+   *
+   *   `needs`   同篇提到房地產的字就收（央行講房貸、信用管制、不動產）。
+   *   `unless`  **只有「央行」「理監事」有這一條**：沒提到外國央行的記號就當成台灣央行，照收。
+   *             他要的是台灣央行對房市的動作（利率連10凍、信用管制），那種標題常常一個房字都沒有。
+   *             不給「升息／利率」這一條，是因為「毛利率」「獲利率」也含「利率」，會誤收財報新聞。
+   *
+   * 實測（2026-09-18，當天 345 則候選）：無條件收多 74 則、幾乎全是日本央行與 Fed；
+   * 加上 `unless` 之後只多 3、4 則，而他要的「台灣央行利率連10凍」有收到。
    */
   qualifiedTerms: [
-    { term: "央行", needs: MONETARY_NEEDS },
+    { term: "央行", needs: MONETARY_NEEDS, unless: FOREIGN_MONETARY, evenIf: TAIWAN_MONETARY },
+    { term: "理監事", needs: MONETARY_NEEDS, unless: FOREIGN_MONETARY, evenIf: TAIWAN_MONETARY },
     { term: "升息", needs: MONETARY_NEEDS },
     { term: "降息", needs: MONETARY_NEEDS },
     { term: "利率", needs: MONETARY_NEEDS },
     { term: "貸款", needs: MONETARY_NEEDS },
-    { term: "理監事", needs: MONETARY_NEEDS },
-  ],
+  ] as { term: string; needs: readonly string[]; unless?: readonly string[]; evenIf?: readonly string[] }[],
 
   /**
    * 貼連結手動加進來時，不准用程式去抓的站。

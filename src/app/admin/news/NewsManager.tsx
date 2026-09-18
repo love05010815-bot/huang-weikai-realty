@@ -27,6 +27,8 @@ type Props = {
   items: NewsRecord[];
   counts: Record<NewsRegion, number>;
   latestRun: NewsRunRecord | null;
+  /** 網址 `?q=` 帶進來的關鍵字。有值＝伺服器已經翻遍全部歷史找過了 */
+  searchQuery: string;
 };
 
 /** 「還沒排的」是預設 —— 排進待產文案的就從這裡消失，去那一頁看。 */
@@ -66,12 +68,13 @@ function chipStyle(tone: ChipTone): React.CSSProperties {
   return { background: c.bg, color: c.color, borderColor: c.border };
 }
 
-export default function NewsManager({ items, counts, latestRun }: Props) {
+export default function NewsManager({ items, counts, latestRun, searchQuery }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [region, setRegion] = useState<"all" | NewsRegion>("all");
-  const [status, setStatus] = useState<StatusFilter>("new");
-  const [query, setQuery] = useState("");
+  // 搜尋的時候預設看「全部」—— 要找的那篇很可能早就排掉或做完了，卡在「還沒排的」會找不到
+  const [status, setStatus] = useState<StatusFilter>(searchQuery ? "all" : "new");
+  const [query, setQuery] = useState(searchQuery);
   /** 哪一則的「要做成什麼？」選項打開著 */
   const [chooser, setChooser] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -83,7 +86,8 @@ export default function NewsManager({ items, counts, latestRun }: Props) {
     return items.filter((it) => {
       if (region !== "all" && it.region !== region) return false;
       if (status === "all" ? it.status === "hidden" : it.status !== status) return false;
-      if (q && !`${it.title} ${it.source} ${it.summary}`.includes(q)) return false;
+      // 內文也要比對 —— 伺服器搜尋是連內文一起找的，這裡只看標題會把它找到的又藏起來
+      if (q && !`${it.title} ${it.source} ${it.summary} ${it.content || ""}`.includes(q)) return false;
       return true;
     });
   }, [items, region, status, query]);
@@ -105,6 +109,12 @@ export default function NewsManager({ items, counts, latestRun }: Props) {
     setChooser(null);
     setMsg({ tone: "success", text: `已排進待產文案（${NEWS_LINE_LABEL[line]}），帶你過去…` });
     router.push(`/admin/content?focus=${encodeURIComponent(r.taskId)}`);
+  }
+
+  /** 送出關鍵字 → 換網址，讓伺服器翻遍全部歷史（含內文）重查一次。 */
+  function submitSearch(next: string) {
+    const q = next.trim();
+    startTransition(() => router.push(q ? `/admin/news?q=${encodeURIComponent(q)}` : "/admin/news"));
   }
 
   async function fetchNow() {
@@ -174,17 +184,39 @@ export default function NewsManager({ items, counts, latestRun }: Props) {
         </select>
         <input
           className={styles.input}
-          style={{ ...fieldStyle, width: 220, minHeight: 38 }}
-          placeholder="搜標題、來源"
+          style={{ ...fieldStyle, width: 240, minHeight: 38 }}
+          placeholder="關鍵字（標題、來源、內文都找）"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") submitSearch(query);
+            if (e.key === "Escape" && searchQuery) submitSearch("");
+          }}
         />
+        <button type="button" className={styles.btn} style={btnBase} disabled={pending || !query.trim()} onClick={() => submitSearch(query)}>
+          <Icon name="search" size={14} />
+          搜全部歷史
+        </button>
+        {searchQuery && (
+          <button type="button" className={styles.btn} style={btnBase} disabled={pending} onClick={() => submitSearch("")}>
+            <Icon name="close" size={14} />
+            清除
+          </button>
+        )}
         <span className={styles.spacer} />
         <button type="button" className={styles.btn} style={btnPrimary} onClick={fetchNow} disabled={fetching || pending}>
           <Icon name="refresh" size={15} />
           {fetching ? "抓取中…" : "立即抓取"}
         </button>
       </div>
+
+      {searchQuery && (
+        <div className={styles.notice} style={{ borderColor: CIS.blue, color: CIS.textSub, marginTop: 10 }}>
+          🔍 在<b>全部歷史</b>裡找「{searchQuery}」，標題、來源、摘要、內文都比對過，
+          找到 <b>{items.length}</b> 則{visible.length !== items.length ? `（目前篩選條件下顯示 ${visible.length} 則）` : ""}。
+          按「清除」回到最近 7 天的清單。
+        </div>
+      )}
 
       {msg && (
         <p className={styles.msg} style={{ color: CHIP[msg.tone].color }}>
@@ -217,11 +249,13 @@ export default function NewsManager({ items, counts, latestRun }: Props) {
 
       {visible.length === 0 && (
         <div className={styles.notice} style={{ borderColor: CIS.cardBorder, color: CIS.textMute }}>
-          {items.length === 0
-            ? "還沒有任何新聞。按右上角「立即抓取」抓第一批，或等明天早上自動抓。"
-            : status === "new"
-              ? "沒有還沒排的新聞了。排進去的在左側「待產文案」；要看全部把篩選改成「全部」。"
-              : "這個篩選條件底下沒有新聞。"}
+          {searchQuery && items.length === 0
+            ? `全部歷史裡都沒有提到「${searchQuery}」的新聞。換個關鍵字，或按「清除」回到清單。`
+            : items.length === 0
+              ? "還沒有任何新聞。按右上角「立即抓取」抓第一批，或等明天早上自動抓。"
+              : status === "new"
+                ? "沒有還沒排的新聞了。排進去的在左側「待產文案」；要看全部把篩選改成「全部」。"
+                : "這個篩選條件底下沒有新聞。"}
         </div>
       )}
 

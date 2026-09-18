@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
 /** 「立即抓取」是 server action，跑在這一頁的函式裡；抓取本身最多 48 秒。 */
 export const maxDuration = 60;
 
-export default async function NewsAdminPage() {
+export default async function NewsAdminPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   if (!process.env.AUTH_GOOGLE_ID || !process.env.AUTH_GOOGLE_SECRET) {
     return <AdminGateNotice kind="no_provider" />;
   }
@@ -32,6 +32,9 @@ export default async function NewsAdminPage() {
   if (!email) redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent("/admin/news")}`);
   if (!(await isCurrentUserAdmin())) return <AdminGateNotice kind="not_allowed" email={email} />;
 
+  const sp = await searchParams;
+  const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 60) : "";
+
   // 資料庫連不上不要丟 500 白畫面 —— 講清楚是資料庫的問題，你才知道要去看哪裡。
   let items: NewsRecord[] = [];
   let counts = { coast: 0, central: 0, national: 0 };
@@ -39,7 +42,8 @@ export default async function NewsAdminPage() {
   let loadError: string | null = null;
   try {
     [items, counts, latestRun] = await Promise.all([
-      listNews({ days: 7, limit: 500 }),
+      // 搜尋時不限天數、不限狀態 —— 他要找的多半是幾天前那篇，而且可能早就排掉或做完了
+      q ? listNews({ q, limit: 300 }) : listNews({ days: 7, limit: 500 }),
       countNewsByRegion(),
       latestNewsRun(),
     ]);
@@ -61,6 +65,7 @@ export default async function NewsAdminPage() {
               <b>海線 → 中部 → 全台</b>；標題或摘要要有房市、建案、租金這類字才會收。
               海線的新聞少，往回看 {NEWS_CONFIG.regionDays.coast} 天。看到想做的，按「拿去做」選
               <b>改寫成知識文章</b>或<b>翻拍成短影音</b>，就會排進左側的「待產文案」。
+              清單預設只顯示最近 7 天；<b>要找更早的就用搜尋</b>，那會翻遍全部歷史、連內文一起找。
             </p>
           </div>
         </div>
@@ -71,7 +76,7 @@ export default async function NewsAdminPage() {
           </div>
         )}
 
-        <NewsManager items={items} counts={counts} latestRun={latestRun} />
+        <NewsManager items={items} counts={counts} latestRun={latestRun} searchQuery={q} />
       </div>
     </main>
   );

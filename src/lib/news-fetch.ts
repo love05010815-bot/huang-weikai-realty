@@ -157,14 +157,24 @@ export function classifyRegion(item: Pick<FetchedNews, "title" | "summary" | "co
 /**
  * 標題或摘要有沒有房地產用語。
  *
- * 兩種算法：`housingTerms`／`topicTerms` 出現就算；`qualifiedTerms`（央行、升息、利率…）
- * 還要同篇提到房地產的字才算 —— 不然講美日升息的股匯市新聞會整批灌進來。
+ * 兩種算法：
+ *   ① `housingTerms`／`topicTerms` 出現就算。
+ *   ② `qualifiedTerms`（央行、升息、利率…）要嘛同篇提到房地產的字（`needs`），
+ *      要嘛沒有 `unless` 裡的記號（只用在央行／理監事：沒提到外國央行就當台灣央行）。
+ *      少了這一關，講日本央行升息的股匯市新聞一天會灌進 70 幾則。
  */
 export function isHousingNews(title: string, summary: string): boolean {
   const head = `${title} ${summary}`;
   const terms: readonly string[] = [...NEWS_CONFIG.housingTerms, ...NEWS_CONFIG.topicTerms];
   if (terms.some((t) => head.includes(t))) return true;
-  return NEWS_CONFIG.qualifiedTerms.some((q) => head.includes(q.term) && q.needs.some((n) => head.includes(n)));
+  return NEWS_CONFIG.qualifiedTerms.some((q) => {
+    if (!head.includes(q.term)) return false;
+    if (q.needs.some((n) => head.includes(n))) return true;
+    if (!q.unless) return false;
+    // 明講是台灣央行就收，即使同句拿美日做對照（「美升息1碼…我央行利率連10凍」）
+    if (q.evenIf?.some((t) => head.includes(t))) return true;
+    return !q.unless.some((x) => head.includes(x));
+  });
 }
 
 export function isGoogleLink(url: string): boolean {
