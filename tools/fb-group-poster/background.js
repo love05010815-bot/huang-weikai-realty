@@ -17,6 +17,9 @@
 const JOB_KEY = "fbq:job"; // chrome.storage.session：關瀏覽器就沒了（含廣告內容）
 const PROGRESS_KEY = "fbq:progress"; // chrome.storage.local：後台畫面讀這個
 const DAILY_KEY = "fbq:daily"; // chrome.storage.local：{ date, count } 每日已成功幾個社團
+const SCAN_KEY = "fbq:scan"; // chrome.storage.local：抓社團清單的狀態與結果（後台讀這個）
+const SCANJOB_KEY = "fbq:scanjob"; // chrome.storage.session：哪個分頁正在抓
+const JOINED_URL = "https://www.facebook.com/groups/joins/"; // Facebook 的「你的社團」清單
 
 const ADMIN_URLS = [
   "https://weikaihouse.com/admin/fb",
@@ -221,6 +224,65 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       await setProgress({ status: "stopped", finishedAt: Date.now() });
       await chrome.storage.session.remove(JOB_KEY);
       return { ok: true, hadJob: !!job };
+    });
+  }
+
+  /* ───────── 抓「我加入的社團」清單 ───────── */
+  // 🔴 只讀他自己已經加入的社團名稱與網址，存在他的瀏覽器給後台挑；不發文、不送去別的地方。
+
+  // 後台 → 開「你的社團」分頁開始抓
+  if (msg.type === "fbq:scan-start") {
+    return reply(async () => {
+      const locale = msg.locale === "en" ? "en" : "zh-TW";
+      await chrome.storage.local.set({ [SCAN_KEY]: { status: "scanning", found: 0, groups: [], at: Date.now() } });
+      const tab = await chrome.tabs.create({ url: JOINED_URL, active: true });
+      await chrome.storage.session.set({ [SCANJOB_KEY]: { tabId: tab.id, locale, startedAt: Date.now() } });
+      return { ok: true };
+    });
+  }
+
+  // 社團頁 content.js → 「我這個分頁是不是來抓清單的？」（別的 FB 分頁一律回 false，不打擾他逛 FB）
+  if (msg.type === "fbq:scan-current") {
+    return reply(async () => {
+      const j = (await chrome.storage.session.get(SCANJOB_KEY))[SCANJOB_KEY];
+      if (!j || !sender.tab || sender.tab.id !== j.tabId) return { ok: true, scanning: false };
+      return { ok: true, scanning: true, locale: j.locale || "zh-TW" };
+    });
+  }
+
+  if (msg.type === "fbq:scan-progress") {
+    return reply(async () => {
+      const cur = (await chrome.storage.local.get(SCAN_KEY))[SCAN_KEY] || {};
+      await chrome.storage.local.set({ [SCAN_KEY]: { ...cur, status: "scanning", found: Number(msg.found) || 0, at: Date.now() } });
+      return { ok: true };
+    });
+  }
+
+  if (msg.type === "fbq:scan-done") {
+    return reply(async () => {
+      const groups = (Array.isArray(msg.groups) ? msg.groups : [])
+        .slice(0, 1000)
+        .map((g) => ({ id: String(g.id || ""), name: String(g.name || ""), url: String(g.url || "") }))
+        .filter((g) => g.id && g.url);
+      await chrome.storage.local.set({
+        [SCAN_KEY]: { status: "done", found: groups.length, groups, error: msg.error ? String(msg.error) : "", stopped: !!msg.stopped, at: Date.now() },
+      });
+      await chrome.storage.session.remove(SCANJOB_KEY);
+      return { ok: true };
+    });
+  }
+
+  // 後台重新整理後要上次抓到的清單
+  if (msg.type === "fbq:scan-get") {
+    return reply(async () => ({ ok: true, scan: (await chrome.storage.local.get(SCAN_KEY))[SCAN_KEY] || null }));
+  }
+
+  // 後台挑完了 → 清掉暫存的清單
+  if (msg.type === "fbq:scan-clear") {
+    return reply(async () => {
+      await chrome.storage.local.remove(SCAN_KEY);
+      await chrome.storage.session.remove(SCANJOB_KEY);
+      return { ok: true };
     });
   }
 

@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <title>FBQ 社團解析自我測試</title>
+    <style>
+      body { font: 14px/1.6 system-ui, sans-serif; padding: 16px; }
+      #out { white-space: pre-wrap; font-family: ui-monospace, monospace; }
+      .ok { color: #0a7a3d; }
+      .bad { color: #c0261a; font-weight: 700; }
+      #fixture { display: none; }
+    </style>
+  </head>
+  <body>
+    <h1>FBQ 社團解析自我測試</h1>
+    <div id="out">跑不起來</div>
+
+    <!-- 仿 Facebook「你的社團」頁的結構：連結包著頭像與巢狀 span，名稱底下跟著成員數 -->
+    <div id="fixture">
+      <div role="navigation">
+        <a href="/groups/feed/"><span>社團首頁</span></a>
+        <a href="/groups/joins/"><span>你的社團</span></a>
+        <a href="/groups/discover/"><span>探索</span></a>
+      </div>
+
+      <div role="heading">你加入的社團</div>
+
+      <div role="list">
+        <div role="listitem">
+          <a href="/groups/123456789/?ref=group_browse" aria-label="台中海線房屋交流">
+            <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="" />
+            <div><span><span>台中海線房屋交流</span></span></div>
+            <div><span>1.2萬位成員 · 每天10則貼文</span></div>
+          </a>
+          <a href="/groups/123456789/" role="button"><span>查看社團</span></a>
+        </div>
+
+        <div role="listitem">
+          <a href="/groups/haixian.house/">
+            <div><span><span>梧棲清水沙鹿 買屋賣屋租屋</span></span></div>
+            <div><span>公開 · 8,921位成員</span></div>
+          </a>
+        </div>
+
+        <div role="listitem">
+          <!-- 只有頭像、名字在 aria-label（FB 有些卡片長這樣） -->
+          <a href="/groups/987654321" aria-label="台中房地產投資討論區">
+            <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="" />
+          </a>
+        </div>
+
+        <div role="listitem">
+          <!-- 連結裡只有「加入」按鈕字：不可以變成社團名稱 -->
+          <a href="/groups/555000111/" aria-label="沙鹿租屋網"><span>加入</span></a>
+        </div>
+
+        <div role="listitem">
+          <!-- 同一個社團在頁面上出現兩次，第二次名稱比較完整 -->
+          <a href="/groups/222333444/"><span>龍井</span></a>
+          <a href="/groups/222333444/"><span>龍井大肚買賣租屋資訊</span></a>
+        </div>
+
+        <div role="listitem">
+          <!-- 貼文／成員／活動連結，不是社團首頁，不可以收進來 -->
+          <a href="/groups/123456789/posts/998877/"><span>某某某的貼文</span></a>
+          <a href="/groups/123456789/members/"><span>成員</span></a>
+          <a href="/groups/123456789/events/"><span>活動</span></a>
+          <a href="https://www.facebook.com/groups/777888999/permalink/12345/"><span>永久連結</span></a>
+        </div>
+
+        <div role="listitem">
+          <!-- 絕對網址 + 追蹤參數 -->
+          <a href="https://www.facebook.com/groups/166600000/?ref=share&amp;mibextid=abc"><span>清水人的社團</span></a>
+        </div>
+      </div>
+
+      <div role="heading">建議的社團</div>
+      <div role="list">
+        <div role="listitem">
+          <a href="/groups/000111222/"><span>不該被抓進來的推薦社團Ａ</span></a>
+        </div>
+        <div role="listitem">
+          <a href="/groups/000111333/"><span>不該被抓進來的推薦社團Ｂ</span></a>
+        </div>
+      </div>
+    </div>
+
+    <script src="fb-selectors.js"></script>
+    <script>
+      (function () {
+        var out = document.getElementById("out");
+        var lines = [];
+        var pass = 0,
+          fail = 0;
+        function check(label, got, want) {
+          var ok = JSON.stringify(got) === JSON.stringify(want);
+          ok ? pass++ : fail++;
+          lines.push((ok ? "PASS " : "FAIL ") + label + (ok ? "" : "\n      得到 " + JSON.stringify(got) + "\n      應該 " + JSON.stringify(want)));
+        }
+
+        var fx = document.getElementById("fixture");
+        fx.style.display = "block"; // 先顯示，免得有人加上「看得見才算」的條件
+
+        // ① 沒有切推薦區：連推薦的兩個也會收進來
+        var all = FBQ.collectGroups(fx, { locale: "zh-TW" });
+        check("不切推薦區時的總數", all.length, 8);
+
+        // ② 切掉「建議的社團」以後
+        var head = FBQ.findSuggestedHeading(fx, "zh-TW");
+        check("找得到『建議的社團』標題", !!head, true);
+        var got = FBQ.collectGroups(fx, { stopAt: head, locale: "zh-TW" });
+        var ids = got.map(function (g) { return g.id; });
+        // 777888999 是 permalink（/groups/777888999/permalink/12345/），不是社團首頁 → 刻意不收
+        check("抓到的社團代號", ids, ["123456789", "haixian.house", "987654321", "555000111", "222333444", "166600000"]);
+        check("permalink 不會被當成社團", ids.indexOf("777888999"), -1);
+
+        var byId = {};
+        got.forEach(function (g) { byId[g.id] = g; });
+        check("名稱：巢狀 span", byId["123456789"] && byId["123456789"].name, "台中海線房屋交流");
+        check("名稱：短代號社團", byId["haixian.house"] && byId["haixian.house"].name, "梧棲清水沙鹿 買屋賣屋租屋");
+        check("名稱：只有 aria-label", byId["987654321"] && byId["987654321"].name, "台中房地產投資討論區");
+        check("名稱：「加入」不可以當名稱", byId["555000111"] && byId["555000111"].name, "沙鹿租屋網");
+        check("名稱：同社團取比較完整那個", byId["222333444"] && byId["222333444"].name, "龍井大肚買賣租屋資訊");
+        check("網址正規化（去掉 ?ref=share）", byId["166600000"] && byId["166600000"].url, "https://www.facebook.com/groups/166600000/");
+        check("推薦區的沒被收進來", ids.indexOf("000111222") === -1 && ids.indexOf("000111333") === -1, true);
+        check("成員數沒變成名稱", got.filter(function (g) { return /位成員|則貼文/.test(g.name); }).length, 0);
+
+        // ③ 功能頁不可以被當成社團
+        check("feed/joins/discover 不是社團", [FBQ.groupIdFromHref("/groups/feed/"), FBQ.groupIdFromHref("/groups/joins/"), FBQ.groupIdFromHref("/groups/discover/")], ["", "", ""]);
+        check("貼文連結不是社團首頁", FBQ.groupIdFromHref("/groups/123/posts/9/"), "");
+        check("成員頁不是社團首頁", FBQ.groupIdFromHref("/groups/123/members/"), "");
+        check("純代號連結可以", FBQ.groupIdFromHref("https://www.facebook.com/groups/123/?ref=x"), "123");
+        check("壞網址不會爆掉", FBQ.groupIdFromHref("javascript:void(0)"), "");
+        check("空值不會爆掉", FBQ.groupIdFromHref(null), "");
+
+        lines.push("");
+        lines.push(fail === 0 ? "全部通過（" + pass + " 項）" : fail + " 項失敗 / " + (pass + fail) + " 項");
+        out.textContent = lines.join("\n");
+        out.className = fail === 0 ? "ok" : "bad";
+        document.title = fail === 0 ? "ALL PASS (" + pass + ")" : "FAIL " + fail;
+      })();
+    </script>
+  </body>
+</html>

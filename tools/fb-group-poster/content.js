@@ -442,5 +442,102 @@
     await sleep(1500);
   }
 
-  run();
+  /* ───────── 抓「我加入的社團」清單 ───────── */
+
+  /** 捲到底讓 Facebook 載入更多。有些版型不是整頁在捲，而是內層容器在捲，兩個都推一下。 */
+  function scrollDown() {
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    let best = null;
+    for (const el of document.querySelectorAll("div")) {
+      if (el.clientHeight < 300 || el.scrollHeight < el.clientHeight + 200) continue;
+      const oy = getComputedStyle(el).overflowY;
+      if (oy !== "auto" && oy !== "scroll") continue;
+      if (!best || el.scrollHeight > best.scrollHeight) best = el;
+    }
+    if (best) best.scrollTop = best.scrollHeight;
+  }
+
+  /**
+   * 後台按「從 FB 抓我加入的社團」→ 背景開「你的社團」分頁 → 這支自動往下捲、把社團收集起來，
+   * 回傳後台讓他自己勾。
+   *
+   * 🔴 只讀他自己已經加入的社團名稱與網址，**不發文、不按任何 Facebook 的按鈕、不碰帳號設定**。
+   * 🔴 清單只回他自己的後台分頁（存在他的瀏覽器），不送去任何地方。
+   */
+  async function runScan(L) {
+    ensurePanel();
+    setTitle("FB 社團廣告助手（抓社團清單）");
+    let stopped = false;
+    buttons([
+      {
+        label: "停止抓取",
+        danger: true,
+        onClick: () => {
+          stopped = true;
+          log("停止中…", "");
+        },
+      },
+    ]);
+
+    if (/\/login|\/checkpoint/.test(location.pathname) || (document.querySelector('input[name="pass"]') || {}).offsetParent) {
+      log("看起來還沒登入 Facebook。請先登入，再回後台按一次「從 FB 抓我加入的社團」。", "fbq-bad");
+      await send("fbq:scan-done", { groups: [], error: "尚未登入" });
+      buttons([{ label: "關閉面板", onClick: () => panel.remove() }]);
+      return;
+    }
+
+    log("正在往下捲，收集你加入的社團…", "fbq-strong");
+    log("這段期間請讓這個分頁留在前景（Chrome 會凍住背景分頁的計時器）。", "");
+
+    const seen = new Map();
+    let idle = 0;
+    const deadline = Date.now() + 240000; // 最多 4 分鐘，免得 FB 一直有東西可捲就停不下來
+    while (!stopped && Date.now() < deadline && idle < 5) {
+      const head = FBQ.findSuggestedHeading(document, L); // 「建議的社團」以下是 FB 推薦的，不是他加入的
+      const before = seen.size;
+      for (const g of FBQ.collectGroups(document, { stopAt: head, locale: L })) {
+        const prev = seen.get(g.id);
+        if (!prev || prev.name.length < g.name.length) seen.set(g.id, g);
+      }
+      if (seen.size > before) {
+        idle = 0;
+        log("已找到 " + seen.size + " 個社團…");
+        send("fbq:scan-progress", { found: seen.size });
+      } else {
+        idle++; // 連續幾輪都沒有新的＝捲到底了
+      }
+      scrollDown();
+      await sleep(1400);
+    }
+
+    const list = [...seen.values()].sort((a, b) => String(a.name).localeCompare(String(b.name), "zh-Hant"));
+    if (!list.length) {
+      log("一個社團都沒抓到。確認這頁是「你的社團」清單（左邊選單的『你的社團』），或自己往下捲一點再按「再抓一次」。", "fbq-bad");
+    } else {
+      log("抓完了：" + list.length + " 個社團。" + (stopped ? "（你按了停止，可能還沒捲完）" : ""), "fbq-ok");
+      log("回後台的『社團』分頁挑要用的，勾好按「加入清單」。", "fbq-strong");
+    }
+    await send("fbq:scan-done", { groups: list, stopped });
+    buttons([
+      { label: "再抓一次", onClick: () => location.reload() },
+      { label: "關閉面板", onClick: () => panel.remove() },
+    ]);
+  }
+
+  /**
+   * 這個分頁是來抓社團清單的，還是來發文的？
+   * 背景是「先開分頁、再存任務」，理論上分頁載完時任務已經在了；但 FB 偶爾載很快，所以重試幾次。
+   */
+  async function boot() {
+    for (let i = 0; i < 3; i++) {
+      const s = await send("fbq:scan-current");
+      if (s && s.ok && s.scanning) return runScan(s.locale || "zh-TW");
+      if (!s || !s.ok) break;
+      if (!/\/groups\/joins/.test(location.pathname)) break; // 不是「你的社團」頁就不用等
+      await sleep(700);
+    }
+    return run();
+  }
+
+  boot();
 })();

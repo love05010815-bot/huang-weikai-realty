@@ -20,6 +20,12 @@ type Ad = { id: string; title: string; text: string; images: AdImage[]; updatedA
 type GroupResult = { status: string; message: string; at: string };
 type Group = { id: string; name: string; url: string; note: string; enabled: boolean; lastResult: GroupResult | null; identityIds?: string[] };
 /**
+ * 外掛從 Facebook「你的社團」抓回來的一筆（還沒進清單，等他勾）。
+ * ⚠️ 這裡的 id 是 **FB 的社團代號**，跟 Group.id（本機亂數）不是同一件事，不要混用。
+ */
+type ScanGroup = { id: string; name: string; url: string };
+type ScanState = { status: "scanning" | "done"; found?: number; groups?: ScanGroup[]; error?: string; stopped?: boolean; at?: number };
+/**
  * 發文身分：貼文最後會掛在誰名下。
  * kind="page" 粉專（同一個 FB 帳號底下切換，外掛可以自己切）
  * kind="account" 另一個 FB 帳號（要你自己換 Chrome 使用者／登入，工具只負責認人、不碰密碼）
@@ -171,17 +177,22 @@ export default function FbGroupManager() {
     };
   }, []);
 
-  // ── 進度：外掛透過 bridge → postMessage 傳回來 ──
+  // ── 進度／抓回來的社團：外掛透過 bridge → postMessage 傳回來 ──
   useEffect(() => {
     function onMsg(ev: MessageEvent) {
-      if (ev.source !== window || !ev.data || ev.data.type !== "fbq:progress") return;
-      const p: Progress | null = ev.data.progress;
-      setProgress(p);
-      setRunning(!!p && p.status === "running");
+      if (ev.source !== window || !ev.data) return;
+      if (ev.data.type === "fbq:progress") {
+        const p: Progress | null = ev.data.progress;
+        setProgress(p);
+        setRunning(!!p && p.status === "running");
+      } else if (ev.data.type === "fbq:scan-state") {
+        setScan((ev.data.scan as ScanState | null) || null);
+      }
     }
     window.addEventListener("message", onMsg);
-    // 重新整理後跟外掛要目前進度
+    // 重新整理後跟外掛要目前進度與上次抓到的社團
     window.postMessage({ type: "fbq:progress-get" }, window.location.origin);
+    window.postMessage({ type: "fbq:scan-get" }, window.location.origin);
     return () => window.removeEventListener("message", onMsg);
   }, []);
 
@@ -312,6 +323,73 @@ export default function FbGroupManager() {
     setGBulk(errors.join("\n"));
     showToast(`新增 ${added} 個${errors.length ? `，${errors.length} 行格式不對` : ""}`, errors.length ? "warn" : "ok");
   }
+  /* ── 從 FB 抓我加入的社團 ──
+   * 外掛在他自己的 Chrome 裡開「你的社團」分頁、往下捲、收集社團名稱與網址回傳，
+   * 這裡只負責讓他逐一勾選再加進清單。🔴 抓到的東西只留在瀏覽器，不進資料庫。 */
+  const [scan, setScan] = useState<ScanState | null>(null);
+  const [scanPick, setScanPick] = useState<Set<string>>(new Set());
+  const [scanFilter, setScanFilter] = useState("");
+  const scanning = scan?.status === "scanning";
+  const haveUrls = new Set(groups.map((g) => g.url));
+  const scanGroups = scan?.groups || [];
+  const scanNew = scanGroups.filter((s) => !haveUrls.has(normalizeGroupUrl(s.url)));
+  const scanShown = scanFilter.trim() ? scanGroups.filter((s) => s.name.toLowerCase().includes(scanFilter.trim().toLowerCase())) : scanGroups;
+
+  // 抓回新的一批 → 預設幫他勾「還沒在清單裡」的，已經有的不重複勾
+  const scanSeenAt = useRef<number>(0);
+  useEffect(() => {
+    if (!scan || scan.status !== "done" || !scan.groups || !scan.at || scanSeenAt.current === scan.at) return;
+    scanSeenAt.current = scan.at;
+    const have = new Set(groups.map((g) => g.url));
+    setScanPick(new Set(scan.groups.filter((s) => !have.has(normalizeGroupUrl(s.url))).map((s) => s.id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scan]);
+
+  function startScan() {
+    if (!extVersion) return showToast("沒偵測到外掛：請先安裝／更新「FB 社團廣告助手」，裝好後按 F5 重新整理這頁", "bad");
+    setScan({ status: "scanning", found: 0 });
+    setScanPick(new Set());
+    window.postMessage({ type: "fbq:scan-start", locale: settings.locale }, window.location.origin);
+    showToast("已開一個 Facebook 分頁去抓，讓它留在前景跑完", "ok");
+  }
+  function clearScan() {
+    window.postMessage({ type: "fbq:scan-clear" }, window.location.origin);
+    setScan(null);
+    setScanPick(new Set());
+    setScanFilter("");
+  }
+  function importScanned() {
+    const picked = scanGroups.filter((s) => scanPick.has(s.id));
+    if (!picked.length) return showToast("沒有勾選任何社團", "warn");
+    const next = [...groups];
+    const newChecked = new Set(checked);
+    let added = 0;
+    let dup = 0;
+    for (const s of picked) {
+      const url = normalizeGroupUrl(s.url);
+      if (!url) continue;
+      if (next.some((g) => g.url === url)) {
+        dup++;
+        continue;
+      }
+      const g: Group = {
+        id: uid(),
+        name: s.name.trim() || url.replace("https://www.facebook.com/groups/", "").replace(/\/$/, ""),
+        url,
+        note: "從 FB 抓回來的",
+        enabled: true,
+        lastResult: null,
+      };
+      next.push(g);
+      newChecked.add(g.id);
+      added++;
+    }
+    setGroups(next);
+    setChecked(newChecked);
+    setScanPick(new Set());
+    showToast(`已加入 ${added} 個${dup ? `，${dup} 個本來就在清單裡` : ""}`, added ? "ok" : "warn");
+  }
+
   function updateGroup(id: string, patch: Partial<Group>) {
     setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, ...patch } : g)));
   }
@@ -695,6 +773,80 @@ export default function FbGroupManager() {
       {/* ── 社團清單 ── */}
       {tab === "groups" && (
         <>
+          <section className={styles.card}>
+            <h2 className={styles.h2}>從 FB 抓我加入的社團</h2>
+            <p className={styles.hint}>
+              按下去會開一個分頁到 Facebook 的「你的社團」，外掛自動往下捲，把你<b>已經加入</b>的社團名稱與網址收集回來，你在這裡逐一勾選要用哪些。
+              只讀名稱與網址，<b>不會發文、不會加入或退出任何社團</b>；抓回來的清單只留在你自己的瀏覽器。
+            </p>
+            {!extVersion && <p className={styles.warnText}>沒偵測到外掛。先到 chrome://extensions 安裝／更新「FB 社團廣告助手」，回來按 F5 再試。</p>}
+            <div className={styles.actions}>
+              <button type="button" className={styles.run} onClick={startScan} disabled={scanning || !extVersion}>
+                {scanning ? "抓取中…" : "從 FB 抓我加入的社團"}
+              </button>
+              {scan && !scanning && (
+                <button type="button" className={styles.btnSm} onClick={clearScan}>
+                  清掉這次結果
+                </button>
+              )}
+            </div>
+            {scanning && (
+              <p className={styles.hint}>
+                抓取中…已找到 <b>{scan?.found ?? 0}</b> 個。請讓那個 Facebook 分頁留在前景，捲完會自己停。
+              </p>
+            )}
+            {scan?.status === "done" && scan.error && <p className={styles.warnText}>抓不到：{scan.error}</p>}
+            {scan?.status === "done" && !scan.error && !scanGroups.length && (
+              <p className={styles.warnText}>一個社團都沒抓到。到那個分頁確認開的是「你的社團」清單，自己往下捲一點，再按面板的「再抓一次」。</p>
+            )}
+            {scan?.status === "done" && !!scanGroups.length && (
+              <>
+                <p className={styles.hint}>
+                  抓到 <b>{scanGroups.length}</b> 個，其中 <b>{scanNew.length}</b> 個還沒在你的清單裡{scan.stopped ? "（你按了停止，可能還沒捲完）" : ""}。
+                  勾好按下面加入；已經在清單裡的會標「已有」，不會重複加。
+                </p>
+                <input className={styles.input} value={scanFilter} onChange={(e) => setScanFilter(e.target.value)} placeholder="篩選名稱…（例如：房屋）" />
+                <div className={styles.actions}>
+                  <button type="button" className={styles.btnSm} onClick={() => setScanPick(new Set(scanShown.filter((s) => !haveUrls.has(normalizeGroupUrl(s.url))).map((s) => s.id)))}>
+                    勾選畫面上還沒加入的
+                  </button>
+                  <button type="button" className={styles.btnSm} onClick={() => setScanPick(new Set())}>
+                    全部不勾
+                  </button>
+                </div>
+                <div className={`${styles.checklist} ${styles.scanList}`}>
+                  {scanShown.map((s) => {
+                    const have = haveUrls.has(normalizeGroupUrl(s.url));
+                    return (
+                      <label key={s.id} className={`${styles.checkItem} ${have ? styles.scanHave : ""}`} title={s.url}>
+                        <input
+                          type="checkbox"
+                          disabled={have}
+                          checked={!have && scanPick.has(s.id)}
+                          onChange={(e) =>
+                            setScanPick((p) => {
+                              const n = new Set(p);
+                              if (e.target.checked) n.add(s.id);
+                              else n.delete(s.id);
+                              return n;
+                            })
+                          }
+                        />
+                        <span className={styles.ciName}>{s.name}</span>
+                        {have && <span className={styles.scanTag}>已有</span>}
+                      </label>
+                    );
+                  })}
+                </div>
+                {!scanShown.length && <p className={styles.hint}>沒有符合「{scanFilter}」的社團。</p>}
+                <div className={styles.actions}>
+                  <button type="button" className={styles.run} onClick={importScanned} disabled={!scanPick.size}>
+                    加入勾選的 {scanPick.size} 個社團
+                  </button>
+                </div>
+              </>
+            )}
+          </section>
           <div className={styles.grid2}>
             <section className={styles.card}>
               <h2 className={styles.h2}>新增社團</h2>
