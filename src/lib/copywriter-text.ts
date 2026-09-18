@@ -60,6 +60,39 @@ function splitSections(text: string): Section[] {
   return sections;
 }
 
+/**
+ * 把某個平台那一段的內文挖出來（「放到前台」用）。
+ *
+ * `heading` 給 `PLATFORM_RULES` 裡的 heading（例如 "Facebook"）；
+ * 比對方式跟字數檢查同一套（`normalizeHeading`），所以模型把標題寫成
+ * 「## Facebook 版」「## facebook」也認得出來。找不到就回空字串。
+ */
+export function draftSection(text: string, heading: string): string {
+  const want = normalizeHeading(heading);
+  const sec = splitSections(text).find((s) => normalizeHeading(s.heading).includes(want));
+  return sec ? sec.body.trim() : "";
+}
+
+/**
+ * 「## 標題候選」那一段列出來的標題（最多 3 個）。
+ *
+ * 模型寫成 `- 標題`、`1. 標題`、`* 標題` 都收；沒有那一段就回空陣列。
+ */
+export function draftTitleCandidates(text: string): string[] {
+  const body = draftSection(text, "標題候選");
+  if (!body) return [];
+  return body
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)、])\s*/, "").trim())
+    // 去掉模型偶爾會加的尾巴字數註記與外層引號。
+    // ⚠️ 順序不能反 —— 先剝引號的話，「…（18字）」的右括號會被當成引號剝掉，
+    //    字數註記就match不到了，標題會留著「（18字」這個尾巴。
+    .map((line) => line.replace(/\s*[（(]\s*\d+\s*字\s*[）)]\s*$/, "").trim())
+    .map((line) => line.replace(/^[「"'（(]|[」"'）)]$/g, "").trim())
+    .filter((line) => line.length > 0 && line.length <= 40)
+    .slice(0, 3);
+}
+
 function analyzeArticle(text: string): PlatformStat[] {
   const sections = splitSections(text);
   return PLATFORM_RULES.map((rule) => {

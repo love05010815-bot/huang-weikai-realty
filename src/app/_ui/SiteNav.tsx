@@ -43,7 +43,7 @@ import styles from "./SiteNav.module.css";
  */
 type NavItem =
   | { label: string; kind: "anchor"; hash: string }
-  | { label: string; kind: "route"; href: "/about" | "/map" | "/videos" };
+  | { label: string; kind: "route"; href: "/about" | "/map" | "/videos" | "/news" };
 
 const ITEMS: readonly NavItem[] = [
   // 🚫 2026-09-07 系統擁有者：「首頁上方的關於我請移除」—— 導覽列不再有「關於我」。
@@ -60,6 +60,10 @@ const ITEMS: readonly NavItem[] = [
   // 2026-08-25 系統擁有者拍板：**影音不放首頁下滑區塊，做成獨立分頁**，跟「海線建案一覽」
   // 一樣。所以這是 route 不是 #videos 錨點 —— 首頁上沒有那個區塊了。
   { label: "影音專區", kind: "route", href: "/videos" },
+  // 2026-09-18 系統擁有者要的新分頁：房市最新消息與房產知識（文章在 /admin/posts 後台）。
+  // ⚠️ 這是第七項。加完有照檔頭的規矩重掃過斷點：1045px 還是放得下，**斷點不用動**
+  //    （量到的數字見 SiteNav.module.css）。要再加第八項就得再掃一次。
+  { label: "房市新知", kind: "route", href: "/news" },
   { label: "預約諮詢", kind: "anchor", hash: "#booking" },
 ];
 

@@ -106,8 +106,28 @@ ok(mp.includes(src.text), "原文有帶進去", mp.includes(src.text), "true");
 ok(C.manualPrompt("article", src).includes(C.articlePrompt(src)), "知識文章那條也對", "對", "對");
 ok(C.MANUAL_MODEL.length <= 64, "手動貼回的 model 標籤塞得進 VARCHAR(64)", C.MANUAL_MODEL, "<=64");
 
+console.log("=== H 放到前台要挖出來的那一段 ===");
+const sample = [
+  "## 標題候選",
+  "- 第2戶房貸放寬到7成，換屋族先算這一筆（18字）",
+  "1. 央行連10凍，成數為什麼變了？",
+  "",
+  "## YouTube",
+  "yt 內容",
+  "",
+  "## Facebook",
+  "fb 第一行",
+  "fb 第二行",
+].join("\n");
+ok(T.draftSection(sample, "Facebook") === "fb 第一行\nfb 第二行", "挖得出 Facebook 那一段", JSON.stringify(T.draftSection(sample, "Facebook")), '"fb 第一行\\nfb 第二行"');
+ok(T.draftSection(sample, "LINE VOOM") === "", "沒有那一段回空字串（畫面才好報錯）", `"${T.draftSection(sample, "LINE VOOM")}"`, '""');
+const cands = T.draftTitleCandidates(sample);
+ok(cands[0] === "第2戶房貸放寬到7成，換屋族先算這一筆", "標題候選去掉 - 與字數註記", cands[0], "第2戶房貸…先算這一筆");
+ok(cands[1] === "央行連10凍，成數為什麼變了？", "1. 開頭的也收", cands[1], "央行連10凍…");
+ok(T.draftTitleCandidates("## Facebook\n沒有標題候選") .length === 0, "沒有標題候選段回空陣列", T.draftTitleCandidates("## Facebook\n沒有標題候選").length, 0);
+
 if (process.argv.includes("--live")) {
-  console.log("=== G 真的叫一次 OpenAI（短影音）===");
+  console.log("=== I 真的叫一次 OpenAI（短影音）===");
   const L = await import("../src/lib/copywriter.ts");
   if (!L.isCopywriterConfigured()) {
     console.log("   環境沒有 OPENAI_API_KEY，略過（用 node --env-file=.env.local …）");

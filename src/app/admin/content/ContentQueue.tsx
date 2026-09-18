@@ -15,6 +15,13 @@
  * 做完按「完成」；不做了按「退回」—— 退回會把這條線（連同文案）刪掉，
  * 新聞沒有別條線就回到房產新聞的「還沒排的」。
  *
+ * ## 放到前台（2026-09-18 加）
+ *
+ * 知識文章那條線的每一版文案底下有一顆「放到前台」：挑一個平台的版本（預設 Facebook，
+ * 那版最像一篇文章），按下去會存成 `/news` 的一篇**草稿**、跳到 `/admin/posts`。
+ * 刻意不直接發佈 —— 模型寫的東西他一定要自己看過一遍，而且還沒配封面圖。
+ * 短影音那條線不走這裡（口播稿不是給人讀的文章），拍好之後上 `/admin/videos`。
+ *
  * 從房產新聞按過來時網址帶 `?focus=<題的 id>`：那一筆會框起來、捲到畫面中間，
  * 而且狀態篩選會自動切到它所在的那一邊（不然剛完成的題按過來會「找不到」）。
  *
@@ -25,10 +32,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { CHIP, CIS, type ChipTone } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
-import { COPYWRITER, manualPrompt } from "@/config/copywriter";
+import { COPYWRITER, PLATFORM_RULES, manualPrompt } from "@/config/copywriter";
 import { NEWS_REGION_LABEL, type NewsRegion } from "@/config/news";
 import { generateDraftAction, removeNewsTaskAction, saveManualDraftAction, setNewsTaskStatusAction } from "@/lib/actions/news";
-import { analyzeDraft, type DraftStats } from "@/lib/copywriter-text";
+import { savePostAction } from "@/lib/actions/posts";
+import { analyzeDraft, draftSection, draftTitleCandidates, type DraftStats } from "@/lib/copywriter-text";
 import {
   NEWS_LINES,
   NEWS_LINE_LABEL,
@@ -127,22 +135,31 @@ function StatsLine({ stats }: { stats: DraftStats }) {
   );
 }
 
+/** 「放到前台」預設帶哪一段。Facebook 那版是六個平台裡最接近「一篇文章」的（長、有段落、不是標籤牆）。 */
+const DEFAULT_PUBLISH_SECTION = "Facebook";
+
 function DraftPanel({
   task,
   list,
   selectedId,
   onSelect,
   onCopy,
+  onPublish,
+  busy,
 }: {
   task: NewsTaskRecord;
   list: NewsDraftRecord[];
   selectedId: string | undefined;
   onSelect: (id: string) => void;
   onCopy: (d: NewsDraftRecord) => void;
+  /** 把這一版的某一段放到前台 `/news`（會先存成草稿） */
+  onPublish: (d: NewsDraftRecord, section: string) => void;
+  busy: boolean;
 }) {
   const draft = list.find((d) => d.id === selectedId) ?? list[0];
   const version = list.length - list.indexOf(draft);
   const stats = useMemo(() => analyzeDraft(task.line, draft.content), [task.line, draft.content]);
+  const [section, setSection] = useState(DEFAULT_PUBLISH_SECTION);
   const fieldStyle: React.CSSProperties = { background: CIS.card, borderColor: CIS.cardBorder, color: CIS.text };
   return (
     <div style={{ marginTop: 12, padding: "12px 14px", border: `1px solid ${CIS.cardBorder}`, borderRadius: 10, background: CIS.bgSoft }}>
@@ -175,6 +192,56 @@ function DraftPanel({
         </p>
       )}
       <StatsLine stats={stats} />
+
+      {/* ---------- 放到前台 ----------
+          知識文章這條線才有。短影音那條線的產出是口播稿，不是給人讀的文章 ——
+          拍好之後走「影音」後台（/admin/videos），不要硬塞進 /news。 */}
+      {task.line === "article" ? (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+            marginTop: 10,
+            paddingTop: 10,
+            borderTop: `1px solid ${CIS.divider}`,
+          }}
+        >
+          <span style={{ color: CIS.textMute, fontSize: 13.5 }}>放到前台，用</span>
+          <select
+            className={styles.select}
+            style={{ ...fieldStyle, width: "auto", minHeight: 32, fontSize: 13 }}
+            value={section}
+            onChange={(e) => setSection(e.target.value)}
+          >
+            {PLATFORM_RULES.map((p) => (
+              <option key={p.key} value={p.heading}>
+                {p.heading} 那一版
+              </option>
+            ))}
+            <option value="__all__">整篇全部（六個平台都帶過去）</option>
+          </select>
+          <button
+            type="button"
+            className={styles.btn}
+            style={{ borderColor: CHIP.success.border, color: CHIP.success.color }}
+            disabled={busy}
+            onClick={() => onPublish(draft, section)}
+          >
+            <Icon name="rocket" size={14} />
+            放到前台
+          </button>
+          <span style={{ color: CIS.textMute, fontSize: 12.5 }}>
+            會先存成<b style={{ color: CIS.textSub }}>草稿</b>並跳到「房市新知」，確認過再發佈。
+          </span>
+        </div>
+      ) : (
+        <p className={styles.msg} style={{ color: CIS.textMute, marginTop: 10 }}>
+          短影音拍好之後放到「影音」後台（/admin/videos），前台會出現在影音專區。
+        </p>
+      )}
+
       <pre style={{ ...preStyle, background: CIS.card, maxHeight: 720 }}>{draft.content}</pre>
     </div>
   );
@@ -304,6 +371,46 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
     setSelectedDraft((s) => ({ ...s, [t.id]: draft.id }));
     setMsg({ tone: "success", text: `寫好了，花 ${Math.max(1, Math.round(draft.ms / 1000))} 秒。` });
     startTransition(() => router.refresh());
+  }
+
+  /**
+   * 「放到前台」：把這一版文案的某一段存成 `/news` 的一篇**草稿**，然後跳到房市新知後台。
+   *
+   * 刻意不直接發佈 —— 模型寫的東西他一定要自己看過一遍（紅線、數字、口氣），
+   * 而且還沒配封面圖。那一頁會帶 `?focus=` 自動展開這一篇。
+   *
+   * 標題優先用文案裡的「標題候選」第一個；沒有就用原新聞標題（他再自己改）。
+   */
+  async function publishToSite(t: NewsTaskRecord, d: NewsDraftRecord, section: string) {
+    const body = (section === "__all__" ? d.content : draftSection(d.content, section)).trim();
+    if (!body) {
+      setMsg({
+        tone: "danger",
+        text: `這一版裡找不到「${section}」那一段（ChatGPT 可能沒照「## 平台名」的格式寫）。改選「整篇全部」，或到前台後台自己貼。`,
+      });
+      return;
+    }
+    setBusyId(t.id);
+    const res = await savePostAction(null, {
+      // 從新聞改寫來的多半是政策／成數／稅制異動，先歸「房市快訊」，他在編輯頁可以改成「房產知識」
+      category: "news",
+      title: draftTitleCandidates(d.content)[0] || t.news.title,
+      summary: "",
+      body,
+      coverUrl: "",
+      sourceUrl: t.news.url,
+      sourceName: t.news.source,
+      status: "draft",
+      pinned: false,
+      publishedAt: "",
+      taskId: t.id,
+    });
+    setBusyId(null);
+    if (!res.ok || !res.id) {
+      setMsg({ tone: "danger", text: res.error || "放不上去" });
+      return;
+    }
+    router.push(`/admin/posts?focus=${res.id}`);
   }
 
   function copySource(t: NewsTaskRecord) {
@@ -560,6 +667,8 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
                     selectedId={selectedDraft[t.id]}
                     onSelect={(id) => setSelectedDraft((s) => ({ ...s, [t.id]: id }))}
                     onCopy={(d) => void copyText(d.content, "已複製整份文案。")}
+                    onPublish={(d, section) => void publishToSite(t, d, section)}
+                    busy={busy}
                   />
                 )}
               </div>

@@ -41,6 +41,8 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { href: "/admin/news", label: "房產新聞", icon: "news" },
       // 房產新聞按「拿去做」排進來的題（知識文章／短影音兩條線），他在這裡改寫、拍片；表 news_task。
       { href: "/admin/content", label: "待產文案", icon: "list" },
+      // 改寫好的稿按「放到前台」就會出現在這裡，發佈後客戶在 /news 看得到；表 site_post。
+      { href: "/admin/posts", label: "房市新知", icon: "file" },
       // 貼上 591 同社區在賣的物件，產出可以傳給屋主的競品分析。純前端、不進資料庫。
       { href: "/admin/compare", label: "競品分析", icon: "radar" },
       // 貼上愛屋型錄／LINE 物件文字，一鍵交給 Chrome 外掛填進 591／樂屋網的刊登表單。純前端、不進資料庫。
@@ -61,6 +63,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { href: "/listings", label: "精選好案", icon: "building", external: true },
       { href: "/match", label: "自動配對找房", icon: "handshake", external: true },
       { href: "/videos", label: "影音專區", icon: "video", external: true },
+      { href: "/news", label: "房市新知", icon: "news", external: true },
     ],
   },
 ];
