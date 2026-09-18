@@ -209,6 +209,36 @@ function buildingSvg(bg: string, ink: string, mine: boolean, on: boolean) {
 }
 
 /**
+ * 星星本體在 PIN_VB 畫布裡的中心點（給沒有建案的單獨星號當 iconAnchor 用）。
+ * 算法：STAR_POINTS 五個外角的平均值，跟五個內角的平均值算出來是同一點，
+ * 換算成小數就是 (24.5, 9.5) —— 不是畫布中心，因為這顆星星原本是畫在
+ * 建案圖釘右上角當徽章，偏的。
+ */
+const STAR_CENTER: [number, number] = [24.5, 9.5];
+
+/**
+ * 沒有建案的在售物件星號（2026-09-18 改版）。
+ *
+ * 一開始（2026-09-17）用字型 ★ 加 CSS text-shadow 做白色光暈，系統擁有者看了
+ * 線上版覺得跟建案圖釘右上角「我有物件在售」那顆徽章（buildingSvg() 裡用
+ * STAR_POINTS 畫的）不是同一個語彙——「星號跟其他在售物件一樣的樣式顏色即可」。
+ * 這裡直接共用同一份 STAR_POINTS，畫法也照抄 buildingSvg() 的星星那兩層
+ * （白色描邊光暈＋金色本體），只是拿掉底下的大樓、讓星星自己站在畫布正中。
+ * 顏色改一邊要兩邊一起改（見 Map.module.css 的 .lmStarMine 那則提醒）。
+ */
+function soloStarSvg(on: boolean) {
+  const scale = on ? 1.28 : 1;
+  const w = Math.round(PIN_VB.w * scale);
+  const h = Math.round(PIN_VB.h * scale);
+  const ring = on ? "#2FA894" : "#fff";
+  return `
+<svg width="${w}" height="${h}" viewBox="0 0 ${PIN_VB.w} ${PIN_VB.h}" xmlns="http://www.w3.org/2000/svg">
+  <polygon points="${STAR_POINTS}" fill="none" stroke="${ring}" stroke-width="3.4" stroke-linejoin="round"/>
+  <polygon points="${STAR_POINTS}" fill="#FFC107" stroke="#8A5B00" stroke-width="0.9" stroke-linejoin="round"/>
+</svg>`.trim();
+}
+
+/**
  * 同座標的建案散開，不然疊在一起點不到。
  * 用 index 決定角度，同樣的資料每次都散在同樣的位置（不用亂數，畫面才不會跳）。
  */
@@ -605,14 +635,22 @@ export default function LeafletMap({
        ⚠️ 不做 spread（錯開重疊）也不進 cluster：數量少，而且它們是「這一戶就在這個點」，
           被挪開或收進膠囊反而失真。key 加前綴，免得跟建案 id 撞。 */
     for (const s of solo) {
+      const on = s.id === selectedSoloRef.current;
+      const scale = on ? 1.28 : 1;
+      const w = Math.round(PIN_VB.w * scale);
+      const h = Math.round(PIN_VB.h * scale);
       const star = L.marker([s.lat, s.lng], {
         title: s.title,
         zIndexOffset: 900,
         icon: L.divIcon({
-          className: s.id === selectedSoloRef.current ? styles.lmStarOn : styles.lmStar,
-          html: "★",
-          iconSize: [28, 28],
-          iconAnchor: [14, 14],
+          // .lmPin 只是壓掉 divIcon 預設的白底外框，跟建案圖釘共用同一顆重置——
+          // 星星本身的樣式全部畫進 soloStarSvg() 的 SVG 裡。
+          className: styles.lmPin,
+          html: soloStarSvg(on),
+          iconSize: [w, h],
+          // 錨點對齊星星本體的中心（STAR_CENTER），不是畫布中心——
+          // 這顆星星原本是畫布右上角的徽章，畫布本身偏的。
+          iconAnchor: [(STAR_CENTER[0] / PIN_VB.w) * w, (STAR_CENTER[1] / PIN_VB.h) * h],
         }),
       })
         .addTo(map)

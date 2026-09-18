@@ -2222,30 +2222,8 @@
   }
 }
 
-/* ── 沒有建案的在售物件：單獨一顆星號（2026-09-17）──
-   用文字的 ★ 不畫 SVG：它不需要像建案圖釘那樣塞大樓與徽章，
-   而且字型的星形在各裝置上都畫得出來。白色描邊是為了壓在淺色圖磚上也看得見。 */
-.lmStar,
-.lmStarOn {
-  font-size: 26px;
-  line-height: 28px;
-  text-align: center;
-  color: #ffc107;
-  cursor: pointer;
-  text-shadow:
-    0 0 3px #fff,
-    0 0 3px #fff,
-    0 0 3px #fff,
-    0 1px 2px rgba(0, 0, 0, 0.45);
-}
-
-/* 選中的放大一點、描邊換成主色，跟建案圖釘選中時同一個語彙 */
-.lmStarOn {
-  font-size: 32px;
-  line-height: 28px;
-  text-shadow:
-    0 0 3px #2fa894,
-    0 0 4px #2fa894,
-    0 0 6px #fff,
-    0 1px 2px rgba(0, 0, 0, 0.45);
-}
+/* ── 沒有建案的在售物件：單獨一顆星號 ──
+   2026-09-17 用文字的 ★ 加 text-shadow 做過一版；2026-09-18 系統擁有者看了線上版
+   覺得跟建案圖釘右上角「我有物件在售」那顆徽章不是同一個語彙，改成跟徽章共用
+   同一份 SVG（LeafletMap.tsx 的 soloStarSvg()，畫法抄 buildingSvg() 的星星）。
+   樣式全部畫在 SVG 裡、divIcon 的重置沿用 .lmPin，這裡不用再放規則。 */
