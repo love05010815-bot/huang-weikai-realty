@@ -18,6 +18,8 @@ export type AdminViewing = {
   code: string;
   listingId: string;
   listingTitle: string;
+  /** 這筆預約包含的全部物件標題；一次預約多間時後台要看得到是哪幾間 */
+  listingTitles: string[];
   listingArea: string;
   listingPrice: number;
   name: string;
@@ -194,11 +196,26 @@ export default function MatchAdmin({
                     <b>{v.code}</b>
                   </td>
                   <td>
-                    {v.listingTitle}
-                    <div style={{ color: CIS.textMute, fontSize: 12 }}>
-                      {v.listingArea}
-                      {v.listingPrice ? ` · ${v.listingPrice.toLocaleString("zh-TW")} 萬` : ""}
-                    </div>
+                    {v.listingTitles.length > 1 ? (
+                      <>
+                        <Chip tone="info">共 {v.listingTitles.length} 間</Chip>
+                        <div style={{ marginTop: 4, color: CIS.textSub, fontSize: 12, lineHeight: 1.7 }}>
+                          {v.listingTitles.map((t, i) => (
+                            <div key={`${t}-${i}`}>
+                              {i + 1}. {t}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {v.listingTitle}
+                        <div style={{ color: CIS.textMute, fontSize: 12 }}>
+                          {v.listingArea}
+                          {v.listingPrice ? ` · ${v.listingPrice.toLocaleString("zh-TW")} 萬` : ""}
+                        </div>
+                      </>
+                    )}
                   </td>
                   <td>{v.preferredAt}</td>
                   <td>

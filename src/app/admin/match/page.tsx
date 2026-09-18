@@ -16,7 +16,7 @@ import { CIS } from "@/app/admin/_components/cis";
 import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
 import { getAdminCheckArgs, isCurrentUserAdmin } from "@/lib/admin-check";
 import { describePreference } from "@/lib/match/matcher";
-import { countListings, listBuyersForAdmin, listListingsForAdmin, listViewingsForAdmin } from "@/lib/match/store";
+import { countListings, getListings, listBuyersForAdmin, listListingsForAdmin, listViewingsForAdmin } from "@/lib/match/store";
 import { getLastSyncResult, type SyncSummary } from "@/lib/match/sync";
 import MatchAdmin, { type AdminBuyer, type AdminListing, type AdminViewing } from "./MatchAdmin";
 
@@ -38,11 +38,17 @@ export default async function MatchAdminPage() {
   let lastSync: SyncSummary | null = null;
   let loadError: string | null = null;
   try {
-    viewings = (await listViewingsForAdmin(300)).map((v) => ({
+    const rawViewings = await listViewingsForAdmin(300);
+    // 一筆預約可能包含好幾間，標題一次撈齊（一個 IN 查詢，不要每筆各問一次）
+    const titleById = new Map(
+      (await getListings([...new Set(rawViewings.flatMap((v) => v.listingIds))])).map((l) => [l.id, l.title]),
+    );
+    viewings = rawViewings.map((v) => ({
       id: v.id,
       code: v.code,
       listingId: v.listingId,
       listingTitle: v.listingTitle,
+      listingTitles: v.listingIds.map((id) => titleById.get(id) ?? id),
       listingArea: `${v.listingCity}${v.listingDistrict}`,
       listingPrice: v.listingPrice,
       name: v.name,

@@ -111,6 +111,14 @@ export async function ensureMatchTables(): Promise<void> {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
+  // listing_ids 是 2026-09-18 加的：一次預約可以包含好幾間 —— 他說「客戶選八間，
+  // 不要跳八個訊息八個代號，給我一個代號、間數寫在訊息裡就好」。
+  // listing_id 留著放第一間：後台的 JOIN、LINE 卡片、舊資料都還靠它，拆掉會牽連一大片。
+  const hasListingIds = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM match_viewing LIKE 'listing_ids'`);
+  if (hasListingIds.length === 0) {
+    await db.$executeRawUnsafe("ALTER TABLE match_viewing ADD COLUMN listing_ids TEXT NULL AFTER listing_id");
+  }
+
   ensured = true;
 }
 
@@ -206,6 +214,24 @@ function toListing(row: ListingRow): MatchListing {
 }
 
 /** 對外用：只回在售的物件（配對、表單選項都用這個） */
+/**
+ * 一次撈好幾間（一筆預約可以包含多間）。
+ * 回傳順序照傳進來的 id ——「第一間」在通知與卡片上代表整筆預約，順序不能被資料庫打亂。
+ * 找不到或已下架的直接不在結果裡，呼叫端自己決定要不要擋。
+ */
+export async function getListings(ids: string[]): Promise<MatchListing[]> {
+  await ensureMatchTables();
+  // 後台一次要把整頁預約的物件標題撈齊，上限放寬到 500（一次 IN 查詢比 300 次單筆便宜得多）
+  const clean = [...new Set(ids.filter((v) => typeof v === "string" && v))].slice(0, 500);
+  if (!clean.length) return [];
+  const rows = await db.$queryRawUnsafe<ListingRow[]>(
+    `SELECT ${LISTING_COLS} FROM match_listing WHERE id IN (${clean.map(() => "?").join(",")})`,
+    ...clean,
+  );
+  const byId = new Map(rows.map((r) => [r.id, toListing(r)]));
+  return clean.map((id) => byId.get(id)).filter((l): l is MatchListing => Boolean(l));
+}
+
 export async function listAvailableListings(): Promise<MatchListing[]> {
   await ensureMatchTables();
   const rows = await db.$queryRawUnsafe<ListingRow[]>(
@@ -542,7 +568,10 @@ export async function listBuyersForAdmin(limit = 300): Promise<Buyer[]> {
 export type Viewing = {
   id: string;
   code: string;
+  /** 第一間（相容舊資料與後台 JOIN）；完整清單看 listingIds */
   listingId: string;
+  /** 這筆預約包含的所有物件，至少一間 */
+  listingIds: string[];
   buyerId: string | null;
   lineUserId: string | null;
   name: string;
@@ -560,6 +589,7 @@ type ViewingRow = {
   id: string;
   code: string;
   listing_id: string;
+  listing_ids?: string | null;
   buyer_id: string | null;
   line_user_id: string | null;
   name: string;
@@ -573,13 +603,16 @@ type ViewingRow = {
   updated_at: Date | null;
 };
 
-const VIEWING_COLS = "id, code, listing_id, buyer_id, line_user_id, name, phone, preferred_at, note, status, agent_note, linked_at, created_at, updated_at";
+const VIEWING_COLS =
+  "id, code, listing_id, listing_ids, buyer_id, line_user_id, name, phone, preferred_at, note, status, agent_note, linked_at, created_at, updated_at";
 
 function toViewing(row: ViewingRow): Viewing {
   return {
     id: row.id,
     code: row.code,
     listingId: row.listing_id,
+    // 舊資料沒有 listing_ids（那時候一筆只能一間），就拿 listing_id 當成只有一間
+    listingIds: parseArr(row.listing_ids).length ? parseArr(row.listing_ids) : [row.listing_id],
     buyerId: row.buyer_id,
     lineUserId: row.line_user_id,
     name: row.name,
@@ -603,7 +636,8 @@ function makeCode(): string {
 }
 
 export async function createViewing(input: {
-  listingId: string;
+  /** 這次要看的物件，至少一間；第一間會同時寫進 listing_id 給後台 JOIN 用 */
+  listingIds: string[];
   buyerId: string | null;
   name: string;
   phone: string;
@@ -617,11 +651,12 @@ export async function createViewing(input: {
     const code = makeCode();
     try {
       await db.$executeRawUnsafe(
-        `INSERT INTO match_viewing (id, code, listing_id, buyer_id, name, phone, preferred_at, note, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+        `INSERT INTO match_viewing (id, code, listing_id, listing_ids, buyer_id, name, phone, preferred_at, note, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
         id,
         code,
-        input.listingId,
+        input.listingIds[0],
+        JSON.stringify(input.listingIds),
         input.buyerId,
         input.name,
         input.phone,
@@ -718,7 +753,7 @@ export type ViewingWithListing = Viewing & {
 export async function listViewingsForAdmin(limit = 300): Promise<ViewingWithListing[]> {
   await ensureMatchTables();
   const rows = await db.$queryRawUnsafe<(ViewingRow & { listing_title: string | null; listing_city: string | null; listing_district: string | null; listing_price: number | null; buyer_display_name: string | null })[]>(
-    `SELECT v.id, v.code, v.listing_id, v.buyer_id, v.line_user_id, v.name, v.phone, v.preferred_at, v.note, v.status, v.agent_note, v.linked_at, v.created_at, v.updated_at,
+    `SELECT v.id, v.code, v.listing_id, v.listing_ids, v.buyer_id, v.line_user_id, v.name, v.phone, v.preferred_at, v.note, v.status, v.agent_note, v.linked_at, v.created_at, v.updated_at,
             l.title AS listing_title, l.city AS listing_city, l.district AS listing_district, l.price AS listing_price,
             b.display_name AS buyer_display_name
        FROM match_viewing v

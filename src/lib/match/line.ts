@@ -161,11 +161,35 @@ export function listingCarousel(items: { listing: ListingLike; score: number; re
   };
 }
 
+/**
+ * 預約確認卡。一筆預約可能包含好幾間 —— 一間就照舊顯示標題＋地點，
+ * 多間就顯示「共 N 間」再列標題（最多 5 行，Flex 太長手機上讀不完）。
+ */
 export function viewingConfirmFlex(
   viewing: Viewing,
-  listing: ListingLike | null,
+  listings: ListingLike[],
   { title = "✅ 預約看屋已收到", note }: { title?: string; note?: string } = {},
 ): LineMessage {
+  const first = listings[0] ?? null;
+  const multi = listings.length > 1;
+  const head: Record<string, unknown>[] = multi
+    ? [
+        { type: "text", text: `共 ${listings.length} 間`, weight: "bold", size: "md" },
+        ...listings.slice(0, 5).map((l, i) => ({
+          type: "text",
+          text: `${i + 1}. ${safe(l.title, "物件")}｜${fmtWan(l.price)}`,
+          size: "sm",
+          color: "#333333",
+          wrap: true,
+        })),
+        ...(listings.length > 5
+          ? [{ type: "text", text: `…等 ${listings.length} 間`, size: "xs", color: "#888888" }]
+          : []),
+      ]
+    : [
+        { type: "text", text: safe(first?.title, "物件"), weight: "bold", size: "md", wrap: true },
+        row("地點", first ? `${first.city}${first.district}${first.address}` : ""),
+      ];
   return {
     type: "flex",
     altText: `${title} ${viewing.code}`,
@@ -182,8 +206,7 @@ export function viewingConfirmFlex(
         layout: "vertical",
         spacing: "sm",
         contents: [
-          { type: "text", text: safe(listing?.title, "物件"), weight: "bold", size: "md", wrap: true },
-          row("地點", listing ? `${listing.city}${listing.district}${listing.address}` : ""),
+          ...head,
           row("時間", viewing.preferredAt || "待安排"),
           row("姓名", viewing.name),
           row("電話", viewing.phone),
@@ -277,12 +300,19 @@ function ownerEmail(): string {
  * 訊息裡刻意寫「怎麼往下處理」：他多數時候人在 LINE 裡，不該被逼著開後台 ——
  * 回客戶就去官方帳號聊天室找那個名字，要標狀態就直接回「確認 BK-XXXXXX」。
  */
-export async function notifyOwnerNewViewing(viewing: Viewing, listing: ListingLike | null, profileName: string | null): Promise<void> {
-  const where = listing ? `${listing.city}${listing.district}${listing.address}` : "";
+export async function notifyOwnerNewViewing(viewing: Viewing, listings: ListingLike[], profileName: string | null): Promise<void> {
+  const first = listings[0] ?? null;
+  const multi = listings.length > 1;
+  const where = first ? `${first.city}${first.district}${first.address}` : "";
   const lines = [
     `🔔 新的看屋預約 ${viewing.code}`,
-    `物件：${listing?.title ?? viewing.listingId}`,
-    where ? `地點：${where}` : null,
+    // 一次預約多間時只給一個編號，間數寫在這一行；下面再把每一間列出來
+    multi ? `物件：共 ${listings.length} 間` : `物件：${first?.title ?? viewing.listingId}`,
+    ...(multi
+      ? listings.map((l, i) => `　${i + 1}. ${l.title}｜${l.city}${l.district}｜${fmtWan(l.price)}`)
+      : where
+        ? [`地點：${where}`]
+        : []),
     `時間：${viewing.preferredAt || "待安排"}`,
     `姓名：${viewing.name}`,
     `電話：${viewing.phone}`,
@@ -305,7 +335,7 @@ export async function notifyOwnerNewViewing(viewing: Viewing, listing: ListingLi
   try {
     await sendMail({
       to: ownerEmail(),
-      subject: `【預約看屋】${viewing.name}｜${listing?.title ?? viewing.listingId}｜${viewing.preferredAt || "時間待安排"}`,
+      subject: `【預約看屋】${viewing.name}｜${multi ? `共 ${listings.length} 間` : (first?.title ?? viewing.listingId)}｜${viewing.preferredAt || "時間待安排"}`,
       html: `<pre style="font:14px/1.6 -apple-system,'Noto Sans TC',sans-serif;white-space:pre-wrap">${escapeHtml(body)}</pre>`,
       text: body,
     });

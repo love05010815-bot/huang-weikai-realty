@@ -1,5 +1,5 @@
 /**
- * 預約看屋：建立一筆 match_viewing，回「導到官方 LINE」需要的連結
+ * 預約看屋：建立一筆 match_viewing（可以一次包含好幾間），回「導到官方 LINE」需要的連結
  *
  * 流程的關鍵在回應裡的 line.oaMessageUrl：它會開官方帳號聊天室並預填「預約確認 BK-XXXXXX」，
  * 買方按送出 → /api/line/webhook 收到 → 綁定 userId → 回確認卡（見 lib/match/webhook.ts）。
@@ -8,16 +8,22 @@
  * 買方就算最後沒去 LINE 送那一句，你也知道有人要看屋、有電話可以打。
  *
  * 防機器人：表單有一個看不見的 website 欄位（honeypot）。有填就假裝成功，不存、不通知。
+ *
+ * 2026-09-18：買方可以一次勾好幾間，**整批只產生一個預約編號**（他說「客戶選八間，
+ * 不要跳八個訊息八個代號」）。送出時已經賣掉或下架的那幾間會被剔除，剩下的照樣成立 ——
+ * 為了一間不見就把整筆退回去，對買方來說更莫名其妙。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { addFriendUrl, notifyOwnerNewViewing, oaMessageUrl } from "@/lib/match/line";
-import { createViewing, getListing, upsertBuyer } from "@/lib/match/store";
+import { createViewing, getListings, upsertBuyer } from "@/lib/match/store";
 import { verifyBuyerToken } from "@/lib/match/token";
 
 export const dynamic = "force-dynamic";
 
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 const clean = (v: unknown, max: number): string => String(v ?? "").trim().slice(0, max);
+/** 一筆預約最多幾間。看屋一天跑不完十間以上，多半是誤觸或機器人 */
+const MAX_LISTINGS = 10;
 
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown> = {};
@@ -32,7 +38,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ viewing: { code: "BK-000000" }, line: {} }, { status: 201 });
   }
 
-  const listingId = clean(body.listingId, 64);
+  // listingIds 是現在的形狀；listingId 是舊的單筆形狀（LINE 卡片的舊連結可能還在用）
+  const wanted = [
+    ...new Set(
+      (Array.isArray(body.listingIds) ? body.listingIds : [body.listingId])
+        .map((v) => clean(v, 64))
+        .filter(Boolean),
+    ),
+  ].slice(0, MAX_LISTINGS);
   const name = clean(body.name, 40);
   const phone = clean(body.phone, 40).replace(/[^\d+]/g, "");
   const preferredAt = clean(body.preferredAt, 80);
@@ -44,16 +57,27 @@ export async function POST(req: NextRequest) {
   if (!name) return NextResponse.json({ error: "請填寫姓名" }, { status: 400 });
   if (phone.replace(/\D/g, "").length < 8) return NextResponse.json({ error: "請填寫正確的聯絡電話" }, { status: 400 });
 
+  if (!wanted.length) return NextResponse.json({ error: "請先選擇要看的物件" }, { status: 400 });
+
   try {
-    const listing = await getListing(listingId);
-    if (!listing || listing.status !== "available") return NextResponse.json({ error: "物件不存在或已下架" }, { status: 400 });
+    const found = await getListings(wanted);
+    const listings = found.filter((l) => l.status === "available");
+    if (!listings.length) return NextResponse.json({ error: "物件不存在或已下架" }, { status: 400 });
+    const dropped = wanted.length - listings.length;
 
     const buyer = await upsertBuyer({ id: buyerId, name, phone });
-    const viewing = await createViewing({ listingId, buyerId: buyer.id, name, phone, preferredAt, note });
+    const viewing = await createViewing({
+      listingIds: listings.map((l) => l.id),
+      buyerId: buyer.id,
+      name,
+      phone,
+      preferredAt,
+      note,
+    });
 
     // 通知失敗不能讓買方看到錯誤 —— 預約已經成立了
     try {
-      await notifyOwnerNewViewing(viewing, listing, null);
+      await notifyOwnerNewViewing(viewing, listings, null);
     } catch (e) {
       console.error("[match/viewing] 通知失敗:", e);
     }
@@ -63,7 +87,8 @@ export async function POST(req: NextRequest) {
       {
         viewing: { code: viewing.code, preferredAt: viewing.preferredAt, name: viewing.name, phone: viewing.phone },
         buyerId: buyer.id,
-        listing: { id: listing.id, title: listing.title, city: listing.city, district: listing.district, address: listing.address, price: listing.price },
+        listings: listings.map((l) => ({ id: l.id, title: l.title, city: l.city, district: l.district, address: l.address, price: l.price })),
+        dropped,
         line: { confirmText, oaMessageUrl: oaMessageUrl(confirmText), addFriendUrl: addFriendUrl() },
       },
       { status: 201 },

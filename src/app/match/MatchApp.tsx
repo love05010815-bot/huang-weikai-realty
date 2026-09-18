@@ -77,7 +77,10 @@ type Me = { buyerId: string; preference: ApiPreference | null; name: string | nu
 type Booking = {
   viewing: { code: string; preferredAt: string; name: string; phone: string };
   buyerId: string | null;
-  listing: { id: string; title: string; city: string; district: string; address: string; price: number };
+  /** 這一筆預約包含的物件；**不管幾間都只有一個編號** */
+  listings: { id: string; title: string; city: string; district: string; address: string; price: number }[];
+  /** 送出時已經下架、被剔除的間數 */
+  dropped: number;
   line: { confirmText: string; oaMessageUrl: string; addFriendUrl: string };
 };
 
@@ -202,7 +205,11 @@ export default function MatchApp() {
   const [step, setStep] = useState<Step>("form");
   const [pref, setPref] = useState<PrefState>(EMPTY_PREF);
   const [result, setResult] = useState<SearchResult | null>(null);
-  const [selected, setSelected] = useState<Listing | null>(null);
+  /**
+   * 已勾選要看的物件。2026-09-18 改成可以一次勾好幾間 ——
+   * 他說「客戶選八間不要跳八個訊息八個代號」，所以整批只送一次、只拿一個編號。
+   */
+  const [picked, setPicked] = useState<Listing[]>([]);
   const [form, setForm] = useState({ name: "", phone: "", date: tomorrow(), slot: SLOTS[0], note: "", website: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -254,7 +261,7 @@ export default function MatchApp() {
     if (bookId) {
       api<Listing>(`/api/match/listing/${encodeURIComponent(bookId)}`)
         .then((listing) => {
-          setSelected(listing);
+          setPicked([listing]);
           setStep("booking");
         })
         .catch((e: Error) => setNotice(e.message));
@@ -312,15 +319,21 @@ export default function MatchApp() {
     }
   }
 
-  function openBooking(listing: Listing) {
-    setSelected(listing);
+  const isPicked = (id: string) => picked.some((p) => p.id === id);
+
+  function togglePick(listing: Listing) {
+    setPicked((list) => (list.some((p) => p.id === listing.id) ? list.filter((p) => p.id !== listing.id) : [...list, listing]));
+  }
+
+  function goBooking() {
+    if (!picked.length) return;
     setForm((f) => ({ ...f, date: f.date || tomorrow() }));
     go("booking");
   }
 
   async function onBook(e: React.FormEvent) {
     e.preventDefault();
-    if (!selected) return;
+    if (!picked.length) return;
     const name = form.name.trim();
     const phone = form.phone.trim();
     if (!name) return setError("請填寫姓名");
@@ -332,7 +345,7 @@ export default function MatchApp() {
       const data = await api<Booking>("/api/match/viewing", {
         method: "POST",
         body: JSON.stringify({
-          listingId: selected.id,
+          listingIds: picked.map((p) => p.id),
           name,
           phone,
           preferredAt: `${form.date} ${form.slot}`,
@@ -533,8 +546,12 @@ export default function MatchApp() {
             ))}
           </ul>
           <div className={styles.actions}>
-            <button type="button" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`} onClick={() => openBooking(m)}>
-              預約看屋
+            <button
+              type="button"
+              className={`${styles.btn} ${isPicked(m.id) ? styles.btnPicked : styles.btnPrimary} ${styles.btnSm}`}
+              onClick={() => togglePick(m)}
+            >
+              {isPicked(m.id) ? "✓ 已選（再按取消）" : "＋ 加入預約"}
             </button>
             {m.sourceUrl && (
               <a className={styles.detail} href={m.sourceUrl} target="_blank" rel="noopener noreferrer">
@@ -569,28 +586,45 @@ export default function MatchApp() {
             {others.map(card)}
           </div>
         )}
+        {/* 勾好的物件整批送出，只會拿到一個預約編號 */}
+        {picked.length > 0 && (
+          <div className={styles.pickBar}>
+            <span className={styles.pickCount}>已選 {picked.length} 間</span>
+            <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={goBooking}>
+              一起預約這 {picked.length} 間 →
+            </button>
+          </div>
+        )}
       </div>
     );
   }
 
   // ------------------------------------------------------------ 步驟 3：預約
-  if (step === "booking" && selected) {
+  if (step === "booking" && picked.length > 0) {
     return (
       <div className={styles.wrap}>
         <button type="button" className={styles.linkBtn} onClick={() => go(result ? "results" : "form")}>
-          ← {result ? "返回結果" : "重新配對"}
+          ← {result ? "返回結果（可再加物件）" : "重新配對"}
         </button>
-        <div className={`${styles.listing} ${styles.compact}`}>
-          {selected.images[0] && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img className={styles.img} src={selected.images[0]} alt="" />
-          )}
-          <div className={styles.body}>
-            <div className={styles.title}>{selected.title}</div>
-            <div className={styles.price}>{money(selected.price)}</div>
-            <div className={styles.meta}>{metaLine(selected)}</div>
+        {picked.length > 1 && <p className={styles.summary}>這 {picked.length} 間會一起送出，只會有一個預約編號。</p>}
+        {picked.map((p) => (
+          <div key={p.id} className={`${styles.listing} ${styles.compact}`}>
+            {p.images[0] && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img className={styles.img} src={p.images[0]} alt="" />
+            )}
+            <div className={styles.body}>
+              <div className={styles.title}>{p.title}</div>
+              <div className={styles.price}>{money(p.price)}</div>
+              <div className={styles.meta}>{metaLine(p)}</div>
+              {picked.length > 1 && (
+                <button type="button" className={styles.linkBtn} onClick={() => togglePick(p)}>
+                  移除這間
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        ))}
         <form className={styles.card} onSubmit={onBook} noValidate>
           <label className={styles.field}>
             姓名
@@ -639,12 +673,26 @@ export default function MatchApp() {
           預約編號 <strong className={styles.code}>{booking.viewing.code}</strong>
         </p>
         <div className={styles.box}>
-          <b>{booking.listing.title}</b>
+          {booking.listings.length > 1 ? (
+            <>
+              <b>共 {booking.listings.length} 間</b>
+              <ol className={styles.pickedList}>
+                {booking.listings.map((l) => (
+                  <li key={l.id}>{l.title}</li>
+                ))}
+              </ol>
+            </>
+          ) : (
+            <b>{booking.listings[0]?.title ?? "物件"}</b>
+          )}
           <br />
           {booking.viewing.preferredAt}
           <br />
           {booking.viewing.name}｜{booking.viewing.phone}
         </div>
+        {booking.dropped > 0 && (
+          <p className={styles.hint}>其中 {booking.dropped} 間在送出時已經下架，沒有列入這次預約。</p>
+        )}
         <div className={styles.box}>
           最後一步：
           <ol>

@@ -21,7 +21,16 @@ import { saveMessage } from "@/lib/line-bot/store";
 import { getAgentLineIds, isAgent } from "./agents";
 import { pushMessages, replyMessages, text, viewingConfirmFlex, welcomeFlex } from "./line";
 import { describePreference } from "./matcher";
-import { getListing, getViewingByCode, listOpenViewings, listViewingsByLine, setBuyerFlagsByLine, updateViewing, upsertBuyer } from "./store";
+import {
+  getListing,
+  getListings,
+  getViewingByCode,
+  listOpenViewings,
+  listViewingsByLine,
+  setBuyerFlagsByLine,
+  updateViewing,
+  upsertBuyer,
+} from "./store";
 import { createBuyerToken } from "./token";
 import { applyViewingStatus } from "./viewing-status";
 
@@ -243,7 +252,8 @@ async function linkViewing(code: string, { userId, replyToken, displayName }: { 
     return;
   }
 
-  const listing = await getListing(viewing.listingId);
+  const listings = await getListings(viewing.listingIds);
+  const listing = listings[0] ?? null;
   const buyer = await upsertBuyer({ id: viewing.buyerId, lineUserId: userId, displayName, name: viewing.name, phone: viewing.phone, followed: true });
   const firstLink = viewing.lineUserId !== userId;
   const updated = await updateViewing(viewing.id, {
@@ -254,17 +264,18 @@ async function linkViewing(code: string, { userId, replyToken, displayName }: { 
   });
 
   await replyMessages(replyToken, [
-    viewingConfirmFlex(updated ?? viewing, listing),
+    viewingConfirmFlex(updated ?? viewing, listings),
     text("已完成綁定 ✅ 專員會盡快與您聯繫確認看屋時間。"),
   ]);
-  await saveMessage(userId, "assistant", `［系統］預約確認卡 ${code}（${listing?.title ?? viewing.listingId}／${viewing.preferredAt}）`, "bot");
+  const what = listings.length > 1 ? `共 ${listings.length} 間` : (listing?.title ?? viewing.listingId);
+  await saveMessage(userId, "assistant", `［系統］預約確認卡 ${code}（${what}／${viewing.preferredAt}）`, "bot");
 
   // 建立預約時已經完整通知過你了（/api/match/viewing），這裡只補一句「他綁好 LINE 了」，
   // 讓你知道可以直接在官方帳號聊天室找到他。
   if (firstLink) {
     const who = displayName ? `${displayName}（${viewing.name}）` : viewing.name;
     for (const uid of await getAgentLineIds()) {
-      await pushMessages(uid, [text(`✅ ${code} 買方已綁定 LINE：${who}\n${listing?.title ?? viewing.listingId}｜${viewing.preferredAt || "時間待安排"}`)]);
+      await pushMessages(uid, [text(`✅ ${code} 買方已綁定 LINE：${who}\n${what}｜${viewing.preferredAt || "時間待安排"}`)]);
     }
   }
 }

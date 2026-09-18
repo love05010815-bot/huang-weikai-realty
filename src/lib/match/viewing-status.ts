@@ -9,7 +9,7 @@
  */
 import { VIEWING_STATUS } from "@/config/match";
 import { pushMessages, text, viewingConfirmFlex } from "./line";
-import { getListing, updateViewing, type Viewing } from "./store";
+import { getListings, updateViewing, type Viewing } from "./store";
 
 export type ApplyResult = { ok: boolean; error?: string; viewing?: Viewing; notified?: boolean };
 
@@ -24,10 +24,10 @@ export async function applyViewingStatus(id: string, status: string): Promise<Ap
 
     // 只有「已確認」「已取消」值得花一則推播；已完成看屋他人就在現場，不用再通知。
     if (viewing.lineUserId && (status === "confirmed" || status === "cancelled")) {
-      const listing = await getListing(viewing.listingId);
+      const listings = await getListings(viewing.listingIds);
       const message =
         status === "confirmed"
-          ? viewingConfirmFlex(viewing, listing, { title: "📅 看屋時間已確認", note: "當天請準時抵達；如需更改時間請在此留言。" })
+          ? viewingConfirmFlex(viewing, listings, { title: "📅 看屋時間已確認", note: "當天請準時抵達；如需更改時間請在此留言。" })
           : text(`您的預約 ${viewing.code} 已取消。若要重新安排，隨時在此留言或輸入「找房」。`);
       notified = await pushMessages(viewing.lineUserId, [message]);
     }
