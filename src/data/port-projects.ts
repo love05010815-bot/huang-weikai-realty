@@ -100,7 +100,16 @@ export type ProjectArea =
   | "鹿寮萬家福"
   | "沙鹿車站"
   | "北勢靜宜"
-  | "新光田";
+  | "新光田"
+  /* 2026-09-19 一次進來的龍井四個值。他當天給了 106 案（車站 57、中央路 27、田中 17、龍井區 2）。
+     ⚠️ 「龍井」是**沒有色塊的那一個** —— 另外三個各對到一塊他手繪的商圈，
+        「龍井」是「在龍井區、但不在那三塊裡面」的收容區，所以 ZONE_BY_AREA 給它 null。
+     🔴 加這四個值時一起改的有：AREA_LABEL、AREA_FILTERS、port-zones.ts 的 ZONE_BY_AREA、
+        LeafletMap.tsx 的 PIN_GROUPS。漏任何一個 TypeScript 都抓不到（PIN_GROUPS 是 array）。 */
+  | "龍井"
+  | "龍井車站"
+  | "龍井田中"
+  | "龍井中央路";
 
 /** 建案詳情面板「位置」那一列用的字。跟篩選臉的字**刻意分開**（見 AREA_FILTER_LABEL） */
 export const AREA_LABEL: Record<ProjectArea, string> = {
@@ -112,6 +121,10 @@ export const AREA_LABEL: Record<ProjectArea, string> = {
   沙鹿車站: "沙鹿車站商圈",
   北勢靜宜: "北勢靜宜商圈",
   新光田: "新光田特區",
+  龍井: "龍井區",
+  龍井車站: "龍井車站商圈",
+  龍井田中: "龍井田中商圈",
+  龍井中央路: "龍井中央路商圈",
 };
 
 /**
@@ -138,6 +151,13 @@ export const AREA_FILTERS: ReadonlyArray<{ value: ProjectArea; label: string }> 
   { value: "沙鹿車站", label: "沙鹿車站商圈" },
   { value: "北勢靜宜", label: "北勢靜宜商圈" },
   { value: "新光田", label: "新光田特區" },
+  // 龍井那三塊商圈是 2026-09-08 他手繪、2026-09-19 才有建案的。
+  // ⚠️ **「龍井區」這顆是收容區**（不在三塊商圈裡的龍井建案），所以它沒有色塊 ——
+  //    點下去清單有東西、地圖不會飛過去（zoneForArea 回 undefined）。這是刻意的，不是漏接。
+  { value: "龍井車站", label: "龍井車站商圈" },
+  { value: "龍井中央路", label: "龍井中央路商圈" },
+  { value: "龍井田中", label: "龍井田中商圈" },
+  { value: "龍井", label: "龍井區" },
 ];
 
 export type Project = {
@@ -2505,6 +2525,138 @@ export const PROJECTS: Project[] = [
         這案他指定新而雅建設，**照他給的存，不照案名或所在區猜**。 */
   { id: "yushu-qingan", name: "御墅青安", builder: "新而雅建設", area: "梧棲市區", status: "newly", completion: "新成屋", sources: ["owner"] },
   { id: "zhifu-zhongqing", name: "致富中清", builder: "僑邑建設", area: "清水市區", status: "completed", completion: "約 2017", sources: ["owner"] },
+
+  /* ═══════════ 龍井 106 案（2026-09-19）═══════════
+     車站商圈 57、中央路商圈 27、田中商圈 17、龍井區 2、梧棲市區 3。**全部還沒有座標。**
+
+     ⚠️ 他訊息裡自己重複貼的三筆已去重、只建一次：欣興莎田、新觀6、臻里仁8。
+     ⚠️ 皇家尊龍公寓他寫了兩次，一次「虹翔建設」一次「皇家尊龍公寓」——
+        後者是案名被貼進建商欄，**取虹翔建設**。
+
+     🔴 **三處照他的原文補字，他沒點頭之前都算待確認：**
+        ① 「御墅家18而雅建設7年)」→ 建商補成**新而雅建設**（左括號連同「新」一起漏掉）。
+        ② 「懋富貴莊園7」→ 案名補成**頡懋富貴莊園7**（同一批車站商圈那邊是「頡懋富貴莊園3」）。
+        ③ 「港灣築詩透天區/築詩華廈區」→ 第二半補成**港灣築詩華廈區**
+           （照蔚藍之邑、馥花園、致富好好那幾組拆案通則，兩半都帶完整案名）。
+
+     🔵 **建商拼法對齊了 6 家**（只差後綴，照 learning_builder_name_alignment 的通則）：
+        富騰建設→富騰建設體系、裕國冷凍冷藏→裕國冷凍冷藏企業、大樁建設→大樁建設體系、
+        萬基建設→萬基建設體系、茂洋建設→茂洋建設體系、私人建→私人建設。
+     🔴 **沒有對齊、刻意留成兩家的**（換了字不是換後綴，照通則要他點頭）：
+        ・富宇綻的**富宇地產** vs 既有的**富宇建設**（富宇大悦／富宇大琚／富宇時光都是富宇建設）。
+        ・**御璽建設**（御璽親家、御璽國寶）vs **國璽建設**（御璽京華、璽吉祥）——
+          御璽京華這個案名配國璽建設是他親手寫的，不是我打錯。
+        ・**頡懋建設**（臻里仁6/7/8、頡懋富貴莊園）vs **鉅懋建設**（臻里仁3期A/B、5、築里仁、里仁匯）——
+          同一個「臻里仁」系列跨兩家，也是他寫的。
+        ・**萬懋建設**（萬基竹泉）vs **萬基建設體系**（萬基駅宿）—— 案名是萬基、建商是萬懋。
+        ・**豪隆建設**（金牌2）vs **樺陽建設**（豪隆王朝）—— 案名是豪隆、建商是樺陽。
+     🔵 創造力營造（御墅豐禾／傳家／富樂）是營造不是建設，照他寫的存。 */
+  { id: "futeng-yang-house", name: "富騰漾HOUSE", builder: "富騰建設體系", area: "龍井車站", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "tianzhuang-wuyu", name: "田庄吾寓", builder: "田庄地產開發", area: "龍井車站", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "yuxi-qinjia", name: "御璽親家", builder: "御璽建設", area: "龍井車站", status: "completed", completion: "約 1995", sources: ["owner"] },
+  { id: "zhonggang-dazhen", name: "中港大鎮", builder: "玉青建設", area: "龍井車站", status: "completed", completion: "約 1995", sources: ["owner"] },
+  { id: "yuxi-jinghua", name: "御璽京華", builder: "國璽建設", area: "龍井車站", status: "completed", completion: "約 1995", sources: ["owner"] },
+  { id: "yuxi-guobao", name: "御璽國寶", builder: "御璽建設", area: "龍井車站", status: "completed", completion: "約 1995", sources: ["owner"] },
+  { id: "yuguo-fengsheng", name: "裕國豐盛", builder: "裕國冷凍冷藏企業", area: "龍井車站", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "yuguo-jingshangcun", name: "裕國井上邨", builder: "裕國冷凍冷藏企業", area: "龍井車站", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "shengyou-xinchao", name: "昇祐薪巢", builder: "昇祐建設", area: "龍井車站", status: "completed", completion: "約 2012", sources: ["owner"] },
+  { id: "mingmen-xiangyuan", name: "名門鄉園", builder: "加達建設", area: "龍井車站", status: "completed", completion: "約 1996", sources: ["owner"] },
+  { id: "chengfeng-fuxu", name: "鋮豐富穥", builder: "鋮豐建設", area: "龍井車站", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "xuanyi-puyu", name: "宣邑璞玉", builder: "宣邑建設", area: "龍井車站", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "dazhuang-yongrong", name: "大樁雍容", builder: "大樁建設體系", area: "龍井車站", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "fenghe-niannian", name: "豐禾年年", builder: "睿鍇建設", area: "龍井車站", status: "newly", completion: "新成屋", sources: ["owner"] },
+  { id: "wanshida-guanghe-fenghe", name: "萬仕達光禾-豐禾區", builder: "萬仕達建設", area: "龍井車站", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "wanshida-guanghe-chenguang", name: "萬仕達光禾-晨光區", builder: "萬仕達建設", area: "龍井車站", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "kunyou-heqian-2", name: "坤祐和謙2", builder: "坤祐建設", area: "龍井車站", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "lirenhui", name: "里仁匯", builder: "鉅懋建設", area: "龍井車站", status: "newly", completion: "新成屋", sources: ["owner"] },
+  { id: "wanji-zhuquan", name: "萬基竹泉", builder: "萬懋建設", area: "龍井車站", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "ruikai-fuzhu", name: "睿鍇馥築", builder: "睿鍇建設", area: "龍井車站", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "zhanfeng-zhenpinshu", name: "展豐臻品墅", builder: "展豐建設", area: "龍井車站", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "xinxing-shatian", name: "欣興莎田", builder: "欣興開發建設", area: "龍井車站", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "yawan-zhuquan", name: "亞灣築泉", builder: "亞灣建設", area: "龍井車站", status: "newly", completion: "新成屋", sources: ["owner"] },
+  { id: "shisui-niannian", name: "拾穗年年", builder: "睿鍇建設", area: "龍井車站", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "wanji-yisu", name: "萬基駅宿", builder: "萬基建設體系", area: "龍井車站", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "xiongtu-xu-uno", name: "熊圖敘uno", builder: "熊圖建設", area: "龍井車站", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "fuyu-zhan", name: "富宇綻", builder: "富宇地產", area: "龍井車站", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "wojia-e", name: "我家e", builder: "興昇霖開發建設", area: "龍井車站", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "longquan-shanzhuang", name: "龍泉山莊", builder: "橙霖建設", area: "龍井車站", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "zhuliren-2-toutian", name: "築里仁2透天區", builder: "鉅懋建設", area: "龍井車站", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "deguang-dazhi", name: "德光大智", builder: "德光建設", area: "龍井車站", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "zhuliren-huaxia", name: "築里仁華廈區", builder: "鉅懋建設", area: "龍井車站", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "zhuliren-toutian", name: "築里仁透天區", builder: "鉅懋建設", area: "龍井車站", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "renli-shiqing", name: "仁里時晴", builder: "和旺建設", area: "龍井車站", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "maoyang-fuyu", name: "茂洋馥域", builder: "茂洋建設體系", area: "龍井車站", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "xi-jixiang", name: "璽吉祥", builder: "國璽建設", area: "龍井車站", status: "completed", completion: "約 1996", sources: ["owner"] },
+  { id: "xinguan-xiangrui", name: "新觀祥瑞", builder: "新喬霖建設", area: "龍井車站", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "shengyou-dna", name: "昇祐DNA", builder: "昇祐建設", area: "龍井車站", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "jinpai-2", name: "金牌2", builder: "豪隆建設", area: "龍井車站", status: "completed", completion: "約 1998", sources: ["owner"] },
+  { id: "gangwan-zhushi-toutian", name: "港灣築詩透天區", builder: "港灣建設", area: "龍井車站", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "gangwan-zhushi-huaxia", name: "港灣築詩華廈區", builder: "港灣建設", area: "龍井車站", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "longjing-yilufa", name: "龍井一路發", builder: "三本久建設", area: "龍井車站", status: "completed", completion: "約 1997", sources: ["owner"] },
+  { id: "yushu-dajie", name: "御墅大街", builder: "御墅家建設", area: "龍井車站", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "zhuangyuan-2", name: "樁園2", builder: "大樁建設體系", area: "龍井車站", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "juheng-guangyuhui-toutian", name: "聚恆光語繪透天區", builder: "聚恆建設", area: "龍井車站", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "juheng-guangyuhui-huaxia", name: "聚恆光語繪華廈區", builder: "聚恆建設", area: "龍井車站", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "haolong-wangchao", name: "豪隆王朝", builder: "樺陽建設", area: "龍井車站", status: "completed", completion: "約 1996", sources: ["owner"] },
+  { id: "guojing", name: "國境", builder: "兆奕建設", area: "龍井車站", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "xinyi-zhixin-huaxia", name: "新邑知薪華廈區", builder: "新邑建設", area: "龍井車站", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "xinyi-zhixin-toutian", name: "新邑知薪透天區", builder: "新邑建設", area: "龍井車站", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "fengrong-zhuangyuan-12", name: "豐榮莊園12", builder: "泉豐建設", area: "龍井車站", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "hongyu-zhushilu-1-toutian", name: "竤宇竹師路一段透天", builder: "竤宇建設", area: "龍井車站", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "shatian-aplus-toutian", name: "沙田A+家透天區", builder: "兆國建設", area: "龍井車站", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "shatian-aplus-huaxia", name: "沙田A+家華廈區", builder: "兆國建設", area: "龍井車站", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "fengrong-zhuangyuan-13", name: "豐榮莊園13", builder: "泉豐建設", area: "龍井車站", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "xiemao-fugui-zhuangyuan-3", name: "頡懋富貴莊園3", builder: "頡懋建設", area: "龍井車站", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "yatai-diyi-jiayuan", name: "亞太第一家園", builder: "萬家吉建設", area: "龍井車站", status: "completed", completion: "約 1999", sources: ["owner"] },
+  { id: "jingshang-dayuan", name: "井上大院", builder: "御程建設", area: "龍井", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "shengjia-jingyi", name: "昇佳景邑", builder: "昇佳建設", area: "龍井", status: "newly", completion: "新成屋", sources: ["owner"] },
+  { id: "yushu-fenghe", name: "御墅豐禾", builder: "創造力營造", area: "龍井田中", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "zhenshangmei", name: "臻上美", builder: "日勝建設", area: "龍井田中", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "qingnianshi", name: "青年市", builder: "凱強建設", area: "龍井田中", status: "completed", completion: "約 1999", sources: ["owner"] },
+  { id: "yushu-aijia", name: "御墅愛家", builder: "御墅家建設", area: "龍井田中", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "pinyan-2", name: "品硯2", builder: "漢生建設", area: "龍井田中", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "xingfu-yushu", name: "幸福御墅", builder: "新而雅建設", area: "龍井田中", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "fugui-longtian", name: "富貴龍田", builder: "萬豪國際開發", area: "龍井田中", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "yushujia-18", name: "御墅家18", builder: "新而雅建設", area: "龍井田中", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "jinlong-tianxia", name: "金龍天下", builder: "三統建設", area: "龍井田中", status: "completed", completion: "約 1994", sources: ["owner"] },
+  { id: "yushujia-21", name: "御墅家21", builder: "御墅家建設", area: "龍井田中", status: "completed", completion: "約 2005", sources: ["owner"] },
+  { id: "yushu-chuanjia", name: "御墅傳家", builder: "創造力營造", area: "龍井田中", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "yushu-fule", name: "御墅富樂", builder: "創造力營造", area: "龍井田中", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "dafude-jule", name: "大富得居樂", builder: "大富得建設", area: "龍井田中", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "xiemao-fugui-zhuangyuan-7", name: "頡懋富貴莊園7", builder: "頡懋建設", area: "龍井田中", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "xinguan-6", name: "新觀6", builder: "新喬霖建設", area: "龍井田中", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "wushiliu-yan", name: "五十六硯", builder: "大炁建設", area: "龍井田中", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "fuyuan-yipin-7", name: "富園一品7", builder: "霖輝建設", area: "龍井田中", status: "newly", completion: "新成屋", sources: ["owner"] },
+  { id: "shengbang-lvyi-7", name: "勝邦綠邑7", builder: "勝邦開發建設", area: "龍井中央路", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "zhenliren-8", name: "臻里仁8", builder: "頡懋建設", area: "龍井中央路", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "zhenliren-6", name: "臻里仁6", builder: "頡懋建設", area: "龍井中央路", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "zhenliren-7", name: "臻里仁7", builder: "頡懋建設", area: "龍井中央路", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "gaofeng-lingxiu-7a", name: "高峰領袖7期A", builder: "金軒建設", area: "龍井中央路", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "gaofeng-lingxiu-7b", name: "高峰領袖7期B", builder: "金軒建設", area: "龍井中央路", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "hanyu-gongyuan", name: "漢宇公園", builder: "漢宇建設", area: "龍井中央路", status: "completed", completion: "約 1996", sources: ["owner"] },
+  { id: "yushu-jinzuan", name: "御墅津鑽", builder: "御墅家建設", area: "龍井中央路", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "longjin-xueyuan", name: "龍津學苑", builder: "翔偉開發建設", area: "龍井中央路", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "zhenliren-5", name: "臻里仁5", builder: "鉅懋建設", area: "龍井中央路", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "zhenliren-3b", name: "臻里仁3期B", builder: "鉅懋建設", area: "龍井中央路", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "zhenliren-3a", name: "臻里仁3期A", builder: "鉅懋建設", area: "龍井中央路", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "huangjia-zunlong", name: "皇家尊龍公寓", builder: "虹翔建設", area: "龍井中央路", status: "completed", completion: "約 1996", sources: ["owner"] },
+  { id: "hongquan-in-zhongyang", name: "宏泉IN中央", builder: "宏泉建設", area: "龍井中央路", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "chenyou-chengyuan-a", name: "晨右埕院A", builder: "晨右建設", area: "龍井中央路", status: "completed", completion: "約 2015", sources: ["owner"] },
+  { id: "chenyou-chengyuan-b", name: "晨右埕院B", builder: "晨右建設", area: "龍井中央路", status: "completed", completion: "約 2015", sources: ["owner"] },
+  { id: "gangwan-senqing", name: "港灣森晴", builder: "港灣建設", area: "龍井中央路", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "jixiang-mingmen", name: "吉鄉名門", builder: "吉鄉建設", area: "龍井中央路", status: "completed", completion: "約 1994", sources: ["owner"] },
+  { id: "jingshang-sen", name: "井上森", builder: "金仁美建設", area: "龍井中央路", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "longhai-bieshu", name: "龍海別墅", builder: "私人建設", area: "龍井中央路", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "chenyou-heyuan", name: "晨右禾院", builder: "晨右建設", area: "龍井中央路", status: "completed", completion: "約 2017", sources: ["owner"] },
+  { id: "zhu-zhenxin", name: "築真心", builder: "真心建設", area: "龍井中央路", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "xinguan-xu", name: "新觀序", builder: "杬宸建設", area: "龍井中央路", status: "newly", completion: "新成屋", sources: ["owner"] },
+  { id: "fengfu-daxu", name: "豐富大旭", builder: "豐富興業", area: "龍井中央路", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "lin-dayuan", name: "霖大院", builder: "橙霖建設", area: "龍井中央路", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "guangyu-shu", name: "光語墅", builder: "聚恆建設", area: "龍井中央路", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "bojin-fu", name: "鉑金府", builder: "勇聚建設", area: "龍井中央路", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "lvyuan-zhenpin-9", name: "綠園臻品9", builder: "晟翊建設", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "lvyuan-zhenpin-8", name: "綠園臻品8", builder: "晟翊建設", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "yushu-dajing", name: "御墅大境", builder: "新而雅建設", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
 ];
 
 /* ─────────────── 座標 ─────────────── */

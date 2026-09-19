@@ -1,0 +1,524 @@
+/* 開發物件追蹤後台 —— 沿用後台深色 CIS（#1a1614 底、太平洋紅提亮版 #F26666） */
+
+.page {
+  min-height: 100vh;
+  padding: 28px 24px 64px;
+}
+
+.head {
+  max-width: 980px;
+  margin: 0 auto 18px;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 6px;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.sub {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.error {
+  max-width: 980px;
+  margin: 0 auto 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  line-height: 1.75;
+  background: rgba(244, 63, 94, 0.15);
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  color: #fb7185;
+}
+
+.error code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+/* ── 概況 ── */
+.stats {
+  list-style: none;
+  max-width: 980px;
+  margin: 0 auto 20px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.stats li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+}
+
+.stats b {
+  font-size: 26px;
+  font-weight: 900;
+  color: #f26666;
+  line-height: 1.2;
+}
+
+.stats span {
+  font-size: 12.5px;
+  color: #a69a97;
+}
+
+/* ── 版面 ── */
+.wrap {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.msg {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13.5px;
+}
+
+.msgOk {
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #4ade80;
+}
+
+.msgErr {
+  background: rgba(244, 63, 94, 0.15);
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  color: #fb7185;
+}
+
+/* ── 工具列：篩選 pill + 搜尋 + 新增 ── */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pill {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  color: #d0c6c4;
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.pillOn {
+  border-color: #f26666;
+  background: rgba(242, 102, 102, 0.16);
+  color: #f8f4f3;
+}
+
+.search {
+  flex: 1 1 200px;
+  min-width: 160px;
+  max-width: 280px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #f8f4f3;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.search:focus {
+  outline: 2px solid #f26666;
+  outline-offset: 1px;
+}
+
+.primaryBtn {
+  border: 1px solid #e00000;
+  background: #e00000;
+  color: #fff;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 13.5px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.primaryBtn:hover:not(:disabled) {
+  background: #c40000;
+}
+
+.primaryBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── 清單 ── */
+.empty {
+  margin: 0;
+  padding: 32px 4px;
+  text-align: center;
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: #a69a97;
+}
+
+.list {
+  list-style: none;
+  margin: 0 0 40px;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 14px 16px;
+}
+
+.cardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.cardMain {
+  min-width: 0;
+  flex: 1 1 320px;
+}
+
+.address {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.metaRow {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: #a69a97;
+}
+
+.metaRow a {
+  color: #f5c0c4;
+}
+
+.feedbackPreview {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #d0c6c4;
+  line-height: 1.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardBtns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.iconBtn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #d0c6c4;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.iconBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8f4f3;
+}
+
+.iconBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.danger {
+  color: #fb7185 !important;
+  border-color: rgba(244, 63, 94, 0.35) !important;
+}
+
+.dangerOn {
+  background: #fb7185 !important;
+  border-color: #fb7185 !important;
+  color: #1a1614 !important;
+  font-weight: 700;
+}
+
+/* ── 狀態 chip ── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid;
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.overdue {
+  color: #fb7185;
+  font-weight: 700;
+}
+
+.dueToday {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+/* ── 展開內容：備註、時間線、追蹤表單 ── */
+.cardBody {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: grid;
+  gap: 16px;
+}
+
+.note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  color: #d0c6c4;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.sectionTitle {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #a69a97;
+  letter-spacing: 0.04em;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.timelineItem {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.timelineDate {
+  flex: none;
+  width: 76px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #d0c6c4;
+}
+
+.timelineBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.timelineTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.timelineMethod {
+  font-size: 11.5px;
+  color: #a69a97;
+}
+
+.timelineFeedback {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: #f8f4f3;
+  white-space: pre-wrap;
+}
+
+.timelineNext {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #a69a97;
+}
+
+.timelineDel {
+  flex: none;
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
+  color: #a69a97;
+  font-size: 11.5px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.timelineDel:hover {
+  color: #fb7185;
+}
+
+/* ── 表單（新增物件／編輯物件／新增追蹤紀錄共用） ── */
+.form {
+  display: grid;
+  gap: 12px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.form label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.form label > span {
+  font-weight: 700;
+  color: #d0c6c4;
+  font-size: 13px;
+}
+
+.form label > span em {
+  font-style: normal;
+  font-size: 11px;
+  color: #fb7185;
+  margin-left: 6px;
+}
+
+.form input[type="text"],
+.form input[type="url"],
+.form input[type="tel"],
+.form input[type="date"],
+.form select,
+.form textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #f8f4f3;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.6;
+}
+
+.form textarea {
+  resize: vertical;
+}
+
+.form input:focus,
+.form select:focus,
+.form textarea:focus {
+  outline: 2px solid #f26666;
+  outline-offset: 1px;
+  border-color: #f26666;
+}
+
+.formBtns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.plainBtn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #d0c6c4;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13.5px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.plainBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8f4f3;
+}
+
+.plainBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.formBtns .primaryBtn {
+  border-radius: 8px;
+  padding: 8px 16px;
+}
+
+.formCard {
+  border: 1px dashed rgba(242, 102, 102, 0.35);
+  border-radius: 12px;
+  background: rgba(242, 102, 102, 0.05);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.addContactCard {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.15);
+  padding: 12px 14px;
+}

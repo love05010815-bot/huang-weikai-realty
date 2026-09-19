@@ -698,7 +698,13 @@ export function zoneBounds(): Array<[number, number]> {
  *    之後加了新值、這裡忘了補，會**編譯不過**。用 Partial 的話漏一條的下場是
  *    「點那顆篩選臉地圖不動」，而且不會報錯。這頁的失敗模式一向是靜默失效。
  */
-const ZONE_BY_AREA: Record<ProjectArea, string> = {
+/**
+ * ⚠️ 值可以是 `null` —— 那代表「這一區沒有對應的色塊」。目前只有「龍井」
+ *    （不在三塊龍井商圈裡的龍井建案）。`zoneForArea` 會回 undefined，地圖不會飛過去。
+ *    **型別仍然是 `Record<ProjectArea, …>` 不是 Partial** —— 這樣加新 area 時 TypeScript 會逼你
+ *    在這裡寫一行、當場決定它有沒有色塊，而不是默默漏掉。
+ */
+const ZONE_BY_AREA: Record<ProjectArea, string | null> = {
   梧棲: "wuqi-qingshui-shizheng",
   清水: "wuqi-qingshui-shizheng",
   梧棲市區: "wuqi-downtown",
@@ -707,6 +713,11 @@ const ZONE_BY_AREA: Record<ProjectArea, string> = {
   沙鹿車站: "shalu-station",
   北勢靜宜: "beishi-providence",
   新光田: "xin-guangtian",
+  龍井車站: "longjing-station",
+  龍井中央路: "longjing-zhongyang",
+  龍井田中: "longjing-tianzhong",
+  /* 收容區，沒有色塊 —— 見上面那段註解 */
+  龍井: null,
 };
 
 /**

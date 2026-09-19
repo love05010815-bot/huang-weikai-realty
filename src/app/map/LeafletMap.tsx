@@ -114,6 +114,17 @@ const PIN_GROUPS: ReadonlyArray<{ id: string; name: string; areas: readonly Proj
   { id: "xinguangtian", name: "新光田特區", areas: ["新光田"] },
   { id: "wuqi-downtown", name: "梧棲市區", areas: ["梧棲市區"] },
   { id: "qingshui-downtown", name: "清水市區", areas: ["清水市區"] },
+  // ⚠️ 2026-09-19 補。龍井 106 案進來，**當下 0 個座標**，所以現在一顆膠囊都不會生
+  //    （MIN_CLUSTER=2 要有兩根圖釘才收）。先加起來是因為新光田那次的教訓：
+  //    座標一補上、這裡卻沒有對應的 group，zoom 12 就是 100 多根圖釘疊成一坨、而且不會報錯。
+  //    🔴 **他把龍井的座標點完之後，回來量一次膠囊對膠囊的距離**（檔頭那條：膠囊 150x36、
+  //       沒有閃避邏輯）—— 龍井這三塊彼此只隔幾百公尺，很可能要併成一組。
+  { id: "longjing-station", name: "龍井車站商圈", areas: ["龍井車站"] },
+  { id: "longjing-zhongyang", name: "龍井中央路商圈", areas: ["龍井中央路"] },
+  { id: "longjing-tianzhong", name: "龍井田中商圈", areas: ["龍井田中"] },
+  // 🔵 **「龍井」（收容區）刻意不給 group。** 它是「不在三塊商圈裡」的龍井建案，
+  //    彼此可能隔好幾公里，取重心會把膠囊放在一片田中央、還蓋掉真正的圖釘。
+  //    沒被認領的會退回畫成圖釘（見 buildClusters 結尾），那才是對的畫面。
 ];
 
 /** 一顆膠囊至少要代表這麼多案。只剩一案還畫成 150px 的膠囊，不如直接畫那根圖釘 */
