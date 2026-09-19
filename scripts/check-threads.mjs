@@ -3,9 +3,10 @@
  *
  *   npm run check:threads
  *
- * 驗的是 `lib/threads.ts` 裡兩個純函式：
- *   ・cleanAuthCode      —— 授權碼屁股的 `#_` 有沒有剃乾淨
- *   ・toInboxComments    —— 一整串攤平的 conversation 怎麼分成「別人的留言」與「我回過的」
+ * 驗的是 `lib/threads.ts` 裡三個不碰網路、不碰資料庫的函式：
+ *   ・cleanAuthCode              —— 授權碼屁股的 `#_` 有沒有剃乾淨
+ *   ・toInboxComments            —— 一整串攤平的 conversation 怎麼分成「別人的留言」與「我回過的」
+ *   ・verifyThreadsSignedRequest —— Meta 兩個回呼的驗簽（那兩支沒有登入牆，簽章是唯一的門）
  *
  * 為什麼特別要測這一段：Threads 的 `/conversation` 把**我自己的回覆也混在同一個陣列**，
  * 分錯的後果是靜默的 —— 自己的回覆會變成一則「待回覆的客戶留言」，或是真的有人問了
@@ -14,12 +15,20 @@
  * ⚠️ 假資料一律自己編（假帳號、假貼文），不要貼真實留言 —— 這個 repo 是公開的。
  */
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { register } from "node:module";
 register("./alias-hooks.mjs", import.meta.url);
 // 後註冊的先跑：先把 @/lib/google-calendar 換成假的設定存取，剩下的才交給別名解析
 register("./stub-hooks.mjs", import.meta.url);
 
-const { cleanAuthCode, toInboxComments } = await import("../src/lib/threads.ts");
+// ⚠️ 一定要在 import 之前設：threads.ts 是在模組載入時就把密鑰讀進常數的，
+//    import 完再設會來不及，驗簽那幾項會全部變成「沒有設定密鑰」。
+const TEST_SECRET = "test-secret-not-a-real-one";
+process.env.THREADS_APP_SECRET = TEST_SECRET;
+
+const { cleanAuthCode, toInboxComments, verifyThreadsSignedRequest } = await import(
+  "../src/lib/threads.ts"
+);
 
 let passed = 0;
 function test(name, fn) {
@@ -190,6 +199,57 @@ test("replied_to 整個缺席時當成頂層留言，不會被丟掉", () => {
   const out = toInboxComments(POST, [{ id: "r1", username: "buyer_amy", text: "在嗎" }], ME);
   assert.equal(out.length, 1);
   assert.equal(out[0].id, "r1");
+});
+
+// ---------------------------------------------------------------- 回呼驗簽
+
+/** 照 Meta 的格式組一個 signed_request：`<簽章>.<內容>`，兩段都是 base64url */
+function signedRequest(payload, secret = TEST_SECRET) {
+  const body = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const sig = createHmac("sha256", secret).update(body).digest("base64url");
+  return `${sig}.${body}`;
+}
+
+test("驗簽：正確的 signed_request 過，而且讀得到 user_id", () => {
+  const r = verifyThreadsSignedRequest(
+    signedRequest({ algorithm: "HMAC-SHA256", user_id: "17841400000000000" }),
+  );
+  assert.equal(r.ok, true);
+  assert.equal(r.userId, "17841400000000000");
+});
+
+test("驗簽：user_id 是數字也轉成字串（跟資料庫存的比對才不會型別不合）", () => {
+  const r = verifyThreadsSignedRequest(signedRequest({ algorithm: "HMAC-SHA256", user_id: 123 }));
+  assert.equal(r.ok, true);
+  assert.equal(r.userId, "123");
+});
+
+test("驗簽：內容被改過就不過（簽章沒跟著換）", () => {
+  const good = signedRequest({ algorithm: "HMAC-SHA256", user_id: "111" });
+  const evil = Buffer.from(JSON.stringify({ algorithm: "HMAC-SHA256", user_id: "999" }), "utf8")
+    .toString("base64url");
+  const tampered = `${good.split(".")[0]}.${evil}`;
+  assert.equal(verifyThreadsSignedRequest(tampered).ok, false);
+});
+
+test("驗簽：別人用自己的密鑰簽的不過", () => {
+  const r = verifyThreadsSignedRequest(
+    signedRequest({ algorithm: "HMAC-SHA256", user_id: "111" }, "someone-elses-secret"),
+  );
+  assert.equal(r.ok, false);
+});
+
+test("驗簽：格式不對、空字串都不過，而且不會炸", () => {
+  for (const bad of ["", "只有一段", "a.b.c", "....", "!!!.???"]) {
+    const r = verifyThreadsSignedRequest(bad);
+    assert.equal(r.ok, false, `這個應該要被擋下來：${JSON.stringify(bad)}`);
+    assert.ok(r.error, "被擋下來時要講原因");
+  }
+});
+
+test("驗簽：換成別的演算法不過（不能讓人自己宣告 none）", () => {
+  const r = verifyThreadsSignedRequest(signedRequest({ algorithm: "none", user_id: "111" }));
+  assert.equal(r.ok, false);
 });
 
 console.log(`\n${passed} 項通過${process.exitCode ? "，有失敗" : "，全數通過"}`);

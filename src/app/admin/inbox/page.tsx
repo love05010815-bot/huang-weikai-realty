@@ -178,7 +178,7 @@ export default async function InboxPage({
             authHref="/api/admin/threads/auth"
             redirectUri={THREADS_REDIRECT_URI}
             missingEnv="THREADS_APP_ID / THREADS_APP_SECRET"
-            setupWhere="developers.facebook.com → 你的 App → Threads API → 設定 → 重新導向回呼網址（跟 Facebook 那組不是同一個地方，金鑰也是那一頁的）"
+            setupWhere="developers.facebook.com → 你的 App → Threads API → 設定（跟 Facebook 那組不是同一個地方，金鑰也是那一頁的）。那一頁三個網址都要填才存得起來：重新導向回呼網址填下面這條，解除安裝回呼網址填 .../api/threads/deauthorize，刪除回呼網址填 .../api/threads/delete"
             unbindTarget="threads"
           />
           {/* LINE 不走 OAuth（金鑰在環境變數），所以不共用 SourceCard。

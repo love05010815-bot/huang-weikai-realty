@@ -26,6 +26,7 @@
  *    也就是一次載入 11 個 API 呼叫。Threads 的額度以「曝光數」算，這個量遠遠用不完；
  *    但別把 10 改大 —— 那是每次開後台都會打的次數。
  */
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { getConfig, setConfig } from "@/lib/google-calendar";
 import type { InboxComment, InboxReply, PlatformFetch } from "@/lib/inbox-types";
 
@@ -230,6 +231,63 @@ async function ensureFreshToken(token: string): Promise<string> {
     console.error("[threads] 續 token 例外:", e);
     return token;
   }
+}
+
+/**
+ * 驗 Meta 送來的 `signed_request`（解除授權／刪除資料兩個回呼都用這個）。
+ *
+ * 格式是 `<簽章>.<內容>`，兩段都是 base64url；簽章是用 **Threads App 密鑰**
+ * 對「內容那一段的原始字串」做 HMAC-SHA256。
+ *
+ * 🔴 這兩個回呼**沒有登入牆**（Meta 的伺服器來敲，不是人來按），
+ *    所以簽章就是唯一的門 —— 驗不過一律拒絕，寧可讓 Meta 重試也不要讓陌生人
+ *    打一下就把他的綁定清掉。
+ * ⚠️ 比對用 timingSafeEqual，不要用 `===`。
+ */
+export function verifyThreadsSignedRequest(
+  signed: string,
+): { ok: boolean; userId?: string; error?: string } {
+  if (!APP_SECRET) return { ok: false, error: "沒有設定 THREADS_APP_SECRET" };
+  const parts = (signed || "").split(".");
+  if (parts.length !== 2) return { ok: false, error: "signed_request 格式不對" };
+
+  const [sigPart, payloadPart] = parts;
+  try {
+    const expected = createHmac("sha256", APP_SECRET).update(payloadPart).digest();
+    const got = Buffer.from(sigPart, "base64url");
+    if (got.length !== expected.length || !timingSafeEqual(got, expected)) {
+      return { ok: false, error: "簽章不符" };
+    }
+    const payload = JSON.parse(Buffer.from(payloadPart, "base64url").toString("utf8")) as {
+      algorithm?: string;
+      user_id?: string | number;
+    };
+    if ((payload.algorithm || "").toUpperCase() !== "HMAC-SHA256") {
+      return { ok: false, error: `不支援的簽章演算法：${payload.algorithm}` };
+    }
+    return { ok: true, userId: payload.user_id == null ? undefined : String(payload.user_id) };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/**
+ * 解除授權／刪除資料的回呼真正要做的事：**確認是同一個人**再清掉綁定。
+ *
+ * 為什麼要比對 user id：signed_request 驗得過只代表「這是這個 App 發的」，
+ * 不代表講的是我們綁的那一個帳號。不比對的話，別的 Threads 帳號的事件也會
+ * 把他的綁定清掉 —— 而且清掉之後畫面只會說「未綁定」，看不出是被誰清的。
+ */
+export async function forgetThreadsUser(
+  userId: string | undefined,
+): Promise<{ cleared: boolean; reason?: string }> {
+  const stored = await getConfig(USER_ID_KEY);
+  if (!stored) return { cleared: false, reason: "本來就沒有綁定" };
+  if (userId && userId !== stored) {
+    return { cleared: false, reason: "事件講的不是目前綁定的帳號" };
+  }
+  await unbindThreads();
+  return { cleared: true };
 }
 
 /** 解除綁定。只刪 threads_* 四個 key，不碰 Meta、YouTube、日曆。 */
