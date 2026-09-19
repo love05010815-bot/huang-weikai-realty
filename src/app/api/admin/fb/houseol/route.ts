@@ -34,5 +34,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const got = await fetchCatalog(input);
   if (!got.ok) return NextResponse.json({ ok: false, error: got.error }, { status: 400 });
 
-  return NextResponse.json({ ok: true, caseId: got.listing.caseId, draft: buildAdDraft(got.listing) });
+  // photos 只回網址，圖片本身由 /api/admin/fb/houseol-photo 一張一張抓（一次抓完會超時）
+  return NextResponse.json({ ok: true, caseId: got.listing.caseId, draft: buildAdDraft(got.listing), photos: got.listing.photos });
 }

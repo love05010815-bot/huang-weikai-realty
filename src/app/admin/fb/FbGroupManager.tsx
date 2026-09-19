@@ -76,13 +76,12 @@ function normalizeGroupUrl(raw: string): string {
   }
 }
 
-async function fileToResizedDataUrl(file: File, max = 1600, quality = 0.85): Promise<string> {
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result));
-    r.onerror = () => reject(r.error);
-    r.readAsDataURL(file);
-  });
+/**
+ * 縮圖：長邊超過 max 就用 canvas 縮，回新的 dataURL。
+ * 自己選的檔案與從愛屋型錄抓回來的照片共用這一支 —— 兩邊都要存進 IndexedDB，大小規矩要一樣。
+ * ⚠️ 只吃 dataURL（同源），不要餵它 http 的圖：跨網域的圖畫進 canvas 會污染，toDataURL 直接丟例外。
+ */
+async function resizeDataUrl(dataUrl: string, max = 1600, quality = 0.85): Promise<string> {
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const i = new Image();
@@ -102,6 +101,16 @@ async function fileToResizedDataUrl(file: File, max = 1600, quality = 0.85): Pro
   } catch {
     return dataUrl;
   }
+}
+
+async function fileToResizedDataUrl(file: File, max = 1600, quality = 0.85): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+  return resizeDataUrl(dataUrl, max, quality);
 }
 
 export default function FbGroupManager() {
@@ -236,6 +245,11 @@ export default function FbGroupManager() {
   const [impInput, setImpInput] = useState("");
   const [impBusy, setImpBusy] = useState(false);
   const [impMissing, setImpMissing] = useState<string[]>([]);
+  /** 上次帶入那一戶的型錄照片網址（還沒抓圖，等他按「帶入型錄照片」） */
+  const [impPhotos, setImpPhotos] = useState<string[]>([]);
+  const [picBusy, setPicBusy] = useState(false);
+  const [picDone, setPicDone] = useState(0);
+  const [picTotal, setPicTotal] = useState(0);
 
   function newAd() {
     setEditingAdId(null);
@@ -264,11 +278,13 @@ export default function FbGroupManager() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ input }),
       });
-      const j = (await res.json()) as { ok: boolean; error?: string; caseId?: string; draft?: { title: string; text: string; missing: string[] } };
+      const j = (await res.json()) as { ok: boolean; error?: string; caseId?: string; photos?: string[]; draft?: { title: string; text: string; missing: string[] } };
       if (!j.ok || !j.draft) return showToast(j.error || "帶入失敗", "bad");
       setDraftTitle(j.draft.title);
       setDraftText(j.draft.text);
       setImpMissing(j.draft.missing || []);
+      setImpPhotos(Array.isArray(j.photos) ? j.photos : []);
+      setPicDone(0);
       showToast(`已帶入 ${j.caseId || ""}，記得看一下再存`, "ok");
     } catch (e) {
       showToast(`連不上伺服器：${e instanceof Error ? e.message : String(e)}`, "bad");
@@ -276,6 +292,46 @@ export default function FbGroupManager() {
       setImpBusy(false);
     }
   }
+  /**
+   * 把型錄照片一張一張抓回來放進這篇文案。
+   * 🔴 一次叫伺服器抓完 12 張會超時（2026-09-17 在 map-listings 踩過）—— 迴圈放這裡，一張一個請求，
+   *    每抓好一張畫面就多一張縮圖，看得到進度。
+   * 🔴 `setDraftImages` 一定要用函式版：迴圈裡連續改同一個 state，用閉包裡那份會讓後面幾張蓋掉前面的。
+   * 圖片只存在他自己的瀏覽器（IndexedDB），跟他自己選的檔案走同一條路。
+   */
+  async function importPhotos() {
+    const room = 10 - draftImages.length;
+    if (room <= 0) return showToast("已經有 10 張了，先移掉幾張再帶", "warn");
+    const list = impPhotos.slice(0, room);
+    if (!list.length) return showToast("這一戶的型錄上沒有照片", "warn");
+    setPicBusy(true);
+    setPicDone(0);
+    setPicTotal(list.length);
+    let failed = 0;
+    for (let i = 0; i < list.length; i++) {
+      try {
+        const res = await fetch("/api/admin/fb/houseol-photo", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ url: list[i] }),
+        });
+        const j = (await res.json()) as { ok: boolean; error?: string; dataUrl?: string };
+        if (!j.ok || !j.dataUrl) {
+          failed++;
+          continue;
+        }
+        const small = await resizeDataUrl(j.dataUrl);
+        setDraftImages((prev) => (prev.length >= 10 ? prev : [...prev, { name: `型錄-${i + 1}`, dataUrl: small }]));
+        setPicDone(i + 1);
+      } catch {
+        failed++;
+      }
+    }
+    setPicBusy(false);
+    const got = list.length - failed;
+    showToast(failed ? `帶入 ${got} 張，${failed} 張失敗` : `已帶入 ${got} 張照片`, failed ? "warn" : "ok");
+  }
+
   async function onPickImages(files: FileList | null) {
     if (!files) return;
     const room = 10 - draftImages.length;
@@ -790,6 +846,16 @@ export default function FbGroupManager() {
               地址只到路名（型錄本來就沒有門牌號）。
             </p>
             {impMissing.length > 0 && <p className={styles.warnText}>型錄上沒讀到：{impMissing.join("、")} —— 這幾項要自己補或刪掉那一行。</p>}
+            {impPhotos.length > 0 && (
+              <div className={styles.actions}>
+                <button type="button" className={styles.btnSm} onClick={importPhotos} disabled={picBusy || draftImages.length >= 10}>
+                  {picBusy ? `抓照片中… ${picDone}/${picTotal}` : `📷 帶入型錄照片（${impPhotos.length} 張）`}
+                </button>
+                <span className={styles.hintInline}>
+                  {draftImages.length >= 10 ? "已經 10 張了" : `最多再帶 ${10 - draftImages.length} 張，會接在現有圖片後面`}
+                </span>
+              </div>
+            )}
             <label className={styles.lbl}>標題（只給自己看，方便辨認）</label>
             <input className={styles.input} value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="例：9月 梧棲藍線捷運宅" />
             <label className={styles.lbl}>貼文內容（只寫這一戶的部分）</label>
