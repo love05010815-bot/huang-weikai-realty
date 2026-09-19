@@ -57,6 +57,7 @@ export default async function LeadsAdminPage() {
       contacts: l.contacts.map((c) => ({
         id: c.id,
         contactedAt: c.contactedAt,
+        contactedTime: c.contactedTime,
         method: c.method,
         feedback: c.feedback,
         resultStatus: c.resultStatus,

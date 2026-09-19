@@ -37,6 +37,8 @@ export type ContactRecord = {
   leadId: string;
   /** YYYY-MM-DD */
   contactedAt: string;
+  /** HH:MM，沒填就是 null —— 純顯示用，不用來排序或算日期 */
+  contactedTime: string | null;
   method: string;
   feedback: string;
   resultStatus: LeadStatus;
@@ -78,6 +80,8 @@ export type LeadInput = {
 export type ContactInput = {
   leadId: string;
   contactedAt: string;
+  /** HH:MM，可留空 */
+  contactedTime: string;
   method: string;
   feedback: string;
   resultStatus: string;
@@ -115,11 +119,30 @@ export async function ensureDevLeadTables(): Promise<void> {
       feedback          TEXT         NULL,
       result_status     VARCHAR(16)  NOT NULL DEFAULT 'contacted',
       next_follow_up_at CHAR(10)     NULL,
-      created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      created_at        DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
       PRIMARY KEY (id),
       KEY idx_dev_lead_contact_lead (lead_id, contacted_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+
+  // 2026-09-19 補的：CREATE TABLE IF NOT EXISTS 不會替既有的表補欄位，先查再 ALTER。
+  // CHAR(5) 存 "16:00"，跟 contacted_at 用 CHAR 不用 DATE/TIME 同一個理由 —— 純顯示用的文字，
+  // 不需要、也不該被當成可運算的時間值（沒有時區含義，只是「幾點去的」這個標籤）。
+  const hasTime = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM dev_lead_contact LIKE 'contacted_time'`);
+  if (hasTime.length === 0) {
+    await db.$executeRawUnsafe(`ALTER TABLE dev_lead_contact ADD COLUMN contacted_time CHAR(5) NULL AFTER contacted_at`);
+  }
+
+  /*
+   * 同一天連續加兩筆紀錄（例如補登過去幾筆歷史接洽）時，`ORDER BY contacted_at DESC,
+   * created_at DESC` 靠 created_at 分先後 —— 秒級精度撞在一起就會排序不穩，
+   * 「目前狀態＝最新一筆」就可能算成上一筆。自己拿真資料庫測快速「已簽約」按鈕時
+   * 真的中過一次（兩筆同一秒寫入，排序翻面）。
+   * 補到毫秒：MODIFY COLUMN 對已經是 DATETIME(3) 的表是無害的 no-op，不用先查再改。
+   */
+  await db.$executeRawUnsafe(
+    `ALTER TABLE dev_lead_contact MODIFY COLUMN created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)`,
+  );
 
   ensured = true;
 }
@@ -142,6 +165,7 @@ type ContactRow = {
   id: string;
   lead_id: string;
   contacted_at: string;
+  contacted_time: string | null;
   method: string | null;
   feedback: string | null;
   result_status: string;
@@ -168,11 +192,14 @@ function toResultStatus(raw: string): LeadStatus {
   return (CONTACT_RESULT_OPTIONS as string[]).includes(raw) ? (raw as LeadStatus) : "contacted";
 }
 
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 function toContactRecord(r: ContactRow): ContactRecord {
   return {
     id: r.id,
     leadId: r.lead_id,
     contactedAt: r.contacted_at,
+    contactedTime: r.contacted_time && TIME_RE.test(r.contacted_time) ? r.contacted_time : null,
     method: r.method ?? "",
     feedback: r.feedback?.trim() ? r.feedback.trim() : "",
     resultStatus: toResultStatus(r.result_status),
@@ -196,7 +223,7 @@ export async function listLeadsWithContacts(): Promise<LeadWithContacts[]> {
        FROM dev_lead ORDER BY created_at DESC`,
   );
   const contactRows = await db.$queryRawUnsafe<ContactRow[]>(
-    `SELECT id, lead_id, contacted_at, method, feedback, result_status, next_follow_up_at, created_at
+    `SELECT id, lead_id, contacted_at, contacted_time, method, feedback, result_status, next_follow_up_at, created_at
        FROM dev_lead_contact ORDER BY contacted_at DESC, created_at DESC`,
   );
 
@@ -263,6 +290,9 @@ export function validateContactInput(
   const contactedAt = (input.contactedAt ?? "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(contactedAt)) return { ok: false, error: "請選這次接洽的日期" };
 
+  const contactedTime = (input.contactedTime ?? "").trim();
+  if (contactedTime && !TIME_RE.test(contactedTime)) return { ok: false, error: "接洽時間格式不對" };
+
   const method = (input.method ?? "").trim();
   if (method.length > 16) return { ok: false, error: "接洽方式太長" };
 
@@ -279,7 +309,7 @@ export function validateContactInput(
 
   return {
     ok: true,
-    value: { leadId, contactedAt, method, feedback, resultStatus: resultStatus as LeadStatus, nextFollowUpAt },
+    value: { leadId, contactedAt, contactedTime, method, feedback, resultStatus: resultStatus as LeadStatus, nextFollowUpAt },
   };
 }
 
@@ -331,11 +361,12 @@ export async function addContact(input: ContactInput & { resultStatus: LeadStatu
   await ensureDevLeadTables();
   const id = randomUUID();
   await db.$executeRawUnsafe(
-    `INSERT INTO dev_lead_contact (id, lead_id, contacted_at, method, feedback, result_status, next_follow_up_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO dev_lead_contact (id, lead_id, contacted_at, contacted_time, method, feedback, result_status, next_follow_up_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     input.leadId,
     input.contactedAt,
+    input.contactedTime || null,
     input.method || "",
     input.feedback || null,
     input.resultStatus,

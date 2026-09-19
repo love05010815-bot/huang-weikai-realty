@@ -27,6 +27,7 @@ import styles from "./leads-admin.module.css";
 export type AdminContact = {
   id: string;
   contactedAt: string;
+  contactedTime: string | null;
   method: string;
   feedback: string;
   resultStatus: LeadStatus;
@@ -114,6 +115,7 @@ function toDraft(l: AdminLead): LeadDraft {
 
 type ContactDraft = {
   contactedAt: string;
+  contactedTime: string;
   method: string;
   feedback: string;
   resultStatus: LeadStatus;
@@ -121,7 +123,7 @@ type ContactDraft = {
 };
 
 function emptyContactDraft(today: string): ContactDraft {
-  return { contactedAt: today, method: CONTACT_METHODS[0], feedback: "", resultStatus: "contacted", nextFollowUpAt: "" };
+  return { contactedAt: today, contactedTime: "", method: CONTACT_METHODS[0], feedback: "", resultStatus: "contacted", nextFollowUpAt: "" };
 }
 
 export default function LeadsManager({
@@ -256,6 +258,32 @@ export default function LeadsManager({
     router.refresh();
   }
 
+  /**
+   * 卡片上的快速「已簽約」——不用開表單，直接補一筆結果是 signed_us 的紀錄。
+   * 還是走 addContactAction，狀態一樣是「算出來的」，不會跟正常流程兜不起來；
+   * 只是把「日期＝今天、其餘留空」這組預設值幫他先填好。
+   */
+  async function markSigned(leadId: string) {
+    setBusy(true);
+    setMsg(null);
+    const r = await addContactAction({
+      leadId,
+      contactedAt: today,
+      contactedTime: "",
+      method: "",
+      feedback: "",
+      resultStatus: "signed_us",
+      nextFollowUpAt: "",
+    });
+    setBusy(false);
+    if (!r.ok) {
+      setMsg({ kind: "err", text: r.error ?? "標記失敗" });
+      return;
+    }
+    setMsg({ kind: "ok", text: "已標記為已簽約" });
+    router.refresh();
+  }
+
   async function removeContact(id: string) {
     if (confirmDeleteContact !== id) {
       setConfirmDeleteContact(id);
@@ -346,6 +374,10 @@ export default function LeadsManager({
               接洽日期<em>必填</em>
             </span>
             <input type="date" value={contactDraft.contactedAt} onChange={(e) => setContactField("contactedAt", e.target.value)} />
+          </label>
+          <label>
+            <span>時間</span>
+            <input type="time" value={contactDraft.contactedTime} onChange={(e) => setContactField("contactedTime", e.target.value)} />
           </label>
           <label>
             <span>方式</span>
@@ -461,6 +493,19 @@ export default function LeadsManager({
                       )}
                     </div>
                     <div className={styles.cardBtns}>
+                      {lead.status !== "signed_us" && (
+                        <button
+                          type="button"
+                          className={`${styles.iconBtn} ${styles.success}`}
+                          disabled={busy}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markSigned(lead.id);
+                          }}
+                        >
+                          <Icon name="handshake" size={13} /> 已簽約
+                        </button>
+                      )}
                       <button
                         type="button"
                         className={styles.iconBtn}
@@ -499,7 +544,15 @@ export default function LeadsManager({
                           <ul className={styles.timeline}>
                             {lead.contacts.map((c) => (
                               <li key={c.id} className={styles.timelineItem}>
-                                <div className={styles.timelineDate}>{fmtDay(c.contactedAt)}</div>
+                                <div className={styles.timelineDate}>
+                                  {fmtDay(c.contactedAt)}
+                                  {c.contactedTime && (
+                                    <>
+                                      <br />
+                                      {c.contactedTime}
+                                    </>
+                                  )}
+                                </div>
                                 <div className={styles.timelineBody}>
                                   <div className={styles.timelineTop}>
                                     <Chip tone={STATUS_TONE[c.resultStatus]}>{LEAD_STATUS_LABEL[c.resultStatus]}</Chip>
