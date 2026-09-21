@@ -19,6 +19,7 @@ import {
   HISTORY_LIMIT,
   RATE_LIMIT_PER_MINUTE,
   WELCOME_MESSAGE,
+  WELCOME_MESSAGE_BOT_OFF,
 } from "@/config/line-bot";
 import { generateReply } from "@/lib/line-bot/ai";
 import {
@@ -141,6 +142,12 @@ export async function POST(req: Request) {
  * ⚠️ Flex 只要有一個欄位不合規，LINE 會**整包退回**、新朋友什麼都收不到 ——
  *    那是最不該漏的一則。所以退回時再用純文字送一次（整包被退代表 replyToken 還沒被用掉）。
  *
+ * 🔴 **名片卡不看 BOT_ENABLED**（2026-09-21 他指定加好友就要跳名片）。
+ *    那個開關管的是「AI 客服要不要講話」，這張卡是他的名片、不是機器人在跟客戶對話 ——
+ *    跟好宅配對那幾句一樣屬於不受開關管的一類。理由寫在 config/line-bot.ts 的開關註解裡。
+ *    **但第二則要看**：機器人關著時送的是自助說明，不是那段「您想買房還是賣房呢？」——
+ *    後者在邀請對話，沒人接的話客戶只會被已讀不回。
+ *
  * ⚠️ 這裡跟官方帳號後台「回應設定 → 加入好友的歡迎訊息」是**兩套**。
  *    那邊如果也開著，新朋友會收到兩份。要留這一套，那邊就要關掉。
  *
@@ -148,12 +155,18 @@ export async function POST(req: Request) {
  * 記成 assistant，所以不會亮成待回（待回看的是最後一則是不是客戶說的）。
  */
 async function replyWelcome(replyToken: string, userId: string): Promise<void> {
-  const ok = await replyMessages(replyToken, [agentCardMessage(), textMessage(WELCOME_MESSAGE)]);
+  const second = BOT_ENABLED ? WELCOME_MESSAGE : WELCOME_MESSAGE_BOT_OFF;
+  const ok = await replyMessages(replyToken, [agentCardMessage(), textMessage(second)]);
   if (!ok) {
-    console.error("[line/webhook] 名片卡歡迎訊息送不出去，改送純文字");
-    await replyMessage(replyToken, WELCOME_MESSAGE);
+    console.error("[line/webhook] 加好友的名片卡送不出去，改送純文字");
+    await replyMessage(replyToken, second);
   }
-  await saveMessage(userId, "assistant", ok ? "［系統］名片卡＋歡迎詞" : "［系統］歡迎詞（名片卡送失敗）", "bot");
+  await saveMessage(
+    userId,
+    "assistant",
+    ok ? "［系統］加好友：名片卡＋說明" : "［系統］加好友：說明（名片卡送失敗）",
+    "bot",
+  );
 }
 
 async function handleEvent(event: LineEvent): Promise<void> {
@@ -162,7 +175,7 @@ async function handleEvent(event: LineEvent): Promise<void> {
   // 只處理 1 對 1 私訊。群組訊息直接忽略（機器人被拉進群也不會亂講話）
   if (event.source?.type !== "user" || !userId) return;
 
-  // 新朋友加好友 —— 回名片卡＋罐頭歡迎詞，不經過 AI，零成本零風險（見 replyWelcome）
+  // 新朋友加好友 —— 回名片卡＋罐頭說明，不經過 AI，零成本零風險（見 replyWelcome）
   //
   // 🔴 2026-08-21：這裡原本沒看 BOT_ENABLED，所以總開關關著時「加好友」還是會被
   //    機器人打招呼 —— 跟 config 註解寫的「false = 完全不回應」不符。總開關要是
@@ -176,7 +189,7 @@ async function handleEvent(event: LineEvent): Promise<void> {
     } catch (e) {
       console.error("[line/webhook] 回復買方追蹤狀態失敗:", e);
     }
-    if (BOT_ENABLED && event.replyToken) {
+    if (event.replyToken) {
       await replyWelcome(event.replyToken, userId);
     }
     return;
