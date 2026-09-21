@@ -143,12 +143,17 @@ export async function POST(req: Request) {
  *
  * ⚠️ 這裡跟官方帳號後台「回應設定 → 加入好友的歡迎訊息」是**兩套**。
  *    那邊如果也開著，新朋友會收到兩份。要留這一套，那邊就要關掉。
+ *
+ * 送完在收件匣留一行 —— 不然新朋友那一格是空的，他分不出「歡迎訊息發了沒」。
+ * 記成 assistant，所以不會亮成待回（待回看的是最後一則是不是客戶說的）。
  */
-async function replyWelcome(replyToken: string): Promise<void> {
+async function replyWelcome(replyToken: string, userId: string): Promise<void> {
   const ok = await replyMessages(replyToken, [agentCardMessage(), textMessage(WELCOME_MESSAGE)]);
-  if (ok) return;
-  console.error("[line/webhook] 名片卡歡迎訊息送不出去，改送純文字");
-  await replyMessage(replyToken, WELCOME_MESSAGE);
+  if (!ok) {
+    console.error("[line/webhook] 名片卡歡迎訊息送不出去，改送純文字");
+    await replyMessage(replyToken, WELCOME_MESSAGE);
+  }
+  await saveMessage(userId, "assistant", ok ? "［系統］名片卡＋歡迎詞" : "［系統］歡迎詞（名片卡送失敗）", "bot");
 }
 
 async function handleEvent(event: LineEvent): Promise<void> {
@@ -172,7 +177,7 @@ async function handleEvent(event: LineEvent): Promise<void> {
       console.error("[line/webhook] 回復買方追蹤狀態失敗:", e);
     }
     if (BOT_ENABLED && event.replyToken) {
-      await replyWelcome(event.replyToken);
+      await replyWelcome(event.replyToken, userId);
     }
     return;
   }
