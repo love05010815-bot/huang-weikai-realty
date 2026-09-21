@@ -177,9 +177,13 @@ async function handleEvent(event: LineEvent): Promise<void> {
 
   // 新朋友加好友 —— 回名片卡＋罐頭說明，不經過 AI，零成本零風險（見 replyWelcome）
   //
-  // 🔴 2026-08-21：這裡原本沒看 BOT_ENABLED，所以總開關關著時「加好友」還是會被
-  //    機器人打招呼 —— 跟 config 註解寫的「false = 完全不回應」不符。總開關要是
-  //    擋不住所有出口，它就不是總開關。現在關著只認人、不出聲。
+  // 🔴 這一段被改過兩次、方向相反，**不要只看其中一次就改回去**：
+  //    2026-08-21 原本沒看 BOT_ENABLED，總開關關著還是會打招呼，跟註解寫的
+  //               「false = 完全不回應」不符 → 接上開關。
+  //    2026-09-21 他要「新朋友一加入就跳名片卡」→ 名片卡改成不看開關，
+  //               但**第二則文字還是看**（見 replyWelcome）。
+  //    也就是說這個開關管的是「AI 客服要不要講話」，不是「系統能不能出聲」。
+  //    界線與理由寫在 config/line-bot.ts 的 BOT_ENABLED 註解裡，改之前先讀那段。
   if (event.type === "follow") {
     const displayName = await getProfileName(userId);
     await touchUser(userId, displayName);
