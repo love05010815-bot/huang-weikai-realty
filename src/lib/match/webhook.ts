@@ -8,6 +8,7 @@
  *   4. 「修改條件」→ 同一張卡，但先顯示他目前的條件，按鈕字樣改成「重新設定條件」。
  *   5. 「停止通知」／「恢復通知」→ 開關新物件推播（不影響預約看屋的確認訊息）。
  *      刻意只認**整句就是關鍵字**的訊息；「我想找房子在沙鹿…」這種真的在問的話留給你本人回。
+ *   6. 「名片」→ 回瑋凱的名片卡。他自己打的還可以多帶物件（見 replyCard）。
  *
  * 第 3、4 種會順手用 LINE userId 建立／找出 match_buyer 並簽一個識別碼放進連結 ——
  * 這樣買方**不必等到預約**就綁得到人，換手機重填條件也不會變成兩筆（見 lib/match/token.ts）。
@@ -19,14 +20,16 @@
 import { VIEWING_STATUS } from "@/config/match";
 import { saveMessage } from "@/lib/line-bot/store";
 import { getAgentLineIds, isAgent } from "./agents";
-import { pushMessages, replyMessages, text, viewingConfirmFlex, welcomeFlex } from "./line";
+import { agentCardMessage, pushMessages, replyMessages, text, viewingConfirmFlex, welcomeFlex } from "./line";
 import { describePreference } from "./matcher";
 import {
   getListing,
   getListings,
   getViewingByCode,
+  listAvailableListings,
   listOpenViewings,
   listViewingsByLine,
+  type MatchListing,
   setBuyerFlagsByLine,
   updateViewing,
   upsertBuyer,
@@ -41,6 +44,12 @@ const MENU_RE = /^(找房|配對|開始配對|我要找房|預約看屋)$/;
 const EDIT_RE = /^(修改條件|更改條件|改條件|更新條件|修改需求|重新配對|重設條件)$/;
 const STOP_RE = /^(停止通知|取消通知|不要通知|停止推播|退出配對)$/;
 const RESUME_RE = /^(恢復通知|開啟通知|繼續通知|重新通知)$/;
+const CARD_RE = /^(名片|聯絡方式|怎麼聯絡)$/;
+
+/** 他自己叫名片卡時可以多帶參數：「名片 3」「名片 編號 編號」（見 replyCard） */
+const AGENT_CARD_RE = /^(名片|我的名片|自我介紹)\s*(.*)$/;
+/** 一張 carousel 最多 10 格，名片本身佔一格 */
+const MAX_CARD_LISTINGS = 9;
 
 /** 專員（你本人／工作帳）在官方帳號裡改狀態用的指令。買方打這些沒有用 —— 只認名單上的 userId。 */
 const AGENT_CMD_RE = /^(確認|取消|完成|已完成|看屋完成|結案)\s*(BK-[A-Z0-9]{6})$/i;
@@ -93,6 +102,11 @@ export async function handleMatchTextMessage(params: Ctx): Promise<boolean> {
 
   if (STOP_RE.test(message) || RESUME_RE.test(message)) {
     await switchNotify(params, RESUME_RE.test(message));
+    return true;
+  }
+
+  if (CARD_RE.test(message)) {
+    await replyCard(params, "", false);
     return true;
   }
 
@@ -169,6 +183,12 @@ async function handleAgentMessage(params: Ctx, message: string): Promise<boolean
     return true;
   }
 
+  const card = message.match(AGENT_CARD_RE);
+  if (card) {
+    await replyCard(params, (card[2] ?? "").trim(), true);
+    return true;
+  }
+
   const bare = message.match(/^BK-[A-Z0-9]{6}$/i)?.[0]?.toUpperCase();
   if (bare) {
     const viewing = await getViewingByCode(bare);
@@ -195,6 +215,54 @@ async function handleAgentMessage(params: Ctx, message: string): Promise<boolean
 async function agentReply({ userId, replyToken }: Ctx, msg: string): Promise<void> {
   await replyMessages(replyToken, [text(msg)]);
   await saveMessage(userId, "assistant", msg, "bot");
+}
+
+// ---------------------------------------------------------------- 名片卡
+
+/**
+ * 回一張名片卡。
+ *
+ * 他自己打的時候可以多帶東西（買方打就只有單張名片）：
+ *   名片              → 只有名片
+ *   名片 3            → 名片＋最新上架的 3 間
+ *   名片 A123 B456    → 名片＋指定編號的那幾間（找不到或已下架的自動略過）
+ *
+ * 🔴 這是**免費**的一條路：reply 不計費，他收到之後長按→轉傳到群組或客戶聊天室也不計費。
+ *    不要改成 push 主動發給誰 —— 那就開始吃每月 200 則的額度了。
+ */
+async function replyCard(params: Ctx, arg: string, forAgent: boolean): Promise<void> {
+  let listings: MatchListing[] = [];
+  let note = "";
+  try {
+    const wantLatest = /^\d+$/.test(arg) ? Number(arg) : 0;
+    if (wantLatest > 0) {
+      // listAvailableListings 已經是最新上架的在前
+      listings = (await listAvailableListings()).slice(0, Math.min(wantLatest, MAX_CARD_LISTINGS));
+      if (!listings.length) note = "目前庫裡沒有在售的物件，先給你單張名片。";
+    } else if (arg) {
+      const ids = arg.split(/[\s,，、]+/).filter(Boolean).slice(0, MAX_CARD_LISTINGS);
+      listings = await getListings(ids);
+      const missing = ids.length - listings.length;
+      if (missing > 0) note = `有 ${missing} 個編號找不到或已下架，沒放進卡片。`;
+    }
+  } catch (e) {
+    // 撈物件失敗不該讓整張名片發不出去 —— 至少把名片給他
+    console.error("[match/webhook] 名片卡取物件失敗（只回名片）:", e);
+    note = "物件資料讀取失敗，先給你單張名片。";
+  }
+
+  const hint = forAgent
+    ? "長按這張卡 →「轉傳」，就能貼到群組或客戶的聊天室。\n要帶物件可以打「名片 3」（最新 3 間）或「名片 編號 編號」。"
+    : "";
+  const tail = [note, hint].filter(Boolean).join("\n\n");
+
+  await replyMessages(params.replyToken, [agentCardMessage(listings), ...(tail ? [text(tail)] : [])]);
+  await saveMessage(
+    params.userId,
+    "assistant",
+    `［系統］名片卡${listings.length ? `＋${listings.length} 間物件` : ""}`,
+    "bot",
+  );
 }
 
 /**

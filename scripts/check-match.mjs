@@ -8,8 +8,16 @@
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { register } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+// 名片卡那幾項要載 lib/match/line.ts，它會 import "@/config/..." 與隔壁的 ./agents，
+// 所以得掛上別名／替身解析（見 scripts/alias-hooks.mjs）。stub 要後註冊，後註冊的先跑。
+register("./alias-hooks.mjs", import.meta.url);
+register("./stub-hooks.mjs", import.meta.url);
+// SITE_URL 是模組載入當下就決定的，要在 import line.ts 之前設好
+process.env.APPOINTMENT_BASE_URL = "https://weikaihouse.com";
 import {
   AGE_RANGES,
   describePreference,
@@ -362,6 +370,80 @@ test("價格異動：解析壞掉把價格變成 0 時，不能判定成全店�
   // 愛屋改版 → 價格全解析成 0
   const broken = ["a", "b", "c"].map((id) => ({ id, price: 0 }));
   assert.deepEqual(detectPriceChanges(before, broken), []);
+});
+
+// ---------------------------------------------------------------- 名片卡
+
+const LINE = await import("../src/lib/match/line.ts");
+
+/** 把 Flex 整棵樹走過一遍，回所有節點 */
+function walk(node, out = []) {
+  if (Array.isArray(node)) {
+    for (const n of node) walk(n, out);
+  } else if (node && typeof node === "object") {
+    out.push(node);
+    for (const v of Object.values(node)) walk(v, out);
+  }
+  return out;
+}
+
+const fakeListing = (id) => ({
+  id,
+  title: `測試物件 ${id}`,
+  city: "台中市",
+  district: "梧棲區",
+  address: "中華路一段",
+  price: 888,
+  rooms: 3,
+  size: 32.5,
+  landSize: 0,
+  type: "電梯大樓",
+  age: 8,
+  images: ["https://weikaihouse.com/card/owner-2026-09.jpg"],
+});
+
+test("名片卡：單張的時候不包 carousel（包了卡片會變窄）", () => {
+  const msg = LINE.agentCardMessage([]);
+  assert.equal(msg.type, "flex");
+  assert.equal(msg.contents.type, "bubble");
+});
+
+test("名片卡：帶物件就變成 carousel，最多 10 格（名片 1 ＋ 物件 9）", () => {
+  const msg = LINE.agentCardMessage(Array.from({ length: 20 }, (_, i) => fakeListing(`L${i}`)));
+  assert.equal(msg.contents.type, "carousel");
+  assert.equal(msg.contents.contents.length, 10);
+});
+
+test("名片卡：大頭照要是 https 的絕對網址，LINE 才載得到", () => {
+  const hero = LINE.agentCardMessage([]).contents.hero;
+  assert.match(hero.url, /^https:\/\/.+\.(jpg|jpeg|png)$/i);
+});
+
+// 🔴 這一項是防外洩的，不要拿掉：名片是拿去**轉傳**的，
+//    連結上帶了買方識別碼的話，收到的人一點就會被認成轉傳者本人。
+test("名片卡：連結一律不帶買方識別碼（k=）", () => {
+  const msg = LINE.agentCardMessage([fakeListing("L1"), fakeListing("L2")]);
+  const uris = walk(msg)
+    .filter((n) => n.type === "uri" && typeof n.uri === "string")
+    .map((n) => n.uri);
+  assert.ok(uris.length >= 5, `按鈕數不對：${uris.length}`);
+  for (const uri of uris) assert.ok(!/[?&]k=/.test(uri), `這個連結帶了識別碼：${uri}`);
+});
+
+test("名片卡：沒有空字串的 text（LINE 會整包退回）", () => {
+  for (const listings of [[], [fakeListing("L1")]]) {
+    for (const n of walk(LINE.agentCardMessage(listings))) {
+      if (n.type === "text") assert.ok(String(n.text ?? "").trim().length > 0, "有空的 text 節點");
+    }
+  }
+});
+
+test("名片卡：按鈕文字不超過 20 字（LINE 的上限）", () => {
+  for (const n of walk(LINE.agentCardMessage([fakeListing("L1")]))) {
+    if (n.type === "uri" || n.type === "message") {
+      assert.ok(String(n.label ?? "").length <= 20, `按鈕文字太長：${n.label}`);
+    }
+  }
 });
 
 if (process.exitCode) {

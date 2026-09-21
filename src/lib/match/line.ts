@@ -10,7 +10,7 @@
  */
 import { MATCH } from "@/config/match";
 import { getAgentLineIds } from "./agents";
-import { OWNER, SITE_URL } from "@/config/owner";
+import { OWNER, SITE_URL, SOCIAL } from "@/config/owner";
 import { getLineBotToken } from "@/lib/line-bot/client";
 import { notifyAbinAdminGroup } from "@/lib/line-notify";
 import { escapeHtml, sendMail } from "@/lib/mail";
@@ -315,6 +315,122 @@ export function welcomeFlex(
         ],
       },
     },
+  };
+}
+
+// ---------------------------------------------------------------- 個人名片卡
+
+/** 名片上的社群按鈕。順序＝優先順序，`config/owner.ts` 的 SOCIAL 留空字串就自動跳過。 */
+const SOCIAL_BUTTONS: { key: keyof typeof SOCIAL; label: string }[] = [
+  { key: "fb", label: "臉書" },
+  { key: "ig", label: "IG" },
+  { key: "yt", label: "YouTube" },
+  { key: "threads", label: "脆" },
+  { key: "tiktok", label: "抖音" },
+];
+
+/** 把按鈕兩顆兩顆排成一列（一列一顆會把卡片拉得很長，手機上要一直滑） */
+function buttonRows(buttons: Record<string, unknown>[]): Record<string, unknown>[] {
+  const rows: Record<string, unknown>[] = [];
+  for (let i = 0; i < buttons.length; i += 2) {
+    rows.push({ type: "box", layout: "horizontal", spacing: "sm", contents: buttons.slice(i, i + 2) });
+  }
+  return rows;
+}
+
+/**
+ * 個人名片卡 —— 大頭照、頭銜、一句介紹、手機、經紀業揭露，加上一排按鈕。
+ *
+ * 內容全部讀 `config/owner.ts`，這裡一個字都不要寫死：名片頁 /card、首頁頁尾、
+ * 通知信都讀同一份，改一處就全部一起變。
+ *
+ * ⚠️ 大頭照必須是 **https 的絕對網址**，LINE 才載得到（本機 http://localhost 不會顯示，
+ *    這是預期的，不是壞掉）。所以不是 https 就整個不放 hero，卡片照樣成立、不會破圖。
+ *
+ * 🔴 這張卡**故意不帶買方識別碼**（別的卡都會帶）—— 它是拿去**轉傳**的，
+ *    帶了的話收到的人一點「預約看屋」就會被認成轉傳者本人，條件、預約全部記到同一筆。
+ *    所以連結一律用乾淨的 /match，讓每個人自己留自己的條件。
+ */
+export function agentCardBubble({ withListings = false }: { withListings?: boolean } = {}) {
+  const photo = /^https:\/\//.test(SITE_URL) ? `${SITE_URL}${OWNER.photoUrl}` : "";
+
+  const social = SOCIAL_BUTTONS.filter((b) => /^https:\/\//.test(SOCIAL[b.key] ?? "")).slice(0, 3);
+  const linkButtons = [
+    { type: "button", style: "secondary", height: "sm", action: { type: "uri", label: "官網", uri: SITE_URL } },
+    ...social.map((b) => ({
+      type: "button",
+      style: "secondary",
+      height: "sm",
+      action: { type: "uri", label: b.label, uri: SOCIAL[b.key] },
+    })),
+  ];
+
+  const bubble: Record<string, unknown> = {
+    type: "bubble",
+    body: {
+      type: "box",
+      layout: "vertical",
+      spacing: "sm",
+      contents: [
+        { type: "text", text: safe(OWNER.name), weight: "bold", size: "xxl" },
+        { type: "text", text: safe(OWNER.title), size: "sm", weight: "bold", color: "#227F71", wrap: true },
+        { type: "text", text: safe(OWNER.slogan), size: "sm", color: "#666666", wrap: true },
+        withListings
+          ? { type: "text", text: "這幾間是依您的條件挑的，想看幾間都可以，勾好一次約時間就行。", size: "sm", color: "#666666", wrap: true }
+          : null,
+        { type: "text", text: safe(OWNER.phone), size: "xxl", weight: "bold", color: "#E00000", margin: "md" },
+        { type: "separator", margin: "md" },
+        {
+          type: "text",
+          text: `${OWNER.brokerage}｜經紀人：${OWNER.brokerName} ${OWNER.brokerLicense}`,
+          size: "xxs",
+          color: "#aaaaaa",
+          wrap: true,
+          margin: "md",
+        },
+      ].filter(Boolean),
+    },
+    footer: {
+      type: "box",
+      layout: "vertical",
+      spacing: "sm",
+      contents: [
+        {
+          type: "button",
+          style: "primary",
+          color: GREEN,
+          action: { type: "uri", label: "預約看屋（想看幾間一起約）", uri: matchPageUrl() },
+        },
+        {
+          type: "button",
+          style: "primary",
+          color: "#22323F",
+          action: { type: "uri", label: `撥電話給${OWNER.alias}`, uri: `tel:${OWNER.phoneRaw}` },
+        },
+        ...buttonRows(linkButtons),
+      ],
+    },
+  };
+  if (photo) bubble.hero = { type: "image", url: photo, size: "full", aspectRatio: "1:1", aspectMode: "cover" };
+  return bubble;
+}
+
+/**
+ * 名片（可以再接幾間物件）。
+ *
+ * 他要的用法（2026-09-21）：在自己的 LINE 跟官方帳號說一聲「名片」，機器人把卡回給他，
+ * 他**長按轉傳**到群組或客戶的聊天室。走 reply 是免費的，轉傳幾次都不花那 200 則額度。
+ *
+ * 🔴 整張卡（含後面的物件）都不帶買方識別碼，原因見 agentCardBubble。
+ */
+export function agentCardMessage(listings: ListingLike[] = []): LineMessage {
+  const picked = listings.slice(0, 9);
+  const bubbles = [agentCardBubble({ withListings: picked.length > 0 }), ...picked.map((l) => listingBubble(l))];
+  return {
+    type: "flex",
+    altText: picked.length ? `${OWNER.name}的名片與 ${picked.length} 間推薦物件` : `${OWNER.name}｜${OWNER.title}`,
+    // 只有一張就不要包 carousel —— carousel 的卡片會變窄，單張用整個寬度比較好看
+    contents: bubbles.length === 1 ? bubbles[0] : { type: "carousel", contents: bubbles },
   };
 }
 
