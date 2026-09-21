@@ -30,6 +30,7 @@ import {
 } from "@/lib/line-bot/client";
 import { notifyHandoffRequest } from "@/lib/line-bot/notify";
 import { verifyLineSignature } from "@/lib/line-bot/signature";
+import { agentCardMessage, replyMessages, text as textMessage } from "@/lib/match/line";
 import { setBuyerFlagsByLine } from "@/lib/match/store";
 import { handleMatchTextMessage } from "@/lib/match/webhook";
 import {
@@ -131,13 +132,32 @@ export async function POST(req: Request) {
   return new Response("ok", { status: 200 });
 }
 
+/**
+ * 加好友的第一印象：**名片卡 ＋ 原本那段歡迎詞**（2026-09-21 他指定加好友就要跳名片）。
+ *
+ * 兩則用同一個 replyToken 一起送，reply 不計費。名片在前、文字在後 ——
+ * 先知道你是誰，再看這個帳號能幫什麼忙，最後那句提問把對話帶起來。
+ *
+ * ⚠️ Flex 只要有一個欄位不合規，LINE 會**整包退回**、新朋友什麼都收不到 ——
+ *    那是最不該漏的一則。所以退回時再用純文字送一次（整包被退代表 replyToken 還沒被用掉）。
+ *
+ * ⚠️ 這裡跟官方帳號後台「回應設定 → 加入好友的歡迎訊息」是**兩套**。
+ *    那邊如果也開著，新朋友會收到兩份。要留這一套，那邊就要關掉。
+ */
+async function replyWelcome(replyToken: string): Promise<void> {
+  const ok = await replyMessages(replyToken, [agentCardMessage(), textMessage(WELCOME_MESSAGE)]);
+  if (ok) return;
+  console.error("[line/webhook] 名片卡歡迎訊息送不出去，改送純文字");
+  await replyMessage(replyToken, WELCOME_MESSAGE);
+}
+
 async function handleEvent(event: LineEvent): Promise<void> {
   const userId = event.source?.userId;
 
   // 只處理 1 對 1 私訊。群組訊息直接忽略（機器人被拉進群也不會亂講話）
   if (event.source?.type !== "user" || !userId) return;
 
-  // 新朋友加好友 —— 回罐頭歡迎詞，不經過 AI，零成本零風險
+  // 新朋友加好友 —— 回名片卡＋罐頭歡迎詞，不經過 AI，零成本零風險（見 replyWelcome）
   //
   // 🔴 2026-08-21：這裡原本沒看 BOT_ENABLED，所以總開關關著時「加好友」還是會被
   //    機器人打招呼 —— 跟 config 註解寫的「false = 完全不回應」不符。總開關要是
@@ -152,7 +172,7 @@ async function handleEvent(event: LineEvent): Promise<void> {
       console.error("[line/webhook] 回復買方追蹤狀態失敗:", e);
     }
     if (BOT_ENABLED && event.replyToken) {
-      await replyMessage(event.replyToken, WELCOME_MESSAGE);
+      await replyWelcome(event.replyToken);
     }
     return;
   }
