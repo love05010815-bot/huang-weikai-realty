@@ -11,7 +11,9 @@
  * 🔴 圖片交給外掛時轉成 dataURL 放進 payload；存進 IndexedDB 前先縮到長邊 1600px，控制大小。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FB_AD_TAIL, fixTruncatedTail, truncatedLinks, withTail } from "@/config/fb-tail";
+// 🔴 只 import 純邏輯，不要 import `@/config/fb-tail`：這支會被同事版外掛整包編進去（tools/fb-group-poster/app），
+//    那裡面是黃瑋凱本人的尾段（電話、證號）。他的尾段由 FbAdminManager 用 props 傳進來。
+import { truncatedLinks, withTail } from "@/lib/fb-tail-core";
 import { idbGet, idbSet } from "./idb";
 import styles from "./fb.module.css";
 
@@ -47,7 +49,35 @@ type Progress = {
   finishedAt?: number;
 };
 
-const DEFAULT_SETTINGS: Settings = { pageName: "", locale: "zh-TW", dailyLimit: 10, tailText: FB_AD_TAIL };
+/** 預設設定；固定尾段的預設值由外面給（後台＝黃瑋凱的那段、同事版＝空白讓同事自己填） */
+const defaultSettings = (tail: string): Settings => ({ pageName: "", locale: "zh-TW", dailyLimit: 10, tailText: tail });
+
+export type ImportDraft = { title: string; text: string; missing: string[] };
+/** 「從愛屋帶入」打哪裡：後台走 /api/admin/fb/*（Google 登入）、同事版走 weikaihouse.com/api/fb-ext/*（授權碼） */
+export type FbImportApi = {
+  houseol(input: string): Promise<{ ok: boolean; error?: string; caseId?: string; photos?: string[]; draft?: ImportDraft }>;
+  photo(url: string): Promise<{ ok: boolean; error?: string; dataUrl?: string }>;
+};
+const postJson = async (url: string, body: unknown) =>
+  (await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })).json();
+const ADMIN_IMPORT_API: FbImportApi = {
+  houseol: (input) => postJson("/api/admin/fb/houseol", { input }),
+  photo: (url) => postJson("/api/admin/fb/houseol-photo", { url }),
+};
+
+export type FbGroupManagerProps = {
+  /** admin＝weikaihouse.com 的後台頁；extension＝同事版外掛自己的 app.html */
+  mode?: "admin" | "extension";
+  /** 固定尾段第一次的預設值 */
+  defaultTail?: string;
+  /** 載入舊設定時的補丁（後台用來把截斷的網址換掉）；同事版不用 */
+  migrateTail?: (tail: string) => string;
+  /** 同事版：授權碼有效才給發佈／抓社團／帶入；後台永遠 true */
+  licensed?: boolean;
+  /** 沒授權時按按鈕要講的話 */
+  licenseHint?: string;
+  importApi?: FbImportApi;
+};
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const STATUS_LABEL: Record<string, [string, string]> = {
   posted: ["已發佈", "ok"],
@@ -113,12 +143,19 @@ async function fileToResizedDataUrl(file: File, max = 1600, quality = 0.85): Pro
   return resizeDataUrl(dataUrl, max, quality);
 }
 
-export default function FbGroupManager() {
+export default function FbGroupManager({
+  mode = "admin",
+  defaultTail = "",
+  migrateTail,
+  licensed = true,
+  licenseHint = "先在最上面貼授權碼、按「儲存並驗證」",
+  importApi = ADMIN_IMPORT_API,
+}: FbGroupManagerProps) {
   const [tab, setTab] = useState<"publish" | "posts" | "groups" | "history" | "settings">("publish");
   const [ads, setAds] = useState<Ad[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [identities, setIdentities] = useState<Identity[]>([]);
-  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<Settings>(() => defaultSettings(defaultTail));
   const [history, setHistory] = useState<HistoryJob[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -142,9 +179,9 @@ export default function FbGroupManager() {
     (async () => {
       setAds(await idbGet<Ad[]>("ads", []));
       setGroups(await idbGet<Group[]>("groups", []));
-      const s = { ...DEFAULT_SETTINGS, ...(await idbGet<Partial<Settings>>("settings", {})) };
-      // 他 9/18 之前存的尾段裡有三條被截斷的死連結（樂屋／FB粉專／YouTube）→ 開頁時換成完整網址
-      s.tailText = fixTruncatedTail(s.tailText);
+      const s = { ...defaultSettings(defaultTail), ...(await idbGet<Partial<Settings>>("settings", {})) };
+      // 後台：他 9/18 之前存的尾段裡有三條被截斷的死連結（樂屋／FB粉專／YouTube）→ 開頁時換成完整網址
+      if (migrateTail) s.tailText = migrateTail(s.tailText);
       setSettings(s);
       // 舊資料只有單一「粉專名稱」→ 自動升級成第一個發文身分，不用他重打
       let ids = await idbGet<Identity[]>("identities", []);
@@ -268,17 +305,13 @@ export default function FbGroupManager() {
   async function importFromHouseol() {
     const input = impInput.trim();
     if (!input) return showToast("先貼愛屋的物件連結，或直接打案號（例：AA6352434）", "warn");
+    if (!licensed) return showToast(`🔒 ${licenseHint}`, "bad");
     // 打字打到一半被蓋掉最嘔，先問過
     if ((draftText.trim() || draftTitle.trim()) && !confirm("帶入會蓋掉現在這篇的標題與內容，確定嗎？")) return;
     setImpBusy(true);
     setImpMissing([]);
     try {
-      const res = await fetch("/api/admin/fb/houseol", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ input }),
-      });
-      const j = (await res.json()) as { ok: boolean; error?: string; caseId?: string; photos?: string[]; draft?: { title: string; text: string; missing: string[] } };
+      const j = await importApi.houseol(input);
       if (!j.ok || !j.draft) return showToast(j.error || "帶入失敗", "bad");
       setDraftTitle(j.draft.title);
       setDraftText(j.draft.text);
@@ -304,18 +337,14 @@ export default function FbGroupManager() {
     if (room <= 0) return showToast("已經有 10 張了，先移掉幾張再帶", "warn");
     const list = impPhotos.slice(0, room);
     if (!list.length) return showToast("這一戶的型錄上沒有照片", "warn");
+    if (!licensed) return showToast(`🔒 ${licenseHint}`, "bad");
     setPicBusy(true);
     setPicDone(0);
     setPicTotal(list.length);
     let failed = 0;
     for (let i = 0; i < list.length; i++) {
       try {
-        const res = await fetch("/api/admin/fb/houseol-photo", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ url: list[i] }),
-        });
-        const j = (await res.json()) as { ok: boolean; error?: string; dataUrl?: string };
+        const j = await importApi.photo(list[i]);
         if (!j.ok || !j.dataUrl) {
           failed++;
           continue;
@@ -434,11 +463,14 @@ export default function FbGroupManager() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scan]);
 
-  function startScan() {
+  async function startScan() {
     if (!extVersion) return showToast("沒偵測到外掛：請先安裝／更新「FB 社團廣告助手」，裝好後按 F5 重新整理這頁", "bad");
-    setScan({ status: "scanning", found: 0 });
+    if (!licensed) return showToast(`🔒 ${licenseHint}`, "bad");
     setScanPick(new Set());
-    window.postMessage({ type: "fbq:scan-start", locale: settings.locale }, window.location.origin);
+    // 等外掛回話再說「已開分頁」：同事版沒授權時背景程式會拒絕，不能假裝開了
+    const ack = await askExt("scan-start", { type: "fbq:scan-start", locale: settings.locale });
+    if (!ack.ok) return showToast(ack.error || "外掛沒回應。到 chrome://extensions 按那張卡片的 ↻，回來重新整理這頁再試", "bad");
+    setScan({ status: "scanning", found: 0 });
     showToast("已開一個 Facebook 分頁去抓，讓它留在前景跑完", "ok");
   }
   function clearScan() {
@@ -550,26 +582,31 @@ export default function FbGroupManager() {
       ad: { text: finalText, images: pubAd.images.map((im) => im.dataUrl) },
       groups: picked.map((g) => ({ id: g.id, name: g.name, url: g.url })),
     };
-    const ok = await new Promise<boolean>((resolve) => {
-      const timer = setTimeout(() => {
-        window.removeEventListener("message", onAck);
-        resolve(false);
-      }, 5000);
-      function onAck(ev: MessageEvent) {
-        if (ev.source !== window || !ev.data || ev.data.type !== "fbq:ack" || ev.data.action !== "launch") return;
-        clearTimeout(timer);
-        window.removeEventListener("message", onAck);
-        resolve(!!ev.data.ok);
-      }
-      window.addEventListener("message", onAck);
-      window.postMessage({ type: "fbq:launch", payload }, window.location.origin);
-    });
-    if (ok) {
+    const ack = await askExt("launch", { type: "fbq:launch", payload });
+    if (ack.ok) {
       setRunning(true);
       showToast("已交給外掛，正在開第一個社團…到那個分頁操作", "ok");
     } else {
-      showToast("外掛沒回應。到 chrome://extensions 按那張卡片的 ↻，回來重新整理這頁再試", "bad");
+      // 同事版沒授權、後台資料格式不對…外掛會講原因；完全沒回話才是外掛沒載好
+      showToast(ack.error || "外掛沒回應。到 chrome://extensions 按那張卡片的 ↻，回來重新整理這頁再試", "bad");
     }
+  }
+  /** 丟訊息給外掛（bridge.js 轉給背景程式）並等它回 fbq:ack；5 秒沒回就當沒裝好 */
+  function askExt(action: string, msg: Record<string, unknown>): Promise<{ ok: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        window.removeEventListener("message", onAck);
+        resolve({ ok: false });
+      }, 5000);
+      function onAck(ev: MessageEvent) {
+        if (ev.source !== window || !ev.data || ev.data.type !== "fbq:ack" || ev.data.action !== action) return;
+        clearTimeout(timer);
+        window.removeEventListener("message", onAck);
+        resolve({ ok: !!ev.data.ok, error: typeof ev.data.error === "string" ? ev.data.error : undefined });
+      }
+      window.addEventListener("message", onAck);
+      window.postMessage(msg, window.location.origin);
+    });
   }
   async function stop() {
     window.postMessage({ type: "fbq:stop" }, window.location.origin);
@@ -594,7 +631,8 @@ export default function FbGroupManager() {
   if (!ads.length) missing.push("到「廣告文案」寫一版廣告");
   if (!groups.length) missing.push("到「社團清單」加入社團");
   if (!identities.length) missing.push("到「設定」新增發文身分（粉專或帳號，可以多個）");
-  if (!extVersion) missing.push("安裝「FB 社團廣告助手」外掛（裝法在設定頁）");
+  if (!extVersion && mode === "admin") missing.push("安裝「FB 社團廣告助手」外掛（裝法在設定頁）");
+  if (!licensed) missing.push("在最上面貼授權碼、按「儲存並驗證」");
 
   return (
     <div className={styles.wrap}>
@@ -603,6 +641,7 @@ export default function FbGroupManager() {
           <span className={`${styles.dot} ${extVersion ? styles.dotOn : ""}`} />
           {extVersion ? `外掛已安裝 v${extVersion}` : "未偵測到外掛"}
         </span>
+        {mode === "extension" && !licensed && <span className={styles.warnText}>🔒 {licenseHint}</span>}
         <span>今日已發：<b>{progress?.today ?? 0}</b> / {settings.dailyLimit > 0 ? settings.dailyLimit : "不限"}</span>
       </div>
 
@@ -740,7 +779,7 @@ export default function FbGroupManager() {
           </section>
 
           <div className={styles.actions}>
-            <button type="button" className={styles.runBig} onClick={launch} disabled={running}>
+            <button type="button" className={styles.runBig} onClick={launch} disabled={running || !licensed}>
               ▶ 開始發佈
             </button>
             {running && (
@@ -837,7 +876,7 @@ export default function FbGroupManager() {
                 placeholder="https://www.houseol.com.tw/sell_item/… 或 AA6352434"
                 spellCheck={false}
               />
-              <button type="button" className={styles.btnSm} onClick={importFromHouseol} disabled={impBusy}>
+              <button type="button" className={styles.btnSm} onClick={importFromHouseol} disabled={impBusy || !licensed}>
                 {impBusy ? "讀取中…" : "帶入"}
               </button>
             </div>
@@ -848,7 +887,7 @@ export default function FbGroupManager() {
             {impMissing.length > 0 && <p className={styles.warnText}>型錄上沒讀到：{impMissing.join("、")} —— 這幾項要自己補或刪掉那一行。</p>}
             {impPhotos.length > 0 && (
               <div className={styles.actions}>
-                <button type="button" className={styles.btnSm} onClick={importPhotos} disabled={picBusy || draftImages.length >= 10}>
+                <button type="button" className={styles.btnSm} onClick={importPhotos} disabled={picBusy || draftImages.length >= 10 || !licensed}>
                   {picBusy ? `抓照片中… ${picDone}/${picTotal}` : `📷 帶入型錄照片（${impPhotos.length} 張）`}
                 </button>
                 <span className={styles.hintInline}>
@@ -904,7 +943,7 @@ export default function FbGroupManager() {
             </p>
             {!extVersion && <p className={styles.warnText}>沒偵測到外掛。先到 chrome://extensions 安裝／更新「FB 社團廣告助手」，回來按 F5 再試。</p>}
             <div className={styles.actions}>
-              <button type="button" className={styles.run} onClick={startScan} disabled={scanning || !extVersion}>
+              <button type="button" className={styles.run} onClick={startScan} disabled={scanning || !extVersion || !licensed}>
                 {scanning ? "抓取中…" : "從 FB 抓我加入的社團"}
               </button>
               {scan && !scanning && (
@@ -1243,7 +1282,7 @@ export default function FbGroupManager() {
                 type="button"
                 className={styles.btnSm}
                 onClick={() => {
-                  if (confirm("把固定尾段還原成一開始的版本？你現在改過的內容會被蓋掉。")) setSettings((s) => ({ ...s, tailText: FB_AD_TAIL }));
+                  if (confirm("把固定尾段還原成一開始的版本？你現在改過的內容會被蓋掉。")) setSettings((s) => ({ ...s, tailText: defaultTail }));
                 }}
               >
                 還原成預設
@@ -1269,16 +1308,18 @@ export default function FbGroupManager() {
             <p className={styles.okText}>設定會自動儲存。</p>
           </section>
 
-          <section className={styles.card}>
-            <h2 className={styles.h2}>安裝外掛（第一次）</h2>
-            <ol className={styles.steps}>
-              <li>Chrome 打開 <code>chrome://extensions</code>，右上角開「開發人員模式」。</li>
-              <li>按「載入未封裝項目」，選資料夾 <code>booking-system\tools\fb-group-poster</code>。</li>
-              <li>回到這頁按 F5 重新整理，上面會顯示「外掛已安裝」。</li>
-              <li>先到 Facebook 登入，並切換成你的粉專身分（右上角頭像 → 查看所有個人檔案 → 選粉專）。</li>
-            </ol>
-            <p className={styles.hint}>{extVersion ? `目前偵測到外掛 v${extVersion}。` : "目前還沒偵測到外掛。"}</p>
-          </section>
+          {mode === "admin" && (
+            <section className={styles.card}>
+              <h2 className={styles.h2}>安裝外掛（第一次）</h2>
+              <ol className={styles.steps}>
+                <li>Chrome 打開 <code>chrome://extensions</code>，右上角開「開發人員模式」。</li>
+                <li>按「載入未封裝項目」，選資料夾 <code>booking-system\tools\fb-group-poster</code>。</li>
+                <li>回到這頁按 F5 重新整理，上面會顯示「外掛已安裝」。</li>
+                <li>先到 Facebook 登入，並切換成你的粉專身分（右上角頭像 → 查看所有個人檔案 → 選粉專）。</li>
+              </ol>
+              <p className={styles.hint}>{extVersion ? `目前偵測到外掛 v${extVersion}。` : "目前還沒偵測到外掛。"}</p>
+            </section>
+          )}
 
           <section className={`${styles.card} ${styles.warnCard}`}>
             <h2 className={styles.h2}>⚠ 使用前請了解</h2>

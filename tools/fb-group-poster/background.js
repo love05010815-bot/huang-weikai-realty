@@ -27,14 +27,33 @@ const ADMIN_URLS = [
   "http://localhost:3000/admin/fb",
 ];
 
+/*
+ * 同事版（2026-09-22 他說「打包成可以分享給同事的教學包」）：
+ *   操作畫面整包編進外掛自己的 app.html（跟 591 刊登助手同一套做法），同事貼授權碼就能用、不用進他的後台。
+ *   flavor.js 標這一份是他自己的（colleague=false，圖示開後台）還是同事版（colleague=true，圖示開 app.html）；
+ *   license.js 管授權碼（向 weikaihouse.com 驗、快取、離線寬限）。
+ * 🔴 從 app.html 來的「開始發佈」「抓社團」一律先過授權；後台 bridge.js 來的不驗（那是他自己，後台有 Google 登入牆）。
+ */
+importScripts("flavor.js", "license.js");
+const COLLEAGUE = !!(self.FBQ_FLAVOR && self.FBQ_FLAVOR.colleague);
+const APP_URL = chrome.runtime.getURL("app.html");
+const license = self.FBQLicense.create({
+  storage: { get: (k) => chrome.storage.local.get(k), set: (o) => chrome.storage.local.set(o) },
+  fetch: (u, o) => fetch(u, o),
+  version: chrome.runtime.getManifest().version,
+});
+/** 訊息是不是從外掛自己的頁面（app.html，同事版）來的；後台 bridge.js 來的 sender.url 是 weikaihouse.com */
+const fromAppPage = (sender) => !!(sender && sender.url && sender.url.startsWith(chrome.runtime.getURL("")));
+
 chrome.action.onClicked.addListener(async () => {
-  // 已經開著後台就跳過去，否則開一個
-  const tabs = await chrome.tabs.query({ url: ["https://weikaihouse.com/admin/fb*", "https://www.weikaihouse.com/admin/fb*", "http://localhost:3000/admin/fb*"] });
+  // 已經開著（後台／外掛頁）就跳過去，否則開一個
+  const urls = COLLEAGUE ? [APP_URL] : ["https://weikaihouse.com/admin/fb*", "https://www.weikaihouse.com/admin/fb*", "http://localhost:3000/admin/fb*"];
+  const tabs = await chrome.tabs.query({ url: urls });
   if (tabs[0]) {
     await chrome.tabs.update(tabs[0].id, { active: true });
     if (tabs[0].windowId != null) await chrome.windows.update(tabs[0].windowId, { focused: true });
   } else {
-    await chrome.tabs.create({ url: ADMIN_URLS[0] });
+    await chrome.tabs.create({ url: COLLEAGUE ? APP_URL : ADMIN_URLS[0] });
   }
 });
 
@@ -105,6 +124,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return reply(async () => {
       const p = msg.payload;
       if (!p || p.v !== 1 || !Array.isArray(p.groups) || !p.groups.length) throw new Error("資料格式不對");
+      if (fromAppPage(sender)) {
+        // 同事版：沒有有效授權碼就不開分頁；event=launch 這一次一定問伺服器並記一次「發佈」（後台看使用人次）
+        const lic = await license.check({ event: "launch" });
+        if (!lic.ok) return { ok: false, error: self.FBQLicense.message(lic), license: lic };
+      }
       // 發文身分：新版後台送 identity，舊版只送 pageName
       const identity = {
         name: String((p.identity && p.identity.name) || p.pageName || ""),
@@ -233,6 +257,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // 後台 → 開「你的社團」分頁開始抓
   if (msg.type === "fbq:scan-start") {
     return reply(async () => {
+      if (fromAppPage(sender)) {
+        const lic = await license.check();
+        if (!lic.ok) return { ok: false, error: self.FBQLicense.message(lic), license: lic };
+      }
       const locale = msg.locale === "en" ? "en" : "zh-TW";
       await chrome.storage.local.set({ [SCAN_KEY]: { status: "scanning", found: 0, groups: [], at: Date.now() } });
       const tab = await chrome.tabs.create({ url: JOINED_URL, active: true });
@@ -283,6 +311,20 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       await chrome.storage.local.remove(SCAN_KEY);
       await chrome.storage.session.remove(SCANJOB_KEY);
       return { ok: true };
+    });
+  }
+
+  /* ───────── 同事版授權碼（app.html 用）───────── */
+  if (msg.type === "fbq:license-check") {
+    return reply(async () => {
+      const lic = await license.check({ force: !!msg.force });
+      return { ok: true, license: lic, message: self.FBQLicense.message(lic) };
+    });
+  }
+  if (msg.type === "fbq:license-set") {
+    return reply(async () => {
+      const lic = await license.setKey(msg.key);
+      return { ok: true, license: lic, message: self.FBQLicense.message(lic) };
     });
   }
 

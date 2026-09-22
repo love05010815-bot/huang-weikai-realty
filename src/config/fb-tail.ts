@@ -55,16 +55,9 @@ https://www.youtube.com/@swujnuty0325
 經紀人:嚴意情(101)中市經證字第00887號
 ▲▲▲房屋刊登資料若有誤，依正式謄本為準▲▲▲`;
 
-/** 文案 ＋ 固定尾段，中間空一行。尾段已經在文案裡（他自己貼過）就不重複接。 */
-export function withTail(adText: string, tail: string): string {
-  const body = String(adText || "").replace(/\s+$/, "");
-  const t = String(tail || "").trim();
-  if (!t) return body;
-  // 用尾段的第一行當指紋：他若自己貼過整段，就不要再接一次
-  const firstLine = t.split("\n").find((l) => l.trim());
-  if (firstLine && body.includes(firstLine.trim())) return body;
-  return body ? `${body}\n\n${t}` : t;
-}
+// 純邏輯（接尾段、找截斷連結）搬去 lib/fb-tail-core.ts —— 同事版外掛要把畫面編進去，不能連他的個資一起編。
+// 這裡留 re-export 讓舊的 import 路徑照常能用。
+export { truncatedLinks, withTail } from "@/lib/fb-tail-core";
 
 /**
  * 舊資料補丁：把他 2026-09-18 之前存進瀏覽器的那三條截斷網址換成完整版。
@@ -81,12 +74,4 @@ export function fixTruncatedTail(tail: string): string {
   let out = String(tail || "");
   for (const [re, full] of LINK_FIXES) out = out.replace(re, full);
   return out;
-}
-
-/** 找出被截斷、點不開的連結（結尾是 ... 或 …）。回傳整行，方便直接顯示給他看。 */
-export function truncatedLinks(text: string): string[] {
-  return String(text || "")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => /https?:\/\/\S*(\.\.\.|…)\s*$/.test(l));
 }

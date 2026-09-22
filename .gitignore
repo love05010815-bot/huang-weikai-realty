@@ -46,3 +46,7 @@ tools/houseol/**/houseol-page-*.json
 # 抓完愛屋用 `node tools/houseol/push-addresses.js` 把它送進資料庫，
 # 後台才讀得到（程式在 src/lib/houseol-address.ts）。
 tools/houseol/addresses.local.json
+
+# 同事版 FB 社團廣告助手的產物（npm run build:fb-ext 會重新產生）
+tools/fb-group-poster/app.js
+tools/fb-group-poster/app.css

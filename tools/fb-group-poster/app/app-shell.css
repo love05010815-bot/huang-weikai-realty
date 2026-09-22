@@ -1,0 +1,99 @@
+/* 同事版外掛頁的外殼（授權碼卡片＋版面）；操作介面本身的樣式在 fb.module.css，由 esbuild 一起編進 app.css */
+body {
+  margin: 0;
+  background: #1a1614; /* 跟後台一樣的深棕黑底（admin/_components/cis.ts 的 CIS.bg）：卡片上的淺色字要有深底才看得到 */
+  color: #f8f4f3;
+  font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 22px 60px;
+}
+.shell-head {
+  margin: 0 0 14px;
+}
+.shell-head h1 {
+  font-size: 22px;
+  margin: 0 0 6px;
+}
+.shell-head p {
+  margin: 0;
+  color: var(--cmp-sub, #d0c6c4);
+  max-width: 60em;
+}
+.file-warn {
+  max-width: 760px;
+  margin: 40px auto;
+  padding: 16px 20px;
+  border: 2px solid #f5c0c4;
+  border-radius: 12px;
+  background: #231d1a;
+}
+.file-warn code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+/* 授權碼卡片 */
+.lic {
+  border: 1px solid var(--cmp-border, rgba(255, 255, 255, 0.08));
+  background: var(--cmp-card, rgba(255, 255, 255, 0.03));
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 0 0 16px;
+}
+.lic label {
+  display: block;
+  font-size: 13px;
+  color: var(--cmp-sub, #d0c6c4);
+  margin-bottom: 6px;
+}
+.lic-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.lic-row input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-family: ui-monospace, Consolas, monospace;
+  letter-spacing: 0.04em;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--cmp-border, rgba(255, 255, 255, 0.12));
+  background: var(--cmp-card-soft, #231d1a);
+  color: inherit;
+}
+.lic-row button {
+  font: inherit;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 0;
+  background: var(--cmp-accent, #f26666);
+  color: #fff;
+  cursor: pointer;
+}
+.lic-row button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.lic-msg {
+  margin: 8px 0 0;
+  font-size: 14px;
+}
+.lic-ok {
+  color: #7bd88f;
+}
+.lic-bad {
+  color: #ffb4a8;
+}
+.lic-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--cmp-mute, #a69a97);
+}

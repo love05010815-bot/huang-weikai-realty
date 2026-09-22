@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FB 社團廣告助手</title>
+<!-- 同事版的操作畫面：app.js 是用 esbuild 把後台 /admin/fb 那一頁的 React 元件整包編進來的（build-colleague.mjs），
+     app.css 一起產生。不用 importmap、不寫 inline script：外掛頁面的 CSP（script-src 'self'）會把它們擋掉。 -->
+<link rel="stylesheet" href="app.css" />
+</head>
+<body>
+<section id="file-warn" class="file-warn" hidden>
+  <h2>⚠ 這一頁不能直接點檔案打開</h2>
+  <p>你現在是從資料夾裡雙擊 <code>app.html</code> 打開的，瀏覽器會把程式擋住，所以什麼都不會動。這一頁要<b>從 Chrome 工具列的「FB 社團廣告助手」圖示</b>打開才會動。</p>
+  <p>還沒裝的話：Chrome 網址列輸入 <code>chrome://extensions</code> → 右上角開「開發人員模式」→ 左上角「載入未封裝項目」→ 選這個資料夾（裡面直接看得到 manifest.json 的那一層）→ 清單出現「FB 社團廣告助手」→ 點網址列右邊的拼圖 🧩 → 點「FB 社團廣告助手」。</p>
+</section>
+<div id="root"></div>
+<script src="app-guard.js"></script>
+<script src="bridge.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

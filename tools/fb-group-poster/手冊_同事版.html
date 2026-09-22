@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FB 社團廣告助手手冊</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --paper: #f7f6f4; --surface: #ffffff; --ink: #1f2328; --muted: #6e747c; --rule: #e4e2de;
+    --brand: #1877f2; --brand-ink: #0f5bc0; --tint: #e9f1fd;
+    --ok: #1a7f37; --ok-tint: #e9f5ec; --warn: #9a6700; --warn-tint: #fff5d6; --code-bg: #eeecea;
+    --shadow: 0 1px 2px rgba(31, 35, 40, 0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #15171a; --surface: #1e2126; --ink: #eceef1; --muted: #9aa1ab; --rule: #2e333a;
+      --brand: #6ea8ff; --brand-ink: #9cc2ff; --tint: #1b2740;
+      --ok: #5fcb7a; --ok-tint: #17301d; --warn: #e2b03a; --warn-tint: #3a2f10; --code-bg: #262a30; --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #15171a; --surface: #1e2126; --ink: #eceef1; --muted: #9aa1ab; --rule: #2e333a;
+    --brand: #6ea8ff; --brand-ink: #9cc2ff; --tint: #1b2740;
+    --ok: #5fcb7a; --ok-tint: #17301d; --warn: #e2b03a; --warn-tint: #3a2f10; --code-bg: #262a30; --shadow: none;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif; font-size: 16px; line-height: 1.75; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 40px 22px 72px; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brand); font-weight: 700; margin: 0 0 10px; }
+  h1 { font-family: "Noto Serif TC", "Noto Sans TC", serif; font-weight: 700; font-size: 34px; line-height: 1.25; margin: 0 0 12px; text-wrap: balance; }
+  .lede { font-size: 17px; color: var(--muted); margin: 0 0 8px; max-width: 34em; }
+  .meta { font-size: 13px; color: var(--muted); font-family: "JetBrains Mono", ui-monospace, monospace; margin: 0; }
+  .glance { margin: 30px 0 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .glance a { display: block; text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; box-shadow: var(--shadow); }
+  .glance a:hover, .glance a:focus-visible { border-color: var(--brand); outline: none; }
+  .glance .k { font-size: 12px; color: var(--muted); letter-spacing: 0.08em; }
+  .glance .t { font-weight: 700; font-size: 17px; margin: 2px 0 4px; }
+  .glance .d { font-size: 14px; color: var(--muted); }
+  @media (max-width: 560px) { .glance { grid-template-columns: 1fr; } }
+  h2 { font-family: "Noto Serif TC", "Noto Sans TC", serif; font-size: 24px; line-height: 1.3; margin: 56px 0 6px; text-wrap: balance; padding-top: 22px; border-top: 2px solid var(--brand); }
+  h2 small { display: block; font-family: "Noto Sans TC", sans-serif; font-size: 14px; color: var(--muted); font-weight: 500; margin-top: 2px; }
+  p { margin: 0 0 14px; max-width: 42em; }
+  ol.steps { list-style: none; margin: 20px 0 0; padding: 0; display: grid; gap: 14px; counter-reset: step; }
+  ol.steps > li { counter-increment: step; position: relative; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 18px 14px 64px; box-shadow: var(--shadow); }
+  ol.steps > li::before { content: counter(step); position: absolute; left: 16px; top: 13px; width: 32px; height: 32px; border-radius: 50%; background: var(--brand); color: #fff; font-weight: 700; font-size: 16px; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+  ol.steps h3 { margin: 0 0 4px; font-size: 17px; font-weight: 700; line-height: 1.4; }
+  ol.steps p { margin: 0 0 6px; }
+  .check { margin: 8px 0 0; padding: 6px 10px; border-radius: 6px; background: var(--ok-tint); color: var(--ok); font-size: 14px; font-weight: 500; }
+  .check::before { content: "看到這樣才算對 → "; font-weight: 700; }
+  code, kbd { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 0.92em; background: var(--code-bg); padding: 1px 6px; border-radius: 4px; }
+  kbd { border: 1px solid var(--rule); box-shadow: inset 0 -1px 0 var(--rule); }
+  .ui { font-weight: 700; color: var(--brand-ink); }
+  .callout { margin: 18px 0; padding: 12px 16px; border-radius: 8px; border-left: 4px solid var(--brand); background: var(--tint); font-size: 15px; }
+  .callout.warn { border-left-color: var(--warn); background: var(--warn-tint); }
+  .callout b { display: block; margin-bottom: 2px; }
+  ul.tick { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 8px; }
+  ul.tick li { display: flex; gap: 12px; align-items: flex-start; background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 14px; }
+  ul.tick input { margin-top: 5px; width: 18px; height: 18px; accent-color: var(--brand); flex: none; }
+  ul.tick label { cursor: pointer; }
+  ul.tick small { display: block; color: var(--muted); font-size: 13px; }
+  dl { margin: 16px 0 0; display: grid; gap: 14px; }
+  dl div { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 16px; }
+  dt { font-weight: 700; margin: 0 0 4px; }
+  dd { margin: 0; color: var(--ink); font-size: 15px; }
+  ul.plain { padding-left: 20px; margin: 10px 0 0; }
+  ul.plain li { margin: 0 0 8px; max-width: 42em; }
+  footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--muted); }
+  @media print { body { background: #fff; } .wrap { padding: 0; max-width: none; } h2 { break-after: avoid; } ol.steps > li, dl div { break-inside: avoid; } }
+</style>
+<div class="wrap">
+  <p class="eyebrow">Chrome 外掛・同事版</p>
+  <h1>FB 社團廣告助手</h1>
+  <p class="lede">一版廣告，發到你勾好的每個 Facebook 社團。外掛負責打開社團、填好文案和照片；<b>「發佈」永遠是你自己按。</b></p>
+  <p class="meta">版本 {{VERSION}}・只要 Google Chrome・約 5 分鐘裝好</p>
+
+  <nav class="glance">
+    <a href="#install"><span class="k">STEP 1</span><span class="t">裝進 Chrome</span><span class="d">解壓縮、載入未封裝項目、登入 FB</span></a>
+    <a href="#setup"><span class="k">STEP 2</span><span class="t">授權碼與第一次設定</span><span class="d">貼碼、發文身分、固定尾段、抓社團</span></a>
+    <a href="#post"><span class="k">STEP 3</span><span class="t">每一戶怎麼發</span><span class="d">貼愛屋連結 → 帶入 → 發佈</span></a>
+  </nav>
+
+  <div class="callout">
+    <b>一句話講完它做什麼</b>
+    在外掛頁寫好一則廣告、勾好社團、按「開始發佈」，它會一個社團一個社團幫你打開、把文案和照片填好，然後停下來等你按 Facebook 的「發佈」。
+    你按完，再點右下角面板的「下一個社團」，就換下一個。
+  </div>
+
+  <h2 id="install">① 裝進 Chrome<small>只要做一次。要用 Google Chrome，別的瀏覽器不行。</small></h2>
+  <ol class="steps">
+    <li>
+      <h3>把壓縮檔解壓縮到一個「以後不會搬走、不會刪」的資料夾</h3>
+      <p>例如 <code>D:\FB社團廣告助手\</code>。這個資料夾就是外掛本體，搬走或刪掉外掛就壞了。</p>
+      <p class="check">打開資料夾直接看得到 <code>manifest.json</code>，沒有多包一層</p>
+    </li>
+    <li>
+      <h3>打開 Chrome 的外掛頁</h3>
+      <p>網址列輸入 <code>chrome://extensions</code> 按 <kbd>Enter</kbd>。</p>
+    </li>
+    <li>
+      <h3>右上角把「開發人員模式」打開</h3>
+      <p class="check">左上角出現「載入未封裝項目」按鈕</p>
+    </li>
+    <li>
+      <h3>按左上角「載入未封裝項目」，選剛才那個資料夾</h3>
+      <p class="check">清單出現「FB 社團廣告助手」，右下角開關是藍色（開的）</p>
+    </li>
+    <li>
+      <h3>把它釘到工具列（建議）</h3>
+      <p>網址列右邊的 🧩 拼圖圖示 → 找到「FB 社團廣告助手」→ 按 📌。以後點這個圖示就開工具頁。</p>
+    </li>
+    <li>
+      <h3>先在 Chrome 登入 Facebook，切成你要發文的粉專身分</h3>
+      <p>右上角頭像 → 查看所有個人檔案 → 選粉專。外掛不會替你登入、也不會存你的帳密。</p>
+    </li>
+  </ol>
+
+  <h2 id="setup">② 貼授權碼、第一次設定<small>只要做一次，全部存在你自己的 Chrome 裡。</small></h2>
+  <ol class="steps">
+    <li>
+      <h3>點工具列的「FB 社團廣告助手」圖示</h3>
+      <p>會開一個新分頁，最上面是「授權碼」那格。</p>
+    </li>
+    <li>
+      <h3>貼上黃瑋凱 LINE 給你的授權碼，按「儲存並驗證」</h3>
+      <p>長這樣：<code>WK-XXXX-XXXX-XXXX</code>，整組貼、多一個字少一個字都不行。</p>
+      <p class="check">綠色「✅ 授權有效：…，到（日期）為止」。沒有這行，發佈、抓社團、帶入都不會動</p>
+    </li>
+    <li>
+      <h3>「⚙️ 設定」→ 新增發文身分</h3>
+      <p>名稱要跟 Facebook 上顯示的<b>一模一樣</b>（粉專名稱，或帳號名稱）。發文時外掛會核對：不是這個身分就停下來問你，不會用錯身分發出去。有兩三個粉專就各加一個。</p>
+    </li>
+    <li>
+      <h3>「⚙️ 設定」→ 固定尾段</h3>
+      <p>每一則廣告發佈時自動接在文案後面的那一段：你的電話、LINE、店名、想固定講的話。<b>預設是空的</b>，自己填；不填就只有文案本身。</p>
+    </li>
+    <li>
+      <h3>「👥 社團清單」→「從 FB 抓我加入的社團」</h3>
+      <p>外掛開一個分頁到 Facebook 的「你的社團」自動往下捲，把你已經加入的社團抓回來。這期間讓那個分頁留在前面，捲完會自己停。回工具頁逐一勾要用的，按「加入清單」。也可以自己貼社團網址。</p>
+      <p class="check">「所有社團」表格裡有你勾的那些，「啟用」都是打勾的</p>
+    </li>
+  </ol>
+  <div class="callout warn">
+    <b>一個 Facebook 帳號＝一個 Chrome 使用者</b>
+    外掛不會、也不能替你切換 Facebook 帳號（那要碰密碼）。同一個帳號底下的幾個粉專可以在發文視窗切；
+    要用另一個帳號發，請在 Chrome 右上角開另一個「使用者」登入那個帳號，在那個使用者裡再裝一次外掛。
+  </div>
+
+  <h2 id="post">③ 每一戶怎麼發<small>從貼連結到第一個社團填好，大約一分鐘。</small></h2>
+  <ol class="steps">
+    <li>
+      <h3>「📝 廣告文案」最上面貼愛屋物件連結或案號，按「帶入」</h3>
+      <p>案名、開價、路名、格局、登記坪數、主＋附屬、樓別／樓高、屋齡、車位、環境特色會自動填成草稿。型錄上讀不到的欄位會用橘色提示你補，不會亂猜。</p>
+      <p class="check">標題和貼文內容都填好了，第一行是【案名】</p>
+    </li>
+    <li>
+      <h3>按「📷 帶入型錄照片」</h3>
+      <p>最多 10 張，按下去一張一張進來。不要的按縮圖右上角 ✕；也可以自己「選擇檔案」加圖。</p>
+    </li>
+    <li>
+      <h3>看一遍、改一改，按「💾 儲存文案」</h3>
+      <p>帶進來的是草稿，想怎麼改就怎麼改。固定尾段不用貼在這裡，發佈時會自動接上。</p>
+    </li>
+    <li>
+      <h3>「🚀 發佈」：選文案、選發文身分、勾社團，按「開始發佈」</h3>
+      <p>右邊預覽顯示的就是會貼出去的全文（文案＋固定尾段），看到什麼就發什麼。</p>
+    </li>
+    <li>
+      <h3>外掛開第一個社團，填好就停</h3>
+      <p>它會先核對發文身分、再填文案和照片。<b>填的時候不要切到別的分頁</b>——Chrome 會把背景分頁凍住，看起來像卡住。</p>
+      <p class="check">右下角面板寫「內容已填好。請核對後按 Facebook 的『發佈』」</p>
+    </li>
+    <li>
+      <h3>你自己核對，按 Facebook 的「發佈」，再按面板的「✅ 我按過發佈了，下一個社團」</h3>
+      <p>就會開下一個社團。不想發這個社團按「跳過這個」，整批停按「停止全部」。到每日上限會自動停。</p>
+    </li>
+    <li>
+      <h3>回工具頁的「📜 發佈紀錄」看整批結果</h3>
+      <p>每個社團發了沒、跳過的、失敗的原因都在。</p>
+    </li>
+  </ol>
+
+  <h2 id="verify">按發佈之前，核對這幾樣<small>外掛填得對不對，最後一關是你的眼睛。</small></h2>
+  <ul class="tick">
+    <li><input type="checkbox" id="c1"><label for="c1">發文視窗左上角的身分是對的粉專<small>面板會先核對；它說身分不對就先別發，切好再按「我切好了，繼續填」。</small></label></li>
+    <li><input type="checkbox" id="c2"><label for="c2">文案換行跟工具頁上一樣<small>偶爾 Facebook 會把排版吃掉，面板會標紅提醒；自己補換行再發。</small></label></li>
+    <li><input type="checkbox" id="c3"><label for="c3">照片張數對、順序對</label></li>
+    <li><input type="checkbox" id="c4"><label for="c4">尾段的電話、LINE 是你自己的<small>在「⚙️ 設定 → 固定尾段」改，改一次每一則都跟著變。</small></label></li>
+  </ul>
+
+  <h2 id="faq">常見狀況</h2>
+  <dl>
+    <div><dt>直接點資料夾裡的 app.html 打開，畫面不會動</dt><dd>要從 Chrome 工具列的「FB 社團廣告助手」圖示打開（先照 ① 裝好）。</dd></div>
+    <div><dt>紅字「🔒 …授權…」</dt><dd>授權碼沒填、打錯、到期、或這組碼的電腦數已達上限，照字面找黃瑋凱處理。「連不上驗證伺服器」先確認網路再按一次「儲存並驗證」。</dd></div>
+    <div><dt>面板說「找不到發文框」</dt><dd>你（或粉專）還沒加入那個社團、社團不開放發文，或 Facebook 改版了。按「跳過這個」換下一個；很多社團都這樣就告訴黃瑋凱。</dd></div>
+    <div><dt>面板說「目前的發文身分不是 ○○」</dt><dd>在發文視窗左上角切成正確的身分，再按面板的「我切好了，繼續填」。是另一個 Facebook 帳號的話，要用另一個 Chrome 使用者。</dd></div>
+    <div><dt>卡住不動</dt><dd>多半是分頁被切到背景。點回那個分頁等它跑完；還是不動就關掉那個分頁、回工具頁按「停止」，再重新「開始發佈」。</dd></div>
+    <div><dt>「從愛屋帶入」說抓不到</dt><dd>確認貼的是愛屋的物件連結或案號（AA 開頭）；物件已下架也會抓不到。型錄上沒有的欄位本來就不會帶，自己補。</dd></div>
+    <div><dt>今天的每日上限到了</dt><dd>「⚙️ 設定」裡可以調；預設一天 10 個社團是為了帳號安全，別調太高。</dd></div>
+    <div><dt>Facebook 改版填不進去</dt><dd>告訴黃瑋凱，程式要跟著改。改好會給你新的壓縮檔：解壓縮<b>覆蓋原資料夾</b>，再到 <code>chrome://extensions</code> 按那張卡片的 ↻ 重新載入。</dd></div>
+  </dl>
+
+  <h2 id="rules">要知道的規矩</h2>
+  <ul class="plain">
+    <li><b>它永遠不替你按「發佈」。</b>發出去的每一則都是你自己按的，發之前看一眼。</li>
+    <li><b>授權碼只給店內同事用，不要轉傳。</b>這批同事共用一組碼；每台 Chrome 第一次驗證會登記一台、有台數上限，滿了跟黃瑋凱說一聲。換電腦或重裝 Chrome 算新的一台。</li>
+    <li><b>到期不用重裝。</b>期限寫在黃瑋凱給你的授權訊息裡；到期找他延長，延長後按一次「儲存並驗證」就恢復。</li>
+    <li><b>你的東西只在你的 Chrome 裡。</b>文案、照片、社團清單、發文身分都存在這台電腦，不上傳。外掛只在驗證授權碼與「從愛屋帶入」時連黃瑋凱的網站（weikaihouse.com），送的是授權碼、這台 Chrome 的安裝編號、外掛版本、你貼的那一戶連結——不送文案、不送社團清單、不送 Facebook 的任何資料。他在後台看得到每組碼發佈過幾次。</li>
+    <li><b>外掛只在 www.facebook.com/groups/* 動作</b>，別的網站一律不理，不存你的 Facebook 帳密。</li>
+    <li><b>這種做法不符合 Meta 的服務條款。</b>用程式在 Facebook 填表，帳號或粉專有被限制的可能。一天別發太多、內容別重複到像機器，是否使用請自行評估。</li>
+  </ul>
+
+  <footer>FB 社團廣告助手 {{VERSION}}・有問題找黃瑋凱</footer>
+</div>
+</html>

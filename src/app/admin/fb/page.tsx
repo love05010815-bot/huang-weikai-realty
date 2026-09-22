@@ -14,7 +14,7 @@ import { adminEmails } from "@/auth";
 import { Icon } from "@/app/admin/_ui/icons";
 import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
 import { COMPARE_THEME } from "@/app/admin/compare/theme";
-import FbGroupManager from "./FbGroupManager";
+import FbAdminManager from "./FbAdminManager";
 import styles from "./fb.module.css";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +40,7 @@ export default async function FbPage() {
           內容只存在這台電腦、<b>不會上傳</b>。
         </p>
       </header>
-      <FbGroupManager />
+      <FbAdminManager />
     </div>
   );
 }
