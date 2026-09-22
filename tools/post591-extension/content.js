@@ -317,6 +317,30 @@
     return { done, failed };
   }
 
+  /**
+   * 格局圖：591 **出售**有專屬的那一格（限 1 張、不是 multiple），標籤寫「格局圖」。
+   * 他 2026-09-22 說的：愛屋有格局圖就傳那一格、照片區不要再放那張。出租表單沒有這一格。
+   */
+  async function uploadFloorPlan(url) {
+    const input = [...document.querySelectorAll("input[type=file]:not([multiple])")].find((i) => {
+      const row = i.closest(".ant-form-item");
+      const lab = row && row.querySelector(".ant-form-item-label");
+      return lab && /格局圖/.test(txt(lab));
+    });
+    if (!input) return false;
+    const r = await msg("p591:fetch", { url });
+    if (!r.ok) return false;
+    const bin = atob(r.b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+    const dt = new DataTransfer();
+    dt.items.add(new File([bytes], "plan." + (/png/i.test(r.type) ? "png" : "jpg"), { type: r.type }));
+    input.files = dt.files;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    await sleep(3000);
+    return true;
+  }
+
   /* ───────── 第 ① 頁：四連點（只有不認得的組合才會走到這裡） ───────── */
   async function runFirst(p) {
     log("第①頁：開始四連點");
@@ -500,13 +524,20 @@
       log(`聯絡資料出錯：${e.message}`, "bad");
     }
 
-    /* 7. 照片（有網址才傳；LINE 文字那種沒照片就跳過） */
-    if (p.photos && p.photos.length) {
-      log(`照片：開始上傳 ${p.photos.length} 張…`);
-      const r = await uploadPhotos(p.photos, (d, n) => log(`照片 ${d}/${n}`));
+    /* 7. 照片（有網址才傳；LINE 文字那種沒照片就跳過）。格局圖抽出來、傳到「格局圖」那一格 */
+    const plan = p.floorPlan && p.photos && p.photos.indexOf(p.floorPlan) >= 0 ? p.floorPlan : "";
+    const photos = (p.photos || []).filter((u) => u !== plan);
+    if (photos.length) {
+      log(`照片：開始上傳 ${photos.length} 張…`);
+      const r = await uploadPhotos(photos, (d, n) => log(`照片 ${d}/${n}`));
       log(`照片完成 ${r.done} 張${r.failed ? `，失敗 ${r.failed} 張` : ""}`, r.failed ? "warn" : "ok");
     } else {
       missing.push("照片（自己上傳）");
+    }
+    if (plan) {
+      const okPlan = await uploadFloorPlan(plan);
+      log(okPlan ? "格局圖已傳到「格局圖」那一格" : "找不到「格局圖」那一格，請自己傳", okPlan ? "ok" : "warn");
+      if (!okPlan) missing.push("格局圖（自己傳到「格局圖」那一格）");
     }
 
     showMissing(missing);
@@ -680,6 +711,7 @@
     }
 
     if (p.photos && p.photos.length) {
+      if (p.floorPlan) log("出租表單沒有「格局圖」那一格，格局圖會跟其他照片一起傳", "warn");
       log(`照片：開始上傳 ${p.photos.length} 張…`);
       const res = await uploadPhotos(p.photos, (d, n) => log(`照片 ${d}/${n}`));
       log(`照片完成 ${res.done} 張${res.failed ? `，失敗 ${res.failed} 張` : ""}`, res.failed ? "warn" : "ok");

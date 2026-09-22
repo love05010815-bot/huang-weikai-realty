@@ -17,6 +17,13 @@
         const err = chrome.runtime.lastError;
         window.postMessage({ type: "p591:ack", ok: !!(r && r.ok), error: err ? err.message : r && r.error }, window.location.origin);
       });
+    } else if (ev.data.type === "p591:photo-stats") {
+      // 後台要知道哪張是格局圖 → 背景把每張的白底／灰階比例算回來（判斷在後台，用 pickFloorPlan）
+      const id = ev.data.id;
+      chrome.runtime.sendMessage({ type: "p591:photo-stats", urls: ev.data.urls }, (r) => {
+        const err = chrome.runtime.lastError;
+        window.postMessage({ type: "p591:photo-stats-result", id, ok: !!(r && r.ok), stats: (r && r.stats) || [], error: err ? err.message : r && r.error }, window.location.origin);
+      });
     } else if (ev.data.type === "p591:scan") {
       const id = ev.data.id;
       chrome.runtime.sendMessage({ type: "p591:scan", url: ev.data.url }, (r) => {

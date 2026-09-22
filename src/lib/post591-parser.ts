@@ -399,6 +399,23 @@ export function sortHouseolPhotos(urls: string[]): string[] {
     .map((p) => p.u);
 }
 
+/** 一張照片的「長相統計」：白底比例、灰階比例、尺寸。由外掛的背景程式算（頁面讀不到跨網域圖片的像素） */
+export type PhotoStat = { url: string; white: number; gray: number; width: number; height: number };
+
+/**
+ * 挑出格局圖（591 出售有專屬的「格局圖」格子，限 1 張，他 2026-09-22 說的：有格局圖就傳那一格、照片區不放）。
+ *
+ * 愛屋的 HTML 完全沒標哪張是格局圖，只能看長相。他那戶 18 張實測（縮到 64 寬取樣）：
+ *   格局圖（白底線稿）：白 0.593、灰 0.931、800×1068 直式
+ *   其他 17 張照片：白最多 0.015（第二名 0.010），都是 800×600
+ * 差距兩個數量級，門檻抓「白 ≥ 0.25 且灰 ≥ 0.6」很安全；有多張符合就取最白的那張（591 只收 1 張）。
+ */
+export function pickFloorPlan(stats: PhotoStat[]): string {
+  const cands = stats.filter((s) => s.white >= 0.25 && s.gray >= 0.6);
+  if (!cands.length) return "";
+  return cands.reduce((a, b) => (b.white > a.white ? b : a)).url;
+}
+
 export function extractPhotosFromHtml(html: string, listingNo?: string | null): string[] {
   const out: string[] = [];
   for (const m of html.matchAll(/(?:https?:)?\/\/hq\.houseol\.com\.tw\/images\/pictures\/[^"'\s<>)]+?\.(?:jpe?g|png)/gi)) {

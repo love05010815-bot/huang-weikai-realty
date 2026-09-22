@@ -556,6 +556,11 @@ export interface Post591Payload {
   descHtml?: string;
   contact: { name: string; contract: string; serviceFee: boolean };
   photos: string[];
+  /**
+   * 格局圖（photos 裡的其中一張）。591 **出售**有專屬的「格局圖」格子（限 1 張），外掛會把這張傳去那裡、
+   * 照片區跳過它；591 出租與樂屋沒有這一格，照片照舊全部一起傳（2026-09-22 他說的）。
+   */
+  floorPlan?: string;
   /** 「591＋樂屋一起上架」：591 的資料包帶著樂屋的；外掛先開 591，591 填完再自動開樂屋（background.js 排隊） */
   chain?: Post591Payload;
 }

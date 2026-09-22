@@ -10,7 +10,7 @@
  * 想固定接一段（電話、LINE、店名）的人自己在「⚙ 我的資料」填，{{name}} {{phone}} {{line}} 會自動代入。
  */
 // 一律相對路徑：外掛頁面的 CSP 會擋 inline importmap（2026-09-05 同事機器上整頁沒反應就是這個）
-import { parseListing, photoLinkReport, extractPhotosFromHtml, listingNoFromUrl, houseolHtmlToText, isHouseolCatalogHtml, isHouseolPage, sortHouseolPhotos } from "./lib/lib/post591-parser.js";
+import { parseListing, photoLinkReport, extractPhotosFromHtml, listingNoFromUrl, houseolHtmlToText, isHouseolCatalogHtml, isHouseolPage, pickFloorPlan, sortHouseolPhotos } from "./lib/lib/post591-parser.js";
 import { derive, buildRows, titleCheck, post591Risks, buildPayload } from "./lib/lib/post591-map.js";
 import { buildRakuya } from "./lib/lib/rakuya-map.js";
 import { DESC_HEAD, DESC_TAIL, POST591_DEFAULTS } from "./lib/config/post591-template.js";
@@ -261,6 +261,7 @@ function runWith(raw, sourceUrl) {
       : "這份資料沒有照片網址（LINE 文字、或型錄複製時沒帶到「更多照片」）。";
   $("photo-link").value = sourceUrl || "";
   refreshPhotoLink();
+  refreshPlan();
   $("launch-msg").textContent = "";
   refreshNeed();
   setTimeout(() => $("result").scrollIntoView({ behavior: "smooth", block: "start" }), 50);
@@ -413,7 +414,44 @@ async function scanPages(pages) {
     scanning.delete(p);
   }
   refreshPhotoLink();
+  refreshPlan();
 }
+/** 這一戶會上傳的照片：型錄「更多照片」的＋⑤ 連結抓到的，去重、排回愛屋順序（跟上架時同一份） */
+function allPhotos() {
+  const seen = new Set();
+  return sortHouseolPhotos(
+    [...(listing ? listing.photos : []), ...extraPhotos()].filter((u) => {
+      const k = u.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    }),
+  );
+}
+/**
+ * 格局圖（2026-09-22 他說的）：591 出售有專屬的「格局圖」那一格（限 1 張），有格局圖就傳那裡、照片區不放。
+ * 愛屋沒標哪張是，只能看長相：請背景程式算每張的白底／灰階比例（頁面讀不到跨網域圖片的像素），白底線稿那張就是。
+ */
+let planUrl = "";
+let planReq = 0;
+async function refreshPlan() {
+  const urls = allPhotos();
+  const mine = ++planReq;
+  planUrl = "";
+  const el = $("plan-msg");
+  if (!el) return;
+  if (!hasChrome || urls.length < 2) {
+    el.textContent = "";
+    return;
+  }
+  const r = await msgBg("p591:photo-stats", { urls });
+  if (mine !== planReq) return; // 這中間又換了一戶
+  const pick = r && r.ok ? pickFloorPlan(r.stats || []) : "";
+  planUrl = pick;
+  const n = pick ? urls.indexOf(pick) + 1 : 0;
+  flash(el, pick ? `第 ${n} 張看起來是格局圖（白底線稿）：上架 591 出售時會傳到「格局圖」那一格，照片區不放它。` : "", pick ? "ok" : "");
+}
+
 function extraPhotos() {
   return photoLinkReport($("photo-link").value, scanned).photos;
 }
@@ -462,10 +500,12 @@ async function launch(target = "591") {
       return true;
     }),
   );
+  if (planUrl && payload.photos.indexOf(planUrl) >= 0) payload.floorPlan = planUrl; // 591 出售的「格局圖」那一格
   const site = target === "rakuya" ? "樂屋" : "591";
   /** 樂屋的資料包：同一份再加樂屋的翻譯，聯絡人用同事自己填的姓名手機 */
   const forRakuya = (p) => {
     const r = { ...p, target: "rakuya" };
+    delete r.floorPlan; // 樂屋沒有格局圖那一格，照片照舊全部一起傳
     r.rakuya = buildRakuya(listing, derived, r);
     r.rakuya.contactName = settings.name;
     r.rakuya.contactPhone = settings.phone;

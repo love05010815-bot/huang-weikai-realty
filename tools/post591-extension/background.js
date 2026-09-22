@@ -144,6 +144,47 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return { ok: true, b64: btoa(bin), type: res.headers.get("content-type") || "image/jpeg" };
     });
   }
+  if (msg.type === "p591:photo-stats") {
+    /**
+     * 每張照片的「長相統計」：白底比例、灰階比例、尺寸 —— 用來認出格局圖（591 出售有專屬那一格）。
+     * 為什麼在背景算：頁面讀不到跨網域圖片的像素（canvas 會被污染），背景有這幾個網域的權限。
+     * 縮到 64 寬再數，一張約幾毫秒；判斷門檻不在這裡，在 post591-parser 的 pickFloorPlan（那支有測試）。
+     */
+    return reply(async () => {
+      const urls = (Array.isArray(msg.urls) ? msg.urls : []).slice(0, 40);
+      const stats = [];
+      for (const url of urls) {
+        try {
+          const res = await fetch(url, { credentials: "omit" });
+          if (!res.ok) continue;
+          const bmp = await createImageBitmap(await res.blob());
+          const w = Math.min(64, bmp.width);
+          const h = Math.max(1, Math.round((bmp.height / bmp.width) * w));
+          const cv = new OffscreenCanvas(w, h);
+          const cx = cv.getContext("2d", { willReadFrequently: true });
+          cx.drawImage(bmp, 0, 0, w, h);
+          const { data } = cx.getImageData(0, 0, w, h);
+          let white = 0,
+            gray = 0;
+          const n = w * h;
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i],
+              g = data[i + 1],
+              b = data[i + 2];
+            const mx = Math.max(r, g, b),
+              mn = Math.min(r, g, b);
+            if (mn > 235) white++;
+            if (mx - mn < 24) gray++;
+          }
+          stats.push({ url, white: white / n, gray: gray / n, width: bmp.width, height: bmp.height });
+          bmp.close();
+        } catch {
+          /* 這張算不出來就跳過（壞連結、格式怪），不影響其他張 */
+        }
+      }
+      return { ok: true, stats };
+    });
+  }
   if (msg.type === "p591:license-check") {
     return reply(async () => {
       const lic = await license.check({ force: !!msg.force });

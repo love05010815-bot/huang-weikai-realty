@@ -6,7 +6,7 @@
 // 專案內部用 @/ 別名，node 不讀 tsconfig，所以先掛上 resolver 再動態載入（同 check-rival-analysis）
 import { register } from "node:module";
 register("./alias-hooks.mjs", import.meta.url);
-const { combinePhotos, detectSource, extractPhotoUrls, extractPhotosFromHtml, houseolHtmlToText, isHouseolCatalogHtml, isHouseolPage, listingNoFromUrl, parseListing, photoLinkReport, sortHouseolPhotos, splitFeatureLines } = await import("../src/lib/post591-parser.ts");
+const { combinePhotos, detectSource, extractPhotoUrls, extractPhotosFromHtml, houseolHtmlToText, isHouseolCatalogHtml, isHouseolPage, listingNoFromUrl, parseListing, photoLinkReport, pickFloorPlan, sortHouseolPhotos, splitFeatureLines } = await import("../src/lib/post591-parser.ts");
 const { buildDescription, buildPayload, buildRows, derive, descToHtml, encodePayload, photoCommand, post591Risks, splitAddress, titleCheck } =
   await import("../src/lib/post591-map.ts");
 const { buildRakuya, rakuyaDesc, rakuyaParkKind, RAKUYA_TITLE_MAX } = await import("../src/lib/rakuya-map.ts");
@@ -619,6 +619,18 @@ ZZ0000003
   /* 後台與外掛都是「picstr 先、頁面照片後」再合併，合併完也要排 */
   const 合併 = [`${P}f.jpg`, `${P}g.jpg`, `${P}a.jpg`, `${P}d.jpg`];
   eq("合併後排序（picstr 在前也不怕）", sortHouseolPhotos(合併).map((u) => u.slice(-5, -4)).join(""), "adfg");
+}
+/* ───── P. 格局圖：白底線稿那張要挑得出來（2026-09-22 他說的：傳到 591 出售的「格局圖」那一格） ───── */
+{
+  console.log("P. 格局圖");
+  const S = (url, white, gray, width = 800, height = 600) => ({ url, white, gray, width, height });
+  /* 數字是他那戶 18 張的實測值（縮到 64 寬取樣）：b 是格局圖，其他都是照片 */
+  const 真實 = [S("a.jpg", 0, 0.507), S("b.jpg", 0.593, 0.931, 800, 1068), S("d.jpg", 0, 0.707), S("g.jpg", 0.001, 0.905), S("m.jpg", 0.004, 0.844), S("k.jpg", 0.015, 0.467), S("r.jpg", 0.01, 0.612)];
+  eq("挑出白底線稿那張", pickFloorPlan(真實), "b.jpg");
+  eq("灰但不白的照片（暗照、灰階照）不會被誤認", pickFloorPlan(真實.filter((s) => s.url !== "b.jpg")), "");
+  eq("兩張都像格局圖 → 取最白的（591 只收 1 張）", pickFloorPlan([S("x.jpg", 0.3, 0.8), S("y.jpg", 0.62, 0.95)]), "y.jpg");
+  eq("很白但有顏色（拍很亮的白牆房間）不算", pickFloorPlan([S("x.jpg", 0.45, 0.28)]), "");
+  eq("沒照片就沒有", pickFloorPlan([]), "");
 }
 console.log("");
 console.log(pass ? "✅ 591 刊登助手：辨識器與對應規則全部一致" : "❌ 有差異，不要往下做");

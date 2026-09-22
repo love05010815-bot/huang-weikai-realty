@@ -19,7 +19,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/app/admin/_ui/icons";
-import { extractPhotosFromHtml, houseolHtmlToText, isHouseolCatalogHtml, isHouseolPage, listingNoFromUrl, parseListing, photoLinkReport, sortHouseolPhotos, type Listing } from "@/lib/post591-parser";
+import { extractPhotosFromHtml, houseolHtmlToText, isHouseolCatalogHtml, isHouseolPage, listingNoFromUrl, parseListing, photoLinkReport, pickFloorPlan, sortHouseolPhotos, type Listing, type PhotoStat } from "@/lib/post591-parser";
 import {
   buildDescription,
   buildHandoff,
@@ -71,6 +71,36 @@ export default function Post591Manager() {
     });
     return sortHouseolPhotos(merged); // 「更多照片」那幾張先被抓到，不排就會蓋過型錄頁上的前幾張
   }, [listing, extraPhotos]);
+  /**
+   * 格局圖（2026-09-22 他說的）：591 出售有專屬的「格局圖」那一格（限 1 張），有格局圖就傳那裡、照片區不放。
+   * 愛屋沒標哪張是格局圖，只能看長相：請外掛算每張的白底／灰階比例（頁面讀不到跨網域圖片的像素），
+   * 白底線稿那張就是。認錯了他可以按「這張不是格局圖」關掉。出租與樂屋沒有這一格，照片照舊全部一起傳。
+   */
+  const [planUrl, setPlanUrl] = useState("");
+  const [planOff, setPlanOff] = useState(false);
+  const photosKey = allPhotos.join("\n");
+  useEffect(() => {
+    setPlanUrl("");
+    setPlanOff(false);
+    if (!photosKey || !document.documentElement.getAttribute("data-p591-ext")) return;
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const timer = setTimeout(() => window.removeEventListener("message", onMsg), 30000);
+    function onMsg(ev: MessageEvent) {
+      if (ev.source !== window || !ev.data || ev.data.type !== "p591:photo-stats-result" || ev.data.id !== id) return;
+      clearTimeout(timer);
+      window.removeEventListener("message", onMsg);
+      if (ev.data.ok) setPlanUrl(pickFloorPlan(ev.data.stats as PhotoStat[]));
+    }
+    window.addEventListener("message", onMsg);
+    window.postMessage({ type: "p591:photo-stats", id, urls: photosKey.split("\n") }, window.location.origin);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("message", onMsg);
+    };
+  }, [photosKey]);
+  /** 真正會被當成格局圖的那張（他關掉就是空的） */
+  const plan = planOff ? "" : planUrl;
+  const planIndex = plan ? allPhotos.indexOf(plan) + 1 : 0;
   const pendingPages = photoReport.pages.filter((p) => !(p in scanned) && !scanningRef.current.has(p));
   const pendingKey = pendingPages.join("\n");
   useEffect(() => {
@@ -202,7 +232,9 @@ export default function Post591Manager() {
       return;
     }
     const payload = buildPayload(listing, derived, rows, title, desc);
-    payload.photos = allPhotos; // 資料裡「更多照片」的＋ ⑤ 連結抓到的，去重
+    payload.photos = allPhotos; // 資料裡「更多照片」的＋ ⑤ 連結抓到的，去重、照愛屋順序
+    // 格局圖只有 591 出售那一格收；出租與樂屋沒有這格，外掛就當它是一般照片一起傳
+    if (plan) payload.floorPlan = plan;
     // 樂屋的資料包：文案不要「貼心提醒」那段（講的是 591 的問答訊息、我的店舖），字級顏色照套
     const forRakuya = (p: Post591Payload): Post591Payload => {
       const r: Post591Payload = { ...p, target: "rakuya", desc: rakuyaDesc(desc) };
@@ -473,6 +505,22 @@ export default function Post591Manager() {
                   </p>
                 )}
               </>
+            )}
+            {plan && (
+              <p className={styles.okText}>
+                🗺 第 {planIndex} 張看起來是<b>格局圖</b>（白底線稿）：上架 <b>591 出售</b>時會傳到「格局圖」那一格，照片區就不放它（出租和樂屋沒有這格，會照常一起傳）。{" "}
+                <button type="button" className={styles.cp} onClick={() => setPlanOff(true)}>
+                  不是格局圖
+                </button>
+              </p>
+            )}
+            {planOff && planUrl && (
+              <p className={styles.hint}>
+                好，格局圖那格空著，全部照片一起傳。{" "}
+                <button type="button" className={styles.cp} onClick={() => setPlanOff(false)}>
+                  還原
+                </button>
+              </p>
             )}
           </section>
 
