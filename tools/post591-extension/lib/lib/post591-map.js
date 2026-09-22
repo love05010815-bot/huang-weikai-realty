@@ -180,6 +180,17 @@ export function derive(d, nowYear = new Date().getFullYear()) {
 }
 /* ───────── 確認表 ───────── */
 const s = (v) => (v === null || v === undefined ? "" : String(v));
+/**
+ * 591 的管理費那格是「每月多少」。型錄寫的是繳一次多少＋多久繳一次，週期不是月繳時
+ * （他 2026-09-22 那戶是「5978元／雙月繳」）金額不能照搬，那一格留空、把型錄原文寫在提示裡讓他自己換算；
+ * 但「有沒有管理費」照樣是「有」—— 他說的：不用打金額，有就要勾「有」。
+ */
+const feeMonthly = (d) => (d.fee != null && /^月繳?$/.test(d.feeCycle) ? d.fee : null);
+const feeNote = (d) => d.fee == null
+    ? "有管理費的話填每月金額（元）"
+    : feeMonthly(d) != null
+        ? "元／月"
+        : `型錄寫「${d.fee}元／${d.feeCycle}」；591 這格要填每月多少，要填就自己換算，留空也能上架`;
 export function buildRows(d, o) {
     if (d.deal === "rent")
         return buildRentRows(d, o);
@@ -240,8 +251,8 @@ export function buildRows(d, o) {
         note: d.fee == null && d.source === "freeform" ? "文字沒寫，要問" : "",
     });
     /* 金額那一列永遠顯示 —— 資料沒寫時才更需要有地方讓人填 */
-    f("管理費", d.fee, {
-        note: d.fee != null ? "元／月" : "有管理費的話填每月金額（元）",
+    f("管理費", feeMonthly(d), {
+        note: feeNote(d),
         need: d.fee == null && d.source === "freeform",
     });
     if (d.fee != null)
@@ -338,7 +349,7 @@ function buildRentRows(d, o) {
     f("租金包含", o.rentIncludes.join("、") || "無", { pick: true, note: c.feeIncluded ? "型錄寫「含管」" : "預設不含，要含的話改成 管理費、水費… 用、隔開" });
     f("水費", "台水繳費", { pick: true });
     f("電費", "台電繳費", { pick: true });
-    f("管理費", d.fee, { note: d.fee != null ? "元／月" : c.feeIncluded ? "租金已含，591 仍會問金額，知道就填" : "有的話填每月金額（元），沒有留空" });
+    f("管理費", feeMonthly(d), { note: d.fee != null ? feeNote(d) : c.feeIncluded ? "租金已含，591 仍會問金額，知道就填" : "有的話填每月金額（元），沒有留空" });
     grp("生活機能（用勾的）");
     f("勾選這些", o.life.join("、") || "（資料沒明寫，不勾）", { pick: true, note: "只列資料明寫的「鄰近OO」，其他自己勾" });
     grp("聯絡資料");
@@ -516,8 +527,9 @@ export function buildPayload(d, o, rows, title, desc) {
         },
         price: { total: numOrNull(e.get("售價"), d.price), inclPark: o.hasPark, down: numOrNull(e.get("自備款"), o.down) },
         fee: {
-            has: d.deal === "rent" ? (numOrNull(e.get("管理費"), d.fee) != null ? true : d.rentCond.feeIncluded ? null : false) : feeHasRaw === "有" ? true : feeHasRaw === "無" ? false : null,
-            amount: numOrNull(e.get("管理費"), d.fee),
+            // 出租沒有「管理費有無」那一列：金額留空但型錄有寫管理費（例：雙月繳）也算「有」
+            has: d.deal === "rent" ? (numOrNull(e.get("管理費"), d.fee) != null || d.fee != null ? true : d.rentCond.feeIncluded ? null : false) : feeHasRaw === "有" ? true : feeHasRaw === "無" ? false : null,
+            amount: numOrNull(e.get("管理費"), feeMonthly(d)),
             cycle: strOr(e.get("繳費週期"), d.feeCycle),
         },
         lease: false,

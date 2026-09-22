@@ -577,6 +577,29 @@ ZZ0000003
   eq("拆門牌：縣市／鄉鎮／路／號", [p3.city, p3.town, p3.road, p3.no].join("|"), "測試市|測試區|測試路一段|70");
   eq("特色兩條、更多照片撈得到", d3.features.length + "/" + d3.photos.length, "2/1");
 }
+/* ───── N. 管理費週期不是月繳（2026-09-22 他那戶「5978元/雙月繳」，原本整格漏掉變成「無」） ───── */
+{
+  console.log("N. 管理費：雙月繳也要算「有」");
+  const 雙月 = 型錄大樓.replace("2342元/月繳| /", "5978元/雙月繳| /");
+  const d = parseListing(雙月);
+  eq("金額與週期照型錄原文", `${d.fee} ${d.feeCycle}`, "5978 雙月繳");
+  const o = derive(d, 2026);
+  const rows = buildRows(d, o);
+  const row = (label) => rows.find((r) => r.label.replace(/^\s*└\s*/, "").trim() === label) || {};
+  eq("確認表：管理費有無＝有", row("管理費有無").value, "有");
+  eq("確認表：金額那格留空（591 要的是每月多少）", row("管理費").value, "");
+  ok(/5978元／雙月繳/.test(row("管理費").note || ""), "提示寫出型錄原文，他要填就自己換算", row("管理費").note, "含 5978元／雙月繳");
+  eq("確認表：繳費週期照抄", row("繳費週期").value, "雙月繳");
+  const p = buildPayload(d, o, rows, "測試標題六個字", buildDescription(d.features));
+  eq("資料包：勾「有」、金額空著", `${p.fee.has}/${p.fee.amount}/${p.fee.cycle}`, "true/null/雙月繳");
+  const rk = buildRakuya(d, o, p, 2026);
+  eq("樂屋：有管理費 → 管理員(警衛)，金額空著", rk.manage + "/" + rk.manageFee, "管理員(警衛)/null");
+  const 月繳 = parseListing(型錄大樓);
+  const rows月 = buildRows(月繳, derive(月繳, 2026));
+  eq("月繳的照舊：金額照填", (rows月.find((r) => r.label === "管理費") || {}).value, "2342");
+  const 無管理費 = parseListing(型錄大樓.replace("2342元/月繳| /", "| /"));
+  eq("真的沒寫就還是「無」", 無管理費.fee, null);
+}
 console.log("");
 console.log(pass ? "✅ 591 刊登助手：辨識器與對應規則全部一致" : "❌ 有差異，不要往下做");
 process.exit(pass ? 0 : 1);

@@ -449,7 +449,7 @@
       if (F.has === true) {
         clickRadioAfter("管理費", "有");
         if (F.amount != null) setNumAfter("管理費", [F.amount]);
-        else missing.push("管理費金額");
+        else missing.push("管理費金額（已幫你勾「有」；591 要填每月多少，型錄不是月繳的自己換算）");
       } else if (F.has === false) clickRadioAfter("管理費", "無");
       else missing.push("管理費有／無");
       clickRadioAfter("帶租約", p.lease ? "是" : "否");
