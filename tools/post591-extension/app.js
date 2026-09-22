@@ -6,12 +6,12 @@
  * 由 app.html 的 importmap 把「@/…」對到 lib/。**規則改了要重新編：`npm run build:post591-ext`。**
  *
  * 個人資料（姓名／手機／LINE／固定尾段）存在 chrome.storage.local，只在使用者自己的 Chrome 裡。
- * 2026-09-05 拍板：同事版**不帶任何固定文案**，描述只有「☆主推特色介紹:」＋型錄的 ✨ 特色行；
+ * 2026-09-05 拍板：同事版**不帶任何固定文案**；2026-09-22 起連「☆主推特色介紹:」也拿掉，描述只有型錄的 ✨ 特色行；
  * 想固定接一段（電話、LINE、店名）的人自己在「⚙ 我的資料」填，{{name}} {{phone}} {{line}} 會自動代入。
  */
 // 一律相對路徑：外掛頁面的 CSP 會擋 inline importmap（2026-09-05 同事機器上整頁沒反應就是這個）
 import { parseListing, photoLinkReport, extractPhotosFromHtml, listingNoFromUrl, houseolHtmlToText, isHouseolCatalogHtml, isHouseolPage, pickFloorPlan, sortHouseolPhotos } from "./lib/lib/post591-parser.js";
-import { derive, buildRows, titleCheck, post591Risks, buildPayload } from "./lib/lib/post591-map.js";
+import { derive, buildRows, titleCheck, post591Risks, buildPayload, joinDescParts } from "./lib/lib/post591-map.js";
 import { buildRakuya } from "./lib/lib/rakuya-map.js";
 import { DESC_HEAD, DESC_TAIL, POST591_DEFAULTS } from "./lib/config/post591-template.js";
 import { TAIL_COLORS, buildTailDescHtml, escapeHtml, lineStyleCss, normalizeLineStyle, normalizeTailStyle, tailStartIndex } from "./tail-style.js";
@@ -84,7 +84,8 @@ function fillTail(tail, who = settings) {
 function buildDesc(features) {
   const lines = features.map((l) => l.replace(/^✨\s*/, "")).filter(Boolean).map((l) => `✨${l}`);
   const tail = fillTail((settings.tail || DESC_TAIL || "").trim());
-  return `${DESC_HEAD}\n\n${lines.join("\n")}${tail ? `\n\n${tail}` : ""}`;
+  // 同事版的版型頭是空的（他 2026-09-22 說拿掉「☆主推特色介紹:」），空的段落不要留空行
+  return joinDescParts(DESC_HEAD, lines.join("\n"), tail);
 }
 function flash(el, text, cls) {
   el.textContent = text;

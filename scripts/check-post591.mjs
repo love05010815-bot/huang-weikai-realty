@@ -7,7 +7,7 @@
 import { register } from "node:module";
 register("./alias-hooks.mjs", import.meta.url);
 const { combinePhotos, detectSource, extractPhotoUrls, extractPhotosFromHtml, houseolHtmlToText, isHouseolCatalogHtml, isHouseolPage, listingNoFromUrl, parseListing, photoLinkReport, pickFloorPlan, sortHouseolPhotos, splitFeatureLines } = await import("../src/lib/post591-parser.ts");
-const { buildDescription, buildPayload, buildRows, derive, descToHtml, encodePayload, photoCommand, post591Risks, splitAddress, titleCheck } =
+const { buildDescription, buildPayload, buildRows, derive, descToHtml, encodePayload, joinDescParts, photoCommand, post591Risks, splitAddress, titleCheck } =
   await import("../src/lib/post591-map.ts");
 const { buildRakuya, rakuyaDesc, rakuyaParkKind, RAKUYA_TITLE_MAX } = await import("../src/lib/rakuya-map.ts");
 
@@ -245,6 +245,10 @@ console.log("D. 標題、描述、風險字");
   ok(desc.startsWith("☆主推特色介紹:\n\n✨第一行\n✨第二行\n\n※歡迎來電"), "版型頭＋✨行＋尾", desc.slice(0, 30), "☆主推特色介紹:…");
   ok(desc.includes("經紀人:嚴意情"), "版型尾有經紀人", "ok", "ok");
   ok([...desc].length < 2500, "全文在 2500 內", [...desc].length, "<2500");
+  /* 同事版把版型頭與尾段都清空（他 2026-09-22 說拿掉「☆主推特色介紹:」）：空的段落不能留空行 */
+  eq("同事版：頭尾都空 → 只有 ✨ 行", joinDescParts("", "✨甲\n✨乙", ""), "✨甲\n✨乙");
+  eq("同事版自己填的尾段：✨ 行＋空行＋尾段", joinDescParts("", "✨甲", "※我的電話"), "✨甲\n\n※我的電話");
+  eq("他的後台（頭尾都有）跟以前一樣", joinDescParts("☆主推特色介紹:", "✨甲", "※尾"), "☆主推特色介紹:\n\n✨甲\n\n※尾");
   const risks = post591Risks("住辦合一", "投報5%起，唯一七店直營，未來捷運藍線");
   const words = risks.map((r) => r.word);
   ok(words.includes("投報率"), "抓到投報", words.join("、"), "含投報率");

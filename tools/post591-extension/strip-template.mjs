@@ -3,7 +3,8 @@
  *
  * 為什麼：辨識與對應規則跟官網後台共用同一套 TypeScript，但 src/config/post591-template.ts 裡是黃瑋凱本人的
  * 固定文案（電話、LINE、口號、經紀人證號），他 2026-09-05 拍板：**給同事的 zip 只留愛屋型錄的資訊，不帶他的固定特色。**
- * 所以這裡把編出來的 lib/config/post591-template.js 重寫成 DESC_TAIL = ""（版型頭與預設值照舊），
+ * 所以這裡把編出來的 lib/config/post591-template.js 重寫成 DESC_HEAD = ""、DESC_TAIL = ""（預設值照舊；
+ * 頭是 2026-09-22 他說「同事版把『☆主推特色介紹:』移除」才拿掉的，他自己的後台不受影響），
  * 並把 lib/ 裡殘留的他的名字換掉（buildRows／buildPayload 的聯絡人退路值 —— 外掛頁一律用使用者自己填的姓名蓋過，
  * 這個退路值本來就用不到，但不該留在同事拿到的檔案裡）。
  *
@@ -19,9 +20,9 @@ const tplPath = path.join(lib, "config", "post591-template.js");
 
 const tpl = await import(`file://${tplPath.replace(/\\/g, "/")}`);
 const out = [
-  "// 同事版：由 strip-template.mjs 產生。版型尾段留空 —— 文案只有「☆主推特色介紹:」＋型錄的 ✨ 特色行，",
-  "// 每個人想固定接的一段（電話、LINE、店名）在外掛頁「⚙ 我的資料」自己填。",
-  `export const DESC_HEAD = ${JSON.stringify(tpl.DESC_HEAD)};`,
+  "// 同事版：由 strip-template.mjs 產生。版型頭與尾段都留空 —— 文案只有型錄的 ✨ 特色行。",
+  "// 頭（☆主推特色介紹:）是他 2026-09-22 說要拿掉的；每個人想固定接的一段在外掛頁「⚙ 我的資料」自己填。",
+  `export const DESC_HEAD = "";`,
   `export const DESC_TAIL = "";`,
   `export const POST591_DEFAULTS = ${JSON.stringify(tpl.POST591_DEFAULTS)};`,
   "// 同事版不套任何格式（他 2026-09-07 拍板：同事版維持純文字），descToHtml 會回空字串、外掛貼純文字",
@@ -58,4 +59,4 @@ for (const f of fs.readdirSync(path.join(lib, "lib"))) {
     touched++;
   }
 }
-console.log(`strip-template: DESC_TAIL 清空、${touched} 個檔案移除個人名字`);
+console.log(`strip-template: DESC_HEAD／DESC_TAIL 清空、${touched} 個檔案移除個人名字`);

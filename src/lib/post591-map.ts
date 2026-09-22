@@ -439,10 +439,20 @@ export function titleCheck(title: string): { ok: boolean; len: number; msg: stri
   return { ok: true, len, msg: `${len} 字，在 ${POST591_DEFAULTS.titleMin}～${POST591_DEFAULTS.titleMax} 之間` };
 }
 
+/**
+ * 版型三段合起來：頭、✨ 行、尾，中間空一行。
+ * **空的段落不留空行** —— 同事版的頭與尾都是空的（他 2026-09-22 說「同事版把『☆主推特色介紹:』拿掉」，
+ * 2026-09-05 就拿掉了尾段），不濾掉的話文案會從兩個空行開始。
+ * 他自己的後台兩段都有字，輸出跟以前一模一樣。
+ */
+export function joinDescParts(head: string, body: string, tail: string): string {
+  return [head, body, tail].filter((s, i) => i === 1 || !!s).join("\n\n");
+}
+
 /** 他的固定版型：頭 + ✨ 行 + 尾。features 是純文字行，這裡負責加 ✨ */
 export function buildDescription(features: string[]): string {
   const lines = features.map((l) => l.replace(/^✨\s*/, "")).filter(Boolean).map((l) => `✨${l}`);
-  return `${DESC_HEAD}\n\n${lines.join("\n")}\n\n${DESC_TAIL}`;
+  return joinDescParts(DESC_HEAD, lines.join("\n"), DESC_TAIL);
 }
 
 const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] as string);

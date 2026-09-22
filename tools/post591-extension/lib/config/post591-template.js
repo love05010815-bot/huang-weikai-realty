@@ -1,6 +1,6 @@
-// 同事版：由 strip-template.mjs 產生。版型尾段留空 —— 文案只有「☆主推特色介紹:」＋型錄的 ✨ 特色行，
-// 每個人想固定接的一段（電話、LINE、店名）在外掛頁「⚙ 我的資料」自己填。
-export const DESC_HEAD = "☆主推特色介紹:";
+// 同事版：由 strip-template.mjs 產生。版型頭與尾段都留空 —— 文案只有型錄的 ✨ 特色行。
+// 頭（☆主推特色介紹:）是他 2026-09-22 說要拿掉的；每個人想固定接的一段在外掛頁「⚙ 我的資料」自己填。
+export const DESC_HEAD = "";
 export const DESC_TAIL = "";
 export const POST591_DEFAULTS = {"downPaymentRatio":0.2,"contract":"有簽訂","defaultCity":"台中市","titleMin":6,"titleMax":30,"descMax":2500};
 // 同事版不套任何格式（他 2026-09-07 拍板：同事版維持純文字），descToHtml 會回空字串、外掛貼純文字
