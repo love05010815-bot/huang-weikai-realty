@@ -19,7 +19,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/app/admin/_ui/icons";
-import { extractPhotosFromHtml, houseolHtmlToText, isHouseolCatalogHtml, isHouseolPage, listingNoFromUrl, parseListing, photoLinkReport, type Listing } from "@/lib/post591-parser";
+import { extractPhotosFromHtml, houseolHtmlToText, isHouseolCatalogHtml, isHouseolPage, listingNoFromUrl, parseListing, photoLinkReport, sortHouseolPhotos, type Listing } from "@/lib/post591-parser";
 import {
   buildDescription,
   buildHandoff,
@@ -60,15 +60,16 @@ export default function Post591Manager() {
   const scanningRef = useRef(new Set<string>());
   const photoReport = useMemo(() => photoLinkReport(photoFolder, scanned), [photoFolder, scanned]);
   const extraPhotos = photoReport.photos;
-  /** 上架真正會上傳的照片：資料裡「更多照片」的（picstr）＋ ⑤ 連結抓到的（型錄頁上嵌的），去重、照順序 */
+  /** 上架真正會上傳的照片：資料裡「更多照片」的（picstr）＋ ⑤ 連結抓到的（型錄頁上嵌的），去重、排回愛屋的順序 */
   const allPhotos = useMemo(() => {
     const seen = new Set<string>();
-    return [...(listing ? listing.photos : []), ...extraPhotos].filter((u) => {
+    const merged = [...(listing ? listing.photos : []), ...extraPhotos].filter((u) => {
       const k = u.toLowerCase();
       if (seen.has(k)) return false;
       seen.add(k);
       return true;
     });
+    return sortHouseolPhotos(merged); // 「更多照片」那幾張先被抓到，不排就會蓋過型錄頁上的前幾張
   }, [listing, extraPhotos]);
   const pendingPages = photoReport.pages.filter((p) => !(p in scanned) && !scanningRef.current.has(p));
   const pendingKey = pendingPages.join("\n");

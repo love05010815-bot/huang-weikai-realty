@@ -73,6 +73,11 @@ console.log("C. 判定順序");
 
 console.log("D. 外掛端快取／離線規則");
 const OKBODY = { ok: true, name: "測試", expiresAt: "2026-09-20T15:59:59.000Z", expiresText: "2026-09-20", bound: true };
+/* 背景程式那一組（bootBackground）跑的是真的時鐘，到期日一定要「相對今天」：
+   寫死 2026-09-20 的話那天一過，外掛端就把快取判成過期、「填表前問授權走快取」會突然紅掉
+   （2026-09-22 真的紅了一次，程式沒壞、是測資過期）。makeExt 那組有假時鐘，照樣用寫死的 9/20。 */
+const OK_FUTURE = new Date(Date.now() + 30 * 86400000);
+const OKBODY_FUTURE = { ok: true, name: "測試", expiresAt: OK_FUTURE.toISOString(), expiresText: OK_FUTURE.toISOString().slice(0, 10), bound: true };
 function makeExt(serverQueue, startIso = "2026-09-12T00:00:00Z") {
   const store = {};
   const calls = [];
@@ -218,7 +223,7 @@ console.log("F. background.js 在假 Chrome 裡跑一遍（importScripts、sende
   const CS = { url: "https://member.rakuya.com.tw/rent/post/add", tab: { id: 2 } };
   const payload = () => ({ v: 1, target: "rakuya", deal: "rent", first: {} });
   {
-    const bg = bootBackground([OKBODY, OKBODY, OKBODY]); // 存碼、上架、最後的一起上架各驗一次
+    const bg = bootBackground([OKBODY_FUTURE, OKBODY_FUTURE, OKBODY_FUTURE]); // 存碼、上架、最後的一起上架各驗一次
     ok(typeof bg.listeners.click === "function" && typeof bg.listeners.message === "function", "背景程式載入、監聽都掛上", "ok", "ok");
     const r0 = await bg.ask({ type: "p591:launch", payload: payload() }, APP);
     eq("外掛頁上架、沒授權碼 → 擋、不開分頁", r0.ok + "/" + (r0.license && r0.license.reason) + "/" + bg.created.length, "false/no_key_set/0");

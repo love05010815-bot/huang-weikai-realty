@@ -6,7 +6,7 @@
 // 專案內部用 @/ 別名，node 不讀 tsconfig，所以先掛上 resolver 再動態載入（同 check-rival-analysis）
 import { register } from "node:module";
 register("./alias-hooks.mjs", import.meta.url);
-const { combinePhotos, detectSource, extractPhotoUrls, extractPhotosFromHtml, houseolHtmlToText, isHouseolCatalogHtml, isHouseolPage, listingNoFromUrl, parseListing, photoLinkReport, splitFeatureLines } = await import("../src/lib/post591-parser.ts");
+const { combinePhotos, detectSource, extractPhotoUrls, extractPhotosFromHtml, houseolHtmlToText, isHouseolCatalogHtml, isHouseolPage, listingNoFromUrl, parseListing, photoLinkReport, sortHouseolPhotos, splitFeatureLines } = await import("../src/lib/post591-parser.ts");
 const { buildDescription, buildPayload, buildRows, derive, descToHtml, encodePayload, photoCommand, post591Risks, splitAddress, titleCheck } =
   await import("../src/lib/post591-map.ts");
 const { buildRakuya, rakuyaDesc, rakuyaParkKind, RAKUYA_TITLE_MAX } = await import("../src/lib/rakuya-map.ts");
@@ -536,6 +536,11 @@ ZZ0000003
   const d2 = parseListing(houseolHtmlToText(匿名));
   eq("匿名頁只有路名：門牌沒有、其他照抓", d2.addr + "|" + d2.price + "|" + d2.no, "測試區測試路|1128|ZZ0000001");
   eq("頁面照片用 extractPhotosFromHtml 撈：嵌的 a、d ＋更多照片連結裡的 f、g（後台上架前會跟 picstr 的去重）", extractPhotosFromHtml(型錄HTML, "ZZ0000001").length, 4);
+  eq(
+    "撈出來就照愛屋順序 a→d→f→g（HTML 裡「更多照片」的 f、g 排在頁面上的 a、d 之前）",
+    extractPhotosFromHtml(型錄HTML, "ZZ0000001").map((u) => u.slice(-5, -4)).join(""),
+    "adfg",
+  );
 }
 /* ───── M. 愛屋 2026-09-15 換版：抬頭變圖片、特色改 class='points'、門牌 alt 是全形數字 ───── */
 {
@@ -599,6 +604,21 @@ ZZ0000003
   eq("月繳的照舊：金額照填", (rows月.find((r) => r.label === "管理費") || {}).value, "2342");
   const 無管理費 = parseListing(型錄大樓.replace("2342元/月繳| /", "| /"));
   eq("真的沒寫就還是「無」", 無管理費.fee, null);
+}
+/* ───── O. 照片順序要跟愛屋一樣（2026-09-22 他說的：到 591 的順序跟愛屋不一樣） ───── */
+{
+  console.log("O. 照片順序");
+  const P = "https://hq.houseol.com.tw/images/pictures/H229AA6335801";
+  const 亂序 = [`${P}e.jpg`, `${P}f.jpg`, `${P}s.jpg`, `${P}a.jpg`, `${P}b.jpg`, `${P}d.jpg`];
+  eq("照檔名的流水字母排回愛屋順序", sortHouseolPhotos(亂序).map((u) => u.slice(-5, -4)).join(""), "abdefs");
+  eq("兩位字母排在一位後面（第 27 張以後）", sortHouseolPhotos([`${P}aa.jpg`, `${P}z.jpg`, `${P}a.jpg`]).map((u) => u.replace(/^.*801/, "").replace(".jpg", "")).join(","), "a,z,aa");
+  eq("數字流水號照數字排", sortHouseolPhotos([`${P}10.jpg`, `${P}2.jpg`]).map((u) => u.replace(/^.*801/, "").replace(".jpg", "")).join(","), "2,10");
+  const 雜 = ["https://a.example/one.jpg", "https://b.example/two.png"];
+  eq("前綴不一樣（他自己貼的雜連結）就原順序不動", sortHouseolPhotos(雜).join("|"), 雜.join("|"));
+  eq("只有一張不用排", sortHouseolPhotos([`${P}d.jpg`]).length, 1);
+  /* 後台與外掛都是「picstr 先、頁面照片後」再合併，合併完也要排 */
+  const 合併 = [`${P}f.jpg`, `${P}g.jpg`, `${P}a.jpg`, `${P}d.jpg`];
+  eq("合併後排序（picstr 在前也不怕）", sortHouseolPhotos(合併).map((u) => u.slice(-5, -4)).join(""), "adfg");
 }
 console.log("");
 console.log(pass ? "✅ 591 刊登助手：辨識器與對應規則全部一致" : "❌ 有差異，不要往下做");

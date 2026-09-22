@@ -124,7 +124,7 @@
     if (!input) return { done: 0, failed: urls.length };
     let done = 0,
       failed = 0;
-    const batch = input.multiple ? 5 : 1;
+    const batch = 1; // 一張一張傳：一次丟多張，樂屋平行上傳完成的先排前面，順序就跟愛屋不一樣了（2026-09-22）
     for (let i = 0; i < urls.length; i += batch) {
       const chunk = urls.slice(i, i + batch);
       const dt = new DataTransfer();

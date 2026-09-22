@@ -269,6 +269,34 @@ export function listingNoFromUrl(url) {
  * 從型錄頁的 HTML 撈出這一戶的照片：hq.houseol.com.tw/images/pictures/ 底下、檔名含物件編號的圖。
  * 2026-09-05 實測：型錄頁嵌 3 張（H229AA6334850a/d/e.jpg）＋公司 logo（4817_3.jpg），「更多照片」另外 6 張（f 之後）。
  */
+/**
+ * 照愛屋的順序排照片。
+ *
+ * 愛屋的檔名是「物件編號＋流水字母」（…AA6335801a.jpg、…b.jpg、…d.jpg…s.jpg），那個字母就是愛屋的排序：
+ * 型錄頁上印的是最前面幾張、其餘收在「更多照片」裡。但 HTML 裡「更多照片」的連結排在頁面那幾張之前，
+ * 照 HTML 出現順序上傳，前三張就會跑到 591 的最後面（2026-09-22 他說「順序跟愛屋不一樣」）。
+ *
+ * 只有「每張都拆得出相同前綴＋同型尾巴」時才重排；拆不出來（他自己貼的雜連結）就原順序不動。
+ */
+export function sortHouseolPhotos(urls) {
+    const list = [];
+    for (const [i, u] of urls.entries()) {
+        const file = u.slice(u.lastIndexOf("/") + 1).replace(/[?#].*$/, "");
+        const m = file.match(/^(.*?)(\d+|[A-Za-z]{1,3})\.(?:jpe?g|png)$/i); // 數字要整串（…801「10」.jpg 不是「0」），字母最多三個
+        if (!m)
+            return urls;
+        list.push({ u, prefix: m[1].toLowerCase(), tail: m[2], i });
+    }
+    if (list.length < 2)
+        return urls;
+    const digits = (t) => /^\d+$/.test(t);
+    const num = digits(list[0].tail);
+    if (list.some((p) => p.prefix !== list[0].prefix || digits(p.tail) !== num))
+        return urls;
+    return [...list]
+        .sort((a, b) => (num ? Number(a.tail) - Number(b.tail) : a.tail.length - b.tail.length || a.tail.toLowerCase().localeCompare(b.tail.toLowerCase())) || a.i - b.i)
+        .map((p) => p.u);
+}
 export function extractPhotosFromHtml(html, listingNo) {
     const out = [];
     for (const m of html.matchAll(/(?:https?:)?\/\/hq\.houseol\.com\.tw\/images\/pictures\/[^"'\s<>)]+?\.(?:jpe?g|png)/gi)) {
@@ -279,7 +307,7 @@ export function extractPhotosFromHtml(html, listingNo) {
         if (!out.some((x) => x.toLowerCase() === u.toLowerCase()))
             out.push(u);
     }
-    return out;
+    return sortHouseolPhotos(out);
 }
 /* ───────── 愛屋型錄頁的 HTML → 跟 Ctrl+A 貼進來一樣的文字（2026-09-14 他說的：貼網址就好） ───────── */
 /** HTML 實體 → 字元。型錄頁會用 &ensp;（「主&ensp;+附屬」）、&nbsp;、&amp;、&#39; */
@@ -400,7 +428,7 @@ export function combinePhotos(text, scanned = {}) {
             directImageUrls(l).forEach(push);
         }
     }
-    return out;
+    return sortHouseolPhotos(out);
 }
 /** 使用者貼了幾條連結、每條各抓到幾張、哪幾條是要去掃的型錄頁 —— 給介面顯示，讓「貼了兩條只吃到一條」自己看得出來 */
 export function photoLinkReport(text, scanned = {}) {

@@ -273,34 +273,46 @@
     }
     return true;
   }
+  /**
+   * 照片：一張一張傳，等 591 真的多出一格再傳下一張。
+   * 2026-09-22 他說「591 的照片順序跟愛屋不一樣」：來源順序排好之外，一次丟五張、591 平行上傳，
+   * 誰先傳完誰排前面，順序照樣會亂。格子在 .image-sort .wrapper（591 自己的可拖曳排序區），
+   * 數不到就退回固定等 2 秒（版面改了也不會整個壞掉，只是慢一點）。
+   */
   async function uploadPhotos(urls, onStep) {
     const input = document.querySelector("input[type=file][multiple]");
     if (!input) return { done: 0, failed: urls.length };
+    const count = () => {
+      const box = document.querySelector(".image-sort .wrapper");
+      return box ? box.children.length : -1;
+    };
     let done = 0,
-      failed = 0;
-    for (let i = 0; i < urls.length; i += 5) {
-      const chunk = urls.slice(i, i + 5);
+      failed = 0,
+      countable = count() >= 0;
+    for (const [i, u] of urls.entries()) {
+      const r = await msg("p591:fetch", { url: u });
+      if (!r.ok) {
+        failed++;
+        continue;
+      }
+      const bin = atob(r.b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+      const ext = /png/i.test(r.type) ? "png" : "jpg";
+      const before = count();
       const dt = new DataTransfer();
-      for (const [j, u] of chunk.entries()) {
-        const r = await msg("p591:fetch", { url: u });
-        if (!r.ok) {
-          failed++;
-          continue;
+      dt.items.add(new File([bytes], String(i + 1).padStart(2, "0") + "." + ext, { type: r.type }));
+      const fresh = document.querySelector("input[type=file][multiple]") || input;
+      fresh.files = dt.files;
+      fresh.dispatchEvent(new Event("change", { bubbles: true }));
+      done++;
+      onStep && onStep(done, urls.length);
+      if (countable) {
+        if (!(await waitFor(() => count() > before, 20000))) {
+          countable = false; // 數不到就別再等，改固定間隔
+          await sleep(1500);
         }
-        const bin = atob(r.b64);
-        const bytes = new Uint8Array(bin.length);
-        for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
-        const ext = /png/i.test(r.type) ? "png" : "jpg";
-        dt.items.add(new File([bytes], `${String(i + j + 1).padStart(2, "0")}.${ext}`, { type: r.type }));
-        done++;
-      }
-      if (dt.files.length) {
-        const fresh = document.querySelector("input[type=file][multiple]") || input;
-        fresh.files = dt.files;
-        fresh.dispatchEvent(new Event("change", { bubbles: true }));
-        onStep && onStep(done, urls.length);
-        await sleep(2500);
-      }
+      } else await sleep(2000);
     }
     return { done, failed };
   }

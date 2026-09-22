@@ -10,7 +10,7 @@
  * 想固定接一段（電話、LINE、店名）的人自己在「⚙ 我的資料」填，{{name}} {{phone}} {{line}} 會自動代入。
  */
 // 一律相對路徑：外掛頁面的 CSP 會擋 inline importmap（2026-09-05 同事機器上整頁沒反應就是這個）
-import { parseListing, photoLinkReport, extractPhotosFromHtml, listingNoFromUrl, houseolHtmlToText, isHouseolCatalogHtml, isHouseolPage } from "./lib/lib/post591-parser.js";
+import { parseListing, photoLinkReport, extractPhotosFromHtml, listingNoFromUrl, houseolHtmlToText, isHouseolCatalogHtml, isHouseolPage, sortHouseolPhotos } from "./lib/lib/post591-parser.js";
 import { derive, buildRows, titleCheck, post591Risks, buildPayload } from "./lib/lib/post591-map.js";
 import { buildRakuya } from "./lib/lib/rakuya-map.js";
 import { DESC_HEAD, DESC_TAIL, POST591_DEFAULTS } from "./lib/config/post591-template.js";
@@ -453,12 +453,15 @@ async function launch(target = "591") {
   if (styledHtml) payload.descHtml = styledHtml;
   // 照片：資料裡「更多照片」的（picstr）＋ ⑤ 連結抓到的（型錄頁上嵌的那幾張），去重、照順序
   const seen = new Set();
-  payload.photos = [...payload.photos, ...extraPhotos()].filter((u) => {
-    const k = u.toLowerCase();
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
+  // 排回愛屋的順序：「更多照片」那幾張在 HTML 裡排在型錄頁上那幾張前面，不排會整組錯位
+  payload.photos = sortHouseolPhotos(
+    [...payload.photos, ...extraPhotos()].filter((u) => {
+      const k = u.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    }),
+  );
   const site = target === "rakuya" ? "樂屋" : "591";
   /** 樂屋的資料包：同一份再加樂屋的翻譯，聯絡人用同事自己填的姓名手機 */
   const forRakuya = (p) => {
