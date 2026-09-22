@@ -174,7 +174,7 @@ console.log("F. background.js 在假 Chrome 裡跑一遍（importScripts、sende
 {
   const extDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "tools", "post591-extension");
   /** 用 node 的 vm 開一個假的 service worker 環境：假 chrome.*、假 fetch、importScripts 讀真檔 */
-  function bootBackground(serverQueue) {
+  function bootBackground(serverQueue, extra) {
     const listeners = {};
     const created = [];
     const calls = [];
@@ -207,6 +207,7 @@ console.log("F. background.js 在假 Chrome 裡跑一遍（importScripts、sende
         return { status: 200, json: async () => next };
       },
     };
+    Object.assign(sandbox, extra || {});
     sandbox.self = sandbox;
     sandbox.importScripts = (f) => vm.runInContext(fs.readFileSync(path.join(extDir, f), "utf8"), ctx, { filename: f });
     const ctx = vm.createContext(sandbox);
@@ -217,6 +218,47 @@ console.log("F. background.js 在假 Chrome 裡跑一遍（importScripts、sende
         if (ret !== true) resolve({ sync: true, ret });
       });
     return { ask, created, calls, sessionStore, listeners };
+  }
+  {
+    /* 格局圖（2026-09-22）：背景用 OffscreenCanvas 算白底／灰階比例，這裡用假圖驗「數得對不對」；
+       門檻判斷不在背景，在 post591-parser 的 pickFloorPlan（check-post591 的 P 組）。 */
+    const px = { "plan.jpg": [255, 255, 255], "photo.jpg": [10, 120, 200] };
+    const bg = bootBackground([], {
+      fetch: async (url) => ({ ok: true, blob: async () => ({ url }) }),
+      createImageBitmap: async (b) => ({ width: 800, height: 600, url: b.url, close() {} }),
+      OffscreenCanvas: class {
+        constructor(w, h) {
+          this.w = w;
+          this.h = h;
+        }
+        getContext() {
+          const me = this;
+          return {
+            drawImage(bmp) {
+              me.px = px[bmp.url.split("/").pop()];
+            },
+            getImageData() {
+              const n = me.w * me.h;
+              const d = new Uint8ClampedArray(n * 4);
+              for (let i = 0; i < n; i++) {
+                d[i * 4] = me.px[0];
+                d[i * 4 + 1] = me.px[1];
+                d[i * 4 + 2] = me.px[2];
+                d[i * 4 + 3] = 255;
+              }
+              return { data: d };
+            },
+          };
+        }
+      },
+    });
+    const r = await bg.ask({ type: "p591:photo-stats", urls: ["https://x/plan.jpg", "https://x/photo.jpg"] }, { url: "https://weikaihouse.com/admin/post591", tab: { id: 9 } });
+    eq("照片統計：兩張都算得出來", r.ok + "/" + r.stats.length, "true/2");
+    eq("全白那張：白 1、灰 1", r.stats[0].white + "/" + r.stats[0].gray, "1/1");
+    eq("彩色那張：白 0、灰 0", r.stats[1].white + "/" + r.stats[1].gray, "0/0");
+    eq("尺寸也帶回去（給後台顯示用）", r.stats[0].width + "x" + r.stats[0].height, "800x600");
+    const bad = await bootBackground([], { fetch: async () => ({ ok: false }) }).ask({ type: "p591:photo-stats", urls: ["https://x/a.jpg"] }, { url: "https://weikaihouse.com/admin/post591", tab: { id: 9 } });
+    eq("抓不到的照片就跳過，不整批壞掉", bad.ok + "/" + bad.stats.length, "true/0");
   }
   const APP = { url: "chrome-extension://abc/app.html" };
   const BRIDGE = { url: "https://weikaihouse.com/admin/post591", tab: { id: 1 } };
