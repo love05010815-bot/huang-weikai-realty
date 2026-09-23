@@ -97,15 +97,20 @@ function describeNonText(m: NonNullable<LineEvent["message"]>): string {
  */
 async function forwardToRentalHelper(rawBody: string): Promise<void> {
   const url = process.env.RENTAL_HELPER_URL;
-  if (!url) return;
+  if (!url) {
+    console.warn("[line/webhook] RENTAL_HELPER_URL 未設定，沒有轉送給租屋代管小幫手");
+    return;
+  }
   try {
-    await fetch(url, {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: rawBody,
       redirect: "follow", // Apps Script 對 POST 一律回 302，跟著走就好
       signal: AbortSignal.timeout(20000), // 小幫手處理一張截圖約 3～8 秒
     });
+    // 一定留一行，Vercel Logs 才看得出「有沒有送、對方回什麼」
+    console.log(`[line/webhook] 已轉送租屋代管小幫手 → HTTP ${res.status}（網址有 ?k=：${url.includes("?k=") ? "是" : "否"}）`);
   } catch (e) {
     console.warn("[line/webhook] 轉送租屋代管小幫手失敗:", e);
   }
