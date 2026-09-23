@@ -90,6 +90,27 @@ function describeNonText(m: NonNullable<LineEvent["message"]>): string {
   }
 }
 
+/**
+ * 轉一份給租屋代管 LINE 小幫手（Google Apps Script）。
+ * 同一個官方帳號房客也在用：房客傳轉帳截圖，那邊自動標記已收。
+ * 失敗只記 log，絕不影響這裡原本的流程。小幫手對非房客的訊息一律沉默，不會跟這裡搶話。
+ */
+async function forwardToRentalHelper(rawBody: string): Promise<void> {
+  const url = process.env.RENTAL_HELPER_URL;
+  if (!url) return;
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: rawBody,
+      redirect: "follow", // Apps Script 對 POST 一律回 302，跟著走就好
+      signal: AbortSignal.timeout(20000), // 小幫手處理一張截圖約 3～8 秒
+    });
+  } catch (e) {
+    console.warn("[line/webhook] 轉送租屋代管小幫手失敗:", e);
+  }
+}
+
 export async function POST(req: Request) {
   const secret = getLineBotSecret();
   if (!secret) {
@@ -129,6 +150,9 @@ export async function POST(req: Request) {
       }
     }
   });
+
+  // 轉一份給租屋代管小幫手；另開一個 after()，跟上面的事件處理並行、不互相等
+  after(() => forwardToRentalHelper(rawBody));
 
   return new Response("ok", { status: 200 });
 }
