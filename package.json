@@ -25,7 +25,9 @@
     "check:fb-ad": "node --experimental-strip-types scripts/check-fb-ad.mjs",
     "build:fb-ext": "node tools/fb-group-poster/build-colleague.mjs",
     "fetch:school": "node --experimental-strip-types scripts/fetch-school-districts.mjs",
-    "check:school": "node --experimental-strip-types scripts/check-school-district.mjs"
+    "check:school": "node --experimental-strip-types scripts/check-school-district.mjs",
+    "build:addr": "node --experimental-strip-types scripts/build-address-index.mjs",
+    "check:addr": "node --experimental-strip-types scripts/check-address-index.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",

@@ -127,8 +127,8 @@ export function cnToNumber(s: string): number | null {
  * 公告與官方村里界用字不一致的（兩邊都先換成同一個字再比對）：
  * 褔德里／福德里、公舘里／公館里、溝漧里／溝墘里、溪埧里／溪壩里、犁分里／犁份里、双龍里／雙龍里
  */
-const CHAR_VARIANTS: Record<string, string> = { 褔: "福", 舘: "館", 漧: "墘", 壩: "埧", 份: "分", 雙: "双" };
-const CHAR_VARIANT_RE = /[褔舘漧壩份雙]/g;
+const CHAR_VARIANTS: Record<string, string> = { 褔: "福", 舘: "館", 漧: "墘", 壩: "埧", 份: "分", 雙: "双", 壳: "殼" };
+const CHAR_VARIANT_RE = /[褔舘漧壩份雙壳]/g;
 
 /** 整個里名對不上官方寫法的（跑過 fetch 之後從警告裡補） */
 const NAME_VARIANTS: Record<string, string> = {};

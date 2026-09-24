@@ -68,10 +68,13 @@ const BASE_STYLE = { color: "#5A7A8C", weight: 1, opacity: 0.55, fillColor: "#5A
 const SELECTED_STYLE = { color: "#1D5C76", weight: 2.5, opacity: 1, fillColor: "#1D5C76", fillOpacity: 0.28 };
 const SCHOOL_STYLE = { color: "#C77700", weight: 1.5, opacity: 0.9, fillColor: "#F2B84B", fillOpacity: 0.22 };
 const SCHOOL_PART_STYLE = { color: "#C77700", weight: 1.5, opacity: 0.9, fillColor: "#F2B84B", fillOpacity: 0.1, dashArray: "4 3" };
+/** 路名查出來「可能是這幾個里」：紫色，跟學區的黃色、選到的藍色分開 */
+const CANDIDATE_STYLE = { color: "#6b21a8", weight: 2, opacity: 0.95, fillColor: "#a78bfa", fillOpacity: 0.22 };
 
 export default function SchoolMap({
   selected,
   schoolLis,
+  candidates = [],
   onPick,
   focusToken,
 }: {
@@ -79,6 +82,8 @@ export default function SchoolMap({
   selected: LiRef | null;
   /** 要整片標出來的學區（某所學校的所有里） */
   schoolLis: Array<LiRef & { whole: boolean }>;
+  /** 路名查出來的候選里（一條路經過好幾個里時），紫色標出來讓客戶點 */
+  candidates?: LiRef[];
   onPick: (li: LiRef, source: "map" | "geo") => void;
   /** 每次從下拉換里就加一，地圖才知道要飛過去（地圖上自己點的不用飛） */
   focusToken: number;
@@ -149,6 +154,7 @@ export default function SchoolMap({
     const layer = layerRef.current;
     if (!L || !layer || status !== "ready") return;
     const schoolKeys = new Map(schoolLis.map((s) => [`${s.district}${s.li}`, s.whole]));
+    const candidateKeys = new Set(candidates.map((c) => `${c.district}${c.li}`));
     const selectedKey = selected ? `${selected.district}${selected.li}` : null;
     layer.eachLayer((lyr) => {
       const f = (lyr as unknown as { feature: VillageFeature }).feature;
@@ -156,13 +162,35 @@ export default function SchoolMap({
       const path = lyr as unknown as { setStyle: (s: object) => void; bringToFront?: () => void };
       if (key === selectedKey) path.setStyle(SELECTED_STYLE);
       else if (schoolKeys.has(key)) path.setStyle(schoolKeys.get(key) ? SCHOOL_STYLE : SCHOOL_PART_STYLE);
+      else if (candidateKeys.has(key)) path.setStyle(CANDIDATE_STYLE);
       else path.setStyle(BASE_STYLE);
     });
+    for (const key of candidateKeys) {
+      const lyr = byKeyRef.current.get(key) as unknown as { bringToFront?: () => void } | undefined;
+      lyr?.bringToFront?.();
+    }
     if (selectedKey) {
       const lyr = byKeyRef.current.get(selectedKey) as unknown as { bringToFront?: () => void } | undefined;
       lyr?.bringToFront?.();
     }
-  }, [selected, schoolLis, status]);
+  }, [selected, schoolLis, candidates, status]);
+
+  /* ── 路名的候選里 → 框住它們 ── */
+  useEffect(() => {
+    const map = mapRef.current;
+    const L = LRef.current;
+    if (!map || !L || status !== "ready" || candidates.length === 0) return;
+    let bounds: import("leaflet").LatLngBounds | null = null;
+    for (const c of candidates) {
+      const lyr = byKeyRef.current.get(`${c.district}${c.li}`) as unknown as
+        | { getBounds?: () => import("leaflet").LatLngBounds }
+        | undefined;
+      const b = lyr?.getBounds?.();
+      if (!b) continue;
+      bounds = bounds ? bounds.extend(b) : L.latLngBounds(b.getSouthWest(), b.getNorthEast());
+    }
+    if (bounds) map.fitBounds(bounds, { padding: [24, 24], maxZoom: 15, animate: false });
+  }, [candidates, status]);
 
   /* ── 從下拉換里 → 飛過去 ── */
   useEffect(() => {

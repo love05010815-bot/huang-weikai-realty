@@ -9,6 +9,9 @@
  *     解析規則在 src/lib/school-district.ts，結果放 public/data/school-districts.json）。
  *   - 里的邊界來自內政部國土測繪中心「村里界圖」（public/data/taichung-villages.geojson），
  *     讓客戶在地圖上點一下、或用手機定位，就知道自己在哪個里。
+ *   - 路名／門牌 → 里鄰來自臺中市政府民政局「GIS 門牌號碼」（public/data/addr/，
+ *     scripts/build-address-index.mjs 壓的），不知道自己在哪個里的客戶打路名或整條地址就能查，
+ *     有門牌號碼連鄰都對得到。2026-09-24 系統擁有者：「有的客戶可能不知道自己的里，加用路名搜尋」。
  *
  * ⚠️ 學區每學年會調整。教育局改公告時跑 `npm run fetch:school` → `npm run check:school`，
  *    看過警告再 commit，這頁不用動；記得同步下面「資料抓取日」的日期是自動帶的。
@@ -26,7 +29,7 @@ import SchoolFinder from "./SchoolFinder";
 
 const TITLE = `台中市國中小學區查詢｜輸入里或地圖定位看國小國中學區｜台中海線房仲${OWNER.name}`;
 const DESCRIPTION =
-  "台中市 29 區、625 個里的國小與國中學區一次查：選行政區和里、在地圖上點一下，或用手機定位，馬上列出對應的學校。只有幾個鄰、共同學區、自由學區、以街道分界這些細節都照臺中市政府教育局公告標示，買房、租屋、遷戶籍前先確認學區。";
+  "台中市 29 區、625 個里的國小與國中學區一次查：打路名或地址、選行政區和里、在地圖上點一下，或用手機定位，馬上列出對應的學校。有門牌號碼連鄰都對得到；只有幾個鄰、共同學區、自由學區、以街道分界這些細節都照臺中市政府教育局公告標示，買房、租屋、遷戶籍前先確認學區。";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -88,7 +91,7 @@ export default function SchoolPage() {
             <span className={styles.eyebrow}>TOOLS</span>
             <h1 className={styles.sectionTitle}>國中小學區查詢</h1>
             <p className={styles.sectionDesc}>
-              買房前最常被問的一句：「這裡讀哪間國小？」選好行政區和里、在地圖上點一下，
+              買房前最常被問的一句：「這裡讀哪間國小？」打路名或整個地址、選行政區和里、在地圖上點一下，
               或直接用手機定位，對應的國小與國中就列在下面，細節照教育局公告原文標出來。
             </p>
           </div>
@@ -102,6 +105,8 @@ export default function SchoolPage() {
               <strong>共同學區</strong>表示可在列出的學校之間擇一；<strong>自由學區</strong>依公告可不受學區限制。
               部分里只有某幾鄰、或以某條路、某段門牌分界，這種只能對照戶籍地址的<strong>鄰別與門牌</strong>判斷，
               工具會標示「依門牌分」，請務必再向學校確認。
+              用路名、門牌查到的里鄰是依民政局門牌資料推算，<strong>同一棟大樓不同樓層可能編在不同鄰</strong>，
+              以戶口名簿上的里鄰為準。
               <strong>額滿（總量管制）學校</strong>另有設籍期限等規定，公告裡不會寫，想確定能不能入學請直接問學校或我。
               查詢結果不構成入學資格的核定。
               <div className={tax.sources}>
@@ -119,6 +124,15 @@ export default function SchoolPage() {
                 ・里的邊界 ——{" "}
                 <a href="https://data.gov.tw/dataset/7438" target="_blank" rel="noopener noreferrer">
                   內政部國土測繪中心 村里界圖（政府資料開放授權）↗
+                </a>
+                <br />
+                ・路名、門牌對照里鄰 ——{" "}
+                <a
+                  href="https://opendata.taichung.gov.tw/search/f0c0712a-a604-4716-8b3f-33e9f4c8049e"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  臺中市政府民政局 GIS 門牌號碼（政府資料開放授權）↗
                 </a>
                 <br />
                 ・地圖底圖 —— © OpenStreetMap 貢獻者
