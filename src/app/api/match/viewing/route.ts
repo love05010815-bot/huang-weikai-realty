@@ -77,8 +77,10 @@ export async function POST(req: NextRequest) {
     });
 
     // 通知失敗不能讓買方看到錯誤 —— 預約已經成立了
+    // buyer.preference 是他在 /api/match/search 留下的購屋條件（upsertBuyer 不會覆蓋掉舊的），
+    // 跟著通知一起送給他本人，省得為了看客戶要什麼再開一次後台。
     try {
-      await notifyOwnerNewViewing(viewing, listings, null);
+      await notifyOwnerNewViewing(viewing, listings, null, buyer.preference);
     } catch (e) {
       console.error("[match/viewing] 通知失敗:", e);
     }

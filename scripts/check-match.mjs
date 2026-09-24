@@ -446,6 +446,37 @@ test("名片卡：按鈕文字不超過 20 字（LINE 的上限）", () => {
   }
 });
 
+// ---------------------------------------------------------------- 預約通知
+
+const fakeViewing = {
+  code: "BK-TEST01",
+  listingId: "L1",
+  listingIds: ["L1"],
+  name: "陳小姐",
+  phone: "0912345678",
+  preferredAt: "9/27(六) 下午",
+  note: "",
+};
+
+test("預約通知：帶上買方的購屋條件，跟後台「買方」那一欄同一份字", () => {
+  const pref = {
+    city: "台中市",
+    districts: ["梧棲區", "清水區"],
+    budgetMax: 500,
+    rooms: 1,
+    types: ["電梯大樓"],
+    ageRange: "a0",
+    features: ["平面車位"],
+  };
+  const body = LINE.viewingNotifyText(fakeViewing, [fakeListing("L1")], null, pref);
+  assert.ok(body.includes(`購屋條件：${describePreference(pref)}`), body);
+});
+
+test("預約通知：沒留過條件也要有那一行，不能整行消失", () => {
+  const body = LINE.viewingNotifyText(fakeViewing, [fakeListing("L1")], null, null);
+  assert.match(body, /購屋條件：（沒有留過配對條件）/);
+});
+
 if (process.exitCode) {
   console.error(`\n有測試失敗（通過 ${passed} 項）`);
 } else {

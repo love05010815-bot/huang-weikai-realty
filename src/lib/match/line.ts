@@ -12,6 +12,7 @@ import { MATCH } from "@/config/match";
 import { getAgentLineIds } from "./agents";
 import { OWNER, SITE_URL, SOCIAL } from "@/config/owner";
 import { getLineBotToken } from "@/lib/line-bot/client";
+import { describePreference, type Preference } from "./matcher";
 import { notifyAbinAdminGroup } from "@/lib/line-notify";
 import { escapeHtml, sendMail } from "@/lib/mail";
 import type { ListingUpsert } from "./houseol-parse";
@@ -448,38 +449,25 @@ function ownerEmail(): string {
  *
  * 訊息裡刻意寫「怎麼往下處理」：他多數時候人在 LINE 裡，不該被逼著開後台 ——
  * 回客戶就去官方帳號聊天室找那個名字，要標狀態就直接回「確認 BK-XXXXXX」。
+ *
+ * preference = 這位買方存在資料庫裡的購屋條件（2026-09-24 他要求一併附上）。
+ * 用的是跟後台「買方」那一欄同一個 describePreference()，所以兩邊看到的字一模一樣。
+ * 沒留過條件的（從 LINE 物件卡直接預約、沒跑過配對）就寫明沒有，不要留一行空的。
  */
-export async function notifyOwnerNewViewing(viewing: Viewing, listings: ListingLike[], profileName: string | null): Promise<void> {
-  const first = listings[0] ?? null;
-  const multi = listings.length > 1;
-  const where = first ? `${first.city}${first.district}${first.address}` : "";
-  const lines = [
-    `🔔 新的看屋預約 ${viewing.code}`,
-    // 一次預約多間時只給一個編號，間數寫在這一行；下面再把每一間列出來
-    multi ? `物件：共 ${listings.length} 間` : `物件：${first?.title ?? viewing.listingId}`,
-    ...(multi
-      ? listings.map((l, i) => `　${i + 1}. ${l.title}｜${l.city}${l.district}｜${fmtWan(l.price)}`)
-      : where
-        ? [`地點：${where}`]
-        : []),
-    `時間：${viewing.preferredAt || "待安排"}`,
-    `姓名：${viewing.name}`,
-    `電話：${viewing.phone}`,
-    `LINE：${profileName ?? "（尚未綁定）"}`,
-    viewing.note ? `備註：${viewing.note}` : null,
-    "",
-    profileName
-      ? `💬 回客戶：到官方帳號的聊天室找「${profileName}」直接回覆就好。`
-      : `💬 他還沒在 LINE 綁定，可以先打 ${viewing.phone}。`,
-    `✅ 跟客戶談好時間後，直接回這則訊息「已確認」，系統就會通知買方（要取消就回「取消」）。`,
-    `　 同時有好幾筆時改打：確認 ${viewing.code}`,
-    `後台（不一定要開）：${SITE_URL}/admin/match`,
-  ].filter((l): l is string => l !== null);
-  const body = lines.join("\n");
+export async function notifyOwnerNewViewing(
+  viewing: Viewing,
+  listings: ListingLike[],
+  profileName: string | null,
+  preference: Preference | null = null,
+): Promise<void> {
+  const body = viewingNotifyText(viewing, listings, profileName, preference);
 
   for (const uid of await getAgentLineIds()) {
     await pushMessages(uid, [text(body)]);
   }
+
+  const first = listings[0] ?? null;
+  const multi = listings.length > 1;
 
   try {
     await sendMail({
@@ -497,4 +485,43 @@ export async function notifyOwnerNewViewing(viewing: Viewing, listings: ListingL
   } catch (e) {
     console.error("[match/line] admin 群通知失敗:", e);
   }
+}
+
+/**
+ * 上面那則通知的文字本體 —— **純函式，沒有副作用**，所以 check:match 測得到。
+ * LINE 推播、Email、admin 群三個管道共用同一份字，不要各寫各的。
+ */
+export function viewingNotifyText(
+  viewing: Viewing,
+  listings: ListingLike[],
+  profileName: string | null,
+  preference: Preference | null = null,
+): string {
+  const first = listings[0] ?? null;
+  const multi = listings.length > 1;
+  const where = first ? `${first.city}${first.district}${first.address}` : "";
+  const lines = [
+    `🔔 新的看屋預約 ${viewing.code}`,
+    // 一次預約多間時只給一個編號，間數寫在這一行；下面再把每一間列出來
+    multi ? `物件：共 ${listings.length} 間` : `物件：${first?.title ?? viewing.listingId}`,
+    ...(multi
+      ? listings.map((l, i) => `　${i + 1}. ${l.title}｜${l.city}${l.district}｜${fmtWan(l.price)}`)
+      : where
+        ? [`地點：${where}`]
+        : []),
+    `時間：${viewing.preferredAt || "待安排"}`,
+    `姓名：${viewing.name}`,
+    `電話：${viewing.phone}`,
+    `LINE：${profileName ?? "（尚未綁定）"}`,
+    `購屋條件：${preference ? describePreference(preference) : "（沒有留過配對條件）"}`,
+    viewing.note ? `備註：${viewing.note}` : null,
+    "",
+    profileName
+      ? `💬 回客戶：到官方帳號的聊天室找「${profileName}」直接回覆就好。`
+      : `💬 他還沒在 LINE 綁定，可以先打 ${viewing.phone}。`,
+    `✅ 跟客戶談好時間後，直接回這則訊息「已確認」，系統就會通知買方（要取消就回「取消」）。`,
+    `　 同時有好幾筆時改打：確認 ${viewing.code}`,
+    `後台（不一定要開）：${SITE_URL}/admin/match`,
+  ].filter((l): l is string => l !== null);
+  return lines.join("\n");
 }
