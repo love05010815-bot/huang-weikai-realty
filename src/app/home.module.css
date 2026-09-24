@@ -725,6 +725,83 @@
   }
 }
 
+/* ---------- 中秋祝福影片（限時區塊，時間判斷在 page.tsx） ---------- */
+.midAutumnBand {
+  padding: 0 20px 76px;
+}
+
+.midAutumnCard {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  padding: 26px 32px;
+  border-radius: 22px;
+  border: 1px solid rgba(178, 108, 6, 0.15);
+  background: linear-gradient(115deg, #fff6e5 0%, #ffe9c2 100%);
+  box-shadow: 0 14px 30px rgba(178, 108, 6, 0.1);
+}
+
+.midAutumnBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.midAutumnTag {
+  display: inline-block;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #b26c06;
+  background: #fff;
+  padding: 5px 14px;
+  border-radius: 999px;
+  margin-bottom: 10px;
+}
+
+.midAutumnTitle {
+  font-size: clamp(20px, 3vw, 26px);
+  font-weight: 900;
+  line-height: 1.35;
+  margin: 0 0 8px;
+}
+
+.midAutumnDesc {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.75;
+  margin: 0;
+}
+
+/* 直式 9:16，寬度固定、不吃卡片剩餘空間 —— 影片是配角，文字才是主體 */
+.midAutumnVideo {
+  flex: none;
+  width: 220px;
+  aspect-ratio: 9 / 16;
+  border-radius: 14px;
+  background: #000;
+  box-shadow: 0 8px 20px rgba(178, 108, 6, 0.18);
+}
+
+@media (max-width: 760px) {
+  .midAutumnBand {
+    padding: 0 20px 60px;
+  }
+  .midAutumnCard {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+    padding: 22px 20px;
+    text-align: center;
+  }
+  .midAutumnVideo {
+    width: 100%;
+    max-width: 260px;
+    margin: 0 auto;
+  }
+}
+
 /* ---------- 服務區域 ---------- */
 .areaGrid {
   display: grid;

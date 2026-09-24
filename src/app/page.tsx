@@ -197,6 +197,13 @@ const jsonLd = {
  */
 export const revalidate = 300;
 
+/** 中秋祝福影片只在連假期間出現：2026-09-25 00:00 – 09-27 23:59（台北時間，固定 +8，同 taipeiStamp() 邏輯）。
+ *  首頁 revalidate=300 秒，所以開始／結束最晚會晚 5 分鐘生效，不用回來手動關。 */
+function isMidAutumnWindow(now: Date = new Date()): boolean {
+  const taipei = new Date(now.getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
+  return taipei >= "2026-09-25 00:00:00" && taipei <= "2026-09-27 23:59:59";
+}
+
 export default async function HomePage() {
   const [listings, videos] = await Promise.all([getPublicListings(), getPublicVideos()]);
   /* 首頁只放三支最新的（2026-09-07 系統擁有者指定）。「最新」看 publishedAt（YYYY-MM-DD 字串，
@@ -400,6 +407,33 @@ export default async function HomePage() {
             </Link>
           </div>
         </section>
+
+        {/* ---------------- 中秋祝福影片（限時區塊）----------------
+            2026-09-24 系統擁有者提供影片，指定台北時間 9/25 00:00–9/27 23:59 置入首頁，過了自動收掉。
+            原始檔是 iPhone 拍的 HEVC（.mov）——Chrome／Firefox 大多不支援 HEVC 解碼，直接放上去等於
+            多數訪客看不到、卻不會報錯（靜默失效），所以先用 ffmpeg 轉成 H.264 mp4（同畫質，非重新剪輯）。
+            直式 9:16、10 秒、有語音，不自動播放（會被瀏覽器擋，靜音播放也失去意義）——放海報圖＋原生
+            控制列，訪客自己按。isMidAutumnWindow() 判斷式在上面，過期後這個 section 直接不渲染。 */}
+        {isMidAutumnWindow() && (
+          <section className={styles.midAutumnBand} aria-label="中秋佳節祝福">
+            <div className={styles.midAutumnCard}>
+              <div className={styles.midAutumnBody}>
+                <span className={styles.midAutumnTag}>🎑 中秋佳節</span>
+                <h2 className={styles.midAutumnTitle}>中秋佳節愉快，闔家團圓</h2>
+                <p className={styles.midAutumnDesc}>點開影片，聽聽{OWNER.name}的中秋祝福。</p>
+              </div>
+              <video
+                className={styles.midAutumnVideo}
+                src="/videos/mid-autumn-2026.mp4"
+                poster="/videos/mid-autumn-2026-poster.jpg"
+                controls
+                playsInline
+                preload="none"
+                aria-label={`${OWNER.name}中秋祝福影片`}
+              />
+            </div>
+          </section>
+        )}
 
         {/* ---------------- 關於我（導引；完整內容在 /about）----------------
             原本自我介紹＋服務區域＋戰績整包都在首頁，光這段就佔首頁 26%
