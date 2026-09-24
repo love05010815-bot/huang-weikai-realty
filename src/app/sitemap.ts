@@ -29,6 +29,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: SITE_URL + "/listings", lastModified, changeFrequency: "weekly", priority: 0.8 },
     // 稅費試算是很強的搜尋入口（「房地合一稅試算」搜尋量高），優先度給高一點
     { url: SITE_URL + "/tax", lastModified, changeFrequency: "monthly", priority: 0.9 },
+    // 2026-09-24 學區查詢。「台中學區查詢」「○○國小學區」是買房族常搜的字
+    { url: SITE_URL + "/school", lastModified, changeFrequency: "monthly", priority: 0.9 },
     // 2026-08-21 恢復。未核對的「土地使用分區」層已從該頁移除，
     // 現在是系統擁有者確認過的 39 個建案，可以收錄。
     { url: SITE_URL + "/map", lastModified, changeFrequency: "weekly", priority: 0.8 },

@@ -1,0 +1,396 @@
+/* ---------- 學區查詢 ----------
+   配色變數在 home.module.css 的 .page；表單、分頁、免責的樣式直接借 tax.module.css，
+   這裡只放學區頁自己的：地圖、結果兩欄、學校卡、標籤。
+   ⚠️ 專案沒有全域 box-sizing reset，有邊框又設寬度的都要自己寫。 */
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 120px;
+  gap: 18px 20px;
+}
+
+.formFoot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.mapToggle {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.mapToggle:hover {
+  text-decoration: underline;
+}
+
+.linkBtn {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.linkBtn:hover {
+  text-decoration: underline;
+}
+
+/* ---------- 地圖 ---------- */
+
+.mapWrap {
+  margin-top: 14px;
+}
+
+.mapBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.mapBtn {
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  padding: 9px 16px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.mapBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mapHint {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.mapBox {
+  box-sizing: border-box;
+  height: 400px;
+  border: 1px solid var(--line-warm);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #eaf1f4;
+}
+
+.geoMsg,
+.mapLegend {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.mapLegend strong {
+  color: var(--ink);
+}
+
+.mapLegend .linkBtn {
+  margin-left: 8px;
+}
+
+/* ---------- 結果 ---------- */
+
+.results {
+  margin-top: 22px;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  overflow: hidden;
+  /* scrollIntoView 時避開固定 header */
+  scroll-margin-top: 90px;
+}
+
+.resultHead {
+  background: var(--primary);
+  color: #fff;
+  padding: clamp(18px, 3vw, 26px);
+  text-align: center;
+}
+
+.resultLabel {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  opacity: 0.85;
+}
+
+.resultTitle {
+  font-size: clamp(24px, 5vw, 34px);
+  font-weight: 900;
+  line-height: 1.3;
+  margin: 4px 0 2px;
+}
+
+.resultSub {
+  font-size: 13px;
+  opacity: 0.9;
+  line-height: 1.6;
+}
+
+.cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  padding: clamp(16px, 3vw, 24px);
+  background: #fff;
+}
+
+.col {
+  min-width: 0;
+}
+
+.colTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.colCount {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.none {
+  margin: 0;
+  padding: 14px 16px;
+  background: var(--soft);
+  border: 1px solid var(--line-warm);
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--muted);
+}
+
+.card {
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: #fff;
+}
+
+.card + .card {
+  margin-top: 10px;
+}
+
+.cardHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.schoolName {
+  margin: 0;
+  font-size: 16.5px;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.levelTag {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.pills {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pill {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 800;
+  line-height: 1.4;
+  border-radius: 999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+.pillAll {
+  background: #e6f4ea;
+  color: #1e7f4f;
+}
+
+.pillPart {
+  background: var(--accent-soft);
+  color: var(--primary);
+}
+
+.pillCond {
+  background: #fff8e8;
+  color: #8a5a00;
+  border: 1px solid #e7c47d;
+}
+
+.pillShared {
+  background: #eef2ff;
+  color: #3b4bb0;
+}
+
+.pillFree {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+.pillIn {
+  background: #1e7f4f;
+  color: #fff;
+}
+
+.pillWarn {
+  background: #c77700;
+  color: #fff;
+}
+
+.zone {
+  margin-top: 10px;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.zoneLine {
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.zoneRaw {
+  margin-top: 2px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--muted);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.cardActions {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.details summary {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.rawText {
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: var(--soft);
+  border-radius: 8px;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.meta {
+  margin: 0;
+  padding: 0 clamp(16px, 3vw, 24px) 16px;
+  background: #fff;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+/* .cta 借 tax 的，但它沒有背景，補一塊白底讓它跟結果卡連在一起 */
+.results > :global(.cta),
+.results > div:last-child {
+  background: #fff;
+}
+
+/* ---------- 查學校 ---------- */
+
+.schoolBody {
+  background: #fff;
+  padding: clamp(16px, 3vw, 24px);
+}
+
+.zoneList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+}
+
+.zoneItem {
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.zoneItem strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.zoneItemDesc {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.schoolBody .details {
+  margin-top: 14px;
+}
+
+.schoolBody .meta {
+  padding: 12px 0 0;
+}
+
+@media (max-width: 760px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cols {
+    grid-template-columns: 1fr;
+  }
+
+  .mapBox {
+    height: 340px;
+  }
+}

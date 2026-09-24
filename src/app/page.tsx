@@ -151,6 +151,15 @@ const TOOLS = [
     source: "財政部青安 3.0 方案與國庫署問答集",
     href: "/tax#youth-loan",
   },
+  // 2026-09-24 系統擁有者：客戶問學區都得去翻教育局網頁，要一個自己站上的版本（/school）。
+  {
+    icon: "🏫",
+    title: "國中小學區查詢",
+    desc: "買房前先看讀哪間學校。選行政區和里、在地圖上點一下，或直接用手機定位，馬上列出對應的國小與國中；只有幾個鄰、共同學區這些細節都照教育局公告標出來。",
+    source: "臺中市政府教育局學區公告、內政部村里界圖",
+    href: "/school",
+    cta: "開始查詢 →",
+  },
 ];
 
 const jsonLd = {
@@ -496,7 +505,7 @@ export default async function HomePage() {
                   <h3>{tool.title}</h3>
                   <p>{tool.desc}</p>
                   <span className={styles.toolSource}>依據：{tool.source}</span>
-                  <span className={styles.toolGo}>開始試算 →</span>
+                  <span className={styles.toolGo}>{"cta" in tool ? tool.cta : "開始試算 →"}</span>
                 </Link>
               ))}
             </div>
