@@ -197,11 +197,12 @@ const jsonLd = {
  */
 export const revalidate = 300;
 
-/** 中秋祝福影片只在連假期間出現：2026-09-25 00:00 – 09-27 23:59（台北時間，固定 +8，同 taipeiStamp() 邏輯）。
- *  首頁 revalidate=300 秒，所以開始／結束最晚會晚 5 分鐘生效，不用回來手動關。 */
+/** 中秋祝福影片：2026-09-24 系統擁有者改口「現在開始」（原訂 9/25 00:00），所以沒有下限，
+ *  只看有沒有超過 09-27 23:59（台北時間，固定 +8，同 taipeiStamp() 邏輯）。
+ *  首頁 revalidate=300 秒，所以結束最晚會晚 5 分鐘生效，不用回來手動關。 */
 function isMidAutumnWindow(now: Date = new Date()): boolean {
   const taipei = new Date(now.getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
-  return taipei >= "2026-09-25 00:00:00" && taipei <= "2026-09-27 23:59:59";
+  return taipei <= "2026-09-27 23:59:59";
 }
 
 export default async function HomePage() {
@@ -409,7 +410,8 @@ export default async function HomePage() {
         </section>
 
         {/* ---------------- 中秋祝福影片（限時區塊）----------------
-            2026-09-24 系統擁有者提供影片，指定台北時間 9/25 00:00–9/27 23:59 置入首頁，過了自動收掉。
+            2026-09-24 系統擁有者提供影片，原訂台北時間 9/25 00:00 上、9/27 23:59 下，同一天改口「現在就上」，
+            所以現在起到 9/27 23:59 都會出現，過了自動收掉。
             原始檔是 iPhone 拍的 HEVC（.mov）——Chrome／Firefox 大多不支援 HEVC 解碼，直接放上去等於
             多數訪客看不到、卻不會報錯（靜默失效），所以先用 ffmpeg 轉成 H.264 mp4（同畫質，非重新剪輯）。
             直式 9:16、10 秒、有語音，不自動播放（會被瀏覽器擋，靜音播放也失去意義）——放海報圖＋原生
