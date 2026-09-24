@@ -16,8 +16,7 @@ import styles from "./home.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
 import SectionWave from "@/app/_ui/SectionWave";
-import CardPopup from "@/app/_ui/CardPopup";
-import MidAutumnVideoPopup from "@/app/_ui/MidAutumnVideoPopup";
+import HomePopups from "@/app/_ui/HomePopups";
 // 卡片樣式跟 /listings 共用同一份，改一處兩邊都會變
 import lst from "./listings/listings.module.css";
 import FeaturedTitle from "./listings/FeaturedTitle";
@@ -257,13 +256,12 @@ export default async function HomePage() {
           「首頁的側邊條不出現，出現在子頁就好」—— 首頁 banner 右上已經有藥丸，
           右緣再一條直排跟形象照擠在同一側。要放回來就 <SocialLinks variant="float" />，
           放在 <header> 外面（header 的 backdrop-filter 會把 fixed 子元素關在 header 裡）。 */}
-      {/* 📇 彈跳名片（2026-09-11 系統擁有者指定，參考同業做法）：一打開首頁就跳出他的名片，5 秒後收到右上角
-          變成「收下名片」小按鈕、跟著頁面捲動。只放首頁。要放在 <header> 外面（header 的 backdrop-filter
-          會把 fixed 子元素關在 header 裡）。細節見 _ui/CardPopup.tsx。 */}
-      <CardPopup />
-      {/* 🎑 中秋祝福影片彈窗（限時，跳出方式比照上面的彈跳名片）：細節見 _ui/MidAutumnVideoPopup.tsx 檔頭。
-          isMidAutumnWindow() 在伺服器端算好結果才傳進去，客戶端不重算時間。 */}
-      <MidAutumnVideoPopup active={isMidAutumnWindow()} />
+      {/* 📇 彈跳名片＋🎑 中秋祝福影片彈窗：2026-09-24 系統擁有者指定順序「先跳出影片再跳出名片」，
+          影片關閉後名片才掛載，排序邏輯在 _ui/HomePopups.tsx（細節見該檔頭）；名片本體沒改，
+          細節見 _ui/CardPopup.tsx。只放首頁。要放在 <header> 外面（header 的 backdrop-filter
+          會把 fixed 子元素關在 header 裡）。isMidAutumnWindow() 在伺服器端算好結果才傳進去，
+          客戶端不重算時間。 */}
+      <HomePopups midAutumnActive={isMidAutumnWindow()} />
       <main id="top">
         {/* ---------------- 品牌 banner（2026-09-08 系統擁有者指定放在自我介紹的上方） ----------------
             他要的是「強調我是服務台中海線的房產規劃專家」。同日改到第四版（每版都是他看過線上後指定）：
