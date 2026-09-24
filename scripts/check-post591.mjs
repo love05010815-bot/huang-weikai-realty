@@ -585,6 +585,11 @@ ZZ0000003
   const p3 = splitAddress(d3.addr);
   eq("拆門牌：縣市／鄉鎮／路／號", [p3.city, p3.town, p3.road, p3.no].join("|"), "測試市|測試區|測試路一段|70");
   eq("特色兩條、更多照片撈得到", d3.features.length + "/" + d3.photos.length, "2/1");
+  /* 特色的 class 尾巴是「字級」：同一天他 12 戶就有 points／points_m／points_s 三種（2026-09-24 他說後台沒抓到特色） */
+  for (const cls of ["points", "points_m", "points_s", "points_l"]) {
+    const 換 = 新版HTML.replace(/class='points'/g, `class='${cls}'`);
+    eq(`特色 class 是 ${cls} 也讀得到`, parseListing(houseolHtmlToText(換)).features.length, 2);
+  }
 }
 /* ───── N. 管理費週期不是月繳（2026-09-22 他那戶「5978元/雙月繳」，原本整格漏掉變成「無」） ───── */
 {

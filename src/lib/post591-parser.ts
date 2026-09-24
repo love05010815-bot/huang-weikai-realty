@@ -478,7 +478,9 @@ export function isHouseolCatalogHtml(html: string): boolean {
  *     （<div id="date"> 那個「2026/09/15 印」「列印本頁」在 header 外面，不會選到）
  *   ・地址：登入愛屋的頁面有「顯示」按鈕（#showaddr），完整門牌在它的 alt 屬性；匿名頁只有 <div class="caption">路名</div>
  *   ・欄位：<div class="title">標籤</div> 之後第一個 <p>值</p>（header 那個 div.title 包著 <h2>，不會被當欄位）
- *   ・環境特色：#GoodSpan 裡每個 <div class='points_m'>（舊版）或 <div class='points'>（2026-09-15 新版）一條，原文照留
+ *   ・環境特色：#GoodSpan 裡每個 <div class='points…'> 一條，原文照留。
+ *     ⚠️ class 尾巴是「字級」不是版本：同一天抓他 12 戶就有 points／points_m／points_s 三種（字多的用小的），
+ *     2026-09-24 他說「後台沒抓到愛屋的特色」就是只認 points 與 points_m、7 戶抓不到 —— 一律認 points 開頭。
  *   ・「更多照片」：<a id="otherfunc3" href="…EInfos.aspx?type=3&…&picstr=…">，寫成 [更多照片](網址) 讓 extractPhotoUrls 撈得到
  *   ・尾巴：<h2>經紀人員：姓名</h2>、<div id="footer">僅供參考…</div>（parseHouseol 用來切掉雜訊）
  */
@@ -515,7 +517,7 @@ export function houseolHtmlToText(html: string): string {
     const end = scope.search(/class=["']menu["']|<\/dt>|id=["']personal_div["']/);
     if (end > 0) scope = scope.slice(0, end);
   }
-  const points = [...scope.matchAll(/<div class=['"]points(?:_m)?['"]>([\s\S]*?)<\/div>/g)].map((p) => stripTags(p[1]).replace(/\n/g, " ")).filter(Boolean);
+  const points = [...scope.matchAll(/<div class=['"]points[^'"]*['"]>([\s\S]*?)<\/div>/g)].map((p) => stripTags(p[1]).replace(/\n/g, " ")).filter(Boolean);
   if (points.length) out.push("環境特色", ...points);
   const more = html.match(/href=["']([^"']*EInfos\.aspx\?[^"']*picstr=[^"']+)["']/i);
   out.push(`[地圖](x) [街景](x)${more ? ` [更多照片](${decodeEntities(more[1])})` : ""} [成交行情](x)`);
