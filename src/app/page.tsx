@@ -17,6 +17,7 @@ import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
 import SectionWave from "@/app/_ui/SectionWave";
 import CardPopup from "@/app/_ui/CardPopup";
+import MidAutumnVideoPopup from "@/app/_ui/MidAutumnVideoPopup";
 // 卡片樣式跟 /listings 共用同一份，改一處兩邊都會變
 import lst from "./listings/listings.module.css";
 import FeaturedTitle from "./listings/FeaturedTitle";
@@ -197,9 +198,10 @@ const jsonLd = {
  */
 export const revalidate = 300;
 
-/** 中秋祝福影片：2026-09-24 系統擁有者改口「現在開始」（原訂 9/25 00:00），所以沒有下限，
- *  只看有沒有超過 09-27 23:59（台北時間，固定 +8，同 taipeiStamp() 邏輯）。
- *  首頁 revalidate=300 秒，所以結束最晚會晚 5 分鐘生效，不用回來手動關。 */
+/** 中秋祝福影片彈窗（_ui/MidAutumnVideoPopup.tsx）要不要出現：2026-09-24 系統擁有者改口
+ *  「現在開始」（原訂 9/25 00:00），所以沒有下限，只看有沒有超過 09-27 23:59（台北時間，
+ *  固定 +8，同 taipeiStamp() 邏輯）。首頁 revalidate=300 秒，所以結束最晚會晚 5 分鐘生效，
+ *  不用回來手動關。算好的結果當 prop 傳給客戶端元件，不在瀏覽器裡重算（訪客的時鐘不可信）。 */
 function isMidAutumnWindow(now: Date = new Date()): boolean {
   const taipei = new Date(now.getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
   return taipei <= "2026-09-27 23:59:59";
@@ -259,6 +261,9 @@ export default async function HomePage() {
           變成「收下名片」小按鈕、跟著頁面捲動。只放首頁。要放在 <header> 外面（header 的 backdrop-filter
           會把 fixed 子元素關在 header 裡）。細節見 _ui/CardPopup.tsx。 */}
       <CardPopup />
+      {/* 🎑 中秋祝福影片彈窗（限時，跳出方式比照上面的彈跳名片）：細節見 _ui/MidAutumnVideoPopup.tsx 檔頭。
+          isMidAutumnWindow() 在伺服器端算好結果才傳進去，客戶端不重算時間。 */}
+      <MidAutumnVideoPopup active={isMidAutumnWindow()} />
       <main id="top">
         {/* ---------------- 品牌 banner（2026-09-08 系統擁有者指定放在自我介紹的上方） ----------------
             他要的是「強調我是服務台中海線的房產規劃專家」。同日改到第四版（每版都是他看過線上後指定）：
@@ -408,34 +413,6 @@ export default async function HomePage() {
             </Link>
           </div>
         </section>
-
-        {/* ---------------- 中秋祝福影片（限時區塊）----------------
-            2026-09-24 系統擁有者提供影片，原訂台北時間 9/25 00:00 上、9/27 23:59 下，同一天改口「現在就上」，
-            所以現在起到 9/27 23:59 都會出現，過了自動收掉。
-            原始檔是 iPhone 拍的 HEVC（.mov）——Chrome／Firefox 大多不支援 HEVC 解碼，直接放上去等於
-            多數訪客看不到、卻不會報錯（靜默失效），所以先用 ffmpeg 轉成 H.264 mp4（同畫質，非重新剪輯）。
-            直式 9:16、10 秒、有語音，不自動播放（會被瀏覽器擋，靜音播放也失去意義）——放海報圖＋原生
-            控制列，訪客自己按。isMidAutumnWindow() 判斷式在上面，過期後這個 section 直接不渲染。 */}
-        {isMidAutumnWindow() && (
-          <section className={styles.midAutumnBand} aria-label="中秋佳節祝福">
-            <div className={styles.midAutumnCard}>
-              <div className={styles.midAutumnBody}>
-                <span className={styles.midAutumnTag}>🎑 中秋佳節</span>
-                <h2 className={styles.midAutumnTitle}>中秋佳節愉快，闔家團圓</h2>
-                <p className={styles.midAutumnDesc}>點開影片，聽聽{OWNER.name}的中秋祝福。</p>
-              </div>
-              <video
-                className={styles.midAutumnVideo}
-                src="/videos/mid-autumn-2026.mp4"
-                poster="/videos/mid-autumn-2026-poster.jpg"
-                controls
-                playsInline
-                preload="none"
-                aria-label={`${OWNER.name}中秋祝福影片`}
-              />
-            </div>
-          </section>
-        )}
 
         {/* ---------------- 關於我（導引；完整內容在 /about）----------------
             原本自我介紹＋服務區域＋戰績整包都在首頁，光這段就佔首頁 26%

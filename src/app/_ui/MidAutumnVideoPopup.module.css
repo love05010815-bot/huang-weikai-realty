@@ -1,0 +1,101 @@
+/* 🎑 中秋祝福影片彈窗的樣式。脈絡見 MidAutumnVideoPopup.tsx 檔頭。
+   z-index 跟遮罩顏色刻意跟 CardPopup.module.css 對齊（同一套視覺語言）；
+   兩個彈窗靠時間序錯開，不會同時出現，所以 z-index 誰蓋誰不重要。 */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(12, 34, 34, 0.55);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.25s ease both;
+}
+
+/* 直式影片，對話框不用跟名片一樣寬到 560px —— 太寬會讓 9:16 影片中間留一大片白 */
+.dialog {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  background: #fff;
+  color: var(--ink, #22323f);
+  border-radius: 18px;
+  padding: 14px;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);
+  animation: popIn 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
+}
+
+.close {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(34, 50, 63, 0.14);
+  background: #fff;
+  color: var(--ink, #22323f);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.close:hover,
+.close:focus-visible {
+  background: var(--accent-soft, #fde7d6);
+}
+
+.video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  border-radius: 12px;
+  background: #000;
+}
+
+.caption {
+  margin: 10px 2px 2px;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--ink, #22323f);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .dialog {
+    animation: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .dialog {
+    max-width: 300px;
+    padding: 12px;
+  }
+  .close {
+    top: -12px;
+    right: -12px;
+    width: 30px;
+    height: 30px;
+    font-size: 19px;
+  }
+}
