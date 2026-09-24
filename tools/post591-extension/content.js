@@ -220,27 +220,59 @@
     if (!sel || !road) return false;
     const current = () => txt(sel.querySelector(".ant-select-selection-item"));
     if (current() === road) return true;
-    (sel.querySelector(".ant-select-selector") || sel).dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-    const panel = await waitFor(() => [...document.querySelectorAll(".ant-dropdown .street")].find(visible), 3000);
-    if (!panel) return false;
-    const input = panel.querySelector(".street-header input");
-    const btn = panel.querySelector(".street-header button");
-    if (input) {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, road);
-      input.dispatchEvent(new Event("input", { bubbles: true })); // 不能 blur，面板會關
-      await sleep(200);
-      if (btn) btn.click();
-    }
-    const items = () => [...panel.querySelectorAll(".street-content li")].filter(visible);
-    const hit = await waitFor(() => items().find((li) => txt(li) === road) || items().find((li) => txt(li).includes(road)) || null, 4000);
-    if (!hit) {
+    const selector = sel.querySelector(".ant-select-selector") || sel;
+    const panelNow = () => [...document.querySelectorAll(".ant-dropdown .street")].find(visible);
+    /**
+     * 開面板要分三段試：格子已經有值、或上一輪關過之後，Ant 會覺得它「還開著」，
+     * 這時候 mousedown 反而是把它關掉，面板永遠不出現（2026-09-24 在真表單上抓到的）。
+     */
+    const openPanel = async () => {
+      if (panelNow()) return panelNow();
+      selector.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      let p = await waitFor(panelNow, 1500);
+      if (p) return p;
+      selector.click();
+      p = await waitFor(panelNow, 1500);
+      if (p) return p;
+      document.body.click(); // 徹底關掉再開一次
+      await sleep(400);
+      selector.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      return await waitFor(panelNow, 2000);
+    };
+    // 搜不到就換短一點的關鍵字：「大仁路一段」→「大仁路」、「居仁街」→「居仁」
+    const keys = [road, road.replace(/[一二三四五六七八九十百]+段$/u, ""), road.replace(/[路街道巷弄]$/u, "")].filter((k, i, a) => k && k.length >= 2 && a.indexOf(k) === i);
+    for (let round = 0; round < 2; round++) {
+      const panel = await openPanel();
+      if (!panel) {
+        await sleep(500);
+        continue;
+      }
+      const items = () => [...panel.querySelectorAll(".street-content li")].filter((li) => visible(li) && txt(li));
+      await waitFor(() => items().length, 2500); // 剛換完鄉鎮，591 才去抓這一區的街道
+      const find = () => items().find((li) => txt(li) === road) || items().find((li) => txt(li).startsWith(road)) || items().find((li) => txt(li).includes(road));
+      let hit = find(); // ① 預設清單裡就有 → 直接點，不用打字（他 2026-09-24 說的：找到了直接選就好）
+      const input = panel.querySelector(".street-header input");
+      const btn = panel.querySelector(".street-header button");
+      for (const key of keys) {
+        if (hit || !input) break;
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, key);
+        input.dispatchEvent(new Event("input", { bubbles: true })); // 不能 blur，面板會關
+        await sleep(200);
+        if (btn) btn.click();
+        hit = await waitFor(find, 2500);
+        // 搜出東西但沒有我們要的 → 這一區真的沒這條，換關鍵字也沒用，不要空等
+        if (!hit && items().length) break;
+      }
+      if (hit) {
+        const picked = txt(hit);
+        hit.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+        hit.click();
+        if (await waitFor(() => current() === picked, 3000)) return true;
+      }
       document.body.click();
-      return false;
+      await sleep(700);
     }
-    const picked = txt(hit);
-    hit.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-    hit.click();
-    return !!(await waitFor(() => current() === picked, 3000));
+    return false;
   }
   /**
    * 描述：有 HTML（後台算好的 18px 粗體＋顏色＋底色）就用「貼上」塞進去，ProseMirror 會照它的規則留下
@@ -416,7 +448,7 @@
         await sleep(500);
         if (a.road) {
           if (await pickStreet(after(addrLabel, SEL, 3)[2], a.road)) log(`地址：${a.city}${a.town}${a.road}`, "ok");
-          else log(`街道「${a.road}」沒選到，請自己選`, "bad");
+          else log(`街道「${a.road}」沒選到（591 現在的鄉鎮是「${txt(after(addrLabel, SEL, 3)[1] && after(addrLabel, SEL, 3)[1].querySelector(".ant-select-selection-item")) || "沒選"}」），請自己選`, "bad");
         }
       }
       // 巷 號 之 樓 樓之 是五個 placeholder 為 選填／必填 的文字框（匯入只會填「號」，樓要自己填）
@@ -570,7 +602,7 @@
       await sleep(500);
       if (a.road) {
         if (await pickStreet(after(addrLabel, SEL, 3)[2], a.road)) log(`地址：${a.city}${a.town}${a.road}`, "ok");
-        else log(`街道「${a.road}」沒選到，請自己選`, "bad");
+        else log(`街道「${a.road}」沒選到（591 現在的鄉鎮是「${txt(after(addrLabel, SEL, 3)[1] && after(addrLabel, SEL, 3)[1].querySelector(".ant-select-selection-item")) || "沒選"}」），請自己選`, "bad");
       }
     }
     const boxes = after(addrLabel, TXT, 14).filter((i) => /^(選填|必填)$/.test(i.placeholder || ""));
