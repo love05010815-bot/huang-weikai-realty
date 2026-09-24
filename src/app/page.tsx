@@ -487,12 +487,12 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* ---------------- 稅費試算 ---------------- */}
+        {/* ---------------- 免費小工具（原「稅費試算」，2026-09-24 加了學區查詢後改名） ---------------- */}
         <section id="tools" className={`${styles.section} ${styles.band} ${styles.bandSoft}`}>
           <SectionWave flip />
           <div className={`${styles.container} ${styles.center}`}>
             <span className={styles.eyebrow}>TOOLS</span>
-            <h2 className={styles.sectionTitle}>稅費試算</h2>
+            <h2 className={styles.sectionTitle}>免費小工具</h2>
             <p className={styles.sectionDesc}>
               買賣房子最怕算漏了。這些試算都在站上，不用跳到別的網站，算完還看得到每一步怎麼來的。
             </p>

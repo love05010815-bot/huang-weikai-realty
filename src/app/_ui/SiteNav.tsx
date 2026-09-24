@@ -38,8 +38,8 @@ import styles from "./SiteNav.module.css";
  * 分兩種只是因為連結要用不同寫法（錨點用 `<a>`、分頁用 `<Link>` 才有預先載入），
  * 不是為了分類 —— 客戶不需要知道哪個是同一頁哪個是另一頁。
  *
- * 注意「稅費試算」指的是**首頁的 `#tools` 區塊**，不是 /tax 那一頁。
- * 桌機那條原本就是這樣接的，不要「順手」改成 /tax。
+ * 注意「免費小工具」（2026-09-24 前叫「稅費試算」，加了學區查詢後改名）指的是
+ * **首頁的 `#tools` 區塊**，不是 /tax 那一頁。桌機那條原本就是這樣接的，不要「順手」改成 /tax。
  */
 type NavItem =
   | { label: string; kind: "anchor"; hash: string }
@@ -56,7 +56,7 @@ const ITEMS: readonly NavItem[] = [
   // ⚠️ **不要改回去。** 這頁剛開的時候真的只有重劃區 39 案，現在是整條海線八個生活圈 500 多案，
   //    重劃區只佔其中 33 案 —— 舊標籤會讓人以為點進去只有重劃區，是實際上的錯誤資訊。
   { label: "海線建案一覽", kind: "route", href: "/map" },
-  { label: "稅費試算", kind: "anchor", hash: "#tools" },
+  { label: "免費小工具", kind: "anchor", hash: "#tools" },
   // 2026-08-25 系統擁有者拍板：**影音不放首頁下滑區塊，做成獨立分頁**，跟「海線建案一覽」
   // 一樣。所以這是 route 不是 #videos 錨點 —— 首頁上沒有那個區塊了。
   { label: "影音專區", kind: "route", href: "/videos" },
