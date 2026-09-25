@@ -17,10 +17,12 @@ import styles from "./intake.module.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "代客建檔",
+  title: "買方建檔",
+  // Android Chrome「加到主畫面」沒有 manifest 時看這個（沒有就拿分頁標題）；iPhone 看下面 appleWebApp.title
+  applicationName: "買方建檔",
   robots: { index: false, follow: false },
-  // 加到 iPhone 主畫面時像個 app：全螢幕、桌面圖示用凱心成家的商標
-  appleWebApp: { capable: true, title: "代客建檔", statusBarStyle: "default" },
+  // 加到 iPhone 主畫面時像個 app：名稱「買方建檔」（他 2026-09-25 指定）、全螢幕、桌面圖示用凱心成家的商標
+  appleWebApp: { capable: true, title: "買方建檔", statusBarStyle: "default" },
   icons: { apple: "/kaixing-mark.png" },
 };
 
