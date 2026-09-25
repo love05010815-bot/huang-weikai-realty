@@ -205,6 +205,104 @@
   text-decoration: none;
 }
 
+/* ---------------------------------------------------------------- 名單 */
+.headBtns {
+  display: flex;
+  gap: 8px;
+}
+.headBtn {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid #d9e2e6;
+  border-radius: 999px;
+  background: #fff;
+  color: #22323f;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.headBtnOn {
+  background: #2fa894;
+  border-color: #2fa894;
+  color: #fff;
+}
+.search {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 10px;
+  padding: 12px;
+  font: inherit;
+  font-size: 16px;
+  border: 1px solid #d9e2e6;
+  border-radius: 10px;
+  background: #fff;
+}
+.rows {
+  display: grid;
+  gap: 8px;
+}
+.row {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  text-align: left;
+  border: 1px solid #e3eaee;
+  border-radius: 12px;
+  background: #fff;
+  font: inherit;
+  color: #22323f;
+  cursor: pointer;
+}
+.row:disabled {
+  opacity: 0.6;
+}
+.rowTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.rowName {
+  font-size: 16px;
+  font-weight: 800;
+}
+.rowPhone {
+  font-size: 14px;
+  font-weight: 600;
+  color: #227f71;
+}
+.rowSummary {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #5b6b73;
+  line-height: 1.5;
+}
+.rowMeta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #8a9aa2;
+}
+.tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #eef2f4;
+  color: #5b6b73;
+}
+.tagOn {
+  background: #e6f4f1;
+  color: #227f71;
+}
+
 .invalid {
   max-width: 480px;
   margin: 60px auto;

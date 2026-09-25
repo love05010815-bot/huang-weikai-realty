@@ -2,16 +2,26 @@
  * 代客建檔的共用邏輯 —— 後台（Google 登入）跟手機快速連結（/intake?key=）兩條路都走這裡。
  *
  * 這裡**不管權限**：誰能叫由 lib/actions/match.ts（管理員）與 lib/actions/intake.ts（金鑰）各自把關。
- * 三件事：
+ * 四件事：
  *   saveBuyerFromForm  表單 → match_buyer（電話查重、合併）
  *   buildBuyerBrief    這位買方目前符合幾間、專屬連結、建議傳給他的那段話
  *   pushBriefToBuyer   從官方帳號推物件卡給他（計費）
+ *   listIntakeRows     名單（2026-09-26 他要在 /intake 也看得到已建立的客戶）
  */
 import { MATCH } from "@/config/match";
 import { OWNER } from "@/config/owner";
 import { listingCarousel, matchPageUrl, pushMessages, text } from "./line";
-import { describePreference, normalizePreference, rankListings } from "./matcher";
-import { getBuyer, getBuyerByPhone, listAvailableListings, normalizePhone, upsertBuyer, type Buyer, type MatchListing } from "./store";
+import { describePreference, normalizePreference, rankListings, type Preference } from "./matcher";
+import {
+  getBuyer,
+  getBuyerByPhone,
+  listAvailableListings,
+  listBuyersForAdmin,
+  normalizePhone,
+  upsertBuyer,
+  type Buyer,
+  type MatchListing,
+} from "./store";
 import { createBuyerToken } from "./token";
 
 export type BuyerFormInput = {
@@ -144,4 +154,63 @@ export async function pushBriefToBuyer(buyerId: string): Promise<{ ok: boolean; 
   ]);
   if (!ok) return { ok: false, error: "推播失敗：LINE 沒收（可能是額度用完或 token 沒設）" };
   return { ok: true, count: matches.length };
+}
+
+// ---------------------------------------------------------------- 給 /intake 畫面看的形狀
+//
+// 只給「他自己填的欄位」：不回 LINE userId、不回別人的任何東西。
+// 這幾個是同步的純換算，放這裡不放 actions/intake.ts —— "use server" 的檔只能 export async 函式。
+
+/** 一位買方在快速建檔畫面上的樣子 */
+export type IntakeBuyer = {
+  id: string;
+  name: string;
+  phone: string;
+  note: string;
+  linked: boolean;
+  followed: boolean;
+  preference: Preference | null;
+};
+
+export function toIntakeBuyer(b: Buyer): IntakeBuyer {
+  return {
+    id: b.id,
+    name: b.name || b.displayName || "",
+    phone: b.phone ?? "",
+    note: b.note,
+    linked: Boolean(b.lineUserId),
+    followed: b.followed,
+    preference: b.preference,
+  };
+}
+
+/** 名單上的一列 */
+export type IntakeRow = {
+  id: string;
+  name: string;
+  phone: string;
+  note: string;
+  linked: boolean;
+  followed: boolean;
+  summary: string | null;
+  /** ISO 字串，給畫面顯示「幾號更新的」 */
+  updatedAt: string | null;
+};
+
+export function toIntakeRow(b: Buyer): IntakeRow {
+  return {
+    id: b.id,
+    name: b.name || b.displayName || "",
+    phone: b.phone ?? "",
+    note: b.note,
+    linked: Boolean(b.lineUserId),
+    followed: b.followed,
+    summary: b.preference ? describePreference(b.preference) : null,
+    updatedAt: b.updatedAt ? new Date(b.updatedAt).toISOString() : null,
+  };
+}
+
+/** 名單：最近更新的在前。跟後台「買方」分頁是同一份資料。 */
+export async function listIntakeRows(limit = 300): Promise<IntakeRow[]> {
+  return (await listBuyersForAdmin(limit)).map(toIntakeRow);
 }
