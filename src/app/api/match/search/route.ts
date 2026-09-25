@@ -3,12 +3,12 @@
  *
  * 同時把條件存成一筆 match_buyer（回 buyerId 讓瀏覽器記住），之後新物件同步進來才推得到他。
  * 條件存不進去也照樣回配對結果 —— 配對是主要目的，存條件只是順手。
+ * 配對本體在 lib/match/search.ts（專屬連結的伺服器端預先配對走同一支，結果形狀只有一份）。
  */
 import { NextRequest, NextResponse } from "next/server";
-import { MATCH } from "@/config/match";
-import { describePreference, normalizePreference, rankListings } from "@/lib/match/matcher";
-import { publicListing } from "@/lib/match/public";
-import { listAvailableListings, upsertBuyer } from "@/lib/match/store";
+import { normalizePreference } from "@/lib/match/matcher";
+import { runMatchSearch } from "@/lib/match/search";
+import { upsertBuyer } from "@/lib/match/store";
 import { verifyBuyerToken } from "@/lib/match/token";
 
 export const dynamic = "force-dynamic";
@@ -39,24 +39,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const listings = await listAvailableListings();
-    // 先全部配完才知道「真的有幾間符合」，畫面只鋪前 40 張卡（再多手機滑不完、圖也重）。
-    // 分開回 matched 與 matches.length，不然 40 間跟 99 間在畫面上長得一模一樣。
-    const ranked = rankListings(preference, listings, { limit: listings.length || 1 });
-    return NextResponse.json({
-      buyerId,
-      summary: describePreference(preference),
-      threshold: MATCH.threshold,
-      total: listings.length,
-      matched: ranked.length,
-      matches: ranked.slice(0, 40).map((m) => ({
-        ...publicListing(m.listing),
-        score: m.score,
-        reasons: m.reasons,
-        misses: m.misses,
-        recommended: m.score >= MATCH.threshold,
-      })),
-    });
+    return NextResponse.json(await runMatchSearch(preference, buyerId));
   } catch (e) {
     console.error("[match/search] 配對失敗:", e);
     return NextResponse.json({ error: "目前無法讀取物件，請稍後再試" }, { status: 503 });

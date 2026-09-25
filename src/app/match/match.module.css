@@ -90,6 +90,37 @@
   margin: 8px 0;
 }
 
+/* 專屬連結進來、伺服器還在配對時的卡片（page.tsx 的 MatchLoading） */
+.loading {
+  text-align: center;
+  padding: 36px 20px;
+}
+.loadingTitle {
+  margin: 12px 0 4px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink, #22323f);
+}
+.spinner {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--line, #d9e2e6);
+  border-top-color: var(--primary, #2fa894);
+  border-radius: 50%;
+  animation: matchSpin 0.8s linear infinite;
+}
+@keyframes matchSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+
 .btn {
   display: block;
   width: 100%;

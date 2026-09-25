@@ -9,7 +9,11 @@
  * ?book=物件編號：從 LINE 卡片的「預約看屋」按鈕進來，直接跳到那一戶的預約表單。
  * ?k=識別碼：從官方帳號的連結進來，認得出是同一位買方 —— 先帶回他上次設定的條件，
  *   之後改的也寫回同一筆（換手機、清掉瀏覽資料都不會變成兩個人）。讀完立刻把 k 從網址上拿掉。
- * ?k=識別碼&go=1：專員在後台代客建檔後傳給客戶的連結。條件已經填好，進來直接配對、跳到結果。
+ * ?k=識別碼&go=1：專員在後台代客建檔後傳給客戶的連結。條件已經填好，進來直接看結果。
+ *   🔴 這條路的結果是 **page.tsx 在伺服器端先配好、跟著 HTML 一起送過來的**（initial prop），
+ *      不是進來之後再打 API。2026-09-27 他反映客戶點開要等 5 秒才有物件、以為要重填 ——
+ *      原本是先畫出一張空表單，再等 /me → /search 兩趟。現在客戶第一眼就是物件，
+ *      這個元件在那條路上**一個 API 都不用打**（選項 /meta 除外，那是「修改條件」才用到的）。
  *
  * 條件表單的欄位在 PreferenceForm.tsx、狀態換算在 preference-state.ts —— 後台代客建檔用同一份。
  */
@@ -68,6 +72,21 @@ type Booking = {
 
 type Step = "form" | "results" | "booking" | "success";
 
+/**
+ * 伺服器端先算好、跟著 HTML 一起送來的東西（只有 ?k=…&go=1 那條路會有）。
+ *   undefined → 伺服器沒處理（一般訪客、或官方帳號「修改條件」那種只帶 k 的連結），照原本在瀏覽器裡跑
+ *   null      → 伺服器處理了但識別碼不認，當一般訪客
+ *   物件      → 直接用；result 為 null 表示這位買方還沒留條件，先給表單
+ */
+export type MatchInitial = {
+  buyerId: string;
+  token: string;
+  preference: ApiPreference | null;
+  name: string | null;
+  phone: string | null;
+  result: SearchResult | null;
+};
+
 const SLOTS = ["上午 10:00–12:00", "下午 14:00–17:00", "晚上 18:00–20:00"];
 const BUYER_KEY = "match_buyer_id";
 
@@ -116,25 +135,28 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return data;
 }
 
-export default function MatchApp() {
+export default function MatchApp({ initial }: { initial?: MatchInitial | null } = {}) {
   const [meta, setMeta] = useState<MatchMeta | null>(null);
-  const [step, setStep] = useState<Step>("form");
-  const [pref, setPref] = useState<PrefState>(EMPTY_PREF);
-  const [result, setResult] = useState<SearchResult | null>(null);
+  const [step, setStep] = useState<Step>(initial?.result ? "results" : "form");
+  const [pref, setPref] = useState<PrefState>(() => (initial?.preference ? toPrefState(initial.preference) : EMPTY_PREF));
+  const [result, setResult] = useState<SearchResult | null>(initial?.result ?? null);
   /**
    * 已勾選要看的物件。2026-09-18 改成可以一次勾好幾間 ——
    * 他說「客戶選八間不要跳八個訊息八個代號」，所以整批只送一次、只拿一個編號。
    */
   const [picked, setPicked] = useState<Listing[]>([]);
-  const [form, setForm] = useState({ name: "", phone: "", date: tomorrow(), slot: SLOTS[0], note: "", website: "" });
+  const [form, setForm] = useState({ name: initial?.name ?? "", phone: initial?.phone ?? "", date: tomorrow(), slot: SLOTS[0], note: "", website: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
-  const [buyerId, setBuyerId] = useState<string | null>(null);
+  const [buyerId, setBuyerId] = useState<string | null>(initial?.buyerId ?? null);
   /** 從官方帳號連結帶進來的買方識別碼；有它就不靠瀏覽器記的編號 */
-  const [token, setToken] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(initial?.token ?? null);
+  const [loaded, setLoaded] = useState<string | null>(
+    // 伺服器帶了條件但沒有結果（他還沒留條件時 result 是 null）→ 跟原本一樣提示一句
+    initial?.preference && !initial.result ? "已帶入您目前設定的條件，改好按「開始配對」就會更新，之後的新物件通知也照新條件配。" : null,
+  );
   /**
    * 是不是用電腦看這一頁。
    * 導到官方 LINE 的深層連結（line.me/R/…）**只在手機有效**，桌機按了會被丟到 line.me 官網首頁，
@@ -150,7 +172,9 @@ export default function MatchApp() {
 
   useEffect(() => {
     setIsDesktop(typeof window.matchMedia === "function" && !window.matchMedia("(pointer: coarse)").matches);
-    setBuyerId(readBuyerId());
+    // 伺服器已經認出他是誰 → 記進瀏覽器，下次直接來也對得回同一筆；沒有才看瀏覽器記的
+    if (initial?.buyerId) writeBuyerId(initial.buyerId);
+    else setBuyerId(readBuyerId());
     api<MatchMeta>("/api/match/meta")
       .then(setMeta)
       // 讀不到選項時房數仍然給得出來（不靠資料庫），其餘留空讓表單至少能用「不限」配對
@@ -161,9 +185,10 @@ export default function MatchApp() {
     // 從官方帳號的連結進來：帶回他目前設定的條件與聯絡方式，然後立刻把識別碼從網址上拿掉
     // —— 網址會被截圖、被轉貼，留著等於把他的資料給別人。識別碼過期就當沒帶，照原本流程走。
     const k = params.get("k");
-    // go=1 是專員代客建檔後傳給客戶的連結：條件他已經填好了，客戶點開就直接看物件
+    // go=1 是專員代客建檔後傳給客戶的連結：條件他已經填好了，客戶點開就直接看物件。
+    // 那條路 page.tsx 已經在伺服器端處理完（initial 不是 undefined），這裡就不再打 /me。
     const autoGo = params.get("go") === "1";
-    if (k) {
+    if (k && initial === undefined) {
       setToken(k);
       api<Me>(`/api/match/me?k=${encodeURIComponent(k)}`)
         .then((me) => {
@@ -184,6 +209,9 @@ export default function MatchApp() {
         .catch(() => {
           // 連結失效不用嚇買方，就當一般訪客重新填一次
         });
+    }
+    if (k) {
+      // 不管哪條路，識別碼都要從網址上拿掉 —— 網址會被截圖、被轉貼，留著等於把他的資料給別人
       params.delete("k");
       params.delete("go");
       const rest = params.toString();
