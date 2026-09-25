@@ -141,8 +141,12 @@ function StatsLine({ stats }: { stats: DraftStats }) {
   );
 }
 
-/** 「放到前台」預設帶哪一段。Facebook 那版是六個平台裡最接近「一篇文章」的（長、有段落、不是標籤牆）。 */
-const DEFAULT_PUBLISH_SECTION = "Facebook";
+/**
+ * 「放到前台」預設帶哪一段。
+ * 2026-09-25 起文案裡有專門給官網寫的「## 官網文章」（900～1500 字、【】小標），預設帶它。
+ * 舊文案（那天以前存的）沒有這一段 —— 按下去會被擋下來、叫他改選 Facebook 那一版，不會壞。
+ */
+const DEFAULT_PUBLISH_SECTION = "官網文章";
 
 function DraftPanel({
   task,
@@ -343,7 +347,10 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
    * 標題優先用文案裡的「標題候選」第一個；沒有就用原新聞標題（他再自己改）。
    */
   async function publishToSite(t: NewsTaskRecord, d: NewsDraftRecord, section: string) {
-    const body = (section === "__all__" ? d.content : draftSection(d.content, section)).trim();
+    let body = (section === "__all__" ? d.content : draftSection(d.content, section)).trim();
+    // 2026-09-25 以前存的文案沒有「## 官網文章」這一段。預設值挖不到就退回 Facebook 那版，
+    // 不要為了一個新預設值讓舊文案全部卡住；他自己明確選的平台挖不到才報錯。
+    if (!body && section === DEFAULT_PUBLISH_SECTION) body = draftSection(d.content, "Facebook").trim();
     if (!body) {
       setMsg({
         tone: "danger",

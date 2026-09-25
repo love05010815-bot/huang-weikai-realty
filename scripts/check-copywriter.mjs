@@ -33,6 +33,20 @@ const ap = C.articlePrompt(src);
 for (const p of C.PLATFORM_RULES) ok(ap.includes(`## ${p.heading}`), `有 ## ${p.heading}`, ap.includes(`## ${p.heading}`), "true");
 ok(ap.includes("## 標題候選"), "有標題候選段", ap.includes("## 標題候選"), "true");
 ok(ap.includes("硬上限 500") && ap.includes("硬上限 2200"), "有寫 Threads／IG 硬上限", "有", "有");
+// 2026-09-25 他說「文字有點太少」之後加的：字數要是硬要求、七版、官網文章排第一
+ok(C.PLATFORM_RULES.length === 7 && C.PLATFORM_RULES[0].key === "site", "七版、官網文章排第一", `${C.PLATFORM_RULES.length}/${C.PLATFORM_RULES[0].key}`, "7/site");
+ok(ap.includes("不到下限就是不合格"), "字數寫成硬要求不是建議", ap.includes("不到下限就是不合格"), "true");
+ok(!ap.includes("建議 "), "prompt 裡不再有「建議 N 字」這種軟話", "沒有", "沒有");
+ok(ap.indexOf("## 官網文章") < ap.indexOf("## YouTube"), "官網文章在社群版本前面", "對", "對");
+ok(ap.includes("【為什麼成數會影響自備款】"), "官網文章有教【】小標怎麼寫", "有", "有");
+const site = C.PLATFORM_RULES.find((p) => p.key === "site");
+ok(site.suggested[0] >= 900 && site.hardLimit === null, "官網文章下限 ≥ 900、沒有硬上限", `${site.suggested[0]}/${site.hardLimit}`, "≥900/null");
+const th = C.PLATFORM_RULES.find((p) => p.key === "threads");
+ok(th.suggested[1] <= 420 && th.hardLimit === 500, "Threads 上限留餘裕（≤420 字對 500 字元）", `${th.suggested[1]}/${th.hardLimit}`, "≤420/500");
+for (const p of C.PLATFORM_RULES) {
+  if (p.hardLimit) ok(p.suggested[1] < p.hardLimit, `${p.heading} 字數上限低於平台硬上限`, `${p.suggested[1]}<${p.hardLimit}`, "true");
+}
+ok(C.COPYWRITER.MAX_OUTPUT_TOKENS.article >= 9000, "知識文章的 token 上限跟著拉高", C.COPYWRITER.MAX_OUTPUT_TOKENS.article, "≥9000");
 ok(ap.includes(src.title) && ap.includes(src.text) && ap.includes("鏡週刊 · 2026-09-14 10:43"), "原文區塊完整", "有", "有");
 ok(ap.includes("互動邀請") && ap.includes("不要硬推銷"), "結尾要 CTA 不硬推銷", "有", "有");
 
@@ -69,14 +83,14 @@ const article = [
   "VOOM 內文",
 ].join("\n");
 const as = T.analyzeDraft("article", article);
-ok(as.line === "article" && as.platforms.length === 6, "六個平台都有評估", as.platforms?.length, 6);
+ok(as.line === "article" && as.platforms.length === 7, "七個版本都有評估（官網＋六平台）", as.platforms?.length, 7);
 const by = Object.fromEntries(as.platforms.map((p) => [p.rule.key, p]));
 ok(by.youtube.found && by.youtube.chars === T.countChars("台中中古屋交易前 8 月 12,103 棟。"), "帶 emoji 的標題也切得到 YouTube", by.youtube.chars, T.countChars("台中中古屋交易前 8 月 12,103 棟。"));
 ok(by.facebook.chars === T.countChars("烏日年增 74.7%。#台中房市"), "FB 段連標籤一起數", by.facebook.chars, T.countChars("烏日年增 74.7%。#台中房市"));
 ok(by.threads.over === true && by.threads.chars === 501, "Threads 501 字 → 超過", `${by.threads.chars}/${by.threads.over}`, "501/true");
 ok(by.voom.found && by.voom.chars === 6, "LINE VOOM 有切到", by.voom.chars, 6);
 const missing = T.analyzeDraft("article", "## Facebook\n只有 FB");
-ok(missing.platforms.filter((p) => !p.found).length === 5, "少五個平台 → found=false", missing.platforms.filter((p) => !p.found).length, 5);
+ok(missing.platforms.filter((p) => !p.found).length === 6, "只有 FB 那段 → 其他六版 found=false", missing.platforms.filter((p) => !p.found).length, 6);
 
 console.log("=== F 短影音分析 ===");
 const video = [
