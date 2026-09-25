@@ -500,3 +500,38 @@
 .price {
   font-weight: 800;
 }
+
+/* 房產新聞的「只看這一區」快捷列（2026-09-25）。
+ *
+ * 他的原話：「新聞太多，要捲到很下面」。全台那區動輒兩三百則，
+ * 想回頭看海線得一路捲回頂端 —— 所以這一條**黏在畫面上方**，捲到哪裡都切得了區域。
+ *
+ * ⚠️ 手機（<900px）後台上方有一條 56px 的 sticky topbar（adminShell.module.css），
+ *    這裡要讓開，不然會被蓋住一半。z-index 壓在 topbar（30）底下。
+ * ⚠️ 底色要不透明：底下捲過去的卡片會透出來，文字就糊了。顏色在元件裡用行內樣式給。
+ */
+.regionBar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid;
+  border-radius: 10px;
+}
+
+.regionBarLabel {
+  font-size: 13.5px;
+  font-weight: 700;
+  margin-right: 2px;
+}
+
+@media (max-width: 899px) {
+  .regionBar {
+    top: 56px;
+  }
+}

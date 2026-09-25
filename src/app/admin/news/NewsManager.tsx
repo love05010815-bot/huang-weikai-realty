@@ -12,10 +12,18 @@
  * 全文與複製移到待產文案那一頁 —— 那裡才是他動手改寫的地方。
  *
  * 清單本身由 server 端排好（海線 → 中部 → 全台，各區新到舊），這裡只做篩選與分組顯示。
+ *
+ * ## 「只看這一區」的快捷列（2026-09-25）
+ *
+ * 他的原話：「新聞太多，要捲到很下面」。全台那區動輒兩三百則，排在最後面，
+ * 捲到一半想回頭看海線就得一路捲回頂端 —— 所以那一條 `position: sticky` 黏在畫面上方，
+ * 捲到哪裡都切得了區域，原本那個「全部地區」下拉因此拿掉（同一件事不要兩個入口）。
+ * 按鈕上的數字是「按下去會看到幾則」（已經套過狀態與關鍵字），
+ * **跟上面那排統計的數字不一樣** —— 那排看的是各區自己的時間窗（海線 3 天、其餘 1 天）。
  */
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { CHIP, CIS, type ChipTone } from "@/app/admin/_components/cis";
 import { Icon, type IconName } from "@/app/admin/_ui/icons";
 import { NEWS_REGION_LABEL, NEWS_REGION_ORDER, type NewsRegion } from "@/config/news";
@@ -81,16 +89,30 @@ export default function NewsManager({ items, counts, latestRun, searchQuery }: P
   const [fetching, setFetching] = useState(false);
   const [msg, setMsg] = useState<{ tone: ChipTone; text: string } | null>(null);
 
-  const visible = useMemo(() => {
+  /**
+   * 先套「地區以外」的條件。快捷列上的數字要用這一份算 ——
+   * 這樣按鈕寫幾則，按下去就真的看到幾則，不會按了發現是空的。
+   */
+  const afterOtherFilters = useMemo(() => {
     const q = query.trim();
     return items.filter((it) => {
-      if (region !== "all" && it.region !== region) return false;
       if (status === "all" ? it.status === "hidden" : it.status !== status) return false;
       // 內文也要比對 —— 伺服器搜尋是連內文一起找的，這裡只看標題會把它找到的又藏起來
       if (q && !`${it.title} ${it.source} ${it.summary} ${it.content || ""}`.includes(q)) return false;
       return true;
     });
-  }, [items, region, status, query]);
+  }, [items, status, query]);
+
+  const regionCounts = useMemo(() => {
+    const map: Record<NewsRegion, number> = { coast: 0, central: 0, national: 0 };
+    for (const it of afterOtherFilters) map[it.region] += 1;
+    return map;
+  }, [afterOtherFilters]);
+
+  const visible = useMemo(
+    () => (region === "all" ? afterOtherFilters : afterOtherFilters.filter((it) => it.region === region)),
+    [afterOtherFilters, region],
+  );
 
   const grouped = useMemo(() => {
     const map: Record<NewsRegion, NewsRecord[]> = { coast: [], central: [], national: [] };
@@ -110,6 +132,25 @@ export default function NewsManager({ items, counts, latestRun, searchQuery }: P
     setMsg({ tone: "success", text: `已排進待產文案（${NEWS_LINE_LABEL[line]}），帶你過去…` });
     router.push(`/admin/content?focus=${encodeURIComponent(r.taskId)}`);
   }
+
+  /**
+   * 切完區域捲回最上面 —— 他是從全台捲到一半才按海線的，
+   * 不捲回去會停在新清單的中間，看起來像「按了沒反應」或「東西不見了」。
+   *
+   * 兩個踩過的坑：
+   * ① 一定要等 React 重繪完才捲（所以放在 useEffect，不是按鈕的 onClick）——
+   *    在 onClick 裡捲，清單還是舊的長度，捲到一半列表變短、瀏覽器把位置夾回底部。
+   * ② **不要用 `behavior: "smooth"`**：實測有些瀏覽器（含預覽用的嵌入式瀏覽器）根本不動作，
+   *    捲動就完全沒發生。瞬間跳到頂端反而最可靠，切換區域本來也不需要動畫。
+   */
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    window.scrollTo(0, 0);
+  }, [region]);
 
   /** 送出關鍵字 → 換網址，讓伺服器翻遍全部歷史（含內文）重查一次。 */
   function submitSearch(next: string) {
@@ -165,16 +206,44 @@ export default function NewsManager({ items, counts, latestRun, searchQuery }: P
         </div>
       </div>
 
+      {/*
+        只看這一區的快捷列。黏在畫面上方 —— 他的原話是「新聞太多，要捲到很下面」，
+        全台那區動輒兩三百則，捲到一半想回頭看海線，不該還要一路捲回頂端。
+        數字是「按下去會看到幾則」，跟上面那排統計的時間窗不一樣，所以寫「只看」不寫數量標題。
+      */}
+      {/* 底色要用不透明的 CIS.bg —— CIS.card 是 rgba(255,255,255,0.03)，
+          黏住之後底下的卡片會整片透上來、字全糊掉（實測看過）。 */}
+      <div className={styles.regionBar} style={{ borderColor: CIS.cardBorder, background: CIS.bg }}>
+        <span className={styles.regionBarLabel} style={{ color: CIS.textMute }}>
+          只看
+        </span>
+        <button
+          type="button"
+          className={styles.btn}
+          style={region === "all" ? { borderColor: CIS.blue, color: CIS.blue } : btnBase}
+          onClick={() => setRegion("all")}
+        >
+          全部 {afterOtherFilters.length}
+        </button>
+        {NEWS_REGION_ORDER.map((r) => {
+          const on = region === r;
+          const tone = CHIP[REGION_TONE[r]];
+          return (
+            <button
+              key={r}
+              type="button"
+              className={styles.btn}
+              style={on ? { borderColor: tone.color, color: tone.color, background: tone.bg } : btnBase}
+              onClick={() => setRegion(r)}
+            >
+              {NEWS_REGION_LABEL[r]} {regionCounts[r]}
+            </button>
+          );
+        })}
+      </div>
+
       {/* 篩選列 */}
       <div className={styles.actions}>
-        <select className={styles.select} style={{ ...fieldStyle, width: "auto", minHeight: 38 }} value={region} onChange={(e) => setRegion(e.target.value as "all" | NewsRegion)}>
-          <option value="all">全部地區</option>
-          {NEWS_REGION_ORDER.map((r) => (
-            <option key={r} value={r}>
-              {NEWS_REGION_LABEL[r]}
-            </option>
-          ))}
-        </select>
         <select className={styles.select} style={{ ...fieldStyle, width: "auto", minHeight: 38 }} value={status} onChange={(e) => setStatus(e.target.value as StatusFilter)}>
           {(Object.keys(STATUS_FILTER_LABEL) as StatusFilter[]).map((s) => (
             <option key={s} value={s}>
