@@ -47,6 +47,25 @@ export const AGE_RANGES: Record<string, { min: number; max: number; label: strin
 };
 
 /** 土地類別的四個選項（只有買方勾了「土地」才會用到） */
+/**
+ * 房數的選項。**value 4 代表「4 房以上」，不是剛好 4 房。**
+ * 表單、摘要、評分共用這一份，加一個選項三邊一起變。
+ */
+export const ROOM_OPTIONS = [
+  { value: 1, label: "1 房" },
+  { value: 2, label: "2 房" },
+  { value: 3, label: "3 房" },
+  { value: 4, label: "4 房以上" },
+] as const;
+
+/** 物件的房數有沒有落在買方勾的那幾個選項裡。4 是「以上」，所以 5 房也算 */
+export function roomsMatch(listingRooms: number, wanted: number[]): boolean {
+  const r = Number(listingRooms) || 0;
+  return wanted.some((w) => (w >= 4 ? r >= 4 : r === w));
+}
+
+const roomLabel = (v: number): string => ROOM_OPTIONS.find((o) => o.value === v)?.label ?? `${v} 房`;
+
 export const LAND_CATEGORIES = ["農地", "建地", "農建地", "商業地"] as const;
 
 /**
@@ -96,7 +115,16 @@ export type Preference = {
   districts: string[];
   /** 萬元，0 = 不限 */
   budgetMax: number;
-  /** 0 = 不限 */
+  /**
+   * 房數（可複選）。**4 代表「4 房以上」**；空陣列 = 不限。
+   * 2026-09-25 起表單送的是這個（他要求房數改成可複選）。
+   */
+  roomsList: number[];
+  /**
+   * 0 = 不限。**舊欄位**：2026-09-25 之前是單選。
+   * 資料庫裡還有買方存著它，所以 normalizePreference 會把它轉成 roomsList，
+   * 不然那些人的條件會靜靜失效。
+   */
   rooms: number;
   /** 坪，0 = 不限 */
   sizeMin: number;
@@ -154,6 +182,17 @@ const num = (v: unknown, fallback = 0): number => {
   return Number.isFinite(n) && n >= 0 ? n : fallback;
 };
 
+/**
+ * 房數清單：只收 1–4 的整數（4 = 4 房以上），去重、由小到大。
+ * 沒給清單時把舊的單選值轉過來 —— 資料庫裡還有買方存著 2026-09-25 之前的格式。
+ */
+function roomList(input: unknown, legacy: number): number[] {
+  const raw = Array.isArray(input) ? input : [];
+  const list = [...new Set(raw.map((v) => Math.trunc(Number(v))).filter((v) => v >= 1 && v <= 4))].sort((a, b) => a - b);
+  if (list.length) return list;
+  return legacy > 0 ? [Math.min(4, Math.trunc(legacy))] : [];
+}
+
 const strList = (v: unknown): string[] => {
   if (Array.isArray(v)) return v.map((s) => String(s).trim()).filter(Boolean);
   if (typeof v === "string" && v.trim()) return v.split(/[,，、\s]+/).map((s) => s.trim()).filter(Boolean);
@@ -167,6 +206,7 @@ export function normalizePreference(input: unknown): Preference {
     city: String(p.city ?? "").trim().slice(0, 16),
     districts: strList(p.districts).slice(0, 20),
     budgetMax: num(p.budgetMax),
+    roomsList: roomList(p.roomsList, num(p.rooms)),
     rooms: num(p.rooms),
     sizeMin: num(p.sizeMin),
     sizeMax: num(p.sizeMax),
@@ -233,15 +273,13 @@ export function scoreListing(prefInput: Preference | unknown, listing: Matchable
     } else miss(`超出預算 ${pct(ratio)}`);
   } else score += WEIGHTS.budget;
 
-  // 房數
-  if (pref.rooms > 0) {
-    const diff = Math.abs(num(listing.rooms) - pref.rooms);
-    if (diff === 0) {
+  // 房數（2026-09-25 起可複選）。
+  // 以前「差 1 房」給一半分，現在不留這個彈性 —— 勾了 3 房就是要 3 房，
+  // 反正嚴格過濾之下差 1 房本來就不會被列出來，留著只是讓分數看起來很怪。
+  if (pref.roomsList.length) {
+    if (roomsMatch(listing.rooms, pref.roomsList)) {
       score += WEIGHTS.rooms;
       reasons.push(`房數符合（${listing.rooms} 房）`);
-    } else if (diff === 1) {
-      score += Math.round(WEIGHTS.rooms * 0.5);
-      miss(`房數差 1 房（${listing.rooms} 房）`);
     } else miss(`房數不符（${listing.rooms} 房）`);
   } else score += WEIGHTS.rooms;
 
@@ -382,7 +420,7 @@ export function describePreference(prefInput: Preference | unknown): string {
   if (p.districts.length) parts.push(`${p.city}${p.districts.join("/")}`);
   else if (p.city) parts.push(p.city);
   if (p.budgetMax) parts.push(`預算 ${p.budgetMax.toLocaleString("zh-TW")} 萬內`);
-  if (p.rooms) parts.push(`${p.rooms} 房`);
+  if (p.roomsList.length) parts.push(p.roomsList.map(roomLabel).join("/"));
   if (p.sizeMin || p.sizeMax) parts.push(`${p.sizeMin || "不限"}–${p.sizeMax || "不限"} 坪`);
   if (p.types.length) parts.push(p.types.join("/"));
   if (p.ageRange && AGE_RANGES[p.ageRange]) parts.push(`屋齡 ${AGE_RANGES[p.ageRange].label}`);

@@ -15,6 +15,8 @@ import styles from "./match.module.css";
 
 type Meta = {
   cities: { city: string; districts: string[] }[];
+  /** 房數選項，由 matcher 的 ROOM_OPTIONS 產生。value 4 = 「4 房以上」 */
+  rooms: { value: number; label: string }[];
   types: readonly string[];
   features: readonly string[];
   /** 希望樓層的級距，由 matcher 的 FLOOR_RANGES 產生 */
@@ -67,6 +69,9 @@ type ApiPreference = {
   city?: string;
   districts?: string[];
   budgetMax?: number;
+  /** 2026-09-25 起的可複選房數。4 = 「4 房以上」 */
+  roomsList?: number[];
+  /** 之前的單選房數，資料庫裡還有舊買方存著，只在沒有 roomsList 時當備援 */
   rooms?: number;
   sizeMin?: number;
   sizeMax?: number;
@@ -95,12 +100,11 @@ type Booking = {
 
 type Step = "form" | "results" | "booking" | "success";
 
-const ROOMS = [
-  { v: 0, l: "不限" },
-  { v: 1, l: "1 房" },
-  { v: 2, l: "2 房" },
-  { v: 3, l: "3 房" },
-  { v: 4, l: "4 房以上" },
+const ROOMS_FALLBACK = [
+  { value: 1, label: "1 房" },
+  { value: 2, label: "2 房" },
+  { value: 3, label: "3 房" },
+  { value: 4, label: "4 房以上" },
 ];
 const SLOTS = ["上午 10:00–12:00", "下午 14:00–17:00", "晚上 18:00–20:00"];
 const BUYER_KEY = "match_buyer_id";
@@ -154,7 +158,8 @@ type PrefState = {
   city: string;
   districts: string[];
   budgetMax: string;
-  rooms: number;
+  /** 可複選；空陣列 = 不限。4 代表「4 房以上」 */
+  roomsList: number[];
   sizeMin: string;
   sizeMax: string;
   types: string[];
@@ -170,7 +175,7 @@ const EMPTY_PREF: PrefState = {
   city: "",
   districts: [],
   budgetMax: "",
-  rooms: 0,
+  roomsList: [],
   sizeMin: "",
   sizeMax: "",
   types: [],
@@ -192,7 +197,8 @@ function toPrefState(p: ApiPreference): PrefState {
     city: p.city ?? "",
     districts: Array.isArray(p.districts) ? p.districts : [],
     budgetMax: numText(p.budgetMax),
-    rooms: Number(p.rooms) || 0,
+    // 舊買方存的是單選的 rooms，轉成清單，不然他回來改條件會看到空白
+    roomsList: Array.isArray(p.roomsList) && p.roomsList.length ? p.roomsList : Number(p.rooms) > 0 ? [Number(p.rooms)] : [],
     sizeMin: numText(p.sizeMin),
     sizeMax: numText(p.sizeMax),
     types: Array.isArray(p.types) ? p.types : [],
@@ -205,7 +211,7 @@ function toPrefState(p: ApiPreference): PrefState {
   };
 }
 
-function toggle(list: string[], v: string): string[] {
+function toggle<T>(list: T[], v: T): T[] {
   return list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
 }
 
@@ -246,7 +252,8 @@ export default function MatchApp() {
     setBuyerId(readBuyerId());
     api<Meta>("/api/match/meta")
       .then(setMeta)
-      .catch(() => setMeta({ cities: [], types: [], features: [], floors: [], ages: [], landCategories: [], threshold: 60, addFriendUrl: "" }));
+      // 讀不到選項時房數仍然給得出來（不靠資料庫），其餘留空讓表單至少能用「不限」配對
+      .catch(() => setMeta({ cities: [], rooms: ROOMS_FALLBACK, types: [], features: [], floors: [], ages: [], landCategories: [], threshold: 60, addFriendUrl: "" }));
 
     const params = new URLSearchParams(window.location.search);
 
@@ -307,7 +314,9 @@ export default function MatchApp() {
         city: pref.city,
         districts: pref.districts,
         budgetMax: Number(pref.budgetMax) || 0,
-        rooms: pref.rooms,
+        roomsList: pref.roomsList,
+        // 舊欄位歸零，理由同下面的 maxAge
+        rooms: 0,
         sizeMin: Number(pref.sizeMin) || 0,
         sizeMax: Number(pref.sizeMax) || 0,
         types: pref.types,
@@ -423,12 +432,18 @@ export default function MatchApp() {
             <input className={styles.input} type="number" inputMode="numeric" min={0} step={10} placeholder="例如 1500" value={pref.budgetMax} onChange={(e) => setPref((p) => ({ ...p, budgetMax: e.target.value }))} />
           </label>
 
+          {/* 2026-09-25 改成可複選：都不勾就是不限，所以不再需要一顆「不限」 */}
           <div className={styles.field}>
-            <div className={styles.label}>房數</div>
+            <div className={styles.label}>房數（可複選）</div>
             <div className={styles.chips}>
-              {ROOMS.map((r) => (
-                <button key={r.v} type="button" className={`${styles.chip} ${pref.rooms === r.v ? styles.chipOn : ""}`} onClick={() => setPref((p) => ({ ...p, rooms: r.v }))}>
-                  {r.l}
+              {(meta?.rooms ?? ROOMS_FALLBACK).map((r) => (
+                <button
+                  key={r.value}
+                  type="button"
+                  className={`${styles.chip} ${pref.roomsList.includes(r.value) ? styles.chipOn : ""}`}
+                  onClick={() => setPref((p) => ({ ...p, roomsList: toggle(p.roomsList, r.value) }))}
+                >
+                  {r.label}
                 </button>
               ))}
             </div>

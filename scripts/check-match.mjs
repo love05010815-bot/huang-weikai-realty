@@ -349,6 +349,43 @@ test("AGE_RANGES：他指定的五段，20–30 年目前刻意沒有", () => {
 // 這段錯了不會有任何錯誤訊息，只會有一批買方收到莫名其妙的「降價通知」，
 // 而且推播是計費的、收回不來。所以每一種「不該算異動」的情況都測。
 
+// ---------------------------------------------------------------- 房數可複選（2026-09-25）
+
+test("房數可複選：勾 2、3 房時只有 2 房與 3 房算符合", () => {
+  const pref = { city: "台中市", roomsList: [2, 3] };
+  assert.equal(rankListings(pref, [listing({ rooms: 2 })]).length, 1);
+  assert.equal(rankListings(pref, [listing({ rooms: 3 })]).length, 1);
+  assert.equal(rankListings(pref, [listing({ rooms: 1 })]).length, 0);
+  assert.equal(rankListings(pref, [listing({ rooms: 4 })]).length, 0);
+});
+
+test("房數：選項 4 是「4 房以上」，5 房、6 房也要算符合", () => {
+  const pref = { city: "台中市", roomsList: [4] };
+  assert.equal(rankListings(pref, [listing({ rooms: 3 })]).length, 0);
+  assert.equal(rankListings(pref, [listing({ rooms: 4 })]).length, 1);
+  assert.equal(rankListings(pref, [listing({ rooms: 6 })]).length, 1);
+});
+
+test("房數：舊買方存的單選 rooms 還認得（不能靜靜失效）", () => {
+  const p = normalizePreference({ city: "台中市", rooms: 3 });
+  assert.deepEqual(p.roomsList, [3]);
+  assert.equal(rankListings({ city: "台中市", rooms: 3 }, [listing({ rooms: 3 })]).length, 1);
+  assert.equal(rankListings({ city: "台中市", rooms: 3 }, [listing({ rooms: 2 })]).length, 0);
+  // 舊的 4 一樣是「4 房以上」
+  assert.equal(rankListings({ city: "台中市", rooms: 4 }, [listing({ rooms: 7 })]).length, 1);
+});
+
+test("房數：亂資料不會炸，去重排序，都不勾＝不限", () => {
+  assert.deepEqual(normalizePreference({ roomsList: [3, 2, 2, 9, 0, "1", null] }).roomsList, [1, 2, 3]);
+  assert.deepEqual(normalizePreference({}).roomsList, []);
+  assert.equal(rankListings({}, [listing({ rooms: 1 }), listing({ rooms: 9 })]).length, 2);
+});
+
+test("房數：摘要寫成「2 房/3 房」，4 是「4 房以上」", () => {
+  assert.ok(describePreference({ city: "台中市", roomsList: [2, 3] }).includes("2 房/3 房"));
+  assert.ok(describePreference({ city: "台中市", roomsList: [4] }).includes("4 房以上"));
+});
+
 // ---------------------------------------------------------------- 嚴格過濾
 //
 // 🔴 2026-09-25 他的原話：「我搜尋透天，卻跑出大樓物件或是不符合的物件，這些不符合的都不要顯示」。
