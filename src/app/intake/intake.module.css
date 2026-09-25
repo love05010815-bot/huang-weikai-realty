@@ -1,0 +1,217 @@
+/*
+ * /intake 手機快速建檔 —— 淺色版（他是在外面、太陽底下用手機看的，白底比較讀得到）。
+ *
+ * 條件表單那幾個 class（field / chips / chip / input…）直接沿用 match.module.css 的淺色版，
+ * 這個檔只補「表單以外」需要的：頁面殼、按鈕列、結果區、物件清單。
+ * 元件用的是 { ...matchStyles, ...intakeStyles } 合併後的物件，同名的以這裡為準。
+ */
+.page {
+  min-height: 100vh;
+  padding: 14px 14px 40px;
+  background: #f4f6f7;
+  color: #22323f;
+  font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", -apple-system, sans-serif;
+}
+.top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  max-width: 620px;
+  margin: 0 auto 12px;
+}
+.title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+}
+.sub {
+  margin: 0;
+  font-size: 12px;
+  color: #5b6b73;
+}
+
+.sectionTitle {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #5b6b73;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* 按鈕：這裡要能並排，所以不用 match.module.css 那個「整行」的版本 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 10px 16px;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  color: #fff;
+  white-space: nowrap;
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.btnPrimary {
+  background: #2fa894;
+}
+.btnPrimary:hover {
+  background: #227f71;
+}
+.btnGhost {
+  background: #fff;
+  border-color: #d9e2e6;
+  color: #22323f;
+}
+.btnLine {
+  background: #06c755;
+}
+
+.stickyBar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 10px;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 12px 0 10px;
+  background: linear-gradient(to top, #f4f6f7 70%, rgba(244, 246, 247, 0));
+}
+.stickyBar .btn {
+  flex: 1;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.card + .card {
+  margin-top: 14px;
+}
+
+/* ---------------------------------------------------------------- 結果區 */
+.name {
+  margin: 0 0 2px;
+  font-size: 22px;
+  font-weight: 800;
+}
+.phone {
+  display: inline-block;
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #227f71;
+  text-decoration: none;
+}
+.note {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff7ec;
+  border: 1px solid #f3dcc0;
+  font-size: 14px;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+.summary {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.7;
+}
+.muted {
+  color: #5b6b73;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.msg {
+  max-width: 620px;
+  margin: 0 auto 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #e6f4f1;
+  border: 1px solid #bfe3da;
+  font-size: 14px;
+}
+.error {
+  margin: 8px 0 0;
+  color: #b91c1c;
+  font-size: 14px;
+}
+
+.list {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+.item {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e3eaee;
+}
+.thumb {
+  width: 84px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #eef2f4;
+}
+.thumbEmpty {
+  width: 84px;
+  height: 64px;
+  border-radius: 8px;
+  background: #eef2f4;
+}
+.itemTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.price {
+  margin: 2px 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: #e8590c;
+}
+.meta {
+  margin: 0;
+  font-size: 12px;
+  color: #5b6b73;
+  line-height: 1.5;
+}
+.itemLink {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: #227f71;
+  text-decoration: none;
+}
+
+.invalid {
+  max-width: 480px;
+  margin: 60px auto;
+  padding: 24px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #e3eaee;
+  text-align: center;
+  line-height: 1.8;
+}

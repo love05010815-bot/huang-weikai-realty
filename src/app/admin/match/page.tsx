@@ -17,6 +17,7 @@ import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
 import { getAdminCheckArgs, isCurrentUserAdmin } from "@/lib/admin-check";
 import { describePreference } from "@/lib/match/matcher";
 import { countListings, getListings, listBuyersForAdmin, listListingsForAdmin, listViewingsForAdmin } from "@/lib/match/store";
+import { intakeUrl } from "@/lib/match/intake-key";
 import { getLastSyncResult, type SyncSummary } from "@/lib/match/sync";
 import MatchAdmin, { type AdminBuyer, type AdminListing, type AdminViewing } from "./MatchAdmin";
 
@@ -36,6 +37,7 @@ export default async function MatchAdminPage() {
   let listings: AdminListing[] = [];
   let counts = { available: 0, hidden: 0 };
   let lastSync: SyncSummary | null = null;
+  let intake = "";
   let loadError: string | null = null;
   try {
     const rawViewings = await listViewingsForAdmin(300);
@@ -87,6 +89,8 @@ export default async function MatchAdminPage() {
     }));
     counts = await countListings();
     lastSync = await getLastSyncResult();
+    // 第一次進來會自動產生金鑰（見 lib/match/intake-key.ts）
+    intake = await intakeUrl();
   } catch (e) {
     loadError = e instanceof Error ? e.message : String(e);
   }
@@ -103,7 +107,7 @@ export default async function MatchAdminPage() {
             資料庫讀不到：{loadError}
           </div>
         ) : (
-          <MatchAdmin viewings={viewings} buyers={buyers} listings={listings} counts={counts} lastSync={lastSync} />
+          <MatchAdmin viewings={viewings} buyers={buyers} listings={listings} counts={counts} lastSync={lastSync} intakeUrl={intake} />
         )}
       </div>
     </main>

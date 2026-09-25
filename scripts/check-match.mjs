@@ -509,6 +509,23 @@ test("表單換算：取消「土地」會把土地欄位一起清掉", () => {
   assert.deepEqual(off.landCategories, []);
 });
 
+// ---------------------------------------------------------------- 手機快速建檔的金鑰
+
+const IK = await import("../src/lib/match/intake-key.ts");
+
+test("快速建檔金鑰：只有一模一樣才過；太短、差一個字、沒設、型別不對都不過", () => {
+  const k = "abcdefghijklmnopqrstuvwxyz012345";
+  assert.equal(IK.keysMatch(k, k), true);
+  assert.equal(IK.keysMatch(k + "x", k), false);
+  assert.equal(IK.keysMatch(k.slice(0, -1) + "6", k), false);
+  assert.equal(IK.keysMatch("short", "short"), false);
+  assert.equal(IK.keysMatch(k, null), false);
+  assert.equal(IK.keysMatch(k, ""), false);
+  assert.equal(IK.keysMatch(123, k), false);
+  // 字元數一樣、位元組數不一樣 —— timingSafeEqual 遇到長度不同會丟錯，這裡要先擋掉
+  assert.equal(IK.keysMatch("中".repeat(32), k), false);
+});
+
 // ---------------------------------------------------------------- 名片卡
 
 const LINE = await import("../src/lib/match/line.ts");

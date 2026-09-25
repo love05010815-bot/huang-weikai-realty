@@ -10,7 +10,7 @@ import { CIS } from "@/app/admin/_components/cis";
 import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
 import { getAdminCheckArgs, isCurrentUserAdmin } from "@/lib/admin-check";
 import { buildMatchMeta } from "@/lib/match/meta";
-import BuyerEditor from "../BuyerEditor";
+import AdminBuyerForm from "../AdminBuyerForm";
 import styles from "../buyer-form.module.css";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +36,7 @@ export default async function NewBuyerPage() {
           同一支電話已經有資料的話會直接更新那一筆，不會變成兩個人。
         </p>
       </div>
-      <BuyerEditor meta={meta} />
+      <AdminBuyerForm meta={meta} />
     </main>
   );
 }

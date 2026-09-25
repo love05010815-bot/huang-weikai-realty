@@ -1,19 +1,17 @@
 "use client";
 /**
- * 代客建檔／編輯買方 —— 他在外面接到買方來電時，用手機把人跟需求記下來的表單。
+ * 買方表單（怎麼稱呼、電話、備註 ＋ 跟 /match 共用的條件表單）。
  *
- * 條件欄位是跟 /match 共用的 PreferenceForm（這裡套深色樣式），所以他在這裡幫客戶勾的，
- * 跟客戶自己點開連結看到的是同一組選項、同一套配對規則。存檔走 server action。
- *
- * 新建存好直接跳到那位買方的詳情頁（配對結果與「傳給客戶」都在那裡）；
- * 編輯存好留在原地，由外面的詳情頁 refresh。
+ * 只負責畫表單、把填好的東西交給 onSave；**怎麼存、存完去哪**由外面決定：
+ *   後台     → AdminBuyerForm：saveBuyerAction（看登入），存好跳詳情頁
+ *   手機快速 → /intake 的 IntakeApp：intakeSaveAction（看金鑰），存好原地顯示結果
+ * 樣式一樣用 styles 傳進來（後台深色、快速建檔淺色）。
  */
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import PreferenceForm from "@/app/match/PreferenceForm";
 import { EMPTY_PREF, toApiPreference, toPrefState, type ApiPreference, type MatchMeta, type PrefState } from "@/app/match/preference-state";
-import { saveBuyerAction } from "@/lib/actions/match";
-import styles from "./buyer-form.module.css";
+
+type Styles = { readonly [key: string]: string };
 
 export type EditableBuyer = {
   id: string;
@@ -23,12 +21,33 @@ export type EditableBuyer = {
   preference: ApiPreference | null;
 };
 
-export default function BuyerEditor({ meta, buyer, onDone }: { meta: MatchMeta; buyer?: EditableBuyer | null; onDone?: () => void }) {
-  const router = useRouter();
+export type BuyerFormValues = {
+  name: string;
+  phone: string;
+  note: string;
+  preference: ReturnType<typeof toApiPreference>;
+};
+
+export default function BuyerEditor<R extends { ok: boolean; error?: string }>({
+  meta,
+  buyer,
+  styles,
+  onSave,
+  afterSave,
+  onCancel,
+}: {
+  meta: MatchMeta;
+  /** 有 = 編輯這一筆；沒有 = 新建 */
+  buyer?: EditableBuyer | null;
+  styles: Styles;
+  onSave: (id: string | null, values: BuyerFormValues) => Promise<R>;
+  afterSave: (result: R) => void;
+  onCancel?: () => void;
+}) {
   const [name, setName] = useState(buyer?.name ?? "");
   const [phone, setPhone] = useState(buyer?.phone ?? "");
   const [note, setNote] = useState(buyer?.note ?? "");
-  // 新建時縣市先幫他選好第一個（＝在售物件最多的那個，台中市），少點一下才看得到行政區
+  // 新建時縣市先幫他選好第一個（＝在售物件最多的那個，台中市），在外面少點一下才看得到行政區
   const [pref, setPref] = useState<PrefState>(() =>
     buyer?.preference ? toPrefState(buyer.preference) : { ...EMPTY_PREF, city: meta.cities[0]?.city ?? "" },
   );
@@ -39,17 +58,17 @@ export default function BuyerEditor({ meta, buyer, onDone }: { meta: MatchMeta; 
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const r = await saveBuyerAction(buyer?.id ?? null, { name, phone, note, preference: toApiPreference(pref) });
-    setBusy(false);
-    if (!r.ok || !r.id) {
-      setError(r.error ?? "存檔失敗，請再試一次");
-      return;
-    }
-    if (buyer) {
-      router.refresh();
-      onDone?.();
-    } else {
-      router.push(`/admin/match/buyers/${r.id}${r.merged ? "?merged=1" : ""}`);
+    try {
+      const r = await onSave(buyer?.id ?? null, { name, phone, note, preference: toApiPreference(pref) });
+      if (!r.ok) {
+        setError(r.error ?? "存檔失敗，請再試一次");
+        return;
+      }
+      afterSave(r);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "存檔失敗，請再試一次");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -77,8 +96,8 @@ export default function BuyerEditor({ meta, buyer, onDone }: { meta: MatchMeta; 
 
       {error && <p className={styles.error}>{error}</p>}
       <div className={styles.stickyBar}>
-        {onDone && (
-          <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={onDone} disabled={busy}>
+        {onCancel && (
+          <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={onCancel} disabled={busy}>
             取消
           </button>
         )}

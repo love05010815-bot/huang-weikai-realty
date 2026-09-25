@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CHIP, CIS, cisCard, type ChipTone } from "@/app/admin/_components/cis";
 import { MATCH, VIEWING_STATUS } from "@/config/match";
-import { setViewingStatusAction } from "@/lib/actions/match";
+import { rotateIntakeKeyAction, setViewingStatusAction } from "@/lib/actions/match";
 import type { SyncSummary } from "@/lib/match/sync";
 import styles from "./match-admin.module.css";
 
@@ -86,6 +86,7 @@ function Chip({ tone, children }: { tone: ChipTone; children: React.ReactNode })
 }
 
 export default function MatchAdmin({
+  intakeUrl,
   viewings,
   buyers,
   listings,
@@ -97,6 +98,8 @@ export default function MatchAdmin({
   listings: AdminListing[];
   counts: { available: number; hidden: number };
   lastSync: SyncSummary | null;
+  /** 手機快速建檔連結（不用登入；見 lib/match/intake-key.ts） */
+  intakeUrl: string;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("viewings");
@@ -137,6 +140,22 @@ export default function MatchAdmin({
     } finally {
       setSyncing(false);
     }
+  }
+
+  async function copyIntake() {
+    try {
+      await navigator.clipboard.writeText(intakeUrl);
+      setMsg("快速建檔連結已複製。傳到自己的 LINE，用手機打開後「加入主畫面」，以後一按就能記。");
+    } catch {
+      setMsg("這個瀏覽器不讓我複製，請自己選取連結文字複製。");
+    }
+  }
+
+  async function rotateIntake() {
+    if (!window.confirm("重新產生後，舊的快速建檔連結立刻失效（手機桌面那個要重新加）。確定？")) return;
+    const r = await rotateIntakeKeyAction();
+    setMsg(r.ok ? "已重新產生，下面是新的連結。" : (r.error ?? "重新產生失敗"));
+    router.refresh();
   }
 
   const tabBtn = (key: Tab, label: string, count: number) => (
@@ -267,6 +286,19 @@ export default function MatchAdmin({
             >
               ＋ 新增買方
             </Link>
+          </div>
+          {/* 手機快速建檔：不用登入，連結本身就是鑰匙。他要加到手機桌面用 */}
+          <div style={{ margin: "12px 14px 0", padding: "10px 12px", borderRadius: CIS.radiusSm, background: CIS.bgSoft, border: `1px solid ${CIS.cardBorder}` }}>
+            <div style={{ fontSize: 12, color: CIS.textMute, marginBottom: 4 }}>📱 手機快速建檔連結（不用登入，加到手機桌面一按就能記；連結外流就按「重新產生」）</div>
+            <div style={{ fontSize: 12, color: CIS.textSub, wordBreak: "break-all", userSelect: "all" }}>{intakeUrl}</div>
+            <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+              <button type="button" onClick={copyIntake} style={{ padding: "8px 12px", borderRadius: 10, border: `1px solid ${CIS.cardBorder}`, background: "transparent", color: CIS.text, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                複製連結
+              </button>
+              <button type="button" onClick={rotateIntake} style={{ padding: "8px 12px", borderRadius: 10, border: `1px solid ${CIS.cardBorder}`, background: "transparent", color: CIS.textSub, fontSize: 13, cursor: "pointer" }}>
+                重新產生（舊的立刻失效）
+              </button>
+            </div>
           </div>
           <p style={{ margin: 0, padding: "12px 14px", color: CIS.textMute, fontSize: 12 }}>
             留過條件的買方，點姓名進去看配對結果、傳給客戶。有綁 LINE 的，新物件同步進來時會自動收到推播（每次同步最多 {MATCH.maxNotifyBuyersPerSync} 位）。
