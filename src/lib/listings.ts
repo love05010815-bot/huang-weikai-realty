@@ -262,6 +262,26 @@ export async function houseolPriceMap(rows: ListingRecord[]): Promise<Record<str
   return Object.fromEntries(entries);
 }
 
+/**
+ * 依售價由低到高排序；沒有售價（連結不是愛屋、或抓不到）的排最後，
+ * 彼此之間維持原本順序（陣列排序是穩定排序，不用額外寫 tiebreak）。
+ *
+ * 2026-09-25 系統擁有者拍板：後台列表、/listings、首頁精選好案都改吃這個順序，
+ * 取代原本後台手動排的 sort_order（連同↑↓箭頭一起拿掉，不留兩套排序機制）。
+ * 不動 getPublicListings() 本身——LINE 機器人與地圖建案比對還吃它的原始順序，
+ * 這裡回傳新陣列，呼叫端自己決定要不要用排過的版本。
+ */
+export function sortByPrice<T>(items: T[], getPrice: (item: T) => number | null | undefined): T[] {
+  return [...items].sort((a, b) => {
+    const ap = getPrice(a) ?? null;
+    const bp = getPrice(b) ?? null;
+    if (ap == null && bp == null) return 0;
+    if (ap == null) return 1;
+    if (bp == null) return -1;
+    return ap - bp;
+  });
+}
+
 // ---------------------------------------------------------------- 寫
 
 export function normalizeSlug(raw: string): string {
@@ -408,28 +428,6 @@ async function purgeUnusedPhotos(before: string[], after: string[]): Promise<voi
     await deleteListingPhoto(url);
   }
 }
-
-/**
- * 上移／下移一格：跟相鄰那一筆交換 sort_order。
- *
- * 用交換而不是重排全表，是因為兩筆 UPDATE 就結束，
- * 不會在中途失敗時留下一堆順序錯亂的資料。
- */
-export async function moveListing(id: string, direction: "up" | "down"): Promise<void> {
-  const rows = await listAllListings();
-  const index = rows.findIndex((row) => row.id === id);
-  if (index < 0) return;
-  const swapIndex = direction === "up" ? index - 1 : index + 1;
-  if (swapIndex < 0 || swapIndex >= rows.length) return;
-
-  const a = rows[index];
-  const b = rows[swapIndex];
-  // 兩筆的 sort_order 有可能相同（種子灌歪或手動改過），那樣交換是沒有效果的，
-  // 所以直接用「位置」重新指派，保證換得動。
-  await db.$executeRaw`UPDATE listing SET sort_order = ${swapIndex} WHERE id = ${a.id}`;
-  await db.$executeRaw`UPDATE listing SET sort_order = ${index} WHERE id = ${b.id}`;
-}
-
 
 /** 單一物件頁查一戶的結果。missing ＝ slug 對不上任何一筆 */
 export type ListingLookup = { listing: Listing | null; status: "active" | "sold" | "missing" };

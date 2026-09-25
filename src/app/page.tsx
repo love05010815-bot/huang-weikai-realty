@@ -7,7 +7,7 @@ import Link from "next/link";
 import { OWNER, SOCIAL, SITE_URL } from "@/config/owner";
 import { AREAS } from "@/config/profile";
 import { HOME_FEATURED_COUNT } from "@/config/listings";
-import { getPublicListings } from "@/lib/listings";
+import { getPublicListings, sortByPrice } from "@/lib/listings";
 import { getPublicVideos, CATEGORY_META } from "@/lib/videos";
 // 影片卡片的播放鈕與分類標籤跟 /videos 共用同一份樣式
 import vid from "./videos/videos.module.css";
@@ -207,7 +207,14 @@ function isMidAutumnWindow(now: Date = new Date()): boolean {
 }
 
 export default async function HomePage() {
-  const [listings, videos] = await Promise.all([getPublicListings(), getPublicVideos()]);
+  const [rawListings, videos] = await Promise.all([getPublicListings(), getPublicVideos()]);
+  /**
+   * 2026-09-25 系統擁有者拍板：首頁精選好案前 HOME_FEATURED_COUNT 筆改成價格由低到高，
+   * 推翻 9/18「首頁維持後台手動排序、不被最便宜的牽著走」那條——他確認要真的推翻，
+   * 首頁前三筆現在就是目前在賣裡最便宜的三筆。跟 /listings 同一套 sortByPrice()，
+   * 不動 getPublicListings() 本身（LINE 機器人與地圖建案比對還吃它的原始順序）。
+   */
+  const listings = sortByPrice(rawListings, (item) => item.price);
   /* 首頁只放三支最新的（2026-09-07 系統擁有者指定）。「最新」看 publishedAt（YYYY-MM-DD 字串，
      直接比大小），跟 /videos 側欄「最新影片」同一個定義；一支都沒有就整個區塊不出現。 */
   const latestVideos = [...videos].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)).slice(0, 3);

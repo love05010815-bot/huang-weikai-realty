@@ -1,6 +1,6 @@
 "use server";
 /**
- * 精選好案後台的四個動作：存、上下架、換順序、刪除。
+ * 精選好案後台的三個動作：存、上下架、刪除。
  *
  * 每一個都先擋權限再做事 —— server action 是可以被直接 POST 的，
  * 「畫面上沒有按鈕」不等於「外面的人叫不到」。
@@ -12,7 +12,6 @@ import { isCurrentUserAdmin } from "@/lib/admin-check";
 import {
   createListing,
   deleteListing,
-  moveListing,
   setListingStatus,
   updateListing,
   validateListing,
@@ -71,17 +70,6 @@ export async function setListingStatusAction(id: string, status: ListingStatus):
   if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
   try {
     await setListingStatus(id, status === "sold" ? "sold" : "active");
-  } catch (e) {
-    return { ok: false, error: describeError(e) };
-  }
-  revalidateAll();
-  return { ok: true };
-}
-
-export async function moveListingAction(id: string, direction: "up" | "down"): Promise<Result> {
-  if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
-  try {
-    await moveListing(id, direction);
   } catch (e) {
     return { ok: false, error: describeError(e) };
   }

@@ -13,7 +13,7 @@ import { adminEmails } from "@/auth";
 import { CIS } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
 import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
-import { houseolPriceMap, listAllListings, type ListingRecord } from "@/lib/listings";
+import { houseolPriceMap, listAllListings, sortByPrice, type ListingRecord } from "@/lib/listings";
 import { findCopyRisks } from "@/lib/listing-copy-risk";
 import { getListingClickStats, type ListingClickStats } from "@/lib/listing-clicks";
 import ListingsManager from "./ListingsManager";
@@ -51,6 +51,10 @@ export default async function ListingsAdminPage() {
   //    這是打愛屋不是打資料庫，跟連線池無關；抓不到就那一戶不顯示，永遠不 throw。
   const prices = await houseolPriceMap(rows);
 
+  // 2026-09-25 系統擁有者拍板：後台列表改成價格由低到高排，取代原本↑↓手動排序
+  // （同一套順序也決定 /listings 與首頁精選好案前三筆，見 lib/listings.ts 的 sortByPrice()）。
+  rows = sortByPrice(rows, (row) => prices[row.id]);
+
   const activeCount = rows.filter((row) => row.status === "active").length;
   const soldCount = rows.length - activeCount;
   const noPhotoCount = rows.filter((row) => row.status === "active" && row.photos.length === 0).length;
@@ -66,7 +70,8 @@ export default async function ListingsAdminPage() {
               精選好案
             </h1>
             <p className={styles.subtitle} style={{ color: CIS.textMute }}>
-              改完立刻生效，不用部署。首頁只取最前面 3 筆，用箭頭調順序就是在調首頁放哪三筆。
+              改完立刻生效，不用部署。這裡跟首頁、/listings 都是同一套順序——依售價由低到高，
+              首頁精選好案取最便宜的前 3 筆。
             </p>
           </div>
           <Link

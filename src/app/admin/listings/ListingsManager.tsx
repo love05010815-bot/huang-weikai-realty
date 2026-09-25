@@ -148,11 +148,6 @@ export default function ListingsManager({
     );
   };
 
-  const move = async (row: ListingRecord, direction: "up" | "down") => {
-    const { moveListingAction } = await import("@/lib/actions/listings");
-    await run(`move-${row.id}`, () => moveListingAction(row.id, direction), "順序已更新");
-  };
-
   const remove = async (row: ListingRecord) => {
     if (!window.confirm(`確定要「永久刪除」${row.title}？\n\n成交或下架請按「下架」就好，刪掉之後查不回來。`)) return;
     const { deleteListingAction } = await import("@/lib/actions/listings");
@@ -207,7 +202,7 @@ export default function ListingsManager({
           </div>
         ) : null}
 
-        {initial.map((row, index) => {
+        {initial.map((row) => {
           const risks = findCopyRisks(row.title, ...row.points);
           const sold = row.status === "sold";
           const price = prices[row.id];
@@ -387,26 +382,6 @@ export default function ListingsManager({
                   >
                     <Icon name={sold ? "check" : "ban"} size={15} />
                     {sold ? "重新上架" : "成交／下架"}
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.btn} ${styles.btnIcon}`}
-                    style={{ borderColor: CIS.cardBorder, color: CIS.textSub }}
-                    onClick={() => move(row, "up")}
-                    disabled={index === 0 || busy === `move-${row.id}`}
-                    aria-label="上移一位"
-                  >
-                    <Icon name="chevronUp" size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.btn} ${styles.btnIcon}`}
-                    style={{ borderColor: CIS.cardBorder, color: CIS.textSub }}
-                    onClick={() => move(row, "down")}
-                    disabled={index === initial.length - 1 || busy === `move-${row.id}`}
-                    aria-label="下移一位"
-                  >
-                    <Icon name="chevronDown" size={16} />
                   </button>
                   <span className={styles.spacer} />
                   <button
