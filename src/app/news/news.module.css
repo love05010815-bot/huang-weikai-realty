@@ -2,48 +2,11 @@
    版面骨架（header／section／container）沿用 home.module.css，
    顏色一律吃 `.page` 傳下來的 CSS 變數，後面都補 fallback。 */
 
-/* ---------- 分類切換 ---------- */
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
-  margin: 26px 0 30px;
-}
+/* ---------- 分類切換 ----------
 
-.filterBtn {
-  border: 1px solid var(--line-warm, #d3e2e9);
-  background: #fff;
-  color: var(--ink, #22323f);
-  font: inherit;
-  font-size: 14.5px;
-  font-weight: 700;
-  padding: 9px 18px;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-
-.filterBtn:hover {
-  border-color: var(--primary, #2fa894);
-  color: var(--primary-dark, #227f71);
-}
-
-.filterOn {
-  background: var(--primary, #2fa894);
-  border-color: var(--primary, #2fa894);
-  color: #fff;
-}
-
-.filterOn:hover {
-  color: #fff;
-}
-
-.filterCount {
-  margin-left: 6px;
-  font-size: 12.5px;
-  opacity: 0.75;
-}
+   ⚠️ 2026-09-25 拿掉了：他說「前台先不用做分類，維持房產消息即可」。
+   `.filters`／`.filterBtn`／`.filterOn`／`.filterCount` 這組樣式跟著
+   NewsBoard.tsx 裡的篩選 UI 一起拿掉了，要恢復回這個 commit 之前找。 */
 
 /* ---------- 卡片共用 ----------
 
