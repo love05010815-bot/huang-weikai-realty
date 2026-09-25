@@ -14,6 +14,7 @@ import { INTRO_LINES, AREAS, YEARS } from "@/config/profile";
 import styles from "../home.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
+import SiteFooter from "@/app/_ui/SiteFooter";
 
 const TITLE = `關於瑋凱｜台中海線房仲${OWNER.name}｜十五年不動產經驗`;
 const DESCRIPTION = `${OWNER.name}，${OWNER.company}梧棲新市鎮旗艦店副店長。二十歲入行、十五年不動產經驗，連續三年年度千萬經紀人。深耕台中海線沙鹿、梧棲、清水、龍井，陪您把買房賣房的每個決定都做對。`;
@@ -163,6 +164,9 @@ export default function AboutPage() {
           </div>
         </section>
       </main>
+
+      {/* 2026-09-25 補上：客戶找證照最直覺的頁面，之前這頁沒有頁尾、也沒有經紀人證號 */}
+      <SiteFooter />
     </div>
   );
 }

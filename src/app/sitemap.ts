@@ -38,6 +38,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: SITE_URL + "/videos", lastModified, changeFrequency: "weekly", priority: 0.8 },
     // 2026-09-18 房產消息。原創文章是這個網站最容易長出搜尋流量的一塊，更新也最頻繁
     { url: SITE_URL + "/news", lastModified, changeFrequency: "weekly", priority: 0.8 },
+    // 2026-09-25 補漏：這頁早就是 index:true 卻沒被收錄，之前純粹漏加
+    { url: SITE_URL + "/match", lastModified, changeFrequency: "weekly", priority: 0.7 },
   ];
 
   let listings: MetadataRoute.Sitemap = [];
