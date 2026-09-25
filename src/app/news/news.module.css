@@ -138,56 +138,12 @@
   font-weight: 600;
 }
 
-/* ---------- 頭條 ---------- */
+/* ---------- 列表 ----------
 
-/* ⚠️ 左欄給**固定寬**，不是 fr。封面改成 1:1 之後，
-   用 1.05fr 的話左欄會長到 530px 寬、整張卡就 530px 高，
-   右邊兩百多 px 的文字浮在中間、上下一大片空白。
-   鎖 360px：封面 360×360，文字欄吃掉剩下的寬度，高度才配得起來。 */
-.feature {
-  display: grid;
-  grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
-  gap: 0;
-  border: 1px solid var(--line-warm, #d3e2e9);
-  border-radius: var(--radius, 14px);
-  overflow: hidden;
-  background: #fff;
-  box-shadow: var(--shadow, 0 12px 30px rgba(34, 50, 63, 0.1));
-  margin-bottom: 30px;
-}
-
-.featureBody {
-  padding: 28px 30px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-width: 0;
-}
-
-.featureTitle {
-  margin: 0 0 12px;
-  font-size: clamp(21px, 2.5vw, 27px);
-  line-height: 1.45;
-  font-weight: 900;
-}
-
-.featureTitle a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.featureTitle a:hover {
-  color: var(--primary-dark, #227f71);
-}
-
-.featureSummary {
-  margin: 0 0 18px;
-  color: var(--muted, #5b6b73);
-  font-size: 15.5px;
-  line-height: 1.85;
-}
-
-/* ---------- 列表 ---------- */
+   ⚠️ 2026-09-25 以前這裡有一組「頭條」樣式（`.feature`）：第一篇用橫向大卡
+   （圖在左、字在右），其餘用下面這種直向小卡。他看了說「排列方式要一致」——
+   只有兩三篇文章時，一大一小擺在一起特別明顯。現在**每一篇都用同一種卡片**，
+   置頂只靠 Chips 裡的「置頂」標籤標示，不再用版面大小區分。 */
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -461,16 +417,6 @@
 }
 
 /* ---------- 窄螢幕 ---------- */
-@media (max-width: 860px) {
-  .feature {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .featureBody {
-    padding: 22px 20px 24px;
-  }
-}
-
 @media (max-width: 560px) {
   .grid {
     grid-template-columns: minmax(0, 1fr);

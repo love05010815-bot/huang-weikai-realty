@@ -1,13 +1,19 @@
 "use client";
 
 /**
- * /news 的清單主體：分類切換 ＋ 頭條 ＋ 卡片列。
+ * /news 的清單主體：分類切換 ＋ 卡片列。
  *
  * 分類切換做在瀏覽器端（不是換網址重新整理）—— 文章數量是幾十篇的量級，
  * 一次送完再前端過濾比每次往返快得多，客戶點起來也不會閃一下白畫面。
  *
  * 排序由資料層決定（置頂優先、再依發佈時間新到舊），這裡**不重排**，
  * 只負責過濾與畫面。
+ *
+ * ⚠️ 2026-09-25 拿掉了「第一篇當頭條、其餘走卡片列」那個版本 ——
+ *    只有兩三篇文章時，頭條那張是橫的大卡（圖在左、字在右），
+ *    底下那張是直的小卡（圖在上、字在下），兩張形狀完全不同，
+ *    他一眼就說「排列方式要一致」。現在每一篇都是同一種卡片，
+ *    置頂只靠 `Chips` 裡那顆「置頂」標籤標示，不再靠版面大小區分。
  */
 
 import Link from "next/link";
@@ -69,9 +75,6 @@ export default function NewsBoard({ posts }: { posts: PublicPostCard[] }) {
     [posts, filter],
   );
 
-  // 第一篇當頭條（置頂的自然會排在第一），其餘走卡片列
-  const [lead, ...rest] = shown;
-
   return (
     <>
       <div className={styles.filters}>
@@ -89,7 +92,7 @@ export default function NewsBoard({ posts }: { posts: PublicPostCard[] }) {
         ))}
       </div>
 
-      {!lead ? (
+      {shown.length === 0 ? (
         <p className={styles.empty}>
           這個分類還沒有文章。
           <br />
@@ -97,41 +100,24 @@ export default function NewsBoard({ posts }: { posts: PublicPostCard[] }) {
           <Link href="/card/booking">線上預約</Link>跟我聊聊。
         </p>
       ) : (
-        <>
-          <article className={styles.feature}>
-            <Cover post={lead} />
-            <div className={styles.featureBody}>
-              <Chips post={lead} />
-              <h2 className={styles.featureTitle}>
-                <Link href={`/news/${lead.slug}`}>{lead.title}</Link>
-              </h2>
-              <p className={styles.featureSummary}>{lead.summary}</p>
-              <Link href={`/news/${lead.slug}`} className={styles.more}>
-                閱讀全文 →
-              </Link>
-            </div>
-          </article>
-
-          {rest.length > 0 ? (
-            <div className={styles.grid}>
-              {rest.map((post) => (
-                <article key={post.id} className={styles.card}>
-                  <Cover post={post} />
-                  <div className={styles.cardBody}>
-                    <Chips post={post} />
-                    <h3 className={styles.cardTitle}>
-                      <Link href={`/news/${post.slug}`}>{post.title}</Link>
-                    </h3>
-                    <p className={styles.cardSummary}>{post.summary}</p>
-                    <Link href={`/news/${post.slug}`} className={styles.more}>
-                      閱讀全文 →
-                    </Link>
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : null}
-        </>
+        <div className={styles.grid}>
+          {shown.map((post) => (
+            <article key={post.id} className={styles.card}>
+              <Cover post={post} />
+              <div className={styles.cardBody}>
+                <Chips post={post} />
+                {/* 同一層級的文章清單，全部用 h2 —— 不再有一篇比其他篇「高一階」 */}
+                <h2 className={styles.cardTitle}>
+                  <Link href={`/news/${post.slug}`}>{post.title}</Link>
+                </h2>
+                <p className={styles.cardSummary}>{post.summary}</p>
+                <Link href={`/news/${post.slug}`} className={styles.more}>
+                  閱讀全文 →
+                </Link>
+              </div>
+            </article>
+          ))}
+        </div>
       )}
     </>
   );
