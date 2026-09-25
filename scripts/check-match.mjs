@@ -462,6 +462,53 @@ test("價格異動：解析壞掉把價格變成 0 時，不能判定成全店�
   assert.deepEqual(detectPriceChanges(before, broken), []);
 });
 
+// ---------------------------------------------------------------- 表單狀態換算（前台 /match 與後台代客建檔共用）
+
+const PS = await import("../src/app/match/preference-state.ts");
+
+test("表單換算：資料庫條件 → 表單 → API，繞一圈不會掉東西", () => {
+  const stored = {
+    city: "台中市",
+    districts: ["梧棲區"],
+    budgetMax: 1200,
+    roomsList: [2, 3],
+    sizeMin: 20,
+    sizeMax: 40,
+    types: ["電梯大樓"],
+    ageRange: "a0",
+    features: ["平面車位"],
+    floor: "mid",
+    landMin: 0,
+    landMax: 0,
+    landCategories: [],
+  };
+  assert.deepEqual(normalizePreference(PS.toApiPreference(PS.toPrefState(stored))), normalizePreference(stored));
+});
+
+test("表單換算：舊買方的單選 rooms 進表單會變成清單", () => {
+  assert.deepEqual(PS.toPrefState({ rooms: 3 }).roomsList, [3]);
+  assert.deepEqual(PS.toPrefState({ rooms: 4 }).roomsList, [4]);
+  assert.deepEqual(PS.toPrefState(null).roomsList, []);
+});
+
+test("表單換算：沒勾土地就不送土地條件（藏起來的欄位不能變成看不見的篩選器）", () => {
+  const p = { ...PS.EMPTY_PREF, types: ["電梯大樓"], landMin: "100", landCategories: ["農地"] };
+  const out = PS.toApiPreference(p);
+  assert.equal(out.landMin, 0);
+  assert.deepEqual(out.landCategories, []);
+  const withLand = PS.toApiPreference({ ...p, types: ["土地"] });
+  assert.equal(withLand.landMin, 100);
+  assert.deepEqual(withLand.landCategories, ["農地"]);
+});
+
+test("表單換算：取消「土地」會把土地欄位一起清掉", () => {
+  const p = { ...PS.EMPTY_PREF, types: ["土地"], landMin: "100", landCategories: ["農地"] };
+  const off = PS.toggleTypeIn(p, "土地");
+  assert.deepEqual(off.types, []);
+  assert.equal(off.landMin, "");
+  assert.deepEqual(off.landCategories, []);
+});
+
 // ---------------------------------------------------------------- 名片卡
 
 const LINE = await import("../src/lib/match/line.ts");

@@ -87,6 +87,12 @@ export async function ensureMatchTables(): Promise<void> {
   if (hasNotify.length === 0) {
     await db.$executeRawUnsafe("ALTER TABLE match_buyer ADD COLUMN notify TINYINT(1) NOT NULL DEFAULT 1 AFTER followed");
   }
+  // note 是 2026-09-26 加的：他在外面接到買方來電時隨手記的東西（自備款、什麼時候能看屋…）。
+  // 只有後台看得到，買方那邊不會顯示。
+  const hasNote = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM match_buyer LIKE 'note'`);
+  if (hasNote.length === 0) {
+    await db.$executeRawUnsafe("ALTER TABLE match_buyer ADD COLUMN note TEXT NULL AFTER preference");
+  }
 
   await db.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS match_viewing (
@@ -382,6 +388,8 @@ export type Buyer = {
   /** 要不要收新物件推播。買方自己在 LINE 回「停止通知」會變 false */
   notify: boolean;
   preference: Preference | null;
+  /** 專員自己記的備註（買方看不到）。2026-09-26 代客建檔加的 */
+  note: string;
   createdAt: Date | null;
   updatedAt: Date | null;
 };
@@ -395,6 +403,7 @@ type BuyerRow = {
   followed: number;
   notify: number;
   preference: string | null;
+  note: string | null;
   created_at: Date | null;
   updated_at: Date | null;
 };
@@ -417,17 +426,55 @@ function toBuyer(row: BuyerRow): Buyer {
     followed: Number(row.followed) !== 0,
     notify: Number(row.notify) !== 0,
     preference,
+    note: row.note ?? "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
-const BUYER_COLS = "id, line_user_id, display_name, name, phone, followed, notify, preference, created_at, updated_at";
+const BUYER_COLS = "id, line_user_id, display_name, name, phone, followed, notify, preference, note, created_at, updated_at";
 
 export async function getBuyer(id: string): Promise<Buyer | null> {
   await ensureMatchTables();
   const rows = await db.$queryRawUnsafe<BuyerRow[]>(`SELECT ${BUYER_COLS} FROM match_buyer WHERE id = ? LIMIT 1`, id);
   return rows[0] ? toBuyer(rows[0]) : null;
+}
+
+/** 只留數字與 +，跟 /api/match/viewing 存電話的方式一樣，兩邊才比得起來 */
+export const normalizePhone = (phone: string): string => String(phone ?? "").replace(/[^\d+]/g, "");
+
+/**
+ * 用電話找買方 —— 他代客建檔時同一個人不要建成兩筆。
+ * 資料庫裡的電話多半已經是純數字（預約表單存進來的），但保險起見比對時把 - 與空白拿掉。
+ * 同一支電話對到好幾筆時回最近更新的那一筆。
+ */
+export async function getBuyerByPhone(phone: string): Promise<Buyer | null> {
+  const p = normalizePhone(phone);
+  if (p.length < 8) return null;
+  await ensureMatchTables();
+  const rows = await db.$queryRawUnsafe<BuyerRow[]>(
+    `SELECT ${BUYER_COLS} FROM match_buyer WHERE REPLACE(REPLACE(phone, '-', ''), ' ', '') = ? ORDER BY updated_at DESC LIMIT 1`,
+    p,
+  );
+  return rows[0] ? toBuyer(rows[0]) : null;
+}
+
+/** 這位買方名下有幾筆預約（刪買方前先看） */
+export async function countViewingsByBuyer(buyerId: string): Promise<number> {
+  await ensureMatchTables();
+  const rows = await db.$queryRawUnsafe<{ n: bigint | number }[]>(`SELECT COUNT(*) AS n FROM match_viewing WHERE buyer_id = ?`, buyerId);
+  return Number(rows[0]?.n ?? 0);
+}
+
+/**
+ * 刪買方（後台代客建檔打錯了用）。
+ * 名下有預約的不刪 —— match_viewing.buyer_id 沒有外鍵，刪了預約會指到空的地方，後台那一列就讀不到人。
+ */
+export async function deleteBuyer(id: string): Promise<{ ok: boolean; reason?: string }> {
+  const n = await countViewingsByBuyer(id);
+  if (n > 0) return { ok: false, reason: `這位買方名下有 ${n} 筆預約，不能直接刪` };
+  await db.$executeRawUnsafe(`DELETE FROM match_buyer WHERE id = ?`, id);
+  return { ok: true };
 }
 
 export async function getBuyerByLine(lineUserId: string): Promise<Buyer | null> {
@@ -443,6 +490,8 @@ export type BuyerUpsertInput = {
   name?: string | null;
   phone?: string | null;
   preference?: Preference | null;
+  /** 傳 undefined = 不動原本的；傳 "" = 清掉 */
+  note?: string | null;
   followed?: boolean;
   notify?: boolean;
 };
@@ -491,6 +540,7 @@ export async function upsertBuyer(input: BuyerUpsertInput): Promise<Buyer> {
     name: input.name || target?.name || null,
     phone: input.phone || target?.phone || null,
     preference: input.preference ?? target?.preference ?? null,
+    note: (input.note !== undefined ? input.note : target?.note) || null,
     followed: input.followed ?? target?.followed ?? true,
     notify: input.notify ?? target?.notify ?? true,
   };
@@ -499,7 +549,7 @@ export async function upsertBuyer(input: BuyerUpsertInput): Promise<Buyer> {
   if (!target) {
     const id = randomUUID();
     await db.$executeRawUnsafe(
-      `INSERT INTO match_buyer (id, line_user_id, display_name, name, phone, followed, notify, preference) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO match_buyer (id, line_user_id, display_name, name, phone, followed, notify, preference, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       merged.lineUserId,
       merged.displayName,
@@ -508,12 +558,13 @@ export async function upsertBuyer(input: BuyerUpsertInput): Promise<Buyer> {
       merged.followed ? 1 : 0,
       merged.notify ? 1 : 0,
       prefJson,
+      merged.note,
     );
     return (await getBuyer(id))!;
   }
 
   await db.$executeRawUnsafe(
-    `UPDATE match_buyer SET line_user_id = ?, display_name = ?, name = ?, phone = ?, followed = ?, notify = ?, preference = ? WHERE id = ?`,
+    `UPDATE match_buyer SET line_user_id = ?, display_name = ?, name = ?, phone = ?, followed = ?, notify = ?, preference = ?, note = ? WHERE id = ?`,
     merged.lineUserId,
     merged.displayName,
     merged.name,
@@ -521,6 +572,7 @@ export async function upsertBuyer(input: BuyerUpsertInput): Promise<Buyer> {
     merged.followed ? 1 : 0,
     merged.notify ? 1 : 0,
     prefJson,
+    merged.note,
     target.id,
   );
   return (await getBuyer(target.id))!;

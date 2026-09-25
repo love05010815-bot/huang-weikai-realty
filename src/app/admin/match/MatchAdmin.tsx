@@ -5,8 +5,9 @@
  * 改狀態走 server action，改完 router.refresh() 重讀 —— 畫面上看到的一律是資料庫真的有的東西。
  * 「立即同步」打 /api/match/sync?force=1（那支的函式上限 60 秒），跑完也 refresh。
  */
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CHIP, CIS, cisCard, type ChipTone } from "@/app/admin/_components/cis";
 import { MATCH, VIEWING_STATUS } from "@/config/match";
 import { setViewingStatusAction } from "@/lib/actions/match";
@@ -42,6 +43,8 @@ export type AdminBuyer = {
   followed: boolean;
   notify: boolean;
   summary: string | null;
+  /** 專員自己記的備註（代客建檔時填的） */
+  note: string;
   updatedAt: string | null;
 };
 
@@ -101,6 +104,12 @@ export default function MatchAdmin({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<SyncSummary | null>(null);
+
+  // 從買方子頁按「← 買方配對」回來要落在「買方」那一頁，不然每次都得再點一次
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t === "viewings" || t === "buyers" || t === "sync") setTab(t);
+  }, []);
 
   async function changeStatus(id: string, status: string) {
     setBusyId(id);
@@ -250,8 +259,17 @@ export default function MatchAdmin({
 
       {tab === "buyers" && (
         <div style={cisCard} className={styles.wrap}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "12px 14px 0", flexWrap: "wrap" }}>
+            <span style={{ color: CIS.textSub, fontSize: 13 }}>在外面接到買方來電 → 按右邊記下來，存好直接把配對結果傳給他。</span>
+            <Link
+              href="/admin/match/buyers/new"
+              style={{ padding: "10px 16px", borderRadius: 12, background: CIS.blueDeep, color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none", whiteSpace: "nowrap" }}
+            >
+              ＋ 新增買方
+            </Link>
+          </div>
           <p style={{ margin: 0, padding: "12px 14px", color: CIS.textMute, fontSize: 12 }}>
-            留過條件的買方。有綁 LINE 的，新物件同步進來時會自動收到推播（每次同步最多 {MATCH.maxNotifyBuyersPerSync} 位）。
+            留過條件的買方，點姓名進去看配對結果、傳給客戶。有綁 LINE 的，新物件同步進來時會自動收到推播（每次同步最多 {MATCH.maxNotifyBuyersPerSync} 位）。
             買方在 LINE 回「停止通知」會標成已關閉通知，封鎖官方帳號則標成已封鎖，兩種都不再推播。
             官方帳號認得的關鍵字：找房／修改條件／我的預約／停止通知／恢復通知。
           </p>
@@ -282,10 +300,15 @@ export default function MatchAdmin({
                     </div>
                   </td>
                   <td>
-                    {b.name ?? "—"}
+                    <Link href={`/admin/match/buyers/${b.id}`} style={{ color: CIS.text, fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 3 }}>
+                      {b.name ?? b.displayName ?? "（未填姓名）"}
+                    </Link>
                     <div style={{ color: CIS.textSub, fontSize: 12 }}>{b.phone ?? ""}</div>
                   </td>
-                  <td style={{ color: CIS.textSub, fontSize: 13 }}>{b.summary ?? "—"}</td>
+                  <td style={{ color: CIS.textSub, fontSize: 13 }}>
+                    {b.summary ?? "—"}
+                    {b.note && <div style={{ color: CIS.textMute, fontSize: 12, marginTop: 2, whiteSpace: "pre-wrap" }}>📝 {b.note}</div>}
+                  </td>
                   <td style={{ color: CIS.textMute, fontSize: 12, whiteSpace: "nowrap" }}>{fmt(b.updatedAt)}</td>
                 </tr>
               ))}

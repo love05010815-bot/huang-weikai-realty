@@ -78,11 +78,16 @@ export const oaMessageUrl = (message: string): string =>
  *
  * 識別碼是簽章過的買方編號（lib/match/token.ts），**不是** LINE userId ——
  * 個資不進網址。網頁讀完會自己把 k 從網址上拿掉。
+ *
+ * go=1 → 進頁面就直接用他存好的條件配對、跳到結果（他代客建檔後傳給客戶的連結用這個，
+ *        客戶點開就看到物件，不用再按一次「開始配對」）。官方帳號的「修改條件」不帶，
+ *        因為那個人是要改條件，先看到表單才對。
  */
-export const matchPageUrl = (listingId?: string, token?: string | null): string => {
+export const matchPageUrl = (listingId?: string, token?: string | null, opts: { go?: boolean } = {}): string => {
   const qs = new URLSearchParams();
   if (listingId) qs.set("book", listingId);
   if (token) qs.set("k", token);
+  if (opts.go && token) qs.set("go", "1");
   const q = qs.toString();
   return q ? `${SITE_URL}/match?${q}` : `${SITE_URL}/match`;
 };

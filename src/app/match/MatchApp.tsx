@@ -9,24 +9,14 @@
  * ?book=物件編號：從 LINE 卡片的「預約看屋」按鈕進來，直接跳到那一戶的預約表單。
  * ?k=識別碼：從官方帳號的連結進來，認得出是同一位買方 —— 先帶回他上次設定的條件，
  *   之後改的也寫回同一筆（換手機、清掉瀏覽資料都不會變成兩個人）。讀完立刻把 k 從網址上拿掉。
+ * ?k=識別碼&go=1：專員在後台代客建檔後傳給客戶的連結。條件已經填好，進來直接配對、跳到結果。
+ *
+ * 條件表單的欄位在 PreferenceForm.tsx、狀態換算在 preference-state.ts —— 後台代客建檔用同一份。
  */
 import { useCallback, useEffect, useState } from "react";
 import styles from "./match.module.css";
-
-type Meta = {
-  cities: { city: string; districts: string[] }[];
-  /** 房數選項，由 matcher 的 ROOM_OPTIONS 產生。value 4 = 「4 房以上」 */
-  rooms: { value: number; label: string }[];
-  types: readonly string[];
-  features: readonly string[];
-  /** 希望樓層的級距，由 matcher 的 FLOOR_RANGES 產生 */
-  floors: { value: string; label: string }[];
-  /** 屋齡級距，由 matcher 的 AGE_RANGES 產生 */
-  ages: { value: string; label: string }[];
-  landCategories: readonly string[];
-  threshold: number;
-  addFriendUrl: string;
-};
+import PreferenceForm from "./PreferenceForm";
+import { EMPTY_META, EMPTY_PREF, toApiPreference, toPrefState, type ApiPreference, type MatchMeta, type PrefState } from "./preference-state";
 
 type Listing = {
   id: string;
@@ -64,28 +54,6 @@ type SearchResult = {
   matches: Match[];
 };
 
-/** 資料庫存的購屋條件（GET /api/match/me?k=… 回的） */
-type ApiPreference = {
-  city?: string;
-  districts?: string[];
-  budgetMax?: number;
-  /** 2026-09-25 起的可複選房數。4 = 「4 房以上」 */
-  roomsList?: number[];
-  /** 之前的單選房數，資料庫裡還有舊買方存著，只在沒有 roomsList 時當備援 */
-  rooms?: number;
-  sizeMin?: number;
-  sizeMax?: number;
-  types?: string[];
-  ageRange?: string;
-  /** 2026-09-18 之前存的舊欄位「幾年以內」；表單已經改成區間，只用來判斷要不要顯示 */
-  maxAge?: number;
-  features?: string[];
-  floor?: string;
-  landMin?: number;
-  landMax?: number;
-  landCategories?: string[];
-};
-
 type Me = { buyerId: string; preference: ApiPreference | null; name: string | null; phone: string | null; notify: boolean };
 
 type Booking = {
@@ -100,12 +68,6 @@ type Booking = {
 
 type Step = "form" | "results" | "booking" | "success";
 
-const ROOMS_FALLBACK = [
-  { value: 1, label: "1 房" },
-  { value: 2, label: "2 房" },
-  { value: 3, label: "3 房" },
-  { value: 4, label: "4 房以上" },
-];
 const SLOTS = ["上午 10:00–12:00", "下午 14:00–17:00", "晚上 18:00–20:00"];
 const BUYER_KEY = "match_buyer_id";
 
@@ -154,69 +116,8 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return data;
 }
 
-type PrefState = {
-  city: string;
-  districts: string[];
-  budgetMax: string;
-  /** 可複選；空陣列 = 不限。4 代表「4 房以上」 */
-  roomsList: number[];
-  sizeMin: string;
-  sizeMax: string;
-  types: string[];
-  ageRange: string;
-  features: string[];
-  floor: string;
-  landMin: string;
-  landMax: string;
-  landCategories: string[];
-};
-
-const EMPTY_PREF: PrefState = {
-  city: "",
-  districts: [],
-  budgetMax: "",
-  roomsList: [],
-  sizeMin: "",
-  sizeMax: "",
-  types: [],
-  ageRange: "",
-  features: [],
-  floor: "",
-  landMin: "",
-  landMax: "",
-  landCategories: [],
-};
-
-/** 土地專屬的欄位只有勾了「土地」才出現，也只有那時候才送出去 */
-const LAND_TYPE = "土地";
-
-/** 資料庫存的條件 → 表單狀態。0 代表「不限」，輸入框要留白而不是顯示 0。 */
-function toPrefState(p: ApiPreference): PrefState {
-  const numText = (v: number | undefined) => (Number(v) > 0 ? String(v) : "");
-  return {
-    city: p.city ?? "",
-    districts: Array.isArray(p.districts) ? p.districts : [],
-    budgetMax: numText(p.budgetMax),
-    // 舊買方存的是單選的 rooms，轉成清單，不然他回來改條件會看到空白
-    roomsList: Array.isArray(p.roomsList) && p.roomsList.length ? p.roomsList : Number(p.rooms) > 0 ? [Number(p.rooms)] : [],
-    sizeMin: numText(p.sizeMin),
-    sizeMax: numText(p.sizeMax),
-    types: Array.isArray(p.types) ? p.types : [],
-    ageRange: typeof p.ageRange === "string" ? p.ageRange : "",
-    features: Array.isArray(p.features) ? p.features : [],
-    floor: typeof p.floor === "string" ? p.floor : "",
-    landMin: numText(p.landMin),
-    landMax: numText(p.landMax),
-    landCategories: Array.isArray(p.landCategories) ? p.landCategories : [],
-  };
-}
-
-function toggle<T>(list: T[], v: T): T[] {
-  return list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
-}
-
 export default function MatchApp() {
-  const [meta, setMeta] = useState<Meta | null>(null);
+  const [meta, setMeta] = useState<MatchMeta | null>(null);
   const [step, setStep] = useState<Step>("form");
   const [pref, setPref] = useState<PrefState>(EMPTY_PREF);
   const [result, setResult] = useState<SearchResult | null>(null);
@@ -250,16 +151,18 @@ export default function MatchApp() {
   useEffect(() => {
     setIsDesktop(typeof window.matchMedia === "function" && !window.matchMedia("(pointer: coarse)").matches);
     setBuyerId(readBuyerId());
-    api<Meta>("/api/match/meta")
+    api<MatchMeta>("/api/match/meta")
       .then(setMeta)
       // 讀不到選項時房數仍然給得出來（不靠資料庫），其餘留空讓表單至少能用「不限」配對
-      .catch(() => setMeta({ cities: [], rooms: ROOMS_FALLBACK, types: [], features: [], floors: [], ages: [], landCategories: [], threshold: 60, addFriendUrl: "" }));
+      .catch(() => setMeta(EMPTY_META));
 
     const params = new URLSearchParams(window.location.search);
 
     // 從官方帳號的連結進來：帶回他目前設定的條件與聯絡方式，然後立刻把識別碼從網址上拿掉
     // —— 網址會被截圖、被轉貼，留著等於把他的資料給別人。識別碼過期就當沒帶，照原本流程走。
     const k = params.get("k");
+    // go=1 是專員代客建檔後傳給客戶的連結：條件他已經填好了，客戶點開就直接看物件
+    const autoGo = params.get("go") === "1";
     if (k) {
       setToken(k);
       api<Me>(`/api/match/me?k=${encodeURIComponent(k)}`)
@@ -267,8 +170,14 @@ export default function MatchApp() {
           setBuyerId(me.buyerId);
           writeBuyerId(me.buyerId);
           if (me.preference) {
-            setPref(toPrefState(me.preference));
-            setLoaded("已帶入您目前設定的條件，改好按「開始配對」就會更新，之後的新物件通知也照新條件配。");
+            const loadedPref = toPrefState(me.preference);
+            setPref(loadedPref);
+            if (autoGo) {
+              // state 這時候還沒更新，買方編號與識別碼直接帶進去
+              void runSearch(loadedPref, { buyerId: me.buyerId, token: k });
+            } else {
+              setLoaded("已帶入您目前設定的條件，改好按「開始配對」就會更新，之後的新物件通知也照新條件配。");
+            }
           }
           setForm((f) => ({ ...f, name: me.name || f.name, phone: me.phone || f.phone }));
         })
@@ -276,6 +185,7 @@ export default function MatchApp() {
           // 連結失效不用嚇買方，就當一般訪客重新填一次
         });
       params.delete("k");
+      params.delete("go");
       const rest = params.toString();
       window.history.replaceState(null, "", rest ? `${window.location.pathname}?${rest}` : window.location.pathname);
     }
@@ -291,46 +201,22 @@ export default function MatchApp() {
     }
   }, []);
 
-  const districts = meta?.cities.find((c) => c.city === pref.city)?.districts ?? [];
-  const wantsLand = pref.types.includes(LAND_TYPE);
-
-  /** 勾／取消類型。取消「土地」時順手把土地專屬的欄位清空，不然藏起來的值還會跟著送出去。 */
-  function toggleType(t: string) {
-    setPref((p) => {
-      const types = toggle(p.types, t);
-      if (t === LAND_TYPE && !types.includes(LAND_TYPE)) {
-        return { ...p, types, landCategories: [], landMin: "", landMax: "" };
-      }
-      return { ...p, types };
-    });
-  }
-
   async function onSearch(e: React.FormEvent) {
     e.preventDefault();
+    await runSearch(pref);
+  }
+
+  /**
+   * 拿一組條件去配對、跳到結果。
+   * 跟 onSearch 分開，是因為從代客建檔的連結進來要自動跑一次 —— 那時 state 還沒更新，
+   * 條件、買方編號、識別碼都得直接傳進來。
+   */
+  async function runSearch(p: PrefState, ids: { buyerId?: string | null; token?: string | null } = {}) {
     setBusy(true);
     setError(null);
     try {
-      const preference = {
-        city: pref.city,
-        districts: pref.districts,
-        budgetMax: Number(pref.budgetMax) || 0,
-        roomsList: pref.roomsList,
-        // 舊欄位歸零，理由同下面的 maxAge
-        rooms: 0,
-        sizeMin: Number(pref.sizeMin) || 0,
-        sizeMax: Number(pref.sizeMax) || 0,
-        types: pref.types,
-        ageRange: pref.ageRange,
-        // 舊欄位歸零：他重填了條件，之前存的「幾年以內」就不該再跟著跑
-        maxAge: 0,
-        features: pref.features,
-        floor: pref.floor,
-        // 沒勾土地就不送土地條件 —— 欄位藏起來了，值還跟著跑會變成看不見的篩選器
-        landMin: wantsLand ? Number(pref.landMin) || 0 : 0,
-        landMax: wantsLand ? Number(pref.landMax) || 0 : 0,
-        landCategories: wantsLand ? pref.landCategories : [],
-      };
-      const data = await api<SearchResult>("/api/match/search", { method: "POST", body: JSON.stringify({ preference, buyerId, token }) });
+      const preference = toApiPreference(p);
+      const data = await api<SearchResult>("/api/match/search", { method: "POST", body: JSON.stringify({ preference, buyerId: ids.buyerId ?? buyerId, token: ids.token ?? token }) });
       if (data.buyerId) {
         setBuyerId(data.buyerId);
         writeBuyerId(data.buyerId);
@@ -400,144 +286,7 @@ export default function MatchApp() {
         {notice && <p className={styles.error}>{notice}</p>}
         {loaded && <p className={styles.loaded}>{loaded}</p>}
         <form className={styles.card} onSubmit={onSearch} noValidate>
-          <label className={styles.field}>
-            縣市
-            <select className={styles.select} value={pref.city} onChange={(e) => setPref((p) => ({ ...p, city: e.target.value, districts: [] }))}>
-              <option value="">不限</option>
-              {meta?.cities.map((c) => (
-                <option key={c.city} value={c.city}>
-                  {c.city}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className={styles.field}>
-            <div className={styles.label}>行政區（可複選）</div>
-            {districts.length ? (
-              <div className={styles.chips}>
-                {districts.map((d) => (
-                  <button key={d} type="button" className={`${styles.chip} ${pref.districts.includes(d) ? styles.chipOn : ""}`} onClick={() => setPref((p) => ({ ...p, districts: toggle(p.districts, d) }))}>
-                    {d}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <span className={styles.hint}>請先選擇縣市</span>
-            )}
-          </div>
-
-          <label className={styles.field}>
-            預算上限（萬）
-            <input className={styles.input} type="number" inputMode="numeric" min={0} step={10} placeholder="例如 1500" value={pref.budgetMax} onChange={(e) => setPref((p) => ({ ...p, budgetMax: e.target.value }))} />
-          </label>
-
-          {/* 2026-09-25 改成可複選：都不勾就是不限，所以不再需要一顆「不限」 */}
-          <div className={styles.field}>
-            <div className={styles.label}>房數（可複選）</div>
-            <div className={styles.chips}>
-              {(meta?.rooms ?? ROOMS_FALLBACK).map((r) => (
-                <button
-                  key={r.value}
-                  type="button"
-                  className={`${styles.chip} ${pref.roomsList.includes(r.value) ? styles.chipOn : ""}`}
-                  onClick={() => setPref((p) => ({ ...p, roomsList: toggle(p.roomsList, r.value) }))}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className={`${styles.field} ${styles.two}`}>
-            <label>
-              建物坪數下限
-              <input className={styles.input} type="number" inputMode="decimal" min={0} placeholder="不限" value={pref.sizeMin} onChange={(e) => setPref((p) => ({ ...p, sizeMin: e.target.value }))} />
-            </label>
-            <label>
-              建物坪數上限
-              <input className={styles.input} type="number" inputMode="decimal" min={0} placeholder="不限" value={pref.sizeMax} onChange={(e) => setPref((p) => ({ ...p, sizeMax: e.target.value }))} />
-            </label>
-          </div>
-
-          <div className={styles.field}>
-            <div className={styles.label}>類型（可複選）</div>
-            <div className={styles.chips}>
-              {(meta?.types ?? []).map((t) => (
-                <button key={t} type="button" className={`${styles.chip} ${pref.types.includes(t) ? styles.chipOn : ""}`} onClick={() => toggleType(t)}>
-                  {t}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 土地專屬的兩項，只有勾了「土地」才出現 —— 買公寓的人不需要看到農地建地。
-              店網只有土地物件會給地坪（透天那些都是 0），所以土地坪數也放在這裡。 */}
-          {wantsLand && (
-            <>
-              <div className={styles.field}>
-                <div className={styles.label}>土地類別（可複選）</div>
-                <div className={styles.chips}>
-                  {(meta?.landCategories ?? []).map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      className={`${styles.chip} ${pref.landCategories.includes(c) ? styles.chipOn : ""}`}
-                      onClick={() => setPref((p) => ({ ...p, landCategories: toggle(p.landCategories, c) }))}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className={`${styles.field} ${styles.two}`}>
-                <label>
-                  土地坪數下限
-                  <input className={styles.input} type="number" inputMode="decimal" min={0} placeholder="不限" value={pref.landMin} onChange={(e) => setPref((p) => ({ ...p, landMin: e.target.value }))} />
-                </label>
-                <label>
-                  土地坪數上限
-                  <input className={styles.input} type="number" inputMode="decimal" min={0} placeholder="不限" value={pref.landMax} onChange={(e) => setPref((p) => ({ ...p, landMax: e.target.value }))} />
-                </label>
-              </div>
-            </>
-          )}
-
-          <label className={styles.field}>
-            屋齡
-            <select className={styles.select} value={pref.ageRange} onChange={(e) => setPref((p) => ({ ...p, ageRange: e.target.value }))}>
-              <option value="">不限</option>
-              {(meta?.ages ?? []).map((a) => (
-                <option key={a.value} value={a.value}>
-                  {a.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className={styles.field}>
-            希望樓層
-            <select className={styles.select} value={pref.floor} onChange={(e) => setPref((p) => ({ ...p, floor: e.target.value }))}>
-              <option value="">不限</option>
-              {(meta?.floors ?? []).map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className={styles.field}>
-            <div className={styles.label}>其他需求</div>
-            <div className={styles.chips}>
-              {(meta?.features ?? []).map((f) => (
-                <button key={f} type="button" className={`${styles.chip} ${pref.features.includes(f) ? styles.chipOn : ""}`} onClick={() => setPref((p) => ({ ...p, features: toggle(p.features, f) }))}>
-                  {f}
-                </button>
-              ))}
-            </div>
-          </div>
+          <PreferenceForm meta={meta} value={pref} onChange={setPref} styles={styles} />
 
           {error && <p className={styles.error}>{error}</p>}
           <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`} disabled={busy || !meta}>

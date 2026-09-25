@@ -1,0 +1,324 @@
+/*
+ * 後台「代客建檔」與買方詳情的樣式 —— 深色版。
+ *
+ * 條件表單那幾個 class（field / label / two / chips / chip / chipOn / hint / input / select）
+ * 名字跟前台 match.module.css **一模一樣**，因為 PreferenceForm 是共用的，只換 CSS 不換程式。
+ * 顏色照後台 CIS（_components/cis.ts）：深棕黑底、太平洋紅。
+ *
+ * 他是在外面用手機填的，所以：輸入框 16px（iOS 不會自動放大）、按鈕至少 44px 高、存檔鈕黏在底部。
+ */
+.wrap {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 18px 16px;
+}
+.card + .card {
+  margin-top: 14px;
+}
+
+.field {
+  display: block;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #f8f4f3;
+}
+.label {
+  margin-bottom: 8px;
+}
+.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.input,
+.select,
+.textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+  padding: 12px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 400;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: #231d1a;
+  color: #f8f4f3;
+}
+.textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: 2px solid #f26666;
+  outline-offset: 0;
+  border-color: transparent;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chip {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: transparent;
+  color: #d0c6c4;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+}
+.chipOn {
+  background: #f26666;
+  border-color: #f26666;
+  color: #fff;
+}
+.hint {
+  font-size: 13px;
+  color: #a69a97;
+  font-weight: 400;
+  margin: 8px 0;
+}
+
+/* ---------------------------------------------------------------- 按鈕 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 10px 16px;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  color: #fff;
+  white-space: nowrap;
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.btnPrimary {
+  background: #e00000;
+}
+.btnPrimary:hover {
+  background: #c40000;
+}
+.btnGhost {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #d0c6c4;
+}
+.btnGhost:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.btnLine {
+  background: #06c755;
+}
+.btnDanger {
+  background: transparent;
+  border-color: rgba(244, 63, 94, 0.45);
+  color: #fb7185;
+}
+.btnBlock {
+  display: flex;
+  width: 100%;
+}
+
+/* 存檔列黏在底部：手機上填到最後不用再往上捲 */
+.stickyBar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 10px;
+  padding: 12px 0 10px;
+  background: linear-gradient(to top, #1a1614 70%, rgba(26, 22, 20, 0));
+}
+.stickyBar .btn {
+  flex: 1;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ---------------------------------------------------------------- 詳情頁 */
+.back {
+  display: inline-block;
+  margin-bottom: 12px;
+  color: #a69a97;
+  font-size: 14px;
+  text-decoration: none;
+}
+.back:hover {
+  color: #f8f4f3;
+}
+
+.name {
+  margin: 0 0 4px;
+  font-size: 24px;
+  font-weight: 800;
+  color: #f8f4f3;
+}
+.phone {
+  display: inline-block;
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #f26666;
+  text-decoration: none;
+}
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 10px;
+}
+.note {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(245, 192, 196, 0.08);
+  border: 1px solid rgba(245, 192, 196, 0.2);
+  color: #d0c6c4;
+  font-size: 14px;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.sectionTitle {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #a69a97;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.summary {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #f8f4f3;
+}
+.muted {
+  color: #a69a97;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.msg {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #231d1a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+  color: #f8f4f3;
+}
+.error {
+  margin: 8px 0 0;
+  color: #fb7185;
+  font-size: 14px;
+}
+.linkBox {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #231d1a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 13px;
+  color: #d0c6c4;
+  word-break: break-all;
+}
+
+/* 配對到的物件清單：一列一間，手機上左圖右字 */
+.list {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+.item {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.thumb {
+  width: 96px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #231d1a;
+}
+.thumbEmpty {
+  width: 96px;
+  height: 72px;
+  border-radius: 8px;
+  background: #231d1a;
+}
+.itemTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #f8f4f3;
+  line-height: 1.4;
+}
+.price {
+  margin: 2px 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: #f26666;
+}
+.meta {
+  margin: 0;
+  font-size: 12px;
+  color: #a69a97;
+  line-height: 1.5;
+}
+.itemLink {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: #ee828a;
+  text-decoration: none;
+}
+
+@media (max-width: 480px) {
+  .two {
+    grid-template-columns: 1fr 1fr;
+  }
+  .item {
+    grid-template-columns: 84px 1fr;
+  }
+  .thumb,
+  .thumbEmpty {
+    width: 84px;
+    height: 64px;
+  }
+}
