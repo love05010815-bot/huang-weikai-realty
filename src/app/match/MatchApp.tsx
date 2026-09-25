@@ -51,7 +51,16 @@ type Listing = {
 
 type Match = Listing & { score: number; reasons: string[]; misses: string[]; recommended: boolean };
 
-type SearchResult = { buyerId: string | null; summary: string; threshold: number; total: number; matches: Match[] };
+type SearchResult = {
+  buyerId: string | null;
+  summary: string;
+  threshold: number;
+  /** 目前在售的總數 */
+  total: number;
+  /** 符合條件的總數。matches 只有前 40 筆，兩個數字不一定一樣 */
+  matched: number;
+  matches: Match[];
+};
 
 /** 資料庫存的購屋條件（GET /api/match/me?k=… 回的） */
 type ApiPreference = {
@@ -526,8 +535,8 @@ export default function MatchApp() {
 
   // ------------------------------------------------------------ 步驟 2：結果
   if (step === "results" && result) {
-    const recommended = result.matches.filter((m) => m.recommended);
-    const others = result.matches.filter((m) => !m.recommended).slice(0, 6);
+    // 2026-09-25 起 /api/match/search 只會回「條件全部符合」的物件（見 lib/match/matcher.ts
+    // 的 rankListings），所以這裡不再分「推薦」與「其他接近的」—— 列出來的每一間都符合。
     const card = (m: Match) => (
       <article key={m.id} className={styles.listing}>
         {m.images[0] && (
@@ -584,13 +593,28 @@ export default function MatchApp() {
           </div>
         )}
         {result.matches.length === 0 ? (
-          <div className={styles.empty}>目前沒有在售物件，請稍後再試。</div>
+          <div className={styles.empty}>
+            {result.total === 0 ? (
+              "目前沒有在售物件，請稍後再試。"
+            ) : (
+              <>
+                {/* 空手而回也要講清楚為什麼、下一步做什麼 —— 直接丟一句「沒有物件」，客戶就走了 */}
+                <p className={styles.emptyTitle}>沒有完全符合這些條件的物件</p>
+                <p>
+                  目前在售的 {result.total} 間裡，沒有同時符合您所有條件的。
+                  可以按上面的「修改條件」放寬其中一項（例如屋齡或預算）再找一次。
+                </p>
+                <p>您填的條件我們已經記下來了 —— 加官方 LINE 好友，之後有符合的新物件會第一時間通知您。</p>
+              </>
+            )}
+          </div>
         ) : (
           <div className={styles.grid}>
-            <p className={styles.hint}>{recommended.length ? `推薦 ${recommended.length} 個物件（配對度 ≥ ${result.threshold}%）` : "沒有達到推薦門檻的物件，以下是最接近的："}</p>
-            {recommended.map(card)}
-            {others.length > 0 && recommended.length > 0 && <p className={styles.hint}>其他接近的物件</p>}
-            {others.map(card)}
+            <p className={styles.hint}>
+              符合您條件的物件 {result.matched ?? result.matches.length} 個
+              {(result.matched ?? 0) > result.matches.length && `，先顯示前 ${result.matches.length} 個（縮小條件可以看得更精準）`}
+            </p>
+            {result.matches.map(card)}
           </div>
         )}
         {/* 勾好的物件整批送出，只會拿到一個預約編號 */}

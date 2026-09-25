@@ -40,13 +40,16 @@ export async function POST(req: NextRequest) {
 
   try {
     const listings = await listAvailableListings();
-    const ranked = rankListings(preference, listings, { limit: 40 });
+    // 先全部配完才知道「真的有幾間符合」，畫面只鋪前 40 張卡（再多手機滑不完、圖也重）。
+    // 分開回 matched 與 matches.length，不然 40 間跟 99 間在畫面上長得一模一樣。
+    const ranked = rankListings(preference, listings, { limit: listings.length || 1 });
     return NextResponse.json({
       buyerId,
       summary: describePreference(preference),
       threshold: MATCH.threshold,
       total: listings.length,
-      matches: ranked.map((m) => ({
+      matched: ranked.length,
+      matches: ranked.slice(0, 40).map((m) => ({
         ...publicListing(m.listing),
         score: m.score,
         reasons: m.reasons,

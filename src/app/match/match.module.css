@@ -365,3 +365,16 @@
   color: var(--muted, #5b6b73);
   padding: 32px 0;
 }
+
+.empty p {
+  margin: 6px auto;
+  max-width: 30em;
+  line-height: 1.7;
+}
+
+/* 找不到物件時的那句話。是說明不是錯誤，所以不用紅色 */
+.emptyTitle {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink, #22323f);
+}

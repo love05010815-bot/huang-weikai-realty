@@ -121,10 +121,17 @@ test("toListingUpsert：轉成資料表格式並對應類型／需求標籤", ()
   assert.equal(l.phone, "04-26572100");
 });
 
-test("rankListings：真實頁面用沙鹿 3 房條件排序，分數遞減", () => {
+test("rankListings：真實頁面只回完全符合的，而且分數遞減", () => {
   const listings = parseBlocks(html).map((it) => toListingUpsert(it, "4817"));
   const ranked = rankListings({ city: "台中市", districts: ["沙鹿區"], rooms: 3 }, listings);
-  assert.equal(ranked.length, listings.length);
+  // 2026-09-25 起不符合條件的不會回來，所以一定比全部少
+  assert.ok(ranked.length > 0, "不該一間都不剩");
+  assert.ok(ranked.length < listings.length, `應該濾掉一些：${ranked.length}/${listings.length}`);
+  for (const m of ranked) {
+    assert.equal(m.listing.district, "沙鹿區");
+    assert.equal(m.listing.rooms, 3);
+    assert.equal(m.disqualified, false);
+  }
   for (let i = 1; i < ranked.length; i++) assert.ok(ranked[i - 1].score >= ranked[i].score);
   assert.ok(ranked[0].reasons.length > 0);
 });
@@ -341,6 +348,52 @@ test("AGE_RANGES：他指定的五段，20–30 年目前刻意沒有", () => {
 //
 // 這段錯了不會有任何錯誤訊息，只會有一批買方收到莫名其妙的「降價通知」，
 // 而且推播是計費的、收回不來。所以每一種「不該算異動」的情況都測。
+
+// ---------------------------------------------------------------- 嚴格過濾
+//
+// 🔴 2026-09-25 他的原話：「我搜尋透天，卻跑出大樓物件或是不符合的物件，這些不符合的都不要顯示」。
+//    屋齡只佔 4 分，所以在那之前一間 29.7 年的透天在「屋齡 0–5 年」的條件下還是拿 96%、排第一個。
+//    這一組測死「不符合就不回來」，以及同樣重要的反面：「資料沒有」不等於「不符合」。
+
+test("嚴格過濾：搜透天厝不會跑出電梯大樓", () => {
+  const all = [listing({ type: "透天厝" }), listing({ type: "電梯大樓" }), listing({ type: "華廈" })];
+  const ranked = rankListings({ city: "台中市", types: ["透天厝"] }, all);
+  assert.deepEqual(ranked.map((m) => m.listing.type), ["透天厝"]);
+});
+
+test("嚴格過濾：屋齡不符就不列出來（他抓到的那間 29.7 年透天）", () => {
+  const pref = { city: "台中市", districts: ["沙鹿區"], budgetMax: 1500, types: ["透天厝"], ageRange: "a0" };
+  const old = listing({ type: "透天厝", age: 29.7, price: 1280 });
+  assert.equal(scoreListing(pref, old).disqualified, true);
+  assert.equal(rankListings(pref, [old]).length, 0);
+  // 一樣的物件，只是屋齡合了，就要回來
+  assert.equal(rankListings(pref, [listing({ type: "透天厝", age: 3, price: 1280 })]).length, 1);
+});
+
+test("嚴格過濾：店網沒給屋齡／樓層／地坪的，不算不符合（不然土地會整批消失）", () => {
+  const land = listing({ type: "土地", age: 0, floor: "/", landSize: 200, usageType: "農業用地", rooms: 0, size: 0 });
+  const r = scoreListing({ city: "台中市", types: ["土地"], ageRange: "a0", floor: "low" }, land);
+  assert.equal(r.disqualified, false, r.misses.join("、"));
+  assert.ok(r.misses.some((m) => m.includes("沒有屋齡資料")));
+  assert.ok(r.misses.some((m) => m.includes("沒有樓層資料")));
+});
+
+test("嚴格過濾：略高於預算也算不符合（1,500 萬內就是 1,500 萬內）", () => {
+  const pref = { city: "台中市", budgetMax: 1500 };
+  assert.equal(rankListings(pref, [listing({ price: 1500 })]).length, 1);
+  assert.equal(rankListings(pref, [listing({ price: 1570 })]).length, 0);
+});
+
+test("嚴格過濾：同縣市但不在指定行政區，一樣不列出來", () => {
+  const pref = { city: "台中市", districts: ["沙鹿區"] };
+  const all = [listing({ district: "沙鹿區" }), listing({ district: "梧棲區" }), listing({ city: "彰化縣", district: "伸港鄉" })];
+  assert.deepEqual(rankListings(pref, all).map((m) => m.listing.district), ["沙鹿區"]);
+});
+
+test("嚴格過濾：什麼條件都沒填就不該濾掉任何東西", () => {
+  const all = [listing({ type: "透天厝" }), listing({ type: "土地", age: 0, floor: "/" }), listing({ price: 9999 })];
+  assert.equal(rankListings({}, all).length, all.length);
+});
 
 test("價格異動：只抓真的變了價、而且兩邊價格都正常的", () => {
   const before = new Map([

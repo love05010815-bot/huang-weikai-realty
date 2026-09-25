@@ -136,7 +136,18 @@ export type MatchableListing = {
   usageType: string;
 };
 
-export type ScoreResult = { score: number; reasons: string[]; misses: string[] };
+export type ScoreResult = {
+  score: number;
+  reasons: string[];
+  misses: string[];
+  /**
+   * 有任何一項「真的不符合」買方指定的條件 —— 這種物件**不會被列出來**（見 rankListings）。
+   *
+   * 「資料沒有」不算不符合：店網沒給屋齡（土地）、沒給樓層、沒給地坪的，
+   * 照樣列出來、只是分數少一點。把「不知道」當成「不符合」會整批洗掉土地物件。
+   */
+  disqualified: boolean;
+};
 
 const num = (v: unknown, fallback = 0): number => {
   const n = Number(v);
@@ -179,6 +190,17 @@ export function scoreListing(prefInput: Preference | unknown, listing: Matchable
   let score = 0;
   const reasons: string[] = [];
   const misses: string[] = [];
+  let disqualified = false;
+
+  /**
+   * 記一筆「不符合」。
+   * hard = true（預設）→ 這筆物件不會被列出來；
+   * false 只用在「店網根本沒給這個欄位」的情況，那是不知道、不是不符合。
+   */
+  const miss = (text: string, hard = true) => {
+    misses.push(text);
+    if (hard) disqualified = true;
+  };
 
   // 區域
   if (pref.districts.length) {
@@ -187,13 +209,13 @@ export function scoreListing(prefInput: Preference | unknown, listing: Matchable
       reasons.push(`區域符合（${listing.district}）`);
     } else if (pref.city && listing.city === pref.city) {
       score += Math.round(WEIGHTS.district * 0.4);
-      misses.push(`同縣市但不在指定行政區（${listing.district}）`);
-    } else misses.push(`區域不符（${listing.city}${listing.district}）`);
+      miss(`同縣市但不在指定行政區（${listing.district}）`);
+    } else miss(`區域不符（${listing.city}${listing.district}）`);
   } else if (pref.city) {
     if (listing.city === pref.city) {
       score += WEIGHTS.district;
       reasons.push(`縣市符合（${listing.city}）`);
-    } else misses.push(`縣市不符（${listing.city}）`);
+    } else miss(`縣市不符（${listing.city}）`);
   } else score += WEIGHTS.district;
 
   // 預算
@@ -204,11 +226,11 @@ export function scoreListing(prefInput: Preference | unknown, listing: Matchable
       reasons.push("價格在預算內");
     } else if (ratio <= 1.1) {
       score += Math.round(WEIGHTS.budget * 0.6);
-      misses.push(`略高於預算 ${pct(ratio)}`);
+      miss(`略高於預算 ${pct(ratio)}`);
     } else if (ratio <= 1.2) {
       score += Math.round(WEIGHTS.budget * 0.25);
-      misses.push(`高於預算 ${pct(ratio)}`);
-    } else misses.push(`超出預算 ${pct(ratio)}`);
+      miss(`高於預算 ${pct(ratio)}`);
+    } else miss(`超出預算 ${pct(ratio)}`);
   } else score += WEIGHTS.budget;
 
   // 房數
@@ -219,8 +241,8 @@ export function scoreListing(prefInput: Preference | unknown, listing: Matchable
       reasons.push(`房數符合（${listing.rooms} 房）`);
     } else if (diff === 1) {
       score += Math.round(WEIGHTS.rooms * 0.5);
-      misses.push(`房數差 1 房（${listing.rooms} 房）`);
-    } else misses.push(`房數不符（${listing.rooms} 房）`);
+      miss(`房數差 1 房（${listing.rooms} 房）`);
+    } else miss(`房數不符（${listing.rooms} 房）`);
   } else score += WEIGHTS.rooms;
 
   // 坪數
@@ -233,8 +255,8 @@ export function scoreListing(prefInput: Preference | unknown, listing: Matchable
       reasons.push(`坪數符合（${listing.size} 坪）`);
     } else if (s >= lo * 0.85 && s <= hi * 1.15) {
       score += Math.round(WEIGHTS.size * 0.5);
-      misses.push(`坪數略有出入（${listing.size} 坪）`);
-    } else misses.push(`坪數不符（${listing.size} 坪）`);
+      miss(`坪數略有出入（${listing.size} 坪）`);
+    } else miss(`坪數不符（${listing.size} 坪）`);
   } else score += WEIGHTS.size;
 
   // 類型。買方指定了土地類別時，這 10 分拆成一半類型、一半類別 ——
@@ -245,7 +267,7 @@ export function scoreListing(prefInput: Preference | unknown, listing: Matchable
     if (pref.types.includes(listing.type)) {
       score += typeWeight;
       reasons.push(`類型符合（${listing.type}）`);
-    } else misses.push(`類型不符（${listing.type}）`);
+    } else miss(`類型不符（${listing.type}）`);
   } else score += typeWeight;
 
   if (wantCategory) {
@@ -253,7 +275,7 @@ export function scoreListing(prefInput: Preference | unknown, listing: Matchable
     if (cat && pref.landCategories.includes(cat)) {
       score += WEIGHTS.type - typeWeight;
       reasons.push(`土地類別符合（${cat}）`);
-    } else misses.push(cat ? `土地類別不符（${cat}）` : "不是土地物件");
+    } else miss(cat ? `土地類別不符（${cat}）` : "不是土地物件");
   }
 
   // 屋齡。兩套規則並存：
@@ -266,19 +288,19 @@ export function scoreListing(prefInput: Preference | unknown, listing: Matchable
     const r = AGE_RANGES[pref.ageRange];
     if (listingAge <= 0) {
       score += Math.round(WEIGHTS.age * 0.5);
-      misses.push("沒有屋齡資料");
+      miss("沒有屋齡資料", false);
     } else if (listingAge >= r.min && listingAge <= r.max) {
       score += WEIGHTS.age;
       reasons.push(listingAge < 1 ? `新成屋（${r.label}）` : `屋齡 ${listingAge} 年符合`);
-    } else misses.push(`屋齡不符（${listingAge} 年）`);
+    } else miss(`屋齡不符（${listingAge} 年）`);
   } else if (pref.maxAge > 0) {
     if (listingAge <= pref.maxAge) {
       score += WEIGHTS.age;
       reasons.push(listingAge < 1 ? "新成屋" : `屋齡 ${listingAge} 年符合`);
     } else if (listingAge <= pref.maxAge + 5) {
       score += Math.round(WEIGHTS.age * 0.5);
-      misses.push(`屋齡略高（${listingAge} 年）`);
-    } else misses.push(`屋齡過高（${listingAge} 年）`);
+      miss(`屋齡略高（${listingAge} 年）`);
+    } else miss(`屋齡過高（${listingAge} 年）`);
   } else score += WEIGHTS.age;
 
   // 希望樓層。店網沒給樓層的（土地那 20 筆是「/」）不硬扣到 0，給一半 ——
@@ -288,11 +310,11 @@ export function scoreListing(prefInput: Preference | unknown, listing: Matchable
     const f = floorOf(listing.floor);
     if (f <= 0) {
       score += Math.round(WEIGHTS.floor * 0.5);
-      misses.push("沒有樓層資料");
+      miss("沒有樓層資料", false);
     } else if (f >= range.min && f <= range.max) {
       score += WEIGHTS.floor;
       reasons.push(`樓層符合（${f} 樓）`);
-    } else misses.push(`樓層不符（${f} 樓）`);
+    } else miss(`樓層不符（${f} 樓）`);
   } else score += WEIGHTS.floor;
 
   // 土地坪數。跟建物坪數同一套寬容度（差 15% 以內給一半）。
@@ -305,8 +327,9 @@ export function scoreListing(prefInput: Preference | unknown, listing: Matchable
       reasons.push(`土地坪數符合（${s} 坪）`);
     } else if (s > 0 && s >= lo * 0.85 && s <= hi * 1.15) {
       score += Math.round(WEIGHTS.landSize * 0.5);
-      misses.push(`土地坪數略有出入（${s} 坪）`);
-    } else misses.push(s > 0 ? `土地坪數不符（${s} 坪）` : "沒有土地坪數資料");
+      miss(`土地坪數略有出入（${s} 坪）`);
+    } else if (s > 0) miss(`土地坪數不符（${s} 坪）`);
+    else miss("沒有土地坪數資料", false);
   } else score += WEIGHTS.landSize;
 
   // 其他需求：按符合比例給分
@@ -316,18 +339,30 @@ export function scoreListing(prefInput: Preference | unknown, listing: Matchable
     const lack = pref.features.filter((f) => !featureSatisfied(f, has));
     score += Math.round((WEIGHTS.features * have.length) / pref.features.length);
     if (have.length) reasons.push(`具備需求：${have.join("、")}`);
-    if (lack.length) misses.push(`缺少：${lack.join("、")}`);
+    if (lack.length) miss(`缺少：${lack.join("、")}`);
   } else score += WEIGHTS.features;
 
   // 硬性規則：有指定縣市但物件在其他縣市 → 封頂，不會被推薦、也不會自動推播
   if (pref.city && listing.city !== pref.city) score = Math.min(score, OTHER_CITY_CAP);
 
-  return { score: Math.max(0, Math.min(100, Math.round(score))), reasons, misses };
+  return { score: Math.max(0, Math.min(100, Math.round(score))), reasons, misses, disqualified };
 }
 
 export type Ranked<T> = { listing: T } & ScoreResult;
 
 /** 對一批物件評分並排序（分數高→低，同分價格低者優先） */
+/**
+ * 依條件排序，**並且把不符合條件的直接剔除**。
+ *
+ * 🔴 2026-09-25 他的要求：「我搜尋透天，卻跑出大樓物件或是不符合的物件，這些不符合的都不要顯示」。
+ *    在那之前是純加權計分 —— 屋齡只佔 4 分，所以一間 29.7 年的透天在「屋齡 0–5 年」的條件下
+ *    照樣拿到 96% 排在第一個，只在底下用小字寫「✗ 屋齡不符」。對買方來說那就是雜訊。
+ *    現在只要有一項真的不符合就不列出來；分數留著只是拿來排序（同分再比價格由低到高）。
+ *
+ * ⚠️ 這條規則**新物件推播也吃得到**（lib/match/sync.ts 走同一支），所以不會再推不符合
+ *    買方條件的物件給他。要放寬哪一項，改 scoreListing 裡那一項 miss() 的第二個參數，
+ *    不要在這裡開後門 —— 網頁與推播必須是同一套標準。
+ */
 export function rankListings<T extends MatchableListing>(
   pref: Preference | unknown,
   listings: T[],
@@ -335,7 +370,7 @@ export function rankListings<T extends MatchableListing>(
 ): Ranked<T>[] {
   return listings
     .map((listing) => ({ listing, ...scoreListing(pref, listing) }))
-    .filter((m) => m.score >= threshold)
+    .filter((m) => !m.disqualified && m.score >= threshold)
     .sort((a, b) => b.score - a.score || a.listing.price - b.listing.price)
     .slice(0, limit);
 }
