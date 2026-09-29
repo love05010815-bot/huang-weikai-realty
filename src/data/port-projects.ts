@@ -2657,6 +2657,14 @@ export const PROJECTS: Project[] = [
   { id: "lvyuan-zhenpin-9", name: "綠園臻品9", builder: "晟翊建設", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
   { id: "lvyuan-zhenpin-8", name: "綠園臻品8", builder: "晟翊建設", area: "梧棲市區", status: "completed", completion: "約 2021", sources: ["owner"] },
   { id: "yushu-dajing", name: "御墅大境", builder: "新而雅建設", area: "梧棲市區", status: "newly", completion: "約 2024", sources: ["owner"] },
+
+  /* ── 2026-09-29 清水市區補 1 案 ──
+     ⚠️ 同一則訊息他還寫了「榮耀之星/7年/立坤建築」—— **跟現存的逐字相同**（立坤建築、約 2019），
+        沒有重複建立、也沒有覆蓋。
+     🔴 **「微風一品3」是新案，不是拿來補「微風一品2」的建商** —— 待確認名單上的是微風一品2，
+        但他寫的屋齡 5 年（約 2021）跟微風一品2 的約 2017 差四年，**當成同一案去覆蓋會改到事實**。
+        **微風一品2 的建商仍然是待確認。** 若他其實是要補微風一品2，再改。 */
+  { id: "weifeng-yipin-3", name: "微風一品3", builder: "振昇建設", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
 ];
 
 /* ─────────────── 座標 ─────────────── */
@@ -3492,6 +3500,36 @@ export const COORDS: Record<string, Coord> = {
   "yushujia-8": { lat: 24.28034, lng: 120.564, precision: "exact" }, // 御墅家8
   "renli-senguan": { lat: 24.27923, lng: 120.57013, precision: "exact" }, // 仁里森觀
   "tiandishang": { lat: 24.27854, lng: 120.56851, precision: "exact" }, // 天地賞
+  /* ── 2026-09-29 第二批 23 案（他用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、precision 全 exact、本批不重複、沒有覆蓋既有座標，
+     **23 筆全部落在清水市區色塊內**。
+     🔵 **三和圓沐光回來了** —— 9/17 他說「已經標記的三和圓沐光移除重點」，那筆座標當時刪掉了
+        （原本 24.27745/120.56683），這次他重點在 24.27631/120.56315，差約 390 公尺。
+     🔵 兩對 30 公尺內的鄰居：立東公園院 ↔ 立東富園邸 22m（同建商相鄰兩案）、
+        三和圓沐光 ↔ 玖晁典藏 25m —— 清水市區這一帶本來就密。 */
+  "liuyi-wodejia-2": { lat: 24.27016, lng: 120.54665, precision: "exact" }, // 六億我的家2
+  "jiali-winner": { lat: 24.27062, lng: 120.54909, precision: "exact" }, // 嘉麗Winner
+  "weixiao-shanghao": { lat: 24.27232, lng: 120.54682, precision: "exact" }, // 微笑上好
+  "huangjia-xinyuan-3": { lat: 24.26775, lng: 120.54937, precision: "exact" }, // 皇家新園3
+  "qiqi-yueshe-9": { lat: 24.26795, lng: 120.55077, precision: "exact" }, // 啓碁悅舍9
+  "lisheng-shouxi": { lat: 24.26822, lng: 120.55162, precision: "exact" }, // 勵盛首璽
+  "changrui-mingriyao": { lat: 24.26623, lng: 120.54819, precision: "exact" }, // 昌銳明日耀
+  "senbaofu-11": { lat: 24.26544, lng: 120.55188, precision: "exact" }, // 森堡富11
+  "weilan-zhiyi-dalou": { lat: 24.26794, lng: 120.54722, precision: "exact" }, // 蔚藍之邑大樓區
+  "weilan-zhiyi-toutian": { lat: 24.2675, lng: 120.54713, precision: "exact" }, // 蔚藍之邑透天區
+  "zhenfuyu": { lat: 24.27177, lng: 120.5494, precision: "exact" }, // 臻富御
+  "jiamei-bilu-2": { lat: 24.26743, lng: 120.55194, precision: "exact" }, // 佳美碧綠2
+  "zhifu-zhongqing": { lat: 24.274, lng: 120.55809, precision: "exact" }, // 致富中清
+  "lidong-gongyuanyuan": { lat: 24.27561, lng: 120.55515, precision: "exact" }, // 立東公園院
+  "lidong-fuyuandi": { lat: 24.2758, lng: 120.55521, precision: "exact" }, // 立東富園邸
+  "siji-feng": { lat: 24.27891, lng: 120.56246, precision: "exact" }, // 四季豐
+  "shangrui-aiyue": { lat: 24.27986, lng: 120.5612, precision: "exact" }, // 上睿愛閱
+  "ruixin-junpin": { lat: 24.28082, lng: 120.56223, precision: "exact" }, // 瑞鑫君品
+  "sanheyuan-muguang": { lat: 24.27631, lng: 120.56315, precision: "exact" }, // 三和圓沐光
+  "yushu-dengfeng": { lat: 24.27332, lng: 120.56775, precision: "exact" }, // 御墅登峰
+  "senbaofu-di": { lat: 24.27414, lng: 120.56751, precision: "exact" }, // 森堡富第
+  "xiangyi-zhenpin-9": { lat: 24.27681, lng: 120.56541, precision: "exact" }, // 祥邑臻品9
+  "yongzhu-zhencheng": { lat: 24.27373, lng: 120.56718, precision: "exact" }, // 永築臻澄
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
