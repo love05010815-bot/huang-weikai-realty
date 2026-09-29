@@ -18,7 +18,7 @@
  * ## 放到前台（2026-09-18 加）
  *
  * 知識文章那條線在**上面那排按鈕**（複製指令 → 開 ChatGPT → 貼回結果 → 放到前台）
- * 最後有一顆「放到前台」：挑一個平台的版本（預設 Facebook，那版最像一篇文章），
+ * 最後有一顆「放到前台」：挑一個平台的版本（見 `defaultPublishSection`），
  * 按下去會存成 `/news` 的一篇**草稿**、跳到 `/admin/posts`。
  * 刻意不直接發佈 —— 模型寫的東西他一定要自己看過一遍，而且還沒配封面圖。
  * 短影音那條線不走這裡（口播稿不是給人讀的文章），拍好之後上 `/admin/videos`。
@@ -27,6 +27,14 @@
  *    結果被上一題那塊 720px 高的文稿擋住，他直接回報「沒看到放到前台按鈕」——
  *    按鈕存在但在畫面外，跟不存在是一樣的（這個專案第四次踩同一個坑）。
  *    還沒有文案時按鈕是灰的，滑過去會說「要先有一版文案」，而不是整顆消失。
+ *
+ * 🔴 **2026-09-29 他回報「按放到前台沒反應」——按鈕沒壞，是兩件事疊在一起：**
+ *    ① 他只把 ChatGPT 其中一個平台的成品貼回來（那種文案連一行 `##` 都沒有），
+ *       而下拉不管切不切得出來都把七個平台列上去、預設「官網文章」→ 一定挖不到 → 報錯。
+ *    ② 錯誤訊息印在**整頁最上面**，他人在第三題的位置，訊息在畫面外 → 看起來就是沒反應。
+ *    修法：下拉只列這一版真的切得出來的段落（`draftAvailableSections`），
+ *    一個都切不出來就只剩「整篇全部」；訊息一律印在那張卡片裡（`say`）。
+ *    **以後在這一頁加任何會失敗的按鈕，訊息都要用 `say(t.id, …)`，不要用整頁那一行。**
  *
  * 從房產新聞按過來時網址帶 `?focus=<題的 id>`：那一筆會框起來、捲到畫面中間，
  * 而且狀態篩選會自動切到它所在的那一邊（不然剛完成的題按過來會「找不到」）。
@@ -42,7 +50,7 @@ import { COPYWRITER, PLATFORM_RULES, manualPrompt } from "@/config/copywriter";
 import { NEWS_REGION_LABEL, type NewsRegion } from "@/config/news";
 import { generateDraftAction, removeNewsTaskAction, saveManualDraftAction, setNewsTaskStatusAction } from "@/lib/actions/news";
 import { savePostAction } from "@/lib/actions/posts";
-import { analyzeDraft, draftSection, draftTitleCandidates, type DraftStats } from "@/lib/copywriter-text";
+import { analyzeDraft, countChars, draftAvailableSections, draftSection, draftTitleCandidates, type DraftStats } from "@/lib/copywriter-text";
 import {
   NEWS_LINES,
   NEWS_LINE_LABEL,
@@ -108,9 +116,19 @@ const preStyle: React.CSSProperties = {
 };
 
 /** 字數那一行：知識文章看每個平台有沒有超過上限；短影音看每版講幾秒。 */
-function StatsLine({ stats }: { stats: DraftStats }) {
+function StatsLine({ stats, text }: { stats: DraftStats; text: string }) {
   const base: React.CSSProperties = { marginRight: 14, whiteSpace: "nowrap" };
   if (stats.line === "article") {
+    // 一個平台段落都切不出來 ＝ 他只把其中一個平台的成品貼回來（很常見，不是壞掉）。
+    // 七行紅色「沒切出來」只會讓人以為系統爛了，改成一句話講清楚現在是什麼狀況。
+    if (!stats.platforms.some((p) => p.found)) {
+      return (
+        <p className={styles.msg} style={{ color: CIS.textMute, marginTop: 8, lineHeight: 1.9 }}>
+          這一版沒有分平台，整篇 {countChars(text)} 字 —— 看起來是只貼了其中一個平台的成品回來。
+          這樣照樣能用，「放到前台」會把整篇帶過去。想要七個平台各一版，就把 ChatGPT 的回答<b>整段</b>（含「## 平台名」那些行）貼回來。
+        </p>
+      );
+    }
     return (
       <p className={styles.msg} style={{ color: CIS.textMute, marginTop: 8, lineHeight: 1.9 }}>
         {stats.platforms.map((p) => (
@@ -141,12 +159,23 @@ function StatsLine({ stats }: { stats: DraftStats }) {
   );
 }
 
+/** 整篇文案原封不動放上去（下拉裡的「整篇全部」） */
+const ALL_SECTIONS = "__all__";
+
 /**
- * 「放到前台」預設帶哪一段。
- * 2026-09-25 起文案裡有專門給官網寫的「## 官網文章」（900～1500 字、【】小標），預設帶它。
- * 舊文案（那天以前存的）沒有這一段 —— 按下去會被擋下來、叫他改選 Facebook 那一版，不會壞。
+ * 「放到前台」預設帶哪一段 —— 只從**這一版真的切得出來**的段落裡挑。
+ *
+ * 2026-09-25 起文案裡有專門給官網寫的「## 官網文章」（900～1500 字、【】小標），有就用它；
+ * 沒有就退 Facebook（最像一篇文章）；再沒有就第一個有的；一個都沒有就整篇。
+ *
+ * 🔴 之前這裡是一個寫死的常數 "官網文章"。他只貼單一平台的成品回來時（那種文案連一行
+ *    `##` 都沒有），預設值永遠挖不到 → 按下去只會報錯 → 而錯誤訊息印在畫面外 →
+ *    他回報「按了沒反應」。預設值必須跟著文案走，不能寫死。
  */
-const DEFAULT_PUBLISH_SECTION = "官網文章";
+function defaultPublishSection(available: string[]): string {
+  if (available.length === 0) return ALL_SECTIONS;
+  return available.find((h) => h === "官網文章") ?? available.find((h) => h === "Facebook") ?? available[0];
+}
 
 function DraftPanel({
   task,
@@ -195,7 +224,7 @@ function DraftPanel({
           ⚠️ 這版被字數上限截斷了，結尾可能不完整；再寫一次通常會好。
         </p>
       )}
-      <StatsLine stats={stats} />
+      <StatsLine stats={stats} text={draft.content} />
 
       {/* 短影音那條線的產出是口播稿，不是給人讀的文章 —— 拍好之後走「影音」後台。
           知識文章的「放到前台」**不在這裡**，在上面那排按鈕裡（見檔頭）。 */}
@@ -228,7 +257,19 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
   const [pasteText, setPasteText] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [writingId, setWritingId] = useState<string | null>(null);
-  const [msg, setMsg] = useState<{ tone: ChipTone; text: string } | null>(null);
+  /** 目前那一行訊息，以及它屬於哪一題（訊息會印在那一張卡片裡，見 `say`） */
+  const [msg, setMsg] = useState<{ tone: ChipTone; text: string; taskId?: string } | null>(null);
+
+  /**
+   * 顯示一行訊息。**帶 taskId 的會印在那張卡片的按鈕底下**，沒帶的才印在整頁最上面。
+   *
+   * 🔴 2026-09-29：原本每一則訊息都只印在整頁最上面。他捲到第三題按「放到前台」，
+   *    失敗訊息印在畫面外，他看到的是「按了完全沒反應」，回報成按鈕壞掉。
+   *    這個專案第五次踩「東西在畫面外＝不存在」—— 訊息要出現在他手指的位置。
+   */
+  function say(taskId: string | null, tone: ChipTone, text: string) {
+    setMsg({ tone, text, taskId: taskId ?? undefined });
+  }
 
   // 剛從房產新聞按過來：捲到那一題
   useEffect(() => {
@@ -258,10 +299,10 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
     const r = await action();
     setBusyId(null);
     if (!r.ok) {
-      setMsg({ tone: "danger", text: r.error || "存檔失敗" });
+      say(id, "danger", r.error || "存檔失敗");
       return;
     }
-    setMsg({ tone: "success", text: doneText });
+    say(id, "success", doneText);
     startTransition(() => router.refresh());
   }
 
@@ -274,13 +315,13 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
     void run(t.id, () => removeNewsTaskAction(t.id), "已退回。");
   }
 
-  async function copyText(text: string, doneText: string) {
+  async function copyText(taskId: string, text: string, doneText: string) {
     try {
       await navigator.clipboard.writeText(text);
-      setMsg({ tone: "success", text: doneText });
+      say(taskId, "success", doneText);
       return true;
     } catch {
-      setMsg({ tone: "danger", text: "複製失敗，請手動選取。" });
+      say(taskId, "danger", "複製失敗，請手動選取。");
       return false;
     }
   }
@@ -289,7 +330,7 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
   async function copyPrompt(t: NewsTaskRecord) {
     const text = (t.news.content || t.news.summary || "").trim();
     if (!text) {
-      setMsg({ tone: "danger", text: "這則只有標題、沒抓到內文，寫不出東西。請開原文自己看。" });
+      say(t.id, "danger", "這則只有標題、沒抓到內文，寫不出東西。請開原文自己看。");
       return;
     }
     const prompt = manualPrompt(t.line, {
@@ -299,7 +340,7 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
       url: t.news.url,
       text: text.slice(0, COPYWRITER.MAX_SOURCE_CHARS),
     });
-    const ok = await copyText(prompt, "指令已複製。到 ChatGPT 貼上送出，寫好後整段複製，回來按「貼回結果」。");
+    const ok = await copyText(t.id, prompt, "指令已複製。到 ChatGPT 貼上送出，寫好後整段複製，回來按「貼回結果」。");
     if (ok) setPastingId(t.id);
   }
 
@@ -309,7 +350,7 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
     const r = await saveManualDraftAction(t.id, pasteText);
     setBusyId(null);
     if (!r.ok || !r.draft) {
-      setMsg({ tone: "danger", text: r.error || "存檔失敗" });
+      say(t.id, "danger", r.error || "存檔失敗");
       return;
     }
     const draft = r.draft;
@@ -317,24 +358,24 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
     setSelectedDraft((s) => ({ ...s, [t.id]: draft.id }));
     setPastingId(null);
     setPasteText("");
-    setMsg({ tone: "success", text: "存好了。字數是後台自己數的，看下面那一行有沒有超過。" });
+    say(t.id, "success", "存好了。字數是後台自己數的，看下面那一行有沒有超過。");
     startTransition(() => router.refresh());
   }
 
   /** 要錢那條路：直接呼叫 OpenAI。 */
   async function write(t: NewsTaskRecord) {
     setWritingId(t.id);
-    setMsg({ tone: "info", text: `自動寫稿中… ${model} 通常 20 到 50 秒，別關掉這一頁。` });
+    say(t.id, "info", `自動寫稿中… ${model} 通常 20 到 50 秒，別關掉這一頁。`);
     const r = await generateDraftAction(t.id);
     setWritingId(null);
     if (!r.ok || !r.draft) {
-      setMsg({ tone: "danger", text: r.error || "寫稿失敗" });
+      say(t.id, "danger", r.error || "寫稿失敗");
       return;
     }
     const draft = r.draft;
     setFreshDrafts((s) => [draft, ...s]);
     setSelectedDraft((s) => ({ ...s, [t.id]: draft.id }));
-    setMsg({ tone: "success", text: `寫好了，花 ${Math.max(1, Math.round(draft.ms / 1000))} 秒。` });
+    say(t.id, "success", `寫好了，花 ${Math.max(1, Math.round(draft.ms / 1000))} 秒。`);
     startTransition(() => router.refresh());
   }
 
@@ -347,15 +388,15 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
    * 標題優先用文案裡的「標題候選」第一個；沒有就用原新聞標題（他再自己改）。
    */
   async function publishToSite(t: NewsTaskRecord, d: NewsDraftRecord, section: string) {
-    let body = (section === "__all__" ? d.content : draftSection(d.content, section)).trim();
-    // 2026-09-25 以前存的文案沒有「## 官網文章」這一段。預設值挖不到就退回 Facebook 那版，
-    // 不要為了一個新預設值讓舊文案全部卡住；他自己明確選的平台挖不到才報錯。
-    if (!body && section === DEFAULT_PUBLISH_SECTION) body = draftSection(d.content, "Facebook").trim();
+    // 切不出任何平台段落的文案（他只貼了其中一版回來）→ 整篇就是那一版，直接用。
+    // 下拉那邊已經只留「整篇全部」，這裡是最後一道保險。
+    const body = (section === "__all__" || draftAvailableSections(d.content).length === 0 ? d.content : draftSection(d.content, section)).trim();
     if (!body) {
-      setMsg({
-        tone: "danger",
-        text: `這一版裡找不到「${section}」那一段（ChatGPT 可能沒照「## 平台名」的格式寫）。改選「整篇全部」，或到前台後台自己貼。`,
-      });
+      say(
+        t.id,
+        "danger",
+        `這一版裡找不到「${section}」那一段（ChatGPT 可能沒照「## 平台名」的格式寫）。改選「整篇全部」，或到前台後台自己貼。`,
+      );
       return;
     }
     setBusyId(t.id);
@@ -375,7 +416,7 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
     });
     setBusyId(null);
     if (!res.ok || !res.id) {
-      setMsg({ tone: "danger", text: res.error || "放不上去" });
+      say(t.id, "danger", res.error || "放不上去");
       return;
     }
     router.push(`/admin/posts?focus=${res.id}`);
@@ -384,6 +425,7 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
   function copySource(t: NewsTaskRecord) {
     const body = t.news.content || t.news.summary || "";
     void copyText(
+      t.id,
       `${t.news.title}\n${[t.news.source, shortStamp(t.news.publishedAt)].filter(Boolean).join(" · ")}\n${t.news.url}\n\n${body}`,
       "已複製標題、來源、連結與全文。",
     );
@@ -444,7 +486,8 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
         </a>
       </div>
 
-      {msg && (
+      {/* 沒綁到某一題的訊息才印在這裡；綁了題的會印在那張卡片裡（見 `say`）。 */}
+      {msg && !msg.taskId && (
         <p className={styles.msg} style={{ color: CHIP[msg.tone].color }}>
           {msg.text}
         </p>
@@ -470,6 +513,9 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
           /** 目前選的那一版文案（沒選就是最新那版）。沒有文案的話「放到前台」不給按。 */
           const latestDraft = list.find((d) => d.id === selectedDraft[t.id]) ?? list[0];
           const hasSource = !!(t.news.content || t.news.summary);
+          /** 這一版文案切得出來的平台段落；空的＝他只貼了單一平台的成品，整篇就是那一版 */
+          const sections = latestDraft ? draftAvailableSections(latestDraft.content) : [];
+          const publishTarget = publishSection[t.id] ?? defaultPublishSection(sections);
           return (
             <article
               key={t.id}
@@ -551,20 +597,22 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
                       知識文章才有；短影音的產出是口播稿，走 /admin/videos。 */}
                   {t.line === "article" ? (
                     <>
+                      {/* 只列這一版真的切得出來的段落。全部切不出來時就只剩「整篇全部」，
+                          按下去一定會成功 —— 下拉裡不該出現一按就失敗的選項。 */}
                       <select
                         className={styles.select}
                         style={{ ...fieldStyle, width: "auto", minHeight: 38, fontSize: 13 }}
-                        value={publishSection[t.id] ?? DEFAULT_PUBLISH_SECTION}
+                        value={publishTarget}
                         disabled={busy || !latestDraft}
-                        title="要把哪一個平台的版本放到前台"
+                        title={sections.length ? "要把哪一個平台的版本放到前台" : "這一版沒有分平台，整篇就是一版"}
                         onChange={(e) => setPublishSection((s) => ({ ...s, [t.id]: e.target.value }))}
                       >
-                        {PLATFORM_RULES.map((p) => (
+                        {PLATFORM_RULES.filter((p) => sections.includes(p.heading)).map((p) => (
                           <option key={p.key} value={p.heading}>
                             {p.heading} 那一版
                           </option>
                         ))}
-                        <option value="__all__">整篇全部</option>
+                        <option value={ALL_SECTIONS}>{sections.length ? "整篇全部" : "整篇全部（這版沒分平台）"}</option>
                       </select>
                       <button
                         type="button"
@@ -580,10 +628,7 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
                             ? "存成前台『房產消息』的草稿，跳過去潤稿、配封面圖，再按發佈"
                             : "要先有一版文案：複製指令 → 貼進 ChatGPT → 貼回結果"
                         }
-                        onClick={() =>
-                          latestDraft &&
-                          void publishToSite(t, latestDraft, publishSection[t.id] ?? DEFAULT_PUBLISH_SECTION)
-                        }
+                        onClick={() => latestDraft && void publishToSite(t, latestDraft, publishTarget)}
                       >
                         <Icon name="rocket" size={14} />
                         放到前台
@@ -603,6 +648,13 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
                     {writing ? "自動寫稿中…" : "自動派工（付費）"}
                   </button>
                 </div>
+
+                {/* 這一題的訊息就印在剛按的那排按鈕底下 —— 印在整頁最上面他看不到（見 `say`）。 */}
+                {msg?.taskId === t.id && (
+                  <p className={styles.msg} style={{ color: CHIP[msg.tone].color, marginTop: 8 }}>
+                    {msg.text}
+                  </p>
+                )}
 
                 {pasting && (
                   <div style={{ marginTop: 10, padding: "12px 14px", border: `1px solid ${CIS.blue}55`, borderRadius: 10, background: CIS.bgSoft }}>
@@ -685,7 +737,7 @@ export default function ContentQueue({ tasks, counts, drafts, configured, model,
                     list={list}
                     selectedId={selectedDraft[t.id]}
                     onSelect={(id) => setSelectedDraft((s) => ({ ...s, [t.id]: id }))}
-                    onCopy={(d) => void copyText(d.content, "已複製整份文案。")}
+                    onCopy={(d) => void copyText(t.id, d.content, "已複製整份文案。")}
                   />
                 )}
               </div>

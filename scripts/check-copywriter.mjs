@@ -140,6 +140,14 @@ ok(cands[0] === "第2戶房貸放寬到7成，換屋族先算這一筆", "標題
 ok(cands[1] === "央行連10凍，成數為什麼變了？", "1. 開頭的也收", cands[1], "央行連10凍…");
 ok(T.draftTitleCandidates("## Facebook\n沒有標題候選") .length === 0, "沒有標題候選段回空陣列", T.draftTitleCandidates("## Facebook\n沒有標題候選").length, 0);
 
+// 2026-09-29「按放到前台沒反應」的根因：他只貼了其中一個平台的成品回來，整篇連一行 ## 都沒有，
+// 而下拉照樣列七個平台、預設「官網文章」→ 一定挖不到。下拉現在只能列這裡回傳的東西。
+const avail = T.draftAvailableSections(sample);
+ok(avail.join(",") === "YouTube,Facebook", "只回真的切得出來的平台", avail.join(","), "YouTube,Facebook");
+const plain = "買氣都冷成這樣了，為什麼有些房價還是不降？🏠\n\n這可能是最近正在看房的人，最有感的一件事。";
+ok(T.draftAvailableSections(plain).length === 0, "沒有 ## 的整篇文案 → 空陣列（下拉只剩整篇全部）", T.draftAvailableSections(plain).length, 0);
+ok(T.analyzeDraft("article", plain).platforms.every((p) => !p.found), "同一篇：七個平台都 found=false", "全 false", "全 false");
+
 if (process.argv.includes("--live")) {
   console.log("=== I 真的叫一次 OpenAI（短影音）===");
   const L = await import("../src/lib/copywriter.ts");

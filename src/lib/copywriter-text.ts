@@ -74,6 +74,21 @@ export function draftSection(text: string, heading: string): string {
 }
 
 /**
+ * 這一版文案實際切得出哪幾個平台的段落（「放到前台」的下拉用）。
+ *
+ * 回空陣列＝一個平台段落都沒有。那不是壞掉，是他只把 ChatGPT 其中**一個**
+ * 平台的成品貼回來（2026-09-25 的兩版就是這樣：796 字、871 字，連一行 `##` 都沒有）。
+ * 這種文案整篇就是那一版，下拉只留「整篇全部」。
+ *
+ * 🔴 下拉一定要照這個結果長。之前不管切不切得出來都把七個平台列上去，
+ *    他選了預設的「官網文章」按下去 → 挖不到 → 報錯 → 而錯誤訊息印在整頁最上面、
+ *    在畫面外 → 他看到的是「按了沒反應」。選項本身就不該讓人選到一定失敗的東西。
+ */
+export function draftAvailableSections(text: string): string[] {
+  return PLATFORM_RULES.filter((p) => draftSection(text, p.heading)).map((p) => p.heading);
+}
+
+/**
  * 「## 標題候選」那一段列出來的標題（最多 3 個）。
  *
  * 模型寫成 `- 標題`、`1. 標題`、`* 標題` 都收；沒有那一段就回空陣列。
