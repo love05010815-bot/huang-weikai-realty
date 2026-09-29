@@ -3454,6 +3454,44 @@ export const COORDS: Record<string, Coord> = {
   "fuanju": { lat: 24.27652, lng: 120.56154, precision: "exact" }, // 富安居
   "weixiao-zhenmei": { lat: 24.27696, lng: 120.56272, precision: "exact" }, // 微笑臻美
   "jiuchao-diancang": { lat: 24.27642, lng: 120.56293, precision: "exact" }, // 玖晁典藏
+  /* ── 2026-09-29 他用 /map?fix=1 親手點的 19 案 ──
+     核對過：id 全部存在、案名與註解相符、precision 全 exact、本批不重複、沒有覆蓋既有座標。
+     30 公尺內只有一對鄰居：時間之旅華廈區 ↔ 透天區 29 m（同一案拆兩筆，本來就該貼在一起）。
+
+     🔵 清水市區 15 筆全部落在清水市區色塊內，只有久旺帝堡5 露出邊界 **11 公尺** —— 那是雜訊，不動。
+
+     🔴 **梧棲那 4 筆全部落在梧棲市區色塊外，而且不在任何色塊裡** ——
+        御墅青安 168 m、御墅大境 281 m、綠園臻品8 865 m、綠園臻品9 896 m（都在色塊南邊）。
+        綠園臻品那兩筆離最近的三塊（關連工業區 817/827、梧棲市區 865/896、沙鹿火車站 918/923）
+        幾乎等距，是三塊之間的空隙。
+        ⚠️ **這四案正好就是他寫「梧棲區」而不是「梧棲市區」的那四案**（9/18 御墅青安、9/19 其餘三案），
+        當初存進梧棲市區時就標了「他寫梧棲區、先放梧棲市區、等座標來驗」—— 現在座標驗出來是不合。
+        **area 沒有動、等他決定**：梧棲區底下目前只有「梧棲市區」商圈與「梧棲」（重劃區）兩個值，
+        沒有像龍井那樣的收容區。三條路（都要他點頭，不准自己挑）：
+          ① 比照龍井開一個「梧棲區」收容區（沒有色塊，ZONE_BY_AREA 給 null）；
+          ② 把梧棲市區色塊往南拉到蓋住這四案；
+          ③ 就讓圖釘露在色塊外 —— 但他 8/28 拍板的「圖釘露在色塊外不是 bug」講的是**官方界線**，
+             梧棲市區這塊是他自己手繪的商圈，不適用那一條。
+     🔵 座標本身先寫進來是安全的：COORDS 用 id 當 key、跟 area 無關，他之後改哪一區都不用重點。 */
+  "yushu-qingan": { lat: 24.23891, lng: 120.53338, precision: "exact" }, // 御墅青安
+  "yushu-dajing": { lat: 24.239, lng: 120.53464, precision: "exact" }, // 御墅大境
+  "lvyuan-zhenpin-9": { lat: 24.23358, lng: 120.53814, precision: "exact" }, // 綠園臻品9
+  "lvyuan-zhenpin-8": { lat: 24.23401, lng: 120.53822, precision: "exact" }, // 綠園臻品8
+  "jiuwang-dibao-5": { lat: 24.28173, lng: 120.55515, precision: "exact" }, // 久旺帝堡5
+  "wuquan-zhenzuan": { lat: 24.27598, lng: 120.55896, precision: "exact" }, // 五權真鑽
+  "deyu-shidai-chuanjia": { lat: 24.28031, lng: 120.56105, precision: "exact" }, // 德育世代傳家
+  "fengsheng-fuhua-2": { lat: 24.2799, lng: 120.56189, precision: "exact" }, // 豐陞馥華2
+  "lidong-fengcai": { lat: 24.26953, lng: 120.57448, precision: "exact" }, // 立東峰采
+  "aofeng-shengjing": { lat: 24.26942, lng: 120.57408, precision: "exact" }, // 鰲峰盛景
+  "aofeng-shuizhan": { lat: 24.27015, lng: 120.57231, precision: "exact" }, // 鰲峰水棧
+  "qingshangqing": { lat: 24.28089, lng: 120.56697, precision: "exact" }, // 清上青
+  "fuyu-shiguang": { lat: 24.28022, lng: 120.56652, precision: "exact" }, // 富宇蒔光
+  "shijian-zhilv-huaxia": { lat: 24.27989, lng: 120.56555, precision: "exact" }, // 時間之旅華廈區
+  "shijian-zhilv-toutian": { lat: 24.27998, lng: 120.56528, precision: "exact" }, // 時間之旅透天區
+  "lvhuo-shiguang": { lat: 24.28048, lng: 120.56484, precision: "exact" }, // 綠活蒔光
+  "yushujia-8": { lat: 24.28034, lng: 120.564, precision: "exact" }, // 御墅家8
+  "renli-senguan": { lat: 24.27923, lng: 120.57013, precision: "exact" }, // 仁里森觀
+  "tiandishang": { lat: 24.27854, lng: 120.56851, precision: "exact" }, // 天地賞
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
