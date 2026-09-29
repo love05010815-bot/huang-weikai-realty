@@ -163,6 +163,16 @@ export function classifyRegion(item: Pick<FetchedNews, "title" | "summary" | "co
  *      要嘛沒有 `unless` 裡的記號（只用在央行／理監事：沒提到外國央行就當台灣央行）。
  *      少了這一關，講日本央行升息的股匯市新聞一天會灌進 70 幾則。
  */
+/**
+ * 「一定不是房產新聞」的詞，標題或摘要有一個就擋。跟 `isHousingNews` 分開兩支——
+ * 這關**不看 requireTopic**，連本身不另外判斷相關性的房產專區 RSS（`feed.filter: false`）
+ * 也要擋，所以呼叫端要在 `requireTopic` 判斷之前、無條件先過這一關。見 `NEWS_CONFIG.excludeTerms`。
+ */
+export function isExcludedNews(title: string, summary: string): boolean {
+  const head = `${title} ${summary}`;
+  return (NEWS_CONFIG.excludeTerms as readonly string[]).some((t) => head.includes(t));
+}
+
 export function isHousingNews(title: string, summary: string): boolean {
   const head = `${title} ${summary}`;
   const terms: readonly string[] = [...NEWS_CONFIG.housingTerms, ...NEWS_CONFIG.topicTerms];
@@ -265,6 +275,9 @@ export async function collectNews(log: LogFn): Promise<CollectResult> {
       const t = Date.parse(item.publishedAt.replace(" ", "T") + "+08:00");
       if (!Number.isNaN(t) && t < now - days * 86_400_000) return "old";
     }
+    // 裝修設計這類「一定不是房產新聞」的擋在最前面，不管 requireTopic ——
+    // 房產專區 RSS（requireTopic=false）也可能混進案例展示或風格特輯。
+    if (isExcludedNews(item.title, item.summary)) return "irrelevant";
     if (requireTopic && !isHousingNews(item.title, item.summary)) return "irrelevant";
     item.region = classifyRegion(item);
     const key = normalizeTitle(item.title);
