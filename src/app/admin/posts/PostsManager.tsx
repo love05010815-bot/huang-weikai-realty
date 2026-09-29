@@ -44,10 +44,16 @@ import {
 } from "@/lib/posts";
 import { postCharCount, postExcerpt } from "@/lib/posts-text";
 import { uploadPhotos } from "@/lib/photo-upload-client";
+import type { PostViewStats } from "@/lib/post-views";
 import styles from "@/app/admin/listings/listings-admin.module.css";
 import nw from "@/app/news/news.module.css";
 
-type Props = { initial: PostRecord[]; focus: string | null };
+type Props = {
+  initial: PostRecord[];
+  focus: string | null;
+  /** 👁 每篇文章的點閱次數。讀不到時是空物件，每一列顯示 0，不是錯誤 */
+  viewStats: PostViewStats;
+};
 
 type FormState = {
   category: PostCategory;
@@ -104,7 +110,7 @@ function toForm(row: PostRecord): FormState {
   };
 }
 
-export default function PostsManager({ initial, focus }: Props) {
+export default function PostsManager({ initial, focus, viewStats }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY);
@@ -684,6 +690,37 @@ export default function PostsManager({ initial, focus }: Props) {
                   {row.publishedAt.slice(0, 10)}
                   　·　/news/{row.slug}
                   {row.taskId ? "　·　來自待產文案" : ""}
+                </div>
+
+                {/* 👁 點閱次數。算的是「打開這篇內頁」，不是「在列表看到卡片」——
+                    版型跟精選好案的點擊統計、影音的播放次數一致（總數大字、近 7 天小字），
+                    只是這裡只有一個指標，所以用單欄那個 class（見 post-views.ts）。 */}
+                <div
+                  className={`${styles.clickStats} ${styles.clickStatsSingle}`}
+                  style={{ borderColor: CIS.cardBorder }}
+                >
+                  {(() => {
+                    const stat = viewStats[row.id];
+                    const total = stat?.total ?? 0;
+                    const recent = stat?.recent ?? 0;
+                    return (
+                      <div className={styles.clickCell}>
+                        <div className={styles.clickLabel} style={{ color: CIS.textMute }}>
+                          點閱次數
+                        </div>
+                        <div
+                          className={styles.clickValue}
+                          style={{ color: total > 0 ? "#60a5fa" : CIS.textMute }}
+                        >
+                          {total}
+                          <span className={styles.clickUnit}>人次</span>
+                        </div>
+                        <div className={styles.clickRecent} style={{ color: CIS.textMute }}>
+                          近 7 天 {recent}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <p className={styles.points} style={{ listStyle: "none", paddingLeft: 0, color: CIS.textSub }}>

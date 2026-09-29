@@ -17,6 +17,7 @@ import { CIS } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
 import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
 import { listAllPosts, type PostRecord } from "@/lib/posts";
+import { getPostViewStats, type PostViewStats } from "@/lib/post-views";
 import PostsManager from "./PostsManager";
 import styles from "@/app/admin/listings/listings-admin.module.css";
 
@@ -42,6 +43,11 @@ export default async function PostsAdminPage({ searchParams }: { searchParams: P
   } catch (e) {
     loadError = e instanceof Error ? e.message : String(e);
   }
+
+  // 👁 點閱次數。`getPostViewStats()` 自己就會吞掉錯誤回空物件 ——
+  //    統計是附加資訊，它壞掉不該讓整個後台打不開（跟前台同一個原則）。
+  //    所以這裡不用再包 try，拿到空物件時每一列顯示 0，不會是白畫面。
+  const viewStats: PostViewStats = await getPostViewStats();
 
   return (
     <main className={styles.page} style={{ background: CIS.bg, color: CIS.text, fontFamily: CIS.font }}>
@@ -69,7 +75,7 @@ export default async function PostsAdminPage({ searchParams }: { searchParams: P
           </div>
         ) : null}
 
-        <PostsManager initial={rows} focus={focus} />
+        <PostsManager initial={rows} focus={focus} viewStats={viewStats} />
       </div>
     </main>
   );

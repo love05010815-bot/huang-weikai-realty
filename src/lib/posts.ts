@@ -463,4 +463,8 @@ export async function setPostPinned(id: string, pinned: boolean): Promise<void> 
  */
 export async function deletePost(id: string): Promise<void> {
   await withSchema(() => db.$executeRawUnsafe("DELETE FROM site_post WHERE id = ?", id));
+
+  // 點閱紀錄一起清掉，不要留孤兒資料
+  const { deletePostViews } = await import("@/lib/post-views");
+  await deletePostViews(id);
 }

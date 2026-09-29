@@ -20,6 +20,7 @@ import SiteNav from "@/app/_ui/SiteNav";
 import SiteFooter from "@/app/_ui/SiteFooter";
 import SocialLinks from "@/app/_ui/SocialLinks";
 import PostBody from "@/app/_ui/PostBody";
+import PostViewBeacon from "./PostViewBeacon";
 import styles from "@/app/home.module.css";
 import nw from "../news.module.css";
 
@@ -109,6 +110,7 @@ export default async function NewsPostPage({ params }: { params: Promise<Params>
 
   return (
     <div className={styles.page}>
+      <PostViewBeacon postId={post.id} />
       <header className={styles.header}>
         <div className={styles.navWrap}>
           <Link href="/" className={styles.brand}>
