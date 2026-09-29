@@ -28,6 +28,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: SITE_URL + "/about", lastModified, changeFrequency: "monthly", priority: 0.8 },
     // 2026-09-29 買房流程與費用。「買房流程」「過戶流程」是買方族群常搜的字
     { url: SITE_URL + "/buy", lastModified, changeFrequency: "monthly", priority: 0.8 },
+    // 2026-09-29 賣房流程與費用。「賣房要繳什麼稅」「土地增值稅」是賣方族群常搜的字
+    { url: SITE_URL + "/sell", lastModified, changeFrequency: "monthly", priority: 0.8 },
     { url: SITE_URL + "/listings", lastModified, changeFrequency: "weekly", priority: 0.8 },
     // 稅費試算是很強的搜尋入口（「房地合一稅試算」搜尋量高），優先度給高一點
     { url: SITE_URL + "/tax", lastModified, changeFrequency: "monthly", priority: 0.9 },

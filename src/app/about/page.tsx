@@ -156,7 +156,8 @@ export default function AboutPage() {
             {/* 2026-09-29 買房流程與費用頁上線，從這裡帶過去——想買房的人看完自我介紹，
                 下一步通常是想知道「實際上要準備什麼」，比直接跳去預約更順 */}
             <p className={styles.sectionDesc}>
-              準備買房了嗎？先看看<Link href="/buy">買房流程與費用一次看懂</Link>，心裡有個底。
+              準備買房或賣房了嗎？先看看<Link href="/buy">買房流程與費用</Link>或
+              <Link href="/sell">賣房流程與費用</Link>，心裡有個底。
             </p>
             <Link className={`${styles.btn} ${styles.btnPrimary}`} href="/card/booking">
               線上預約諮詢

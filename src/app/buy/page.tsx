@@ -255,6 +255,10 @@ export default function BuyPage() {
               確切數字請以個案實際計算與合約內容為準。稅費相關法規如有異動，也會影響上述比例。
             </p>
 
+            <p className={buy.crossLink}>
+              要賣房？<Link href="/sell">看賣房流程與費用 →</Link>
+            </p>
+
             <div className={`${styles.center} ${styles.aboutBlock}`}>
               <Link className={`${styles.btn} ${styles.btnPrimary}`} href="/card/booking">
                 有問題想先問清楚？線上預約諮詢

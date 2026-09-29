@@ -131,6 +131,24 @@
   color: var(--ink);
 }
 
+/* /buy ↔ /sell 互相帶過去的一句話（買方看完常會問「那賣的呢」） */
+.crossLink {
+  margin: 18px 0 0;
+  text-align: center;
+  font-size: 14.5px;
+  color: var(--muted);
+}
+
+.crossLink a {
+  color: var(--primary);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.crossLink a:hover {
+  text-decoration: underline;
+}
+
 .backLink {
   display: inline-block;
   margin-top: 28px;
