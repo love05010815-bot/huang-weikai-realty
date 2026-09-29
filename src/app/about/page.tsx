@@ -153,6 +153,11 @@ export default function AboutPage() {
 
           {/* 看完關於我，下一步就是約時間 —— 不要讓這頁變成死路 */}
           <div className={`${styles.container} ${styles.center} ${styles.aboutBlock}`}>
+            {/* 2026-09-29 買房流程與費用頁上線，從這裡帶過去——想買房的人看完自我介紹，
+                下一步通常是想知道「實際上要準備什麼」，比直接跳去預約更順 */}
+            <p className={styles.sectionDesc}>
+              準備買房了嗎？先看看<Link href="/buy">買房流程與費用一次看懂</Link>，心裡有個底。
+            </p>
             <Link className={`${styles.btn} ${styles.btnPrimary}`} href="/card/booking">
               線上預約諮詢
             </Link>
