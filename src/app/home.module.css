@@ -943,7 +943,47 @@
 .serviceCard p {
   font-size: 14.5px;
   color: var(--muted);
-  margin: 0;
+  margin: 0 0 16px;
+}
+
+/* 2026-09-29 卡片改成直向 flex：買賣／租賃多了「買方流程」入口之後會比別張高，
+   英文標籤用 margin-top:auto 一律貼在卡片底部，五張卡的標籤才會對齊在同一條線上。
+   flex 直欄會把子元素撐滿寬度，藥丸要 align-self:flex-start 才會維持只包住文字。 */
+.serviceCard {
+  display: flex;
+  flex-direction: column;
+}
+
+.serviceCard .tag {
+  margin-top: auto;
+  align-self: flex-start;
+}
+
+/* 流程入口（買方流程／之後的賣方流程）。做成外框藥丸，跟下面淡底的英文標籤分得開：
+   一個是可以點的動作、一個是裝飾用的分類字。 */
+.serviceLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.serviceLink {
+  display: inline-block;
+  border: 1.5px solid var(--primary);
+  color: var(--primary);
+  background: #fff;
+  font-size: 13.5px;
+  font-weight: 800;
+  padding: 7px 14px;
+  border-radius: 999px;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.serviceLink:hover {
+  background: var(--primary);
+  color: #fff;
 }
 
 .tag {

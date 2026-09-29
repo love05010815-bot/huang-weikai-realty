@@ -87,6 +87,12 @@ const SERVICES = [
     title: "買賣／租賃",
     desc: "買、賣、出租、找租屋都能處理。從帶看議價到過戶點交，每一步先說清楚。",
     tag: "Sales & Leasing",
+    /**
+     * 2026-09-29 系統擁有者指定：買房流程頁（/buy）的入口放在這張卡，標成「買方流程」。
+     * 之後賣方那半做好就在這裡再加一顆 { label: "賣方流程", href: "/sell" }。
+     * 這個欄位只有這張卡有；JSON-LD 的 makesOffer 只讀 title，不受影響。
+     */
+    links: [{ label: "買方流程", href: "/buy" }],
   },
   {
     icon: "💰",
@@ -498,6 +504,19 @@ export default async function HomePage() {
                   <div className={styles.serviceIcon}>{service.icon}</div>
                   <h3>{service.title}</h3>
                   <p>{service.desc}</p>
+                  {/* 有 links 的卡（目前只有買賣／租賃）在說明下面放流程入口。
+                      ⚠️ 不能學 TOOLS 寫 `"links" in service`：TS 推陣列字面值時會把別張卡
+                      補成 `links?: undefined`，`in` 收不窄、.map 會報「可能是 undefined」。
+                      用真值判斷才收得到陣列。 */}
+                  {service.links ? (
+                    <div className={styles.serviceLinks}>
+                      {service.links.map((l) => (
+                        <Link key={l.href} className={styles.serviceLink} href={l.href}>
+                          {l.label} →
+                        </Link>
+                      ))}
+                    </div>
+                  ) : null}
                   <span className={styles.tag}>{service.tag}</span>
                 </div>
               ))}
