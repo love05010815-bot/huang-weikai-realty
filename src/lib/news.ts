@@ -38,6 +38,7 @@ import {
   countByRegion,
   enrichNews,
   fetchArticleByUrl,
+  isExcludedHost,
   normalizeTitle,
   reclassifyWithContent,
   taipeiStamp,
@@ -547,6 +548,9 @@ export async function addNewsFromText(rawUrl: string, title: string, text: strin
     source = new URL(url).hostname.replace(/^www\./, "");
   } catch {
     throw new Error("這不是一個看得懂的網址。");
+  }
+  if (isExcludedHost(url)) {
+    throw new Error(`${source} 整站是作品集不是新聞，這個工具不收這類連結。`);
   }
 
   const item: FetchedNews = {

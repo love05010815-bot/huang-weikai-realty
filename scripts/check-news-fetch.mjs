@@ -104,6 +104,25 @@ ok(NF.extractTitle(page) === "青埔都市發展關鍵拼圖 亞矽創研中心�
 ok(NF.extractSource(page, "https://money.udn.com/a") === "經濟日報", "og:site_name 當來源", NF.extractSource(page, "https://money.udn.com/a"), "經濟日報");
 ok(NF.extractPublishedAt(page) === "2026-09-17 17:12:00", "屬性順序反過來也讀得到時間", NF.extractPublishedAt(page), "2026-09-17 17:12:00");
 ok(NF.extractSource("<html></html>", "https://www.watchmedia01.com/x") === "watchmedia01.com", "沒 og 就用網域", NF.extractSource("<html></html>", "https://www.watchmedia01.com/x"), "watchmedia01.com");
+
+// 2026-09-29 查一篇 2018 年的 SETN 舊聞才發現：完全沒有 article:published_time／<time>，
+// 日期只放在 JSON-LD 裡，之前這裡完全沒看，抓出來的 publishedAt 是 null（會被誤判成剛抓到的新聞）。
+const ldPage = `<html><head><script type="application/ld+json">{"@context":"https://schema.org","@type":"NewsArticle","headline":"測試標題","datePublished":"2018-10-29 13:37 +00:00","dateModified":"2018-10-29 13:37 +00:00"}</script></head><body></body></html>`;
+ok(NF.extractPublishedAt(ldPage) === "2018-10-29 21:37:00", "沒有 meta／<time>，JSON-LD 的 datePublished 也要挖得到（UTC 轉台北 +8）", NF.extractPublishedAt(ldPage), "2018-10-29 21:37:00");
+const ldGraphPage = `<html><head><script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite"},{"@type":"NewsArticle","datePublished":"2026-01-05T08:00:00+08:00"}]}</script></head></html>`;
+ok(NF.extractPublishedAt(ldGraphPage) === "2026-01-05 08:00:00", "@graph 包住的 JSON-LD 也要挖得到", NF.extractPublishedAt(ldGraphPage), "2026-01-05 08:00:00");
+ok(NF.extractPublishedAt(`<html><head><script type="application/ld+json">not json</script></head></html>`) === null, "JSON-LD 壞掉不能讓整支炸掉", NF.extractPublishedAt(`<html><head><script type="application/ld+json">not json</script></head></html>`), "null");
+
+console.log("=== G2 整站排除（網域） ===");
+// 2026-09-29 他回報一條 100.com.tw 的作品集連結：標題是「台中23坪3房現代風｜臥室｜
+// 台中清水 | 遠雄之星・里紳系統家具」，沒有「裝潢／裝修／室內設計／翻修」這幾個字，
+// excludeTerms 抓不到；查資料庫發現候選清單已經堆了 98 則這個網站的案例展示。
+// 整站都是作品集，直接擋網域，不追關鍵字。
+ok(NF.isExcludedHost("https://www.100.com.tw/works/25089?id=603572") === true, "100.com.tw 作品集網站 → 擋", NF.isExcludedHost("https://www.100.com.tw/works/25089?id=603572"), "true");
+ok(NF.isExcludedHost("https://100.com.tw/x") === true, "沒有 www. 也擋得到", NF.isExcludedHost("https://100.com.tw/x"), "true");
+ok(NF.isExcludedHost("https://www.setn.com/news/448841") === false, "setn.com 是正常新聞來源 → 不擋", NF.isExcludedHost("https://www.setn.com/news/448841"), "false");
+ok(NF.isExcludedHost("https://house.ettoday.net/news/123") === false, "ETtoday房產雲 → 不擋", NF.isExcludedHost("https://house.ettoday.net/news/123"), "false");
+ok(NF.isExcludedHost("不是網址") === false, "壞網址不能讓整支炸掉", NF.isExcludedHost("不是網址"), "false");
 ok(NF.extractTitle("<html><head><title>台中10大中古屋熱區 - 觀傳媒</title></head></html>") === "台中10大中古屋熱區", "退回 <title> 也剝站名", NF.extractTitle("<html><head><title>台中10大中古屋熱區 - 觀傳媒</title></head></html>"), "台中10大中古屋熱區");
 ok(NF.extractTitle("<html><head><title>房市 | 房價</title></head></html>") === "房市 | 房價", "太短就不剝（免得吃掉真標題）", NF.extractTitle("<html><head><title>房市 | 房價</title></head></html>"), "房市 | 房價");
 ok(NF.extractPublishedAt("<html><body><time datetime='2026-09-18T07:54:36+08:00'>今天</time></body></html>") === "2026-09-18 07:54:36", "沒 meta 就看 <time>", NF.extractPublishedAt("<html><body><time datetime='2026-09-18T07:54:36+08:00'>今天</time></body></html>"), "2026-09-18 07:54:36");

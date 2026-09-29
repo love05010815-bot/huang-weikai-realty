@@ -173,6 +173,21 @@ export function isExcludedNews(title: string, summary: string): boolean {
   return (NEWS_CONFIG.excludeTerms as readonly string[]).some((t) => head.includes(t));
 }
 
+/**
+ * 「這整個網站都不是新聞」的網域，看網址就擋，不看標題寫什麼。
+ * 跟 `isExcludedNews` 互補：關鍵字擋得住「講到裝修的新聞」，擋不住「網站整站
+ * 都是作品集、用詞每次不一樣」——後者要看網域。見 `NEWS_CONFIG.excludeHosts`。
+ */
+export function isExcludedHost(url: string): boolean {
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  return (NEWS_CONFIG.excludeHosts as readonly string[]).some((h) => host === h || host.endsWith(`.${h}`));
+}
+
 export function isHousingNews(title: string, summary: string): boolean {
   const head = `${title} ${summary}`;
   const terms: readonly string[] = [...NEWS_CONFIG.housingTerms, ...NEWS_CONFIG.topicTerms];
@@ -275,6 +290,9 @@ export async function collectNews(log: LogFn): Promise<CollectResult> {
       const t = Date.parse(item.publishedAt.replace(" ", "T") + "+08:00");
       if (!Number.isNaN(t) && t < now - days * 86_400_000) return "old";
     }
+    // 整站都不是新聞的網域，先擋（看網址，不看標題），再看關鍵字 ——
+    // 有些網域 Google 給的來源名稱、標題用詞每次不一樣，關鍵字追不完。
+    if (isExcludedHost(item.url)) return "irrelevant";
     // 裝修設計這類「一定不是房產新聞」的擋在最前面，不管 requireTopic ——
     // 房產專區 RSS（requireTopic=false）也可能混進案例展示或風格特輯。
     if (isExcludedNews(item.title, item.summary)) return "irrelevant";
@@ -487,8 +505,44 @@ export function extractSource(html: string, url: string): string {
   }
 }
 
-/** 發布時間：各家 meta 名稱不一，挑第一個解得出來的。 */
+/**
+ * 挑第一個看得懂的 JSON-LD `datePublished`（單一物件、陣列、或 `@graph` 包住的都要找得到）。
+ *
+ * 2026-09-29 查一篇 SETN 舊聞才發現：這篇完全沒有 `article:published_time`
+ * 這類 meta，也沒有 `<time datetime>`，但頁面自己的 JSON-LD 裡好好放著
+ * `"datePublished": "2018-10-29 13:37 +00:00"`——現代新聞網站常把日期放
+ * 結構化資料，不放傳統 meta，之前完全沒看這裡，撈到的日期比想像中少。
+ */
+function extractJsonLdDate(html: string): string | null {
+  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html))) {
+    let data: unknown;
+    try {
+      data = JSON.parse(m[1]);
+    } catch {
+      continue;
+    }
+    const top = Array.isArray(data) ? data : [data];
+    for (const node of top) {
+      const graphField = node && typeof node === "object" ? (node as Record<string, unknown>)["@graph"] : undefined;
+      const candidates = Array.isArray(graphField) ? graphField : [node];
+      for (const c of candidates) {
+        const raw = c && typeof c === "object" ? (c as Record<string, unknown>).datePublished : undefined;
+        if (typeof raw === "string" && raw.trim()) {
+          const parsed = parseDateToTaipei(raw);
+          if (parsed) return parsed;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/** 發布時間：JSON-LD 的 datePublished 最結構化，其次各家 meta 名稱不一，挑第一個解得出來的。 */
 export function extractPublishedAt(html: string): string | null {
+  const ld = extractJsonLdDate(html);
+  if (ld) return ld;
   for (const key of ["article:published_time", "pubdate", "publishdate", "date", "og:published_time"]) {
     const raw = metaContent(html, key);
     const parsed = raw ? parseDateToTaipei(raw) : null;
@@ -520,6 +574,9 @@ export async function fetchArticleByUrl(raw: string): Promise<FetchedNews> {
   const host = target.hostname.toLowerCase();
   if (NEWS_CONFIG.blockedHosts.some((h) => host === h || host.endsWith(`.${h}`))) {
     throw new BlockedHostError(`${host} 不允許程式自動抓取，請改用「貼內文」把文字自己貼進來。`);
+  }
+  if (isExcludedHost(input)) {
+    throw new Error(`${host} 整站是作品集不是新聞，這個工具不收這類連結。`);
   }
 
   // Google 新聞的連結先解回原文，不然抓到的是轉址頁
