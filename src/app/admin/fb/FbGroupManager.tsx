@@ -597,6 +597,20 @@ export default function FbGroupManager({
     setGroups((prev) => prev.map((g) => (!g.identityIds || g.identityIds.length === 0 ? { ...g, identityIds: [id] } : g)));
     showToast(`已把 ${n} 個社團標給「${who}」`, "ok");
   }
+  // 反過來：把某個身分從所有社團拿掉——標錯時用（例如 FB 沒切成粉專身分就抓，把帳號的社團整批標給了粉專），
+  // 一次清掉再重抓，不用 33 個一個一個取消勾。
+  const taggedWithBulk = bulkTagIdentity ? groups.filter((g) => (g.identityIds || []).includes(bulkTagIdentity.id)) : [];
+  function bulkUntag() {
+    if (!bulkTagIdentity || !taggedWithBulk.length) return;
+    const who = bulkTagIdentity.name || "(未命名)";
+    const n = taggedWithBulk.length;
+    const willBeBlank = taggedWithBulk.filter((g) => (g.identityIds || []).length === 1).length;
+    const warn = willBeBlank ? `\n\n其中 ${willBeBlank} 個拿掉後就沒標任何身分＝每個身分底下都會出現。要分開的話，先把它們標給別的身分再拿掉。` : "";
+    if (!confirm(`把「${who}」從 ${n} 個社團拿掉？${warn}`)) return;
+    const id = bulkTagIdentity.id;
+    setGroups((prev) => prev.map((g) => ((g.identityIds || []).includes(id) ? { ...g, identityIds: (g.identityIds || []).filter((x) => x !== id) } : g)));
+    showToast(`已把「${who}」從 ${n} 個社團拿掉`, "ok");
+  }
 
   // ── 發佈 ──
   const [pubAdId, setPubAdId] = useState<string>("");
@@ -1026,8 +1040,8 @@ export default function FbGroupManager({
                   </select>
                 </div>
                 <p className={styles.hint}>
-                  FB 的「你的社團」列的是<b>現在登入的那個帳號</b>加入的社團，不同帳號加入的不一樣——抓之前先確認 Chrome 登入的就是這個身分的帳號。
-                  標好以後，發佈頁切到哪個身分就只會列它的社團，不會整批都跑出來。
+                  FB 的「你的社團」列的是<b>現在用的那個身分</b>加入的社團：帳號跟粉專的清單不一樣。要抓<b>粉專</b>的社團，先在 Facebook 右上角把個人檔案切換成那個粉專再按抓取；
+                  要抓<b>帳號</b>的，切回個人帳號再抓。標好以後，發佈頁切到哪個身分就只會列它的社團，不會整批都跑出來。
                 </p>
               </>
             ) : scanIdentity ? (
@@ -1143,9 +1157,9 @@ export default function FbGroupManager({
               「啟用」關掉的社團不會出現在發佈頁的預設勾選。名稱與備註可直接改。
               {identities.length > 1 && <> 「哪個身分」勾起來，這個社團就只在那些身分底下出現；<b>都不勾＝每個身分都會出現</b>。</>}
             </p>
-            {identities.length > 1 && untaggedGroups.length > 0 && (
+            {identities.length > 1 && (
               <div className={styles.impRow}>
-                <span className={styles.hint}>沒標身分的 {untaggedGroups.length} 個全部標給：</span>
+                <span className={styles.hint}>批次標身分：</span>
                 <select className={styles.input} value={bulkTagIdentity?.id || ""} onChange={(e) => setBulkTagPick(e.target.value)}>
                   {identities.map((i) => (
                     <option key={i.id} value={i.id}>
@@ -1153,8 +1167,11 @@ export default function FbGroupManager({
                     </option>
                   ))}
                 </select>
-                <button type="button" className={styles.btnSm} onClick={bulkTagUntagged}>
-                  標上去
+                <button type="button" className={styles.btnSm} onClick={bulkTagUntagged} disabled={!untaggedGroups.length}>
+                  沒標身分的 {untaggedGroups.length} 個標給它
+                </button>
+                <button type="button" className={styles.btnSm} onClick={bulkUntag} disabled={!taggedWithBulk.length}>
+                  從 {taggedWithBulk.length} 個社團拿掉它
                 </button>
               </div>
             )}
