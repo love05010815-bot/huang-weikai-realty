@@ -407,6 +407,71 @@ export default async function HomePage() {
           </div>
         </section>
 
+        {/* ---------------- 海線最新實價登錄（獨立區塊） ----------------
+            2026-09-30 系統擁有者：「把這個單獨列出在首頁」，同日再指定「改放首頁配房上面」——
+            從服務項目／免費小工具之間移到這裡，變成 hero 之後、「自動配對找房」之前的第一個下滑區塊。
+            直接帶內政部最新一期的真實數字（四區近 6 個月單價中位數＋本期新增），不用點進去就先看到行情。
+            白底、不放弧：接在 hero（白）後面當它的延續，首頁色序照 9/07 拍板不動（見下面 .matchBand 那段註解）。
+            ⚠️ 文案只能寫「內政部最新一期」—— 內政部每月 1、11、21 日才發布，不是每日（見 lib/lvr-parse.ts 檔頭）。
+            資料讀不到（同步還沒跑、資料庫抽風）就只畫標題與按鈕，不畫一排 0。 */}
+        <section id="lvr" className={styles.lvrBand} aria-label="海線最新實價登錄">
+          <div className={styles.lvrCard}>
+            <div className={styles.lvrHead}>
+              <div>
+                <span className={styles.matchTag}>📈 海線成交行情</span>
+                <h2 className={styles.matchTitle}>梧棲・清水・沙鹿・龍井 最新實價登錄</h2>
+                <p className={styles.matchDesc}>
+                  {lvrSync ? (
+                    <>
+                      內政部最新一期：{periodTextForDisplay(lvrSync.periodText) || lvrSync.batch}。
+                      {lvrFresh ? `本期四區新增 ${lvrFresh} 筆成交。` : ""}
+                      點行政區看那一區每一筆的成交日、門牌、坪數、總價與每坪單價。
+                    </>
+                  ) : (
+                    "每天自動同步內政部最新一期的成交：成交日、門牌、坪數、總價與每坪單價一次看，先知道周圍行情，再談價格才有依據。"
+                  )}
+                </p>
+              </div>
+              <Link className={`${styles.btn} ${styles.btnPrimary} ${styles.matchBtn}`} href="/lvr">
+                看全部成交明細
+              </Link>
+            </div>
+
+            {lvrStats && lvrStats.totalDeals > 0 ? (
+              <div className={styles.lvrGrid}>
+                {lvrStats.districts.map((d) => (
+                  <Link key={d.district} href={`/lvr?area=${encodeURIComponent(d.district)}`} className={styles.lvrTile}>
+                    <div className={styles.lvrTileHead}>
+                      <strong>{d.district}</strong>
+                      {d.fresh ? <span className={styles.lvrFresh}>本期 +{d.fresh}</span> : null}
+                    </div>
+                    <div className={styles.lvrTileCount}>近 {lvrStats.months} 個月 {d.count} 筆成交</div>
+                    <dl className={styles.lvrRows}>
+                      <div>
+                        <dt>大樓／華廈</dt>
+                        <dd>{d.aptMedian !== null ? `${d.aptMedian} 萬/坪` : <small>樣本不足</small>}</dd>
+                      </div>
+                      <div>
+                        <dt>透天</dt>
+                        <dd>{d.houseMedian !== null ? `${d.houseMedian} 萬/坪` : <small>樣本不足</small>}</dd>
+                      </div>
+                      <div>
+                        <dt>預售屋</dt>
+                        <dd>{d.presaleMedian !== null ? `${d.presaleMedian} 萬/坪` : <small>樣本不足</small>}</dd>
+                      </div>
+                    </dl>
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+
+            <p className={styles.lvrNote}>
+              中位數只算有單價、備註沒有親友／法拍等特殊註記的成交；透天的每坪單價含土地，跟大樓不能直接比。
+              資料來源：內政部不動產交易實價查詢服務網開放資料，每月 1、11、21 日發布新一期，僅供參考。
+            </p>
+          </div>
+        </section>
+
         {/* ---------------- 自動配對找房（入口）----------------
             2026-09-16 系統擁有者指定位置：hero 的三顆按鈕與「精選好案」之間。
             這一區白底、不放弧，所以看起來是 hero 那片白的延續、只多一張卡 ——
@@ -529,70 +594,6 @@ export default async function HomePage() {
                 </div>
               ))}
             </div>
-          </div>
-        </section>
-
-        {/* ---------------- 海線最新實價登錄（獨立區塊） ----------------
-            2026-09-30 系統擁有者：「把這個單獨列出在首頁」。原本只是免費小工具裡一張卡，改成自己一區，
-            直接帶內政部最新一期的真實數字（四區近 6 個月單價中位數＋本期新增），不用點進去就先看到行情。
-            白底、不放弧：接在服務區（白）後面當它的延續，首頁色序照 9/07 拍板不動（見 .matchBand 那段註解）。
-            ⚠️ 文案只能寫「內政部最新一期」—— 內政部每月 1、11、21 日才發布，不是每日（見 lib/lvr-parse.ts 檔頭）。
-            資料讀不到（同步還沒跑、資料庫抽風）就只畫標題與按鈕，不畫一排 0。 */}
-        <section id="lvr" className={styles.lvrBand} aria-label="海線最新實價登錄">
-          <div className={styles.lvrCard}>
-            <div className={styles.lvrHead}>
-              <div>
-                <span className={styles.matchTag}>📈 海線成交行情</span>
-                <h2 className={styles.matchTitle}>梧棲・清水・沙鹿・龍井 最新實價登錄</h2>
-                <p className={styles.matchDesc}>
-                  {lvrSync ? (
-                    <>
-                      內政部最新一期：{periodTextForDisplay(lvrSync.periodText) || lvrSync.batch}。
-                      {lvrFresh ? `本期四區新增 ${lvrFresh} 筆成交。` : ""}
-                      點行政區看那一區每一筆的成交日、門牌、坪數、總價與每坪單價。
-                    </>
-                  ) : (
-                    "每天自動同步內政部最新一期的成交：成交日、門牌、坪數、總價與每坪單價一次看，先知道周圍行情，再談價格才有依據。"
-                  )}
-                </p>
-              </div>
-              <Link className={`${styles.btn} ${styles.btnPrimary} ${styles.matchBtn}`} href="/lvr">
-                看全部成交明細
-              </Link>
-            </div>
-
-            {lvrStats && lvrStats.totalDeals > 0 ? (
-              <div className={styles.lvrGrid}>
-                {lvrStats.districts.map((d) => (
-                  <Link key={d.district} href={`/lvr?area=${encodeURIComponent(d.district)}`} className={styles.lvrTile}>
-                    <div className={styles.lvrTileHead}>
-                      <strong>{d.district}</strong>
-                      {d.fresh ? <span className={styles.lvrFresh}>本期 +{d.fresh}</span> : null}
-                    </div>
-                    <div className={styles.lvrTileCount}>近 {lvrStats.months} 個月 {d.count} 筆成交</div>
-                    <dl className={styles.lvrRows}>
-                      <div>
-                        <dt>大樓／華廈</dt>
-                        <dd>{d.aptMedian !== null ? `${d.aptMedian} 萬/坪` : <small>樣本不足</small>}</dd>
-                      </div>
-                      <div>
-                        <dt>透天</dt>
-                        <dd>{d.houseMedian !== null ? `${d.houseMedian} 萬/坪` : <small>樣本不足</small>}</dd>
-                      </div>
-                      <div>
-                        <dt>預售屋</dt>
-                        <dd>{d.presaleMedian !== null ? `${d.presaleMedian} 萬/坪` : <small>樣本不足</small>}</dd>
-                      </div>
-                    </dl>
-                  </Link>
-                ))}
-              </div>
-            ) : null}
-
-            <p className={styles.lvrNote}>
-              中位數只算有單價、備註沒有親友／法拍等特殊註記的成交；透天的每坪單價含土地，跟大樓不能直接比。
-              資料來源：內政部不動產交易實價查詢服務網開放資料，每月 1、11、21 日發布新一期，僅供參考。
-            </p>
           </div>
         </section>
 
