@@ -542,8 +542,8 @@ export default async function HomePage() {
           <div className={styles.lvrCard}>
             <div className={styles.lvrHead}>
               <div>
-                <span className={styles.matchTag}>📈 實價登錄</span>
-                <h2 className={styles.matchTitle}>梧棲・清水・沙鹿・龍井 最新成交行情</h2>
+                <span className={styles.matchTag}>📈 海線成交行情</span>
+                <h2 className={styles.matchTitle}>梧棲・清水・沙鹿・龍井 最新實價登錄</h2>
                 <p className={styles.matchDesc}>
                   {lvrSync ? (
                     <>
