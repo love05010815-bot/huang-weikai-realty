@@ -1,0 +1,514 @@
+/* ---------- 海線實價登錄 /lvr ----------
+   配色變數在 home.module.css 的 .page；表單欄位、免責、回首頁借 tax.module.css。
+   這裡只放這頁自己的：期程狀態列、四區摘要卡、篩選列、成交表（手機變卡片）、分頁。
+   ⚠️ 專案沒有全域 box-sizing reset，有邊框又設寬度的都要自己寫。 */
+
+/* ---------- 期程狀態列 ---------- */
+
+.status {
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 18px;
+  margin: 0 0 18px;
+  padding: 13px 18px;
+  background: var(--accent-soft);
+  border: 1px solid var(--line-warm);
+  border-radius: 12px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.status strong {
+  color: var(--primary);
+}
+
+.statusPeriod {
+  margin-left: 8px;
+  font-weight: 700;
+}
+
+.statusMeta {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* ---------- 四區摘要 ---------- */
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.tile {
+  box-sizing: border-box;
+  display: block;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.tile:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow);
+  transform: translateY(-2px);
+}
+
+.tileOn {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(47, 168, 148, 0.25);
+}
+
+.tileHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tileName {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.freshBadge {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+
+.tileCount {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.tileCount strong {
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.tileRows {
+  margin: 10px 0 0;
+  padding: 10px 0 0;
+  border-top: 1px dashed var(--line);
+  display: grid;
+  gap: 5px;
+}
+
+.tileRows > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.tileRows dt {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.tileRows dd {
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tileRows dd strong {
+  font-size: 15px;
+  color: var(--primary-dark);
+}
+
+.tileRows dd small {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.tilesNote {
+  margin: 10px 0 22px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+/* ---------- 篩選列 ---------- */
+
+.filters {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 16px;
+  padding: 18px 20px;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+}
+
+.fieldWide {
+  grid-column: 1 / -1;
+}
+
+.searchRow {
+  display: flex;
+  gap: 8px;
+}
+
+.searchRow input {
+  flex: 1;
+  min-width: 0;
+}
+
+.searchBtn {
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 20px;
+  background: var(--primary);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.searchBtn:hover {
+  background: var(--primary-dark);
+}
+
+.freshToggle {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.freshToggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+
+/* ---------- 清單 ---------- */
+
+.count {
+  margin: 18px 0 10px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.count strong {
+  color: var(--ink);
+}
+
+.empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--muted);
+  background: #fff;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+}
+
+.tableWrap {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.table th,
+.table td {
+  padding: 11px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+}
+
+.table th {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--muted);
+  background: var(--soft);
+  white-space: nowrap;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table tbody tr:hover td {
+  background: #fbfdfc;
+}
+
+.num {
+  text-align: right !important;
+  white-space: nowrap;
+}
+
+.num strong {
+  font-size: 15px;
+  color: var(--primary-dark);
+}
+
+.date {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.freshDot {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 1px 7px;
+  vertical-align: middle;
+}
+
+.addrCell {
+  min-width: 220px;
+}
+
+.district {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--primary-dark);
+  background: var(--accent-soft);
+  border-radius: 6px;
+  padding: 1px 7px;
+  vertical-align: middle;
+}
+
+.addr {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.sub {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.flag {
+  display: inline-block;
+  margin: 4px 4px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a4b00;
+  background: #fff3df;
+  border: 1px solid #f6d9a8;
+  border-radius: 6px;
+  padding: 1px 7px;
+}
+
+.flagCancel {
+  color: #b42318;
+  background: #fee4e2;
+  border-color: #fda29b;
+}
+
+.rowCancelled td {
+  color: var(--muted);
+}
+
+.note {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.note summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.note p {
+  margin: 4px 0 0;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  max-width: 420px;
+}
+
+/* ---------- 分頁 ---------- */
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.pagerBtn {
+  box-sizing: border-box;
+  display: inline-block;
+  padding: 9px 18px;
+  border: 1px solid var(--primary);
+  border-radius: 999px;
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  background: #fff;
+}
+
+.pagerBtn:hover {
+  background: var(--accent-soft);
+}
+
+.pagerOff {
+  border-color: var(--line);
+  color: var(--line);
+  pointer-events: none;
+}
+
+.pagerInfo {
+  font-size: 13.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 預約 CTA ---------- */
+
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 18px;
+  margin-top: 28px;
+  padding: 18px 20px;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ink);
+  text-align: center;
+}
+
+/* ---------- 響應式 ---------- */
+
+@media (max-width: 960px) {
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .filters {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  /* 表格變一列一卡：每個 td 用 data-label 補欄名 */
+  .tableWrap {
+    background: none;
+    border: 0;
+    overflow: visible;
+  }
+
+  .table,
+  .table thead,
+  .table tbody,
+  .table tr,
+  .table td {
+    display: block;
+  }
+
+  .table thead {
+    display: none;
+  }
+
+  .table tr {
+    box-sizing: border-box;
+    margin-bottom: 12px;
+    padding: 6px 14px;
+    background: #fff;
+    border: 1px solid var(--line-warm);
+    border-radius: var(--radius);
+  }
+
+  /* 欄名絕對定位在左邊、內容靠右流排；不用 flex，免得「750」「萬」這種兩段文字被拆到兩端 */
+  .table td {
+    box-sizing: border-box;
+    position: relative;
+    padding: 8px 0 8px 96px;
+    border-bottom: 1px dashed var(--line);
+    text-align: right;
+    min-height: 36px;
+  }
+
+  .table td:last-child {
+    border-bottom: 0;
+  }
+
+  .table td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 0;
+    top: 8px;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--muted);
+    text-align: left;
+  }
+
+  /* 門牌那格內容多，欄名自己一行、內容靠左 */
+  .addrCell {
+    min-width: 0;
+    padding-left: 0;
+    padding-top: 28px;
+    text-align: left;
+  }
+
+  .sub {
+    display: block;
+  }
+
+  .num {
+    text-align: right !important;
+  }
+
+  .note p {
+    max-width: none;
+    text-align: left;
+  }
+}
+
+@media (max-width: 480px) {
+  .tiles {
+    grid-template-columns: 1fr;
+  }
+}

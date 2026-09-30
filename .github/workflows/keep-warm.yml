@@ -73,3 +73,12 @@ jobs:
         continue-on-error: true
         run: |
           curl -sS --max-time 90 "https://weikaihouse.com/api/match/sync" || echo "（物件同步這次沒回應，端點下次會再判斷）"
+
+      # 實價登錄同步（前台 /lvr）。主要觸發是 Vercel cron（02:00 UTC ＝ 台北 10:00），這裡是備援。
+      # 端點自己會判斷：台北時間過 10:00、今天還沒成功才真的抓（本期 zip 約 2MB、幾秒），其餘只是一個 SELECT。
+      # 內政部每月 1、11、21 日才發布新一期，其他日子跑完「新增 0」是正常的。跟保溫是兩件事，失敗不能讓保溫變紅。
+      - name: Trigger LVR (real-price) sync (self-limiting)
+        if: always()
+        continue-on-error: true
+        run: |
+          curl -sS --max-time 90 "https://weikaihouse.com/api/lvr/daily" || echo "（實價登錄同步這次沒回應，端點下次會再判斷）"
