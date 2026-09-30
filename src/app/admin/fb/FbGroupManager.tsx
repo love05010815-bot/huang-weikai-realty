@@ -106,6 +106,15 @@ function normalizeGroupUrl(raw: string): string {
   }
 }
 
+/** 社團網址裡的代號——沒抓到名稱時的退路，也用來判斷舊資料是不是被那個代號當名稱存下來的。 */
+function idFromGroupUrl(url: string): string {
+  return url.replace("https://www.facebook.com/groups/", "").replace(/\/$/, "");
+}
+/** 名稱看起來還是代號本身，還沒被他自己改過、也還沒被掃到的真名字補正過。 */
+function needsNameFix(g: Group): boolean {
+  return g.name.trim() === idFromGroupUrl(g.url);
+}
+
 /**
  * 縮圖：長邊超過 max 就用 canvas 縮，回新的 dataURL。
  * 自己選的檔案與從愛屋型錄抓回來的照片共用這一支 —— 兩邊都要存進 IndexedDB，大小規矩要一樣。
@@ -431,7 +440,7 @@ export default function FbGroupManager({
         continue;
       }
       if (next.some((g) => g.url === url)) continue;
-      const g: Group = { id: uid(), name: name.trim() || url.replace("https://www.facebook.com/groups/", "").replace(/\/$/, ""), url, note: "", enabled: true, lastResult: null };
+      const g: Group = { id: uid(), name: name.trim() || idFromGroupUrl(url), url, note: "", enabled: true, lastResult: null };
       next.push(g);
       newChecked.add(g.id);
       added++;
@@ -448,18 +457,29 @@ export default function FbGroupManager({
   const [scanPick, setScanPick] = useState<Set<string>>(new Set());
   const [scanFilter, setScanFilter] = useState("");
   const scanning = scan?.status === "scanning";
-  const haveUrls = new Set(groups.map((g) => g.url));
+  const groupByUrl = new Map(groups.map((g) => [g.url, g]));
   const scanGroups = scan?.groups || [];
-  const scanNew = scanGroups.filter((s) => !haveUrls.has(normalizeGroupUrl(s.url)));
+  /**
+   * 這筆掃到的社團該怎麼處理：
+   * "new" 還沒在清單裡；"fixable" 已經在清單裡，但名稱還是舊版 bug 存的代號，這次掃到真名字可以順手補正；
+   * "locked" 已經在清單裡而且名稱正常，不能重複加。
+   */
+  function scanActionable(s: ScanGroup): "new" | "fixable" | "locked" {
+    const existing = groupByUrl.get(normalizeGroupUrl(s.url));
+    if (!existing) return "new";
+    const newName = s.name.trim();
+    return needsNameFix(existing) && newName && newName !== idFromGroupUrl(existing.url) ? "fixable" : "locked";
+  }
+  const scanNew = scanGroups.filter((s) => scanActionable(s) === "new");
+  const scanFixable = scanGroups.filter((s) => scanActionable(s) === "fixable");
   const scanShown = scanFilter.trim() ? scanGroups.filter((s) => s.name.toLowerCase().includes(scanFilter.trim().toLowerCase())) : scanGroups;
 
-  // 抓回新的一批 → 預設幫他勾「還沒在清單裡」的，已經有的不重複勾
+  // 抓回新的一批 → 預設幫他勾「還沒在清單裡」的，還有「已經在清單裡但名稱是代號、這次抓到真名字」的
   const scanSeenAt = useRef<number>(0);
   useEffect(() => {
     if (!scan || scan.status !== "done" || !scan.groups || !scan.at || scanSeenAt.current === scan.at) return;
     scanSeenAt.current = scan.at;
-    const have = new Set(groups.map((g) => g.url));
-    setScanPick(new Set(scan.groups.filter((s) => !have.has(normalizeGroupUrl(s.url))).map((s) => s.id)));
+    setScanPick(new Set(scan.groups.filter((s) => scanActionable(s) !== "locked").map((s) => s.id)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scan]);
 
@@ -485,17 +505,27 @@ export default function FbGroupManager({
     const next = [...groups];
     const newChecked = new Set(checked);
     let added = 0;
+    let fixed = 0;
     let dup = 0;
     for (const s of picked) {
       const url = normalizeGroupUrl(s.url);
       if (!url) continue;
-      if (next.some((g) => g.url === url)) {
-        dup++;
+      const idx = next.findIndex((g) => g.url === url);
+      if (idx !== -1) {
+        // 已經在清單裡——如果名稱還是舊版 bug 存的代號，這次掃到真名字就順手補正確；
+        // 他自己改過的名稱（跟代號不一樣）不去動它。
+        const newName = s.name.trim();
+        if (needsNameFix(next[idx]) && newName && newName !== idFromGroupUrl(next[idx].url)) {
+          next[idx] = { ...next[idx], name: newName };
+          fixed++;
+        } else {
+          dup++;
+        }
         continue;
       }
       const g: Group = {
         id: uid(),
-        name: s.name.trim() || url.replace("https://www.facebook.com/groups/", "").replace(/\/$/, ""),
+        name: s.name.trim() || idFromGroupUrl(url),
         url,
         note: "從 FB 抓回來的",
         enabled: true,
@@ -508,7 +538,10 @@ export default function FbGroupManager({
     setGroups(next);
     setChecked(newChecked);
     setScanPick(new Set());
-    showToast(`已加入 ${added} 個${dup ? `，${dup} 個本來就在清單裡` : ""}`, added ? "ok" : "warn");
+    const parts = [`加入 ${added} 個`];
+    if (fixed) parts.push(`補正 ${fixed} 個名稱`);
+    if (dup) parts.push(`${dup} 個本來就在清單裡`);
+    showToast(parts.join("，"), added || fixed ? "ok" : "warn");
   }
 
   function updateGroup(id: string, patch: Partial<Group>) {
@@ -964,13 +997,19 @@ export default function FbGroupManager({
             {scan?.status === "done" && !!scanGroups.length && (
               <>
                 <p className={styles.hint}>
-                  抓到 <b>{scanGroups.length}</b> 個，其中 <b>{scanNew.length}</b> 個還沒在你的清單裡{scan.stopped ? "（你按了停止，可能還沒捲完）" : ""}。
-                  勾好按下面加入；已經在清單裡的會標「已有」，不會重複加。
+                  抓到 <b>{scanGroups.length}</b> 個，其中 <b>{scanNew.length}</b> 個還沒在你的清單裡
+                  {scanFixable.length > 0 && (
+                    <>
+                      、<b>{scanFixable.length}</b> 個名稱可以補正確（本來抓成一串社團代號）
+                    </>
+                  )}
+                  {scan.stopped ? "（你按了停止，可能還沒捲完）" : ""}。
+                  勾好按下面加入／補正；已經在清單裡且名稱正常的會標「已有」，不會重複加。
                 </p>
                 <input className={styles.input} value={scanFilter} onChange={(e) => setScanFilter(e.target.value)} placeholder="篩選名稱…（例如：房屋）" />
                 <div className={styles.actions}>
-                  <button type="button" className={styles.btnSm} onClick={() => setScanPick(new Set(scanShown.filter((s) => !haveUrls.has(normalizeGroupUrl(s.url))).map((s) => s.id)))}>
-                    勾選畫面上還沒加入的
+                  <button type="button" className={styles.btnSm} onClick={() => setScanPick(new Set(scanShown.filter((s) => scanActionable(s) !== "locked").map((s) => s.id)))}>
+                    勾選還沒加入／名稱待補的
                   </button>
                   <button type="button" className={styles.btnSm} onClick={() => setScanPick(new Set())}>
                     全部不勾
@@ -978,13 +1017,14 @@ export default function FbGroupManager({
                 </div>
                 <div className={`${styles.checklist} ${styles.scanList}`}>
                   {scanShown.map((s) => {
-                    const have = haveUrls.has(normalizeGroupUrl(s.url));
+                    const action = scanActionable(s);
+                    const locked = action === "locked";
                     return (
-                      <label key={s.id} className={`${styles.checkItem} ${have ? styles.scanHave : ""}`} title={s.url}>
+                      <label key={s.id} className={`${styles.checkItem} ${locked ? styles.scanHave : ""}`} title={s.url}>
                         <input
                           type="checkbox"
-                          disabled={have}
-                          checked={!have && scanPick.has(s.id)}
+                          disabled={locked}
+                          checked={!locked && scanPick.has(s.id)}
                           onChange={(e) =>
                             setScanPick((p) => {
                               const n = new Set(p);
@@ -995,7 +1035,8 @@ export default function FbGroupManager({
                           }
                         />
                         <span className={styles.ciName}>{s.name}</span>
-                        {have && <span className={styles.scanTag}>已有</span>}
+                        {locked && <span className={styles.scanTag}>已有</span>}
+                        {action === "fixable" && <span className={styles.scanTag}>可補正名稱</span>}
                       </label>
                     );
                   })}

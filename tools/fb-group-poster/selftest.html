@@ -61,6 +61,14 @@
         </div>
 
         <div role="listitem">
+          <!-- 縮圖連結排在名稱連結「前面」、縮圖沒有文字也沒有 aria-label，社團真正的名稱又比
+               社團代號短：改版前會把代號當名稱存下來，之後名稱連結再長也贏不了，抓回來整批
+               社團名稱變成一串數字，就是他後台實際看到的壞掉情形。 -->
+          <a href="/groups/701122334455667/"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="" /></a>
+          <a href="/groups/701122334455667/"><span>龍井社區</span></a>
+        </div>
+
+        <div role="listitem">
           <!-- 貼文／成員／活動連結，不是社團首頁，不可以收進來 -->
           <a href="/groups/123456789/posts/998877/"><span>某某某的貼文</span></a>
           <a href="/groups/123456789/members/"><span>成員</span></a>
@@ -103,7 +111,7 @@
 
         // ① 沒有切推薦區：連推薦的兩個也會收進來
         var all = FBQ.collectGroups(fx, { locale: "zh-TW" });
-        check("不切推薦區時的總數", all.length, 8);
+        check("不切推薦區時的總數", all.length, 9);
 
         // ② 切掉「建議的社團」以後
         var head = FBQ.findSuggestedHeading(fx, "zh-TW");
@@ -111,7 +119,7 @@
         var got = FBQ.collectGroups(fx, { stopAt: head, locale: "zh-TW" });
         var ids = got.map(function (g) { return g.id; });
         // 777888999 是 permalink（/groups/777888999/permalink/12345/），不是社團首頁 → 刻意不收
-        check("抓到的社團代號", ids, ["123456789", "haixian.house", "987654321", "555000111", "222333444", "166600000"]);
+        check("抓到的社團代號", ids, ["123456789", "haixian.house", "987654321", "555000111", "222333444", "701122334455667", "166600000"]);
         check("permalink 不會被當成社團", ids.indexOf("777888999"), -1);
 
         var byId = {};
@@ -121,6 +129,7 @@
         check("名稱：只有 aria-label", byId["987654321"] && byId["987654321"].name, "台中房地產投資討論區");
         check("名稱：「加入」不可以當名稱", byId["555000111"] && byId["555000111"].name, "沙鹿租屋網");
         check("名稱：同社團取比較完整那個", byId["222333444"] && byId["222333444"].name, "龍井大肚買賣租屋資訊");
+        check("名稱：縮圖連結在前面，真名字比代號短也不能輸給代號", byId["701122334455667"] && byId["701122334455667"].name, "龍井社區");
         check("網址正規化（去掉 ?ref=share）", byId["166600000"] && byId["166600000"].url, "https://www.facebook.com/groups/166600000/");
         check("推薦區的沒被收進來", ids.indexOf("000111222") === -1 && ids.indexOf("000111333") === -1, true);
         check("成員數沒變成名稱", got.filter(function (g) { return /位成員|則貼文/.test(g.name); }).length, 0);

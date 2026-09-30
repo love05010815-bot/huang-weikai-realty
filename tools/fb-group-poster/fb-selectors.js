@@ -142,8 +142,17 @@
       if (!id) continue;
       const name = nameFromAnchor(a, locale);
       const prev = out.get(id);
-      if (prev && prev.name.length >= name.length) continue;
-      out.set(id, { id, name: name || id, url: "https://www.facebook.com/groups/" + id + "/" });
+      const url = (prev && prev.url) || "https://www.facebook.com/groups/" + id + "/";
+      // 同一個社團常常有兩個連結：縮圖那顆通常抓不到名字（先留空字串，不要在這裡就退回代號）。
+      // 代號（例如 16 碼數字）常常比真正的社團名稱長，先退回代號的話，下面比長度時代號會贏過真名字，
+      // 整批社團名稱就會變成一串數字——這是實際發生過的壞掉情形，不是假設。
+      if (!prev) out.set(id, { id, name, url });
+      else if (name.length > prev.name.length) out.set(id, { id, name, url });
+    }
+    // 掃過這個社團的所有連結都抓不到名字（例如整批都只有縮圖、連 aria-label 都沒有），才退回代號，
+    // 至少讓清單看得出是哪個社團、能去 FB 對網址。
+    for (const g of out.values()) {
+      if (!g.name) g.name = g.id;
     }
     return [...out.values()];
   }
