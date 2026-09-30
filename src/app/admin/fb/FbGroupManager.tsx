@@ -164,6 +164,8 @@ export default function FbGroupManager({
   const [ads, setAds] = useState<Ad[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [identities, setIdentities] = useState<Identity[]>([]);
+  // 發佈頁選的「用哪個身分發」。宣告在這裡（不在發佈區）是因為「抓社團」區也要拿它當預設：抓回來的社團標給哪個身分
+  const [pubIdentityId, setPubIdentityId] = useState<string>("");
   const [settings, setSettings] = useState<Settings>(() => defaultSettings(defaultTail));
   const [history, setHistory] = useState<HistoryJob[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -460,26 +462,39 @@ export default function FbGroupManager({
   const groupByUrl = new Map(groups.map((g) => [g.url, g]));
   const scanGroups = scan?.groups || [];
   /**
-   * 這筆掃到的社團該怎麼處理：
-   * "new" 還沒在清單裡；"fixable" 已經在清單裡，但名稱還是舊版 bug 存的代號，這次掃到真名字可以順手補正；
-   * "locked" 已經在清單裡而且名稱正常，不能重複加。
+   * 抓回來的社團標給哪個身分。FB 的「你的社團」是**現在登入的那個帳號**加入的社團，不同帳號加入的社團不一樣，
+   * 所以抓回來就直接標給那個身分，發佈頁切到別的身分才不會整批都跑出來。
+   * 沒特別選就跟著發佈頁選的身分（通常就是他現在登入的那個）。
    */
-  function scanActionable(s: ScanGroup): "new" | "fixable" | "locked" {
+  const [scanIdentityPick, setScanIdentityPick] = useState<string>("");
+  const scanIdentity = identities.find((i) => i.id === scanIdentityPick) || identities.find((i) => i.id === pubIdentityId) || null;
+  /**
+   * 這筆掃到的社團該怎麼處理：
+   * "new" 還沒在清單裡；"update" 已經在清單裡，但這次掃到的可以順手更新它——名稱還是舊版 bug 存的代號（fixName），
+   * 或還沒標給這次掃描的身分（tagIdentity）；"locked" 已經在清單裡、也沒東西要改，不能重複加。
+   */
+  type ScanAction = { kind: "new" | "update" | "locked"; fixName: boolean; tagIdentity: boolean };
+  function scanActionable(s: ScanGroup): ScanAction {
     const existing = groupByUrl.get(normalizeGroupUrl(s.url));
-    if (!existing) return "new";
+    if (!existing) return { kind: "new", fixName: false, tagIdentity: false };
     const newName = s.name.trim();
-    return needsNameFix(existing) && newName && newName !== idFromGroupUrl(existing.url) ? "fixable" : "locked";
+    const fixName = needsNameFix(existing) && !!newName && newName !== idFromGroupUrl(existing.url);
+    const tagIdentity = !!scanIdentity && !(existing.identityIds || []).includes(scanIdentity.id);
+    return { kind: fixName || tagIdentity ? "update" : "locked", fixName, tagIdentity };
   }
-  const scanNew = scanGroups.filter((s) => scanActionable(s) === "new");
-  const scanFixable = scanGroups.filter((s) => scanActionable(s) === "fixable");
+  function scanActionLabel(a: ScanAction): string {
+    return [a.fixName ? "補正名稱" : "", a.tagIdentity && scanIdentity ? `標給「${scanIdentity.name || "(未命名)"}」` : ""].filter(Boolean).join("＋");
+  }
+  const scanNew = scanGroups.filter((s) => scanActionable(s).kind === "new");
+  const scanUpdatable = scanGroups.filter((s) => scanActionable(s).kind === "update");
   const scanShown = scanFilter.trim() ? scanGroups.filter((s) => s.name.toLowerCase().includes(scanFilter.trim().toLowerCase())) : scanGroups;
 
-  // 抓回新的一批 → 預設幫他勾「還沒在清單裡」的，還有「已經在清單裡但名稱是代號、這次抓到真名字」的
+  // 抓回新的一批 → 預設幫他勾「還沒在清單裡」的，還有「已經在清單裡但可以順手更新」的（補名稱／標身分）
   const scanSeenAt = useRef<number>(0);
   useEffect(() => {
     if (!scan || scan.status !== "done" || !scan.groups || !scan.at || scanSeenAt.current === scan.at) return;
     scanSeenAt.current = scan.at;
-    setScanPick(new Set(scan.groups.filter((s) => scanActionable(s) !== "locked").map((s) => s.id)));
+    setScanPick(new Set(scan.groups.filter((s) => scanActionable(s).kind !== "locked").map((s) => s.id)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scan]);
 
@@ -506,21 +521,30 @@ export default function FbGroupManager({
     const newChecked = new Set(checked);
     let added = 0;
     let fixed = 0;
+    let tagged = 0;
     let dup = 0;
     for (const s of picked) {
       const url = normalizeGroupUrl(s.url);
       if (!url) continue;
       const idx = next.findIndex((g) => g.url === url);
       if (idx !== -1) {
-        // 已經在清單裡——如果名稱還是舊版 bug 存的代號，這次掃到真名字就順手補正確；
-        // 他自己改過的名稱（跟代號不一樣）不去動它。
-        const newName = s.name.trim();
-        if (needsNameFix(next[idx]) && newName && newName !== idFromGroupUrl(next[idx].url)) {
-          next[idx] = { ...next[idx], name: newName };
-          fixed++;
-        } else {
+        // 已經在清單裡——順手更新：名稱還是舊版 bug 存的代號就補成真名字（他自己改過的名稱不動）；
+        // 還沒標給這次掃描的身分就補上（這個社團確實在這個帳號的「你的社團」裡）。其他欄位一律不碰。
+        const a = scanActionable(s);
+        if (a.kind !== "update") {
           dup++;
+          continue;
         }
+        let g = next[idx];
+        if (a.fixName) {
+          g = { ...g, name: s.name.trim() };
+          fixed++;
+        }
+        if (a.tagIdentity && scanIdentity) {
+          g = { ...g, identityIds: [...(g.identityIds || []), scanIdentity.id] };
+          tagged++;
+        }
+        next[idx] = g;
         continue;
       }
       const g: Group = {
@@ -530,6 +554,7 @@ export default function FbGroupManager({
         note: "從 FB 抓回來的",
         enabled: true,
         lastResult: null,
+        identityIds: scanIdentity ? [scanIdentity.id] : [],
       };
       next.push(g);
       newChecked.add(g.id);
@@ -540,8 +565,9 @@ export default function FbGroupManager({
     setScanPick(new Set());
     const parts = [`加入 ${added} 個`];
     if (fixed) parts.push(`補正 ${fixed} 個名稱`);
+    if (tagged && scanIdentity) parts.push(`${tagged} 個標給「${scanIdentity.name || "(未命名)"}」`);
     if (dup) parts.push(`${dup} 個本來就在清單裡`);
-    showToast(parts.join("，"), added || fixed ? "ok" : "warn");
+    showToast(parts.join("，"), added || fixed || tagged ? "ok" : "warn");
   }
 
   function updateGroup(id: string, patch: Partial<Group>) {
@@ -557,10 +583,23 @@ export default function FbGroupManager({
       return n;
     });
   }
+  // 一次把「沒標身分」的社團全部標給某個身分——好幾個帳號、幾十個社團時一個一個勾太慢。
+  // 只動沒標的；已經標過的（不管標誰）一律不碰。
+  const [bulkTagPick, setBulkTagPick] = useState<string>("");
+  const bulkTagIdentity = identities.find((i) => i.id === bulkTagPick) || identities.find((i) => i.id === pubIdentityId) || null;
+  const untaggedGroups = groups.filter((g) => !g.identityIds || g.identityIds.length === 0);
+  function bulkTagUntagged() {
+    if (!bulkTagIdentity || !untaggedGroups.length) return;
+    const who = bulkTagIdentity.name || "(未命名)";
+    const n = untaggedGroups.length;
+    if (!confirm(`把沒標身分的 ${n} 個社團全部標給「${who}」？標了以後它們就只在這個身分底下出現（每個社團的「哪個身分」之後還是可以再改）。`)) return;
+    const id = bulkTagIdentity.id;
+    setGroups((prev) => prev.map((g) => (!g.identityIds || g.identityIds.length === 0 ? { ...g, identityIds: [id] } : g)));
+    showToast(`已把 ${n} 個社團標給「${who}」`, "ok");
+  }
 
   // ── 發佈 ──
   const [pubAdId, setPubAdId] = useState<string>("");
-  const [pubIdentityId, setPubIdentityId] = useState<string>("");
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const checkedInit = useRef(false);
   const pubIdentity = identities.find((i) => i.id === pubIdentityId) || null;
@@ -974,6 +1013,26 @@ export default function FbGroupManager({
               按下去會開一個分頁到 Facebook 的「你的社團」，外掛自動往下捲，把你<b>已經加入</b>的社團名稱與網址收集回來，你在這裡逐一勾選要用哪些。
               只讀名稱與網址，<b>不會發文、不會加入或退出任何社團</b>；抓回來的清單只留在你自己的瀏覽器。
             </p>
+            {identities.length > 1 ? (
+              <>
+                <div className={styles.impRow}>
+                  <span className={styles.hint}>抓回來的社團標給：</span>
+                  <select className={styles.input} value={scanIdentity?.id || ""} onChange={(e) => setScanIdentityPick(e.target.value)}>
+                    {identities.map((i) => (
+                      <option key={i.id} value={i.id}>
+                        {i.name || "(未命名)"}（{i.kind === "page" ? "粉專" : "帳號"}）
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className={styles.hint}>
+                  FB 的「你的社團」列的是<b>現在登入的那個帳號</b>加入的社團，不同帳號加入的不一樣——抓之前先確認 Chrome 登入的就是這個身分的帳號。
+                  標好以後，發佈頁切到哪個身分就只會列它的社團，不會整批都跑出來。
+                </p>
+              </>
+            ) : scanIdentity ? (
+              <p className={styles.hint}>抓回來的社團會標給「{scanIdentity.name || "(未命名)"}」。</p>
+            ) : null}
             {!extVersion && <p className={styles.warnText}>沒偵測到外掛。先到 chrome://extensions 安裝／更新「FB 社團廣告助手」，回來按 F5 再試。</p>}
             <div className={styles.actions}>
               <button type="button" className={styles.run} onClick={startScan} disabled={scanning || !extVersion || !licensed}>
@@ -998,18 +1057,18 @@ export default function FbGroupManager({
               <>
                 <p className={styles.hint}>
                   抓到 <b>{scanGroups.length}</b> 個，其中 <b>{scanNew.length}</b> 個還沒在你的清單裡
-                  {scanFixable.length > 0 && (
+                  {scanUpdatable.length > 0 && (
                     <>
-                      、<b>{scanFixable.length}</b> 個名稱可以補正確（本來抓成一串社團代號）
+                      、<b>{scanUpdatable.length}</b> 個已經在清單裡但可以順手更新（補正名稱／標給這個身分）
                     </>
                   )}
                   {scan.stopped ? "（你按了停止，可能還沒捲完）" : ""}。
-                  勾好按下面加入／補正；已經在清單裡且名稱正常的會標「已有」，不會重複加。
+                  勾好按下面加入／更新；已經在清單裡也沒東西要改的會標「已有」，不會重複加。
                 </p>
                 <input className={styles.input} value={scanFilter} onChange={(e) => setScanFilter(e.target.value)} placeholder="篩選名稱…（例如：房屋）" />
                 <div className={styles.actions}>
-                  <button type="button" className={styles.btnSm} onClick={() => setScanPick(new Set(scanShown.filter((s) => scanActionable(s) !== "locked").map((s) => s.id)))}>
-                    勾選還沒加入／名稱待補的
+                  <button type="button" className={styles.btnSm} onClick={() => setScanPick(new Set(scanShown.filter((s) => scanActionable(s).kind !== "locked").map((s) => s.id)))}>
+                    勾選還沒加入／可更新的
                   </button>
                   <button type="button" className={styles.btnSm} onClick={() => setScanPick(new Set())}>
                     全部不勾
@@ -1018,7 +1077,7 @@ export default function FbGroupManager({
                 <div className={`${styles.checklist} ${styles.scanList}`}>
                   {scanShown.map((s) => {
                     const action = scanActionable(s);
-                    const locked = action === "locked";
+                    const locked = action.kind === "locked";
                     return (
                       <label key={s.id} className={`${styles.checkItem} ${locked ? styles.scanHave : ""}`} title={s.url}>
                         <input
@@ -1036,7 +1095,7 @@ export default function FbGroupManager({
                         />
                         <span className={styles.ciName}>{s.name}</span>
                         {locked && <span className={styles.scanTag}>已有</span>}
-                        {action === "fixable" && <span className={styles.scanTag}>可補正名稱</span>}
+                        {action.kind === "update" && <span className={styles.scanTag}>{scanActionLabel(action)}</span>}
                       </label>
                     );
                   })}
@@ -1044,7 +1103,7 @@ export default function FbGroupManager({
                 {!scanShown.length && <p className={styles.hint}>沒有符合「{scanFilter}」的社團。</p>}
                 <div className={styles.actions}>
                   <button type="button" className={styles.run} onClick={importScanned} disabled={!scanPick.size}>
-                    加入勾選的 {scanPick.size} 個社團
+                    加入／更新勾選的 {scanPick.size} 個社團
                   </button>
                 </div>
               </>
@@ -1084,6 +1143,21 @@ export default function FbGroupManager({
               「啟用」關掉的社團不會出現在發佈頁的預設勾選。名稱與備註可直接改。
               {identities.length > 1 && <> 「哪個身分」勾起來，這個社團就只在那些身分底下出現；<b>都不勾＝每個身分都會出現</b>。</>}
             </p>
+            {identities.length > 1 && untaggedGroups.length > 0 && (
+              <div className={styles.impRow}>
+                <span className={styles.hint}>沒標身分的 {untaggedGroups.length} 個全部標給：</span>
+                <select className={styles.input} value={bulkTagIdentity?.id || ""} onChange={(e) => setBulkTagPick(e.target.value)}>
+                  {identities.map((i) => (
+                    <option key={i.id} value={i.id}>
+                      {i.name || "(未命名)"}（{i.kind === "page" ? "粉專" : "帳號"}）
+                    </option>
+                  ))}
+                </select>
+                <button type="button" className={styles.btnSm} onClick={bulkTagUntagged}>
+                  標上去
+                </button>
+              </div>
+            )}
             <div className={styles.tableWrap}>
               <table className={styles.table}>
                 <thead>
