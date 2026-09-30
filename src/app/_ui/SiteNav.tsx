@@ -43,7 +43,7 @@ import styles from "./SiteNav.module.css";
  */
 type NavItem =
   | { label: string; kind: "anchor"; hash: string }
-  | { label: string; kind: "route"; href: "/about" | "/map" | "/videos" | "/news" };
+  | { label: string; kind: "route"; href: "/about" | "/map" | "/videos" | "/news" | "/lvr" };
 
 const ITEMS: readonly NavItem[] = [
   // 🚫 2026-09-07 系統擁有者：「首頁上方的關於我請移除」—— 導覽列不再有「關於我」。
@@ -56,6 +56,10 @@ const ITEMS: readonly NavItem[] = [
   // ⚠️ **不要改回去。** 這頁剛開的時候真的只有重劃區 39 案，現在是整條海線八個生活圈 500 多案，
   //    重劃區只佔其中 33 案 —— 舊標籤會讓人以為點進去只有重劃區，是實際上的錯誤資訊。
   { label: "海線建案一覽", kind: "route", href: "/map" },
+  // 2026-09-30 系統擁有者：「增加到這邊」——把 /lvr（海線最新實價登錄）加進主選單，
+  // 放在「海線建案一覽」後面：兩頁都是海線的房產資料查詢，一個看建案總覽、一個看成交行情。
+  // ⚠️ 這是第八項，加之前已照下面 SiteNav.module.css 檔頭的規矩重掃斷點（結果：1045px 仍夠，見那邊的紀錄）。
+  { label: "實價登錄", kind: "route", href: "/lvr" },
   { label: "免費小工具", kind: "anchor", hash: "#tools" },
   // 2026-08-25 系統擁有者拍板：**影音不放首頁下滑區塊，做成獨立分頁**，跟「海線建案一覽」
   // 一樣。所以這是 route 不是 #videos 錨點 —— 首頁上沒有那個區塊了。
