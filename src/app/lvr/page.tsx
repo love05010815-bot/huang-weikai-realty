@@ -296,14 +296,14 @@ export default async function LvrPage({ searchParams }: { searchParams: Promise<
                 <table className={css.table}>
                   <thead>
                     <tr>
-                      <th>成交日</th>
                       <th>門牌／建案</th>
-                      <th>型態・樓層</th>
-                      <th>屋齡</th>
-                      <th>坪數</th>
-                      <th>格局</th>
+                      <th>成交日</th>
                       <th className={css.num}>總價</th>
                       <th className={css.num}>單價</th>
+                      <th>坪數</th>
+                      <th>屋齡</th>
+                      <th>格局</th>
+                      <th>型態・樓層</th>
                       <th>車位</th>
                     </tr>
                   </thead>
@@ -315,10 +315,6 @@ export default async function LvrPage({ searchParams }: { searchParams: Promise<
                       const isFresh = latestBatch && d.batch === latestBatch;
                       return (
                         <tr key={d.id} className={d.cancelled ? css.rowCancelled : undefined}>
-                          <td data-label="成交日">
-                            <span className={css.date}>{isoToRoc(d.dealDate)}</span>
-                            {isFresh ? <span className={css.freshDot} title="本期新增">本期</span> : null}
-                          </td>
                           <td data-label="門牌／建案" className={css.addrCell}>
                             <span className={css.district}>{d.district}</span>
                             {d.kind === "presale" ? (
@@ -346,11 +342,22 @@ export default async function LvrPage({ searchParams }: { searchParams: Promise<
                               </details>
                             ) : null}
                           </td>
-                          <td data-label="型態・樓層">
-                            {isLand ? "土地" : buildingTypeShort(d.buildingType)}
-                            {!isLand ? <span className={css.sub}>{floorText(d)}</span> : null}
+                          <td data-label="成交日">
+                            <span className={css.date}>{isoToRoc(d.dealDate)}</span>
+                            {isFresh ? <span className={css.freshDot} title="本期新增">本期</span> : null}
                           </td>
-                          <td data-label="屋齡">{isLand ? "—" : ageText(d)}</td>
+                          <td data-label="總價" className={css.num}>
+                            <strong>{fmtWan(yuanToWan(d.totalPrice))}</strong> 萬
+                          </td>
+                          <td data-label="單價" className={css.num}>
+                            {unit !== null ? (
+                              <>
+                                <strong>{unit}</strong> 萬/坪
+                              </>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
                           <td data-label="坪數">
                             {isLand ? (
                               <>
@@ -363,18 +370,11 @@ export default async function LvrPage({ searchParams }: { searchParams: Promise<
                               </>
                             )}
                           </td>
+                          <td data-label="屋齡">{isLand ? "—" : ageText(d)}</td>
                           <td data-label="格局">{isLand ? "—" : layoutText(d)}</td>
-                          <td data-label="總價" className={css.num}>
-                            <strong>{fmtWan(yuanToWan(d.totalPrice))}</strong> 萬
-                          </td>
-                          <td data-label="單價" className={css.num}>
-                            {unit !== null ? (
-                              <>
-                                <strong>{unit}</strong> 萬/坪
-                              </>
-                            ) : (
-                              "—"
-                            )}
+                          <td data-label="型態・樓層">
+                            {isLand ? "土地" : buildingTypeShort(d.buildingType)}
+                            {!isLand ? <span className={css.sub}>{floorText(d)}</span> : null}
                           </td>
                           <td data-label="車位">
                             {d.parkingType ? (
