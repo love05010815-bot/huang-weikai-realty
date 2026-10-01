@@ -2710,6 +2710,19 @@ export const PROJECTS: Project[] = [
   { id: "longxin-dayue", name: "龍鑫大悅", builder: "嘉鑫開發建設", area: "龍井田中", status: "newly", completion: "約 2024", sources: ["owner"] },
   { id: "yushujia-zhule", name: "御墅家築樂", builder: "御墅家建設", area: "龍井田中", status: "completed", completion: "約 2020", sources: ["owner"] },
   { id: "pushulv-2", name: "璞樹閭2", builder: "鉅懋建設", area: "龍井田中", status: "completed", completion: "約 2023", sources: ["owner"] },
+
+  /* ── 2026-10-01 龍井中央路商圈補 4 案 ──
+     🔴 **「築真心2」的建商是臻欣建設，跟「築真心」的真心建設不是同一家** —— 不是後綴差異、是換了字，
+        照通則**不對齊、不合併**。兩案都在龍井中央路，案名只差一個「2」，清單上會並排、但建商欄不同，
+        那是他給的，不是漏統一。
+     🔵 **臻里仁 2 期跟著頡懋建設**，整個系列的分法到這裡是：
+        頡懋建設 → 2期A、2期B、6、7、8；鉅懋建設 → 3期A、3期B、5。
+        連「里仁」系列的其他案也照同一家分（鉅懋：里仁匯、築里仁透天區／華廈區／2透天區）。
+     🔵 御墅首璽（新而雅建設）跟清水市區的「勵盛首璽」（勵盛建設）是兩案兩家，不要合併。 */
+  { id: "yushu-shouxi", name: "御墅首璽", builder: "新而雅建設", area: "龍井中央路", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "zhu-zhenxin-2", name: "築真心2", builder: "臻欣建設", area: "龍井中央路", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "zhenliren-2a", name: "臻里仁2期A", builder: "頡懋建設", area: "龍井中央路", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "zhenliren-2b", name: "臻里仁2期B", builder: "頡懋建設", area: "龍井中央路", status: "completed", completion: "約 2018", sources: ["owner"] },
 ];
 
 /* ─────────────── 座標 ─────────────── */
@@ -3677,6 +3690,18 @@ export const COORDS: Record<string, Coord> = {
   "huangjia-zunlong": { lat: 24.21002, lng: 120.52471, precision: "exact" }, // 皇家尊龍公寓
   "hongquan-in-zhongyang": { lat: 24.21071, lng: 120.52342, precision: "exact" }, // 宏泉IN中央
   "lin-dayuan": { lat: 24.20829, lng: 120.52614, precision: "exact" }, // 霖大院
+  /* ── 2026-10-01 龍井中央路商圈再 8 案（他用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、precision 全 exact、本批不重複、沒有覆蓋既有座標，
+     **8 筆全部落在龍井中央路商圈色塊內**。
+     🔵 兩對 30 公尺內的鄰居都是同一個「臻里仁」系列：3期B↔3期A 27 m、3期B↔5 26 m —— 本來就蓋在一起。 */
+  "guangyu-shu": { lat: 24.21491, lng: 120.53081, precision: "exact" }, // 光語墅
+  "bojin-fu": { lat: 24.215, lng: 120.53141, precision: "exact" }, // 鉑金府
+  "fengfu-daxu": { lat: 24.20768, lng: 120.52809, precision: "exact" }, // 豐富大旭
+  "xinguan-xu": { lat: 24.20611, lng: 120.52607, precision: "exact" }, // 新觀序
+  "zhu-zhenxin": { lat: 24.20499, lng: 120.52536, precision: "exact" }, // 築真心
+  "zhenliren-3b": { lat: 24.20344, lng: 120.5224, precision: "exact" }, // 臻里仁3期B
+  "zhenliren-3a": { lat: 24.20368, lng: 120.52234, precision: "exact" }, // 臻里仁3期A
+  "zhenliren-5": { lat: 24.20327, lng: 120.52257, precision: "exact" }, // 臻里仁5
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
