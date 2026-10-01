@@ -35,8 +35,18 @@ import {
   unitPriceToWanPerPing,
   yuanToWan,
   type LvrCategory,
+  type LvrKind,
 } from "@/lib/lvr-parse";
-import { getDistrictStats, latestSuccessfulSync, listDeals, taipeiStamp, type LvrDealRow, type LvrSort } from "@/lib/lvr";
+import {
+  LVR_PERIOD_RECENT,
+  getDistrictStats,
+  getLvrYearOptions,
+  latestSuccessfulSync,
+  listDeals,
+  taipeiStamp,
+  type LvrDealRow,
+  type LvrSort,
+} from "@/lib/lvr";
 import styles from "../home.module.css";
 import tax from "../tax/tax.module.css";
 import css from "./lvr.module.css";
@@ -96,14 +106,19 @@ function one(v: string | string[] | undefined): string {
   return (Array.isArray(v) ? v[0] : v) ?? "";
 }
 
-function readFilters(sp: SP): LvrFilterValues & { page: number } {
+/** 型態下拉不再有「預售屋」這個值 —— 它現在是上面的分頁籤（kind），單獨判斷掉 */
+function readFilters(sp: SP, years: string[]): LvrFilterValues & { page: number } {
   const area = one(sp.area);
   const type = one(sp.type);
   const sort = one(sp.sort);
+  const kind = one(sp.kind);
+  const period = one(sp.period);
   const pageNum = Number.parseInt(one(sp.page) || "1", 10);
   return {
+    kind: kind === "presale" ? "presale" : "sale",
     area: (LVR_DISTRICTS as readonly string[]).includes(area) ? area : "",
-    type: (CATEGORIES.has(type) ? type : "") as LvrCategory | "",
+    type: (CATEGORIES.has(type) && type !== "presale" ? type : "") as LvrCategory | "",
+    period: period === LVR_PERIOD_RECENT || years.includes(period) ? period : LVR_PERIOD_RECENT,
     q: toHalfWidth(one(sp.q)).slice(0, 40),
     sort: (SORTS.has(sort) ? sort : "date") as LvrSort,
     fresh: one(sp.fresh) === "1",
@@ -111,12 +126,14 @@ function readFilters(sp: SP): LvrFilterValues & { page: number } {
   };
 }
 
-/** 帶著目前篩選條件換頁／換區的網址 */
+/** 帶著目前篩選條件換頁／換區／換分頁籤的網址 */
 function hrefWith(f: LvrFilterValues, patch: Partial<LvrFilterValues> & { page?: number }): string {
   const v = { ...f, ...patch };
   const p = new URLSearchParams();
+  if (v.kind !== "sale") p.set("kind", v.kind);
   if (v.area) p.set("area", v.area);
   if (v.type) p.set("type", v.type);
+  if (v.period !== LVR_PERIOD_RECENT) p.set("period", v.period);
   if (v.q) p.set("q", v.q);
   if (v.sort !== "date") p.set("sort", v.sort);
   if (v.fresh) p.set("fresh", "1");
@@ -153,14 +170,36 @@ function ageText(d: LvrDealRow): string {
   return age < 1 ? "新成屋" : `${age} 年`;
 }
 
+/** 成屋／預售屋 分頁籤 */
+const KIND_TABS: { value: LvrKind; label: string }[] = [
+  { value: "sale", label: "成屋" },
+  { value: "presale", label: "預售屋" },
+];
+
+function periodLabel(period: string): string {
+  return period === LVR_PERIOD_RECENT ? "近 6 個月" : `民國 ${period} 年`;
+}
+
 export default async function LvrPage({ searchParams }: { searchParams: Promise<SP> }) {
-  const f = readFilters(await searchParams);
-  const latest = await latestSuccessfulSync();
+  const sp = await searchParams;
+  // 年度清單要先拿到才能驗證 URL 上的 period 是不是一個真的有資料的年度
+  const [latest, years] = await Promise.all([latestSuccessfulSync(), getLvrYearOptions()]);
+  const f = readFilters(sp, years);
   const latestBatch = latest?.batch ?? "";
   const [stats, list] = await Promise.all([
     getCachedStats(latestBatch),
     listDeals(
-      { district: f.area, category: f.type, q: f.q, sort: f.sort, freshOnly: f.fresh, page: f.page, pageSize: PAGE_SIZE },
+      {
+        kind: f.kind,
+        district: f.area,
+        category: f.type,
+        period: f.period,
+        q: f.q,
+        sort: f.sort,
+        freshOnly: f.fresh,
+        page: f.page,
+        pageSize: PAGE_SIZE,
+      },
       latestBatch,
     ),
   ]);
@@ -198,8 +237,8 @@ export default async function LvrPage({ searchParams }: { searchParams: Promise<
             <span className={styles.eyebrow}>TOOLS</span>
             <h1 className={styles.sectionTitle}>梧棲・清水・沙鹿・龍井 最新實價登錄</h1>
             <p className={styles.sectionDesc}>
-              內政部最新一期的海線成交，每天自動同步。大樓、透天、預售屋的成交日、門牌、坪數、總價與每坪單價一次看，
-              先知道周圍行情，再談價格才有依據。
+              內政部最新一期的海線成交，每天自動同步。預設顯示近 6 個月，可切換看成屋或預售屋，
+              也能指定要查的年度；成交日、門牌、坪數、總價與每坪單價一次看，先知道周圍行情，再談價格才有依據。
             </p>
           </div>
 
@@ -272,15 +311,38 @@ export default async function LvrPage({ searchParams }: { searchParams: Promise<
               中位數只算有單價、備註沒有親友／法拍等特殊註記的成交；括號是樣本數。透天的每坪單價含土地，跟大樓不能直接比。
             </p>
 
+            {/* ---------- 成屋／預售屋 分頁籤 ----------
+                2026-10-01 系統擁有者：「預售跟成屋分開顯示」—— 兩種資料的欄位意義不一樣
+                （成屋看屋齡與樓層、預售屋看建案與棟號），混在同一份清單裡不容易看懂，分開才對。
+                換籤只動 kind，其餘篩選（行政區／期間／排序／關鍵字）照舊帶著走；
+                但「型態」重設成全部 —— 兩籤的型態選項不同，留著舊值可能查出「這籤沒有的型態」而顯示空清單。 */}
+            <div className={css.kindTabs} role="tablist" aria-label="成屋或預售屋">
+              {KIND_TABS.map((t) => (
+                <Link
+                  key={t.value}
+                  href={hrefWith(f, { kind: t.value, type: "" })}
+                  className={`${css.kindTab} ${f.kind === t.value ? css.kindTabOn : ""}`}
+                  role="tab"
+                  aria-selected={f.kind === t.value}
+                >
+                  {t.label}
+                </Link>
+              ))}
+            </div>
+
             {/* ---------- 篩選 ---------- */}
-            <LvrFilters values={f} hasFresh={Boolean(latestBatch) && freshTotal > 0} />
+            <LvrFilters values={f} hasFresh={Boolean(latestBatch) && freshTotal > 0} years={years} />
 
             {/* ---------- 清單 ---------- */}
             <div className={css.count}>
+              {f.kind === "presale" ? "預售屋" : "成屋"}
+              {" ・ "}
               {f.area || "四區"}
               {" ・ "}
-              {f.type ? LVR_CATEGORY_LABEL[f.type] : "全部房屋"}
+              {f.type ? LVR_CATEGORY_LABEL[f.type] : "全部型態"}
               {f.q ? ` ・ 「${f.q}」` : ""}
+              {" ・ "}
+              {periodLabel(f.period)}
               {f.fresh ? " ・ 只看本期" : ""}
               {" ・ 共 "}
               <strong>{list.total.toLocaleString("zh-TW")}</strong> 筆
@@ -289,7 +351,7 @@ export default async function LvrPage({ searchParams }: { searchParams: Promise<
 
             {list.rows.length === 0 ? (
               <div className={css.empty}>
-                {noData ? "資料還沒同步進來，請稍後再試。" : "這個條件下沒有成交紀錄，換個行政區或型態看看。"}
+                {noData ? "資料還沒同步進來，請稍後再試。" : "這個條件下沒有成交紀錄，換個行政區、型態或期間看看。"}
               </div>
             ) : (
               <div className={css.tableWrap}>
@@ -430,7 +492,9 @@ export default async function LvrPage({ searchParams }: { searchParams: Promise<
               其單價不宜直接比較。每坪單價依內政部公布的「單價元／平方公尺」換算（已扣除車位），坪數＝平方公尺 × 0.3025。
               內政部資料每月 1、11、21 日發布新一期，每期收錄的是前一旬完成登記的案件，
               <strong>成交到公開約有一到兩個月時間差</strong>；本頁「本期新增」是指最新一期才出現的案件。
-              預售屋資料以「交易日期」呈現，已解約的案件會標示。本頁不構成任何價格建議或估價。
+              預售屋資料以「交易日期」呈現，已解約的案件會標示。
+              清單預設只顯示<strong>近 6 個月</strong>的成交，想看更早的資料可用「期間」改選特定年度。
+              本頁不構成任何價格建議或估價。
               <div className={tax.sources}>
                 資料來源：
                 <br />

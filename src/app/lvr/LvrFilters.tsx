@@ -5,27 +5,43 @@
  * 不帶 page 參數 —— 換條件一律回第一頁。
  */
 import { useRef } from "react";
-import { LVR_DISTRICTS, LVR_CATEGORY_LABEL, type LvrCategory } from "@/lib/lvr-parse";
-import { LVR_SORTS, type LvrSort } from "@/lib/lvr";
+import { LVR_DISTRICTS, LVR_CATEGORY_LABEL, type LvrCategory, type LvrKind } from "@/lib/lvr-parse";
+import { LVR_SORTS, LVR_PERIOD_RECENT, type LvrSort } from "@/lib/lvr";
 import styles from "./lvr.module.css";
 import tax from "../tax/tax.module.css";
 
 export type LvrFilterValues = {
+  kind: LvrKind;
   area: string;
   type: LvrCategory | "";
+  /** "recent6m"（預設）或民國年字串，例如 "115" */
+  period: string;
   q: string;
   sort: LvrSort;
   fresh: boolean;
 };
 
-const CATEGORY_ORDER: (LvrCategory | "")[] = ["", "apt", "house", "presale", "shop", "land", "other"];
+/** 不含 "presale" —— 預售屋現在是上面的分頁籤（kind），不再是這個下拉的選項 */
+const CATEGORY_ORDER: (LvrCategory | "")[] = ["", "apt", "house", "shop", "land", "other"];
 
-export default function LvrFilters({ values, hasFresh }: { values: LvrFilterValues; hasFresh: boolean }) {
+export default function LvrFilters({
+  values,
+  hasFresh,
+  years,
+}: {
+  values: LvrFilterValues;
+  hasFresh: boolean;
+  /** 可查詢的民國年清單（新到舊）；空陣列就不畫「依年度查詢」 */
+  years: string[];
+}) {
   const form = useRef<HTMLFormElement>(null);
   const submit = () => form.current?.requestSubmit();
 
   return (
     <form ref={form} action="/lvr" method="get" className={styles.filters} role="search" aria-label="篩選成交資料">
+      {/* kind 不在這個表單裡（它是上面的分頁籤、換頁即送出），這裡原樣帶著走避免被表單提交蓋掉 */}
+      <input type="hidden" name="kind" value={values.kind} />
+
       <label className={tax.field}>
         <span className={tax.label}>行政區</span>
         <select name="area" className={tax.input} defaultValue={values.area} onChange={submit}>
@@ -43,7 +59,19 @@ export default function LvrFilters({ values, hasFresh }: { values: LvrFilterValu
         <select name="type" className={tax.input} defaultValue={values.type} onChange={submit}>
           {CATEGORY_ORDER.map((c) => (
             <option key={c || "all"} value={c}>
-              {c ? LVR_CATEGORY_LABEL[c] : "全部房屋（不含土地）"}
+              {c ? LVR_CATEGORY_LABEL[c] : "全部型態（不含土地）"}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className={tax.field}>
+        <span className={tax.label}>期間</span>
+        <select name="period" className={tax.input} defaultValue={values.period} onChange={submit}>
+          <option value={LVR_PERIOD_RECENT}>近 6 個月</option>
+          {years.map((y) => (
+            <option key={y} value={y}>
+              民國 {y} 年（全年）
             </option>
           ))}
         </select>

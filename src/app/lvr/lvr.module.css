@@ -146,15 +146,58 @@
 
 /* ---------- 篩選列 ---------- */
 
+/* ---------- 成屋／預售屋 分頁籤 ---------- */
+
+.kindTabs {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 18px;
+}
+
+.kindTab {
+  box-sizing: border-box;
+  display: inline-block;
+  padding: 10px 24px;
+  border: 1px solid var(--line-warm);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 14.5px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.kindTab:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.kindTabOn {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.kindTabOn:hover {
+  color: #fff;
+}
+
 .filters {
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* 行政區／型態／期間／排序 四個下拉，路名搜尋與「只看本期」另外 grid-column:1/-1 佔整列 */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px 16px;
   padding: 18px 20px;
   background: #fff;
   border: 1px solid var(--line-warm);
   border-radius: var(--radius);
+}
+
+@media (max-width: 900px) {
+  .filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .fieldWide {

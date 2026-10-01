@@ -107,6 +107,20 @@ if (L) {
   eq("期程去掉「資料內容：」", hist[0].periodText, "登記日期 115年6月11日至 115年6月20日之買賣案件");
   eq("空 HTML 回空陣列", P.parseHistoryList("<table></table>"), []);
   eq("前期 zip 網址", P.lvrHistoryZipUrl("20260701"), "https://plvr.land.moi.gov.tw//DownloadHistory?type=history&fileName=20260701");
+
+  console.log("=== I3 期間篩選（實價登入主要顯示半年、依年度查詢）===");
+  eq("近 6 個月的起算日", L.monthsAgoIso(6, "2026-09-30"), "2026-03-30");
+  eq("預設（不給 period）＝近 6 個月", L.periodWhere(undefined, "2026-09-30"), { sql: "deal_date >= ?", params: ["2026-03-30"] });
+  eq("recent6m 顯式給也一樣", L.periodWhere("recent6m", "2026-09-30"), { sql: "deal_date >= ?", params: ["2026-03-30"] });
+  eq("給民國年＝那一整年", L.periodWhere("115", "2026-09-30"), {
+    sql: "deal_date BETWEEN ? AND ?",
+    params: ["2026-01-01", "2026-12-31"],
+  });
+  eq("114 年＝2025 整年", L.periodWhere("114", "2026-09-30"), {
+    sql: "deal_date BETWEEN ? AND ?",
+    params: ["2025-01-01", "2025-12-31"],
+  });
+  eq("亂打的字串 fallback 回近 6 個月", L.periodWhere("abc", "2026-09-30"), { sql: "deal_date >= ?", params: ["2026-03-30"] });
   eq("HTML 不是 zip", L.looksLikeZip(new TextEncoder().encode("<table>…</table>")), false);
   eq("PK 檔頭是 zip", L.looksLikeZip(new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0, 0])), true);
 }

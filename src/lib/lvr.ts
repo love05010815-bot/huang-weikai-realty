@@ -627,9 +627,13 @@ export const LVR_SORTS: { value: LvrSort; label: string }[] = [
 ];
 
 export type LvrQuery = {
+  /** 成屋（買賣）還是預售屋 —— 兩種資料欄位意義不同，前台分頁籤顯示，不混在同一份清單 */
+  kind: LvrKind;
   district?: string;
-  /** 空字串／undefined ＝ 全部房屋（不含土地與純車位） */
+  /** 空字串／undefined ＝ 全部型態（不含土地與純車位） */
   category?: LvrCategory | "";
+  /** "recent6m"（預設，近 6 個月）或民國年字串（例："115"＝全年） */
+  period?: string;
   q?: string;
   sort?: LvrSort;
   /** 只看本期新增 */
@@ -637,6 +641,55 @@ export type LvrQuery = {
   page: number;
   pageSize: number;
 };
+
+/** 期間篩選的預設值：近 6 個月 */
+export const LVR_PERIOD_RECENT = "recent6m";
+/** 「近 N 個月」的 N，跟 getDistrictStats 的摘要窗口共用同一個數字 */
+const LIST_DEFAULT_MONTHS = 6;
+
+/** 民國年字串格式（兩到三碼數字），用來判斷 period 是不是一個年度 */
+const ROC_YEAR_RE = /^\d{2,3}$/;
+
+export function monthsAgoIso(months: number, today: string): string {
+  const d = new Date(Date.parse(`${today}T00:00:00Z`));
+  d.setUTCMonth(d.getUTCMonth() - months);
+  return d.toISOString().slice(0, 10);
+}
+
+/** 期間條件：預設近 6 個月；給一個民國年字串就改成那整年（1/1～12/31）。 */
+export function periodWhere(period: string | undefined, today: string): { sql: string; params: unknown[] } {
+  const p = (period || LVR_PERIOD_RECENT).trim();
+  if (p !== LVR_PERIOD_RECENT && ROC_YEAR_RE.test(p)) {
+    const gYear = Number(p) + 1911;
+    return { sql: "deal_date BETWEEN ? AND ?", params: [`${gYear}-01-01`, `${gYear}-12-31`] };
+  }
+  return { sql: "deal_date >= ?", params: [monthsAgoIso(LIST_DEFAULT_MONTHS, today)] };
+}
+
+/**
+ * 可查詢的民國年清單（新到舊），從資料庫實際的最早／最晚成交日算出來 ——
+ * 不要寫死年份，之後繼續回填歷史資料，選單會自己多出年度。讀不到回空陣列（畫面上只隱藏「依年度查詢」）。
+ */
+export async function getLvrYearOptions(): Promise<string[]> {
+  try {
+    const rows = await withSchema(() =>
+      db.$queryRawUnsafe<{ minD: string | null; maxD: string | null }[]>(
+        "SELECT MIN(deal_date) AS minD, MAX(deal_date) AS maxD FROM lvr_deal",
+      ),
+    );
+    const minD = rows[0]?.minD;
+    const maxD = rows[0]?.maxD;
+    if (!minD || !maxD) return [];
+    const minYear = Number(minD.slice(0, 4)) - 1911;
+    const maxYear = Number(maxD.slice(0, 4)) - 1911;
+    const years: string[] = [];
+    for (let y = maxYear; y >= minYear; y--) years.push(String(y));
+    return years;
+  } catch (error) {
+    console.error("[lvr] 讀不到年度範圍:", error);
+    return [];
+  }
+}
 
 /** 資料表一列（畫面用，欄位已轉成 camelCase 與正確型別） */
 export type LvrDealRow = LvrDeal & { batch: string; firstSeen: string };
@@ -679,7 +732,11 @@ function rowToDeal(r: DealRow): LvrDealRow {
   };
 }
 
-/** 型態分類 → SQL 條件。跟 lvr-parse.ts 的 categorize() 要對得上。 */
+/**
+ * 型態分類 → SQL 條件。跟 lvr-parse.ts 的 categorize() 要對得上。
+ * ⚠️ 不處理 `kind`（成屋／預售）—— 那是 buildWhere() 另外加的頂層條件，
+ *    這裡再寫一次 `kind = 'sale'` 會跟「預售屋」分頁籤互相打架（AND 出兩個矛盾的 kind）。
+ */
 function categoryWhere(category: LvrCategory | "" | undefined): { sql: string; params: unknown[] } {
   const APT = "(building_type LIKE '%住宅大樓%' OR building_type LIKE '%華廈%' OR building_type LIKE '%公寓%' OR building_type LIKE '%套房%')";
   const HOUSE = "building_type LIKE '%透天%'";
@@ -687,29 +744,30 @@ function categoryWhere(category: LvrCategory | "" | undefined): { sql: string; p
     "(building_type LIKE '%店面%' OR building_type LIKE '%店鋪%' OR building_type LIKE '%辦公%' OR building_type LIKE '%廠辦%' OR building_type LIKE '%倉庫%' OR building_type LIKE '%工廠%')";
   switch (category) {
     case "apt":
-      return { sql: `kind = 'sale' AND target <> '土地' AND ${APT}`, params: [] };
+      return { sql: `target <> '土地' AND ${APT}`, params: [] };
     case "house":
-      return { sql: `kind = 'sale' AND target <> '土地' AND ${HOUSE}`, params: [] };
-    case "presale":
-      return { sql: "kind = 'presale'", params: [] };
+      return { sql: `target <> '土地' AND ${HOUSE}`, params: [] };
     case "shop":
-      return { sql: `kind = 'sale' AND target <> '土地' AND ${SHOP}`, params: [] };
+      return { sql: `target <> '土地' AND ${SHOP}`, params: [] };
     case "land":
       return { sql: "target = '土地'", params: [] };
     case "other":
-      return { sql: `kind = 'sale' AND target <> '土地' AND target <> '車位' AND NOT ${APT} AND NOT ${HOUSE} AND NOT ${SHOP}`, params: [] };
+      return { sql: `target <> '土地' AND target <> '車位' AND NOT ${APT} AND NOT ${HOUSE} AND NOT ${SHOP}`, params: [] };
     default:
-      // 全部房屋：買賣＋預售，不含純土地、純車位
+      // 全部型態：不含純土地、純車位
       return { sql: "target <> '土地' AND target <> '車位'", params: [] };
   }
 }
 
-function buildWhere(q: LvrQuery, latestBatch: string): { sql: string; params: unknown[] } {
-  const parts: string[] = [];
-  const params: unknown[] = [];
+function buildWhere(q: LvrQuery, latestBatch: string, today: string): { sql: string; params: unknown[] } {
+  const parts: string[] = ["kind = ?"];
+  const params: unknown[] = [q.kind];
   const cat = categoryWhere(q.category);
   parts.push(cat.sql);
   params.push(...cat.params);
+  const per = periodWhere(q.period, today);
+  parts.push(per.sql);
+  params.push(...per.params);
   if (q.district && (LVR_DISTRICTS as readonly string[]).includes(q.district)) {
     parts.push("district = ?");
     params.push(q.district);
@@ -748,7 +806,7 @@ export type LvrListResult = { rows: LvrDealRow[]; total: number };
  * `latestBatch` 給「只看本期」用，呼叫端從 latestSuccessfulSync() 拿。
  */
 export async function listDeals(q: LvrQuery, latestBatch: string): Promise<LvrListResult> {
-  const where = buildWhere(q, latestBatch);
+  const where = buildWhere(q, latestBatch, taipeiDay());
   const pageSize = Math.max(1, Math.min(100, q.pageSize));
   const offset = Math.max(0, (q.page - 1) * pageSize);
   try {
@@ -808,9 +866,7 @@ function median(values: number[]): number | null {
  */
 export async function getDistrictStats(latestBatch: string): Promise<LvrStats> {
   const today = taipeiDay();
-  const sinceDate = new Date(Date.parse(`${today}T00:00:00Z`));
-  sinceDate.setUTCMonth(sinceDate.getUTCMonth() - STATS_MONTHS);
-  const since = sinceDate.toISOString().slice(0, 10);
+  const since = monthsAgoIso(STATS_MONTHS, today);
   const empty: LvrStats = {
     months: STATS_MONTHS,
     since,
