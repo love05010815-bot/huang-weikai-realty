@@ -3748,6 +3748,26 @@ export const COORDS: Record<string, Coord> = {
   "hongyu-zhushilu-1-toutian": { lat: 24.17841, lng: 120.54577, precision: "exact" }, // 竤宇竹師路一段透天
   "juheng-guangyuhui-toutian": { lat: 24.18383, lng: 120.54656, precision: "exact" }, // 聚恆光語繪透天區
   "fengrong-zhuangyuan-13": { lat: 24.1775, lng: 120.54462, precision: "exact" }, // 豐榮莊園13
+  /* ── 2026-10-01 龍井田中商圈 13 案（他用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、precision 全 exact、本批不重複、沒有覆蓋既有座標，
+     **13 筆全部落在龍井田中商圈色塊內**；30 公尺內一對鄰居都沒有。
+     🔴 **這是龍井田中第一次有圖釘**，它的膠囊從這一批開始出現 —— 九塊色塊全部都有膠囊了。
+        ⚠️ 膠囊重疊要再量第三次（檔頭 LeafletMap.tsx 那段：10/01 已從 8 顆 3 對變成 9 顆 5 對）。
+     🔵 「富貴莊園」系列的五筆（無編號、2、5、6、7）彼此只隔一兩百公尺、而且跨頡懋與鉅懋兩家，
+        這是他親手點的，不是重複建案。 */
+  "liuxingyu-2020": { lat: 24.19488, lng: 120.52912, precision: "exact" }, // 2020流星雨
+  "huayu-dayuan": { lat: 24.19332, lng: 120.5288, precision: "exact" }, // 華育大院
+  "yushu-lehuo": { lat: 24.19298, lng: 120.52985, precision: "exact" }, // 御墅樂活
+  "fuyuan-yipin-7": { lat: 24.19172, lng: 120.53076, precision: "exact" }, // 富園一品7
+  "wushiliu-yan": { lat: 24.19138, lng: 120.53153, precision: "exact" }, // 五十六硯
+  "xinguan-6": { lat: 24.19079, lng: 120.53011, precision: "exact" }, // 新觀6
+  "xiemao-fugui-zhuangyuan": { lat: 24.19161, lng: 120.52958, precision: "exact" }, // 頡懋富貴莊園
+  "xiemao-fugui-zhuangyuan-2": { lat: 24.19129, lng: 120.52934, precision: "exact" }, // 頡懋富貴莊園2
+  "qizhi-huayuan": { lat: 24.1912, lng: 120.52807, precision: "exact" }, // 砌植花園
+  "jumao-fugui-zhuangyuan-6": { lat: 24.1904, lng: 120.52778, precision: "exact" }, // 鉅懋富貴莊園6
+  "xiemao-fugui-zhuangyuan-5": { lat: 24.19014, lng: 120.52804, precision: "exact" }, // 頡懋富貴莊園5
+  "xiemao-fugui-zhuangyuan-7": { lat: 24.18925, lng: 120.52745, precision: "exact" }, // 頡懋富貴莊園7
+  "yushujia-zhule": { lat: 24.18909, lng: 120.53133, precision: "exact" }, // 御墅家築樂
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
