@@ -345,14 +345,32 @@ export async function nextPostSlug(): Promise<string> {
 
 export type ValidatedPost = { ok: true; value: PostInput } | { ok: false; error: string };
 
+/**
+ * 截斷字串，但**不准把表情符號切成一半**。
+ *
+ * 🔴 `slice` 是按 UTF-16 單位切的，emoji 占兩個單位（🏠 = `\uD83C` + `\uDFE0`），
+ *    剛好切在中間會留下半個字，那種字串沒辦法變成合法 JSON，
+ *    Prisma 會丟 `unexpected end of hex escape`、整筆存不進去，
+ *    而且錯誤訊息完全看不出跟 emoji 有關。他的文案幾乎每行都有 emoji，很容易中。
+ *    2026-10-01 影片簡介先踩到一次，`src/lib/videos.ts` 有同一支（兩邊要一起改）。
+ */
+function cut(s: string, n: number): string {
+  const clean = s.replace(
+    /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g,
+    "",
+  );
+  const out = clean.slice(0, n);
+  return /[\uD800-\uDBFF]$/.test(out) ? out.slice(0, -1) : out;
+}
+
 /** 欄位長度對齊建表的宣告 —— 超過長度 MySQL 會**默默截斷**，不會報錯。 */
 export function validatePost(input: PostInput): ValidatedPost {
-  const title = (input.title ?? "").trim().slice(0, 255);
-  const summary = (input.summary ?? "").trim().slice(0, 500);
+  const title = cut((input.title ?? "").trim(), 255);
+  const summary = cut((input.summary ?? "").trim(), 500);
   const body = (input.body ?? "").replace(/\r\n?/g, "\n").trim();
-  const coverUrl = (input.coverUrl ?? "").trim().slice(0, 500);
-  const sourceUrl = (input.sourceUrl ?? "").trim().slice(0, 2000);
-  const sourceName = (input.sourceName ?? "").trim().slice(0, 120);
+  const coverUrl = cut((input.coverUrl ?? "").trim(), 500);
+  const sourceUrl = cut((input.sourceUrl ?? "").trim(), 2000);
+  const sourceName = cut((input.sourceName ?? "").trim(), 120);
   const publishedAt = (input.publishedAt ?? "").trim();
 
   if (!title) return { ok: false, error: "標題不能空白" };

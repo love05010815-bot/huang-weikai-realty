@@ -443,11 +443,36 @@ export async function getPublicVideos(): Promise<PublicVideo[]> {
 
 export type Validated = { ok: true; value: VideoInput } | { ok: false; error: string };
 
+/**
+ * 截斷字串，但**不准把表情符號切成一半**。
+ *
+ * 🔴 2026-10-01 踩到：他貼 YouTube 影片說明當簡介，結尾是「🏠」，
+ *    第 500 個單位剛好落在那顆 emoji 中間。`slice` 是按 **UTF-16 單位**切的，
+ *    而 emoji 占兩個單位（🏠 = `\uD83C` + `\uDFE0`），切中間會留下**半個字**。
+ *    半個字沒辦法變成合法 JSON，Prisma 把參數交給底層時直接爆：
+ *    `Invalid value for argument 'parameters': unexpected end of hex escape`，
+ *    整筆存不進去，而且錯誤訊息完全看不出跟 emoji 有關。
+ *
+ * 兩段都要做：
+ *   ① 先把「本來就落單的半個字」清掉 —— 貼進來的內容自己就可能帶（從別處複製時被截過）
+ *   ② 截斷後若結尾剛好是配對的前半，再砍掉它
+ *
+ * ⚠️ `src/lib/posts.ts` 有同一支（房產消息的摘要也是他貼 emoji 長文），兩邊要一起改。
+ */
+function cut(s: string, n: number): string {
+  const clean = s.replace(
+    /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g,
+    "",
+  );
+  const out = clean.slice(0, n);
+  return /[\uD800-\uDBFF]$/.test(out) ? out.slice(0, -1) : out;
+}
+
 export function validateVideo(input: VideoInput): Validated {
-  const title = (input.title ?? "").trim().slice(0, 255);
-  const url = (input.url ?? "").trim().slice(0, 500);
-  const summary = (input.summary ?? "").trim().slice(0, 500);
-  const posterUrl = (input.posterUrl ?? "").trim().slice(0, 500);
+  const title = cut((input.title ?? "").trim(), 255);
+  const url = cut((input.url ?? "").trim(), 500);
+  const summary = cut((input.summary ?? "").trim(), 500);
+  const posterUrl = cut((input.posterUrl ?? "").trim(), 500);
   const source: VideoSource = isVideoSource(input.source) ? input.source : "youtube";
 
   if (!title) return { ok: false, error: "標題不能空白" };
