@@ -2685,6 +2685,27 @@ export const PROJECTS: Project[] = [
   { id: "money-manni-2-toutian", name: "MONEY曼尼2透天區", builder: "采庭建設", area: "龍井車站", status: "completed", completion: "約 2020", sources: ["owner"] },
   { id: "lvhuo-ai-shiguang-toutian", name: "綠活薆蒔光透天區", builder: "大居建設", area: "龍井車站", status: "newly", completion: "約 2024", sources: ["owner"] },
   { id: "lvhuo-ai-shiguang-huaxia", name: "綠活薆蒔光華廈區", builder: "大居建設", area: "龍井車站", status: "newly", completion: "約 2024", sources: ["owner"] },
+
+  /* ── 2026-10-01 龍井田中商圈補 11 案 ──
+     ✅ **同一批他還寫了「頡懋富貴莊園7/頡懋建設/預售」—— 跟現存的逐字相同，沒有重複建立。**
+        🔵 那一筆是 2026-09-19 他打成「懋富貴莊園7」、我補上「頡」字存進來的，**這次等於他確認了那個補字**。
+     🔵 **「富貴莊園」這個系列跨兩家建商，是他寫的，不要合併**：
+        頡懋建設 → 頡懋富貴莊園（無編號）、2、3（在龍井車站）、5、7；
+        鉅懋建設 → 鉅懋富貴莊園6。**連案名前兩個字都跟著建商換**（頡／鉅），所以不是打錯字。
+        同樣的兩家也分掉了「臻里仁」系列（6/7/8 是頡懋，3期A/B、5 是鉅懋）。
+     🔵 璞樹閭2 沒有「璞樹閭」（無 2）那一案 —— 站上目前只有這個 2，跟微風一品3 同樣情況。
+     🔵 祥璽建設、嘉鑫開發建設是新進建商，核心字沒撞到任何既有公司。 */
+  { id: "liuxingyu-2020", name: "2020流星雨", builder: "萬懋建設", area: "龍井田中", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "huayu-dayuan", name: "華育大院", builder: "華育建設", area: "龍井田中", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "yushu-lehuo", name: "御墅樂活", builder: "御墅家建設", area: "龍井田中", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "xiemao-fugui-zhuangyuan", name: "頡懋富貴莊園", builder: "頡懋建設", area: "龍井田中", status: "completed", completion: "約 2019", sources: ["owner"] },
+  { id: "xiemao-fugui-zhuangyuan-2", name: "頡懋富貴莊園2", builder: "頡懋建設", area: "龍井田中", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "jumao-fugui-zhuangyuan-6", name: "鉅懋富貴莊園6", builder: "鉅懋建設", area: "龍井田中", status: "completed", completion: "約 2023", sources: ["owner"] },
+  { id: "xiemao-fugui-zhuangyuan-5", name: "頡懋富貴莊園5", builder: "頡懋建設", area: "龍井田中", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "qizhi-huayuan", name: "砌植花園", builder: "祥璽建設", area: "龍井田中", status: "newly", completion: "約 2025", sources: ["owner"] },
+  { id: "longxin-dayue", name: "龍鑫大悅", builder: "嘉鑫開發建設", area: "龍井田中", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "yushujia-zhule", name: "御墅家築樂", builder: "御墅家建設", area: "龍井田中", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "pushulv-2", name: "璞樹閭2", builder: "鉅懋建設", area: "龍井田中", status: "completed", completion: "約 2023", sources: ["owner"] },
 ];
 
 /* ─────────────── 座標 ─────────────── */
@@ -3631,6 +3652,10 @@ export const COORDS: Record<string, Coord> = {
   "shatian-aplus-toutian": { lat: 24.17882, lng: 120.54472, precision: "exact" }, // 沙田A+家透天區
   "xiemao-fugui-zhuangyuan-3": { lat: 24.17742, lng: 120.54686, precision: "exact" }, // 頡懋富貴莊園3
   "yatai-diyi-jiayuan": { lat: 24.17592, lng: 120.54454, precision: "exact" }, // 亞太第一家園
+  /* ── 2026-10-01 昇佳景邑 ──
+     同一天稍早才把它從「龍井區」改掛「龍井車站」，這筆座標落在龍井車站商圈色塊內、30 公尺內無鄰居，
+     等於也佐證了那次改區是對的。 */
+  "shengjia-jingyi": { lat: 24.18739, lng: 120.54969, precision: "exact" }, // 昇佳景邑
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
