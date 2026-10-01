@@ -29,6 +29,7 @@
     "build:addr": "node --experimental-strip-types scripts/build-address-index.mjs",
     "check:addr": "node --experimental-strip-types scripts/check-address-index.mjs",
     "check:lvr": "node --experimental-strip-types scripts/check-lvr.mjs",
+    "check:area": "node --experimental-strip-types scripts/check-area-units.mjs",
     "backfill:lvr": "node --experimental-strip-types --env-file=.env.local scripts/backfill-lvr.mjs"
   },
   "dependencies": {

@@ -37,6 +37,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: SITE_URL + "/school", lastModified, changeFrequency: "monthly", priority: 0.9 },
     // 2026-09-30 海線實價登錄。「梧棲實價登錄」「沙鹿房價」是買賣雙方都會搜的字；資料每旬更新
     { url: SITE_URL + "/lvr", lastModified, changeFrequency: "weekly", priority: 0.9 },
+    // 2026-10-01 坪數換算。「坪數換算」「一甲幾坪」是土地買賣族群常搜的字；內容是定義值不會變
+    { url: SITE_URL + "/area", lastModified, changeFrequency: "yearly", priority: 0.8 },
     // 2026-08-21 恢復。未核對的「土地使用分區」層已從該頁移除，
     // 現在是系統擁有者確認過的 39 個建案，可以收錄。
     { url: SITE_URL + "/map", lastModified, changeFrequency: "weekly", priority: 0.8 },

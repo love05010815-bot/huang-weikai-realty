@@ -1,0 +1,229 @@
+/* ---------- 地籍面積單位換算（2026-10-01） ----------
+   配色變數在 home.module.css 的 .page；表單欄位、免責的樣式直接借 tax.module.css，
+   這裡只放這頁自己的：分組標題、範例鈕、正在輸入那格的高亮、對照表、複製鈕。
+   ⚠️ 專案沒有全域 box-sizing reset，有邊框又設寬度的都要自己寫。 */
+
+/* 「公制」「台灣慣用」兩組的小標，佔滿一整列 */
+.groupTitle {
+  grid-column: 1 / -1;
+  margin: 6px 0 -6px;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.groupTitle::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line-warm);
+}
+
+/* 正在打字的那一格：邊框換主色，讓人一眼看出「其他格是從這格算出來的」 */
+.inputOn {
+  border-color: var(--primary) !important;
+  background: #f3fbf9 !important;
+}
+
+/* 範例鈕那一列：「不知道要打什麼？點一個試試」 */
+.examples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.examplesLabel {
+  font-size: 13px;
+  color: var(--muted);
+  margin-right: 4px;
+}
+
+.exampleBtn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.exampleBtn:hover,
+.exampleBtn:focus-visible {
+  border-color: var(--primary);
+  background: var(--accent-soft);
+  outline: none;
+}
+
+/* 表單下面那列：清除＋複製結果，訊息就印在按鈕旁邊（整頁一行訊息等於沒訊息） */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--line);
+}
+
+.actionBtn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 10px;
+  padding: 9px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.actionBtn:hover:not(:disabled),
+.actionBtn:focus-visible {
+  border-color: var(--primary);
+  background: var(--accent-soft);
+  outline: none;
+}
+
+.actionBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.actionMsg {
+  font-size: 13px;
+  color: var(--primary-dark);
+  font-weight: 700;
+}
+
+/* 算出來的結果一句話版（給客戶截圖、貼 LINE 用） */
+.summary {
+  margin-top: 22px;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.summaryHead {
+  background: var(--primary);
+  color: #fff;
+  padding: clamp(18px, 3vw, 24px);
+  text-align: center;
+}
+
+.summaryLabel {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  opacity: 0.85;
+}
+
+.summaryBig {
+  font-size: clamp(26px, 6vw, 38px);
+  font-weight: 900;
+  line-height: 1.25;
+  margin: 6px 0 0;
+  letter-spacing: -0.01em;
+}
+
+.summaryBig small {
+  font-size: 0.5em;
+  font-weight: 700;
+  margin-left: 4px;
+}
+
+.summaryList {
+  background: #fff;
+  margin: 0;
+  padding: clamp(14px, 2.6vw, 20px) clamp(18px, 3vw, 26px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 24px;
+}
+
+.summaryItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 15px;
+}
+
+.summaryItem dt {
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.summaryItem dd {
+  margin: 0;
+  font-weight: 800;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+/* 固定對照表（跟他貼的那張圖一樣的內容，客戶不打數字也看得到基本換算） */
+.refTitle {
+  margin: 34px 0 10px;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.refTable {
+  box-sizing: border-box;
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 6px clamp(14px, 3vw, 24px);
+  margin: 0;
+  list-style: none;
+}
+
+.refTable li {
+  padding: 11px 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.refTable li:last-child {
+  border-bottom: 0;
+}
+
+.refTable b {
+  font-weight: 800;
+}
+
+.refTable code {
+  font-family: inherit;
+  font-weight: 800;
+  color: var(--primary-dark);
+  background: var(--accent-soft);
+  border-radius: 6px;
+  padding: 1px 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .summaryList {
+    grid-template-columns: 1fr;
+  }
+}
