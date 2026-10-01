@@ -3702,6 +3702,22 @@ export const COORDS: Record<string, Coord> = {
   "zhenliren-3b": { lat: 24.20344, lng: 120.5224, precision: "exact" }, // 臻里仁3期B
   "zhenliren-3a": { lat: 24.20368, lng: 120.52234, precision: "exact" }, // 臻里仁3期A
   "zhenliren-5": { lat: 24.20327, lng: 120.52257, precision: "exact" }, // 臻里仁5
+  /* ── 2026-10-01 龍井中央路商圈再 11 案（他用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、precision 全 exact、本批不重複、沒有覆蓋既有座標，
+     **11 筆全部落在龍井中央路商圈色塊內**；30 公尺內一對鄰居都沒有。
+     🔵 臻里仁 2期A／2期B 落在色塊北端（24.2159／24.2168），跟同系列的 3期A/B、5、6、7、8
+        （都在 24.198–24.203）隔了約 1.6 公里 —— **是他點的，不是點錯**：這個系列本來就散在中央路沿線。 */
+  "longjin-xueyuan": { lat: 24.20079, lng: 120.52135, precision: "exact" }, // 龍津學苑
+  "yushu-jinzuan": { lat: 24.20006, lng: 120.51981, precision: "exact" }, // 御墅津鑽
+  "gaofeng-lingxiu-7b": { lat: 24.19889, lng: 120.51944, precision: "exact" }, // 高峰領袖7期B
+  "gaofeng-lingxiu-7a": { lat: 24.19864, lng: 120.52021, precision: "exact" }, // 高峰領袖7期A
+  "hanyu-gongyuan": { lat: 24.19832, lng: 120.5199, precision: "exact" }, // 漢宇公園
+  "zhenliren-8": { lat: 24.19868, lng: 120.52165, precision: "exact" }, // 臻里仁8
+  "zhenliren-7": { lat: 24.19874, lng: 120.52209, precision: "exact" }, // 臻里仁7
+  "shengbang-lvyi-7": { lat: 24.19794, lng: 120.52065, precision: "exact" }, // 勝邦綠邑7
+  "zhenliren-6": { lat: 24.1985, lng: 120.52275, precision: "exact" }, // 臻里仁6
+  "zhenliren-2a": { lat: 24.21587, lng: 120.5253, precision: "exact" }, // 臻里仁2期A
+  "zhenliren-2b": { lat: 24.2168, lng: 120.52508, precision: "exact" }, // 臻里仁2期B
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
