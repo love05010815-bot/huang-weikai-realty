@@ -2660,7 +2660,11 @@ export const PROJECTS: Project[] = [
   { id: "zhu-zhenxin", name: "築真心", builder: "真心建設", area: "龍井中央路", status: "newly", completion: "約 2025", sources: ["owner"] },
   { id: "xinguan-xu", name: "新觀序", builder: "杬宸建設", area: "龍井中央路", status: "newly", completion: "新成屋", sources: ["owner"] },
   { id: "fengfu-daxu", name: "豐富大旭", builder: "豐富興業", area: "龍井中央路", status: "newly", completion: "約 2025", sources: ["owner"] },
-  { id: "lin-dayuan", name: "霖大院", builder: "橙霖建設", area: "龍井中央路", status: "completed", completion: "約 2020", sources: ["owner"] },
+  /* ⚠️ **2026-10-01 他說「霖大院改橙霖大院」，案名已改、id 刻意沒動**（`lin-dayuan`）——
+     同「國境→兆國境」的做法：id 只是內部 key，改它會讓同一批給的座標對不上。
+     🔵 建商「橙霖建設」與屋齡 6 年（＝約 2020）**跟現存逐字相同**，他只是重寫了一次，沒有改動。
+     🔵 同一家橙霖建設在龍井車站還有「龍泉山莊」。 */
+  { id: "lin-dayuan", name: "橙霖大院", builder: "橙霖建設", area: "龍井中央路", status: "completed", completion: "約 2020", sources: ["owner"] },
   { id: "guangyu-shu", name: "光語墅", builder: "聚恆建設", area: "龍井中央路", status: "completed", completion: "約 2023", sources: ["owner"] },
   { id: "bojin-fu", name: "鉑金府", builder: "勇聚建設", area: "龍井中央路", status: "newly", completion: "約 2024", sources: ["owner"] },
   { id: "lvyuan-zhenpin-9", name: "綠園臻品9", builder: "晟翊建設", area: "梧棲市區", status: "completed", completion: "約 2022", sources: ["owner"] },
@@ -3656,6 +3660,23 @@ export const COORDS: Record<string, Coord> = {
      同一天稍早才把它從「龍井區」改掛「龍井車站」，這筆座標落在龍井車站商圈色塊內、30 公尺內無鄰居，
      等於也佐證了那次改區是對的。 */
   "shengjia-jingyi": { lat: 24.18739, lng: 120.54969, precision: "exact" }, // 昇佳景邑
+  /* ── 2026-10-01 龍井中央路商圈 10 案（他用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、precision 全 exact、本批不重複、沒有覆蓋既有座標，
+     **10 筆全部落在龍井中央路商圈色塊內**；30 公尺內一對鄰居都沒有。
+     🔴 **這是龍井中央路第一次有圖釘** —— 它的膠囊從這一批開始會出現（MIN_CLUSTER=2）。
+        ⚠️ 龍井車站的膠囊已經跟新光田特區疊住（見 LeafletMap.tsx 檔頭 2026-10-01 那段），
+        **中央路與田中都有座標之後要再量一次**，那三塊彼此只隔幾百公尺。
+     🔵 註解裡「霖大院」是舊案名，同一天改成「橙霖大院」了（id 沒變，仍是 lin-dayuan）。 */
+  "chenyou-heyuan": { lat: 24.21478, lng: 120.5268, precision: "exact" }, // 晨右禾院
+  "longhai-bieshu": { lat: 24.21474, lng: 120.52628, precision: "exact" }, // 龍海別墅
+  "jixiang-mingmen": { lat: 24.21221, lng: 120.52471, precision: "exact" }, // 吉鄉名門
+  "jingshang-sen": { lat: 24.21246, lng: 120.52349, precision: "exact" }, // 井上森
+  "gangwan-senqing": { lat: 24.21213, lng: 120.52346, precision: "exact" }, // 港灣森晴
+  "chenyou-chengyuan-b": { lat: 24.211, lng: 120.52539, precision: "exact" }, // 晨右埕院B
+  "chenyou-chengyuan-a": { lat: 24.21099, lng: 120.52585, precision: "exact" }, // 晨右埕院A
+  "huangjia-zunlong": { lat: 24.21002, lng: 120.52471, precision: "exact" }, // 皇家尊龍公寓
+  "hongquan-in-zhongyang": { lat: 24.21071, lng: 120.52342, precision: "exact" }, // 宏泉IN中央
+  "lin-dayuan": { lat: 24.20829, lng: 120.52614, precision: "exact" }, // 霖大院
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
