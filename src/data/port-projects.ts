@@ -3718,6 +3718,36 @@ export const COORDS: Record<string, Coord> = {
   "zhenliren-6": { lat: 24.1985, lng: 120.52275, precision: "exact" }, // 臻里仁6
   "zhenliren-2a": { lat: 24.21587, lng: 120.5253, precision: "exact" }, // 臻里仁2期A
   "zhenliren-2b": { lat: 24.2168, lng: 120.52508, precision: "exact" }, // 臻里仁2期B
+  /* ── 2026-10-01 清水市區 17 ＋ 龍井車站 3（他用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、precision 全 exact、本批不重複、沒有覆蓋既有座標，
+     **20 筆全部落在自己那一區的色塊內**。30 公尺內只有一對：
+     聚恆光語繪透天區 ↔ 華廈區 19 m（同一案拆兩筆）。
+
+     ✅ **仁里文華這次是對的**（24.25838,120.56599，落在清水市區色塊內）——
+        同一天稍早他給過 24.34089,120.40181，離色塊 16.2 公里、在台灣海峽裡，那筆**沒有寫進來**；
+        因為扣住了，它才留在「未標位置」清單裡、校正模式的自動跳號才會再跳到它，他也才重點得到。
+        🔵 這是「點歪了就扣住、不要硬寫」這條做法第一次被驗證走完整圈。
+     ⚠️ 仁里文華的**建商仍是待確認**，座標有了不等於資料齊了。 */
+  "renli-wenhua": { lat: 24.25838, lng: 120.56599, precision: "exact" }, // 仁里文華
+  "renai-yijing": { lat: 24.26052, lng: 120.55148, precision: "exact" }, // 仁愛易境
+  "yijibang-fengying": { lat: 24.26111, lng: 120.55015, precision: "exact" }, // 伊吉邦豐盈
+  "zhaodeng-shiguangxu": { lat: 24.28327, lng: 120.55138, precision: "exact" }, // 兆登拾光序
+  "heping-xincheng": { lat: 24.26547, lng: 120.56018, precision: "exact" }, // 和平新城
+  "jinan-yongyi": { lat: 24.27448, lng: 120.54765, precision: "exact" }, // 金安詠邑
+  "yue-shiguang": { lat: 24.26626, lng: 120.56884, precision: "exact" }, // 悦蒔光
+  "shengbang-lvyi-3": { lat: 24.26538, lng: 120.559, precision: "exact" }, // 勝邦綠邑3
+  "fuyi-6": { lat: 24.26347, lng: 120.56743, precision: "exact" }, // 富逸6
+  "qingkong-shu-2": { lat: 24.26433, lng: 120.55724, precision: "exact" }, // 晴空墅2
+  "junqi-zhenfu": { lat: 24.26334, lng: 120.55547, precision: "exact" }, // 鈞棋臻富
+  "jipin-shu": { lat: 24.27375, lng: 120.56056, precision: "exact" }, // 集品墅
+  "weifeng-yipin-3": { lat: 24.27615, lng: 120.56561, precision: "exact" }, // 微風一品3
+  "yicheng-pinyan": { lat: 24.27419, lng: 120.54933, precision: "exact" }, // 億承品硯
+  "dechuan-jiakang-dalou": { lat: 24.26634, lng: 120.55815, precision: "exact" }, // 德川家康大樓區
+  "dechuan-jiakang-toutian": { lat: 24.26604, lng: 120.55843, precision: "exact" }, // 德川家康透天區
+  "hongshan-qingshuili": { lat: 24.26073, lng: 120.56158, precision: "exact" }, // 鴻山清水禮
+  "hongyu-zhushilu-1-toutian": { lat: 24.17841, lng: 120.54577, precision: "exact" }, // 竤宇竹師路一段透天
+  "juheng-guangyuhui-toutian": { lat: 24.18383, lng: 120.54656, precision: "exact" }, // 聚恆光語繪透天區
+  "fengrong-zhuangyuan-13": { lat: 24.1775, lng: 120.54462, precision: "exact" }, // 豐榮莊園13
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
