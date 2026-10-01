@@ -2600,7 +2600,11 @@ export const PROJECTS: Project[] = [
   { id: "juheng-guangyuhui-toutian", name: "聚恆光語繪透天區", builder: "聚恆建設", area: "龍井車站", status: "newly", completion: "約 2024", sources: ["owner"] },
   { id: "juheng-guangyuhui-huaxia", name: "聚恆光語繪華廈區", builder: "聚恆建設", area: "龍井車站", status: "newly", completion: "約 2024", sources: ["owner"] },
   { id: "haolong-wangchao", name: "豪隆王朝", builder: "樺陽建設", area: "龍井車站", status: "completed", completion: "約 1996", sources: ["owner"] },
-  { id: "guojing", name: "國境", builder: "兆奕建設", area: "龍井車站", status: "presale", completion: "預售中", sources: ["owner"] },
+  /* ⚠️ **2026-10-01 他說「國境改兆國境」，案名已改、id 刻意沒動**（`guojing`）——
+     id 只是內部 key，改它會讓同一天他給的那筆座標對不上、也會讓舊的對照全部要重來。
+     🔵 建商仍是**兆奕建設**（他同一行重寫了一次）。⚠️ 案名是「**兆國**境」但建商是「**兆奕**」，
+        而且站上另有一家「兆國建設」（沙田A+家透天區／華廈區）—— **這兩家不要合併**，是他親手寫的。 */
+  { id: "guojing", name: "兆國境", builder: "兆奕建設", area: "龍井車站", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "xinyi-zhixin-huaxia", name: "新邑知薪華廈區", builder: "新邑建設", area: "龍井車站", status: "completed", completion: "約 2022", sources: ["owner"] },
   { id: "xinyi-zhixin-toutian", name: "新邑知薪透天區", builder: "新邑建設", area: "龍井車站", status: "completed", completion: "約 2022", sources: ["owner"] },
   { id: "fengrong-zhuangyuan-12", name: "豐榮莊園12", builder: "泉豐建設", area: "龍井車站", status: "completed", completion: "約 2022", sources: ["owner"] },
@@ -2611,7 +2615,10 @@ export const PROJECTS: Project[] = [
   { id: "xiemao-fugui-zhuangyuan-3", name: "頡懋富貴莊園3", builder: "頡懋建設", area: "龍井車站", status: "completed", completion: "約 2021", sources: ["owner"] },
   { id: "yatai-diyi-jiayuan", name: "亞太第一家園", builder: "萬家吉建設", area: "龍井車站", status: "completed", completion: "約 1999", sources: ["owner"] },
   { id: "jingshang-dayuan", name: "井上大院", builder: "御程建設", area: "龍井", status: "completed", completion: "約 2022", sources: ["owner"] },
-  { id: "shengjia-jingyi", name: "昇佳景邑", builder: "昇佳建設", area: "龍井", status: "newly", completion: "新成屋", sources: ["owner"] },
+  /* ⚠️ **2026-10-01 從「龍井區」改成「龍井車站」** —— 9/19 他把這案列在「龍井區」那段（＝不在三塊商圈裡的收容區），
+     10/1 又以「龍井車站補」重貼了一次、建商與銷售階段都相同，**所以是改區不是新案**。
+     🔵 搬走之後「龍井區」只剩井上大院 1 案，膠囊照舊不會生（MIN_CLUSTER=2），本來就刻意沒給它 PIN_GROUPS。 */
+  { id: "shengjia-jingyi", name: "昇佳景邑", builder: "昇佳建設", area: "龍井車站", status: "newly", completion: "新成屋", sources: ["owner"] },
   { id: "yushu-fenghe", name: "御墅豐禾", builder: "創造力營造", area: "龍井田中", status: "completed", completion: "約 2023", sources: ["owner"] },
   { id: "zhenshangmei", name: "臻上美", builder: "日勝建設", area: "龍井田中", status: "completed", completion: "約 2023", sources: ["owner"] },
   { id: "qingnianshi", name: "青年市", builder: "凱強建設", area: "龍井田中", status: "completed", completion: "約 1999", sources: ["owner"] },
@@ -3600,6 +3607,30 @@ export const COORDS: Record<string, Coord> = {
   "shengyou-dna": { lat: 24.18894, lng: 120.54877, precision: "exact" }, // 昇祐DNA
   "gangwan-zhushi-toutian": { lat: 24.18937, lng: 120.54928, precision: "exact" }, // 港灣築詩透天區
   "gangwan-zhushi-huaxia": { lat: 24.18916, lng: 120.54929, precision: "exact" }, // 港灣築詩華廈區
+  /* ── 2026-10-01 龍井車站商圈再 13 案（他用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、precision 全 exact、本批不重複、沒有覆蓋既有座標，
+     **13 筆全部落在龍井車站商圈色塊內**（沙田A+家透天區露出邊界 5 公尺，是雜訊）。
+     30 公尺內兩對都是同一案拆兩筆：新邑知薪華廈區↔透天區 17 m、沙田A+家華廈區↔透天區 16 m。
+
+     🔴 **他同一批還給了「仁里文華」24.34089,120.40181 —— 沒有寫進來。**
+        那個點離清水市區色塊 **16.2 公里**、不在任何色塊內，經度 120.40 在海岸線（約 120.50）以西，
+        也就是落在台灣海峽裡。**不是歸錯區，是點歪了**（同仁愛羅馬 2,748 公尺那次的判法）。
+        🔵 **扣住而不是硬寫**的理由：寫進去它會變成海上一根圖釘，而且「未標位置」會少一案、
+           校正模式的下拉會標「（已標）」、自動跳號會跳過它 —— 他反而找不到那一案去重點。
+        ⚠️ 仁里文華的建商本來就還是「待確認」，問建商時可以一起問座標。 */
+  "jinpai-2": { lat: 24.18843, lng: 120.54891, precision: "exact" }, // 金牌2
+  "longjing-yilufa": { lat: 24.18724, lng: 120.54857, precision: "exact" }, // 龍井一路發
+  "yushu-dajie": { lat: 24.18678, lng: 120.54811, precision: "exact" }, // 御墅大街
+  "juheng-guangyuhui-huaxia": { lat: 24.18389, lng: 120.54638, precision: "exact" }, // 聚恆光語繪華廈區
+  "guojing": { lat: 24.18297, lng: 120.54852, precision: "exact" }, // 國境
+  "haolong-wangchao": { lat: 24.18321, lng: 120.54865, precision: "exact" }, // 豪隆王朝
+  "xinyi-zhixin-huaxia": { lat: 24.1819, lng: 120.54618, precision: "exact" }, // 新邑知薪華廈區
+  "xinyi-zhixin-toutian": { lat: 24.18179, lng: 120.5463, precision: "exact" }, // 新邑知薪透天區
+  "fengrong-zhuangyuan-12": { lat: 24.17875, lng: 120.54584, precision: "exact" }, // 豐榮莊園12
+  "shatian-aplus-huaxia": { lat: 24.17884, lng: 120.54488, precision: "exact" }, // 沙田A+家華廈區
+  "shatian-aplus-toutian": { lat: 24.17882, lng: 120.54472, precision: "exact" }, // 沙田A+家透天區
+  "xiemao-fugui-zhuangyuan-3": { lat: 24.17742, lng: 120.54686, precision: "exact" }, // 頡懋富貴莊園3
+  "yatai-diyi-jiayuan": { lat: 24.17592, lng: 120.54454, precision: "exact" }, // 亞太第一家園
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
