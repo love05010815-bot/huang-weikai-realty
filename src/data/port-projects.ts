@@ -3543,6 +3543,40 @@ export const COORDS: Record<string, Coord> = {
   "senbaofu-di": { lat: 24.27414, lng: 120.56751, precision: "exact" }, // 森堡富第
   "xiangyi-zhenpin-9": { lat: 24.27681, lng: 120.56541, precision: "exact" }, // 祥邑臻品9
   "yongzhu-zhencheng": { lat: 24.27373, lng: 120.56718, precision: "exact" }, // 永築臻澄
+  /* ── 2026-10-01 龍井車站商圈 28 案（他用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、precision 全 exact、本批不重複、沒有覆蓋既有座標，
+     **28 筆全部落在龍井車站商圈色塊內**。30 公尺內只有一對：中港大鎮 ↔ 御璽國寶 26 m。
+     🔴 **這是龍井第一次有圖釘** —— 在這之前龍井 107 案一個座標都沒有，
+        `LeafletMap.tsx` 的 PIN_GROUPS 雖然 2026-09-19 就加了三組，但 MIN_CLUSTER=2 一直沒觸發。
+        **龍井車站商圈的膠囊從這一批開始會出現**；中央路與田中仍是 0 座標、還不會有膠囊。 */
+  "money-manni-2-toutian": { lat: 24.21565, lng: 120.5479, precision: "exact" }, // MONEY曼尼2透天區
+  "money-manni-2-huaxia": { lat: 24.21597, lng: 120.54771, precision: "exact" }, // MONEY曼尼2華廈區
+  "lvhuo-ai-shiguang-toutian": { lat: 24.21443, lng: 120.54757, precision: "exact" }, // 綠活薆蒔光透天區
+  "lvhuo-ai-shiguang-huaxia": { lat: 24.21484, lng: 120.54701, precision: "exact" }, // 綠活薆蒔光華廈區
+  "tianzhuang-wuyu": { lat: 24.21351, lng: 120.54727, precision: "exact" }, // 田庄吾寓
+  "yuxi-qinjia": { lat: 24.21268, lng: 120.54913, precision: "exact" }, // 御璽親家
+  "yuxi-jinghua": { lat: 24.21243, lng: 120.54958, precision: "exact" }, // 御璽京華
+  "zhonggang-dazhen": { lat: 24.21202, lng: 120.54904, precision: "exact" }, // 中港大鎮
+  "yuxi-guobao": { lat: 24.2119, lng: 120.54926, precision: "exact" }, // 御璽國寶
+  "futeng-yang-house": { lat: 24.21596, lng: 120.55021, precision: "exact" }, // 富騰漾HOUSE
+  "yuguo-fengsheng": { lat: 24.21203, lng: 120.55099, precision: "exact" }, // 裕國豐盛
+  "mingmen-xiangyuan": { lat: 24.20919, lng: 120.54966, precision: "exact" }, // 名門鄉園
+  "shengyou-xinchao": { lat: 24.20954, lng: 120.5499, precision: "exact" }, // 昇祐薪巢
+  "yuguo-jingshangcun": { lat: 24.21078, lng: 120.5495, precision: "exact" }, // 裕國井上邨
+  "chengfeng-fuxu": { lat: 24.20903, lng: 120.54772, precision: "exact" }, // 鋮豐富穥
+  "kunyou-heqian-2": { lat: 24.20911, lng: 120.54712, precision: "exact" }, // 坤祐和謙2
+  "wanshida-guanghe-fenghe": { lat: 24.20871, lng: 120.54675, precision: "exact" }, // 萬仕達光禾-豐禾區
+  "wanshida-guanghe-chenguang": { lat: 24.20857, lng: 120.54727, precision: "exact" }, // 萬仕達光禾-晨光區
+  "xuanyi-puyu": { lat: 24.2058, lng: 120.54731, precision: "exact" }, // 宣邑璞玉
+  "dazhuang-yongrong": { lat: 24.20422, lng: 120.54765, precision: "exact" }, // 大樁雍容
+  "fenghe-niannian": { lat: 24.20358, lng: 120.5463, precision: "exact" }, // 豐禾年年
+  "ruikai-fuzhu": { lat: 24.20172, lng: 120.54738, precision: "exact" }, // 睿鍇馥築
+  "wanji-zhuquan": { lat: 24.20261, lng: 120.54743, precision: "exact" }, // 萬基竹泉
+  "yawan-zhuquan": { lat: 24.20029, lng: 120.54679, precision: "exact" }, // 亞灣築泉
+  "shisui-niannian": { lat: 24.20054, lng: 120.54586, precision: "exact" }, // 拾穗年年
+  "zhanfeng-zhenpinshu": { lat: 24.2004, lng: 120.54538, precision: "exact" }, // 展豐臻品墅
+  "xinxing-shatian": { lat: 24.19981, lng: 120.54845, precision: "exact" }, // 欣興莎田
+  "lirenhui": { lat: 24.19877, lng: 120.54886, precision: "exact" }, // 里仁匯
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
