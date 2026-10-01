@@ -3577,6 +3577,29 @@ export const COORDS: Record<string, Coord> = {
   "zhanfeng-zhenpinshu": { lat: 24.2004, lng: 120.54538, precision: "exact" }, // 展豐臻品墅
   "xinxing-shatian": { lat: 24.19981, lng: 120.54845, precision: "exact" }, // 欣興莎田
   "lirenhui": { lat: 24.19877, lng: 120.54886, precision: "exact" }, // 里仁匯
+  /* ── 2026-10-01 龍井車站商圈再 16 案（他用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、precision 全 exact、本批不重複、沒有覆蓋既有座標，
+     **16 筆全部落在龍井車站商圈色塊內**。30 公尺內只有一對：港灣築詩透天區 ↔ 華廈區 23 m（同一案拆兩筆）。
+     🔵 他這次是**把上一批 28 筆連同新的一起重貼**（共 44 筆）—— 那 28 筆逐筆比對過，
+        lat/lng 一字不差、沒有任何一筆被挪動，所以只加了新的 16 筆、沒有覆蓋。
+        ⚠️ 下次再遇到他重貼，一樣要**逐筆比座標**再決定跳過還是更新，不要看到 id 已存在就整批丟掉 ——
+        他有可能是在挪位置（9/17 三和圓沐光就是那種情況）。 */
+  "wanji-yisu": { lat: 24.19818, lng: 120.54492, precision: "exact" }, // 萬基駅宿
+  "xiongtu-xu-uno": { lat: 24.19675, lng: 120.54594, precision: "exact" }, // 熊圖敘uno
+  "fuyu-zhan": { lat: 24.1957, lng: 120.54684, precision: "exact" }, // 富宇綻
+  "zhuliren-2-toutian": { lat: 24.19528, lng: 120.54985, precision: "exact" }, // 築里仁2透天區
+  "zhuliren-toutian": { lat: 24.19501, lng: 120.5498, precision: "exact" }, // 築里仁透天區
+  "zhuliren-huaxia": { lat: 24.1944, lng: 120.54982, precision: "exact" }, // 築里仁華廈區
+  "longquan-shanzhuang": { lat: 24.19603, lng: 120.54951, precision: "exact" }, // 龍泉山莊
+  "wojia-e": { lat: 24.19651, lng: 120.54993, precision: "exact" }, // 我家e
+  "deguang-dazhi": { lat: 24.19387, lng: 120.54844, precision: "exact" }, // 德光大智
+  "renli-shiqing": { lat: 24.1932, lng: 120.54779, precision: "exact" }, // 仁里時晴
+  "maoyang-fuyu": { lat: 24.1912, lng: 120.54786, precision: "exact" }, // 茂洋馥域
+  "xi-jixiang": { lat: 24.19103, lng: 120.54679, precision: "exact" }, // 璽吉祥
+  "xinguan-xiangrui": { lat: 24.19074, lng: 120.54751, precision: "exact" }, // 新觀祥瑞
+  "shengyou-dna": { lat: 24.18894, lng: 120.54877, precision: "exact" }, // 昇祐DNA
+  "gangwan-zhushi-toutian": { lat: 24.18937, lng: 120.54928, precision: "exact" }, // 港灣築詩透天區
+  "gangwan-zhushi-huaxia": { lat: 24.18916, lng: 120.54929, precision: "exact" }, // 港灣築詩華廈區
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
