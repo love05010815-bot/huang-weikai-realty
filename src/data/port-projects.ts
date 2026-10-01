@@ -2440,7 +2440,9 @@ export const PROJECTS: Project[] = [
   { id: "qingshangqing", name: "清上青", builder: "好宅製所建築", area: "清水市區", status: "completed", completion: "約 2023", sources: ["owner"] },
   { id: "renli-senguan", name: "仁里森觀", builder: "仁里建設", area: "清水市區", status: "completed", completion: "約 2016", sources: ["owner"] },
   { id: "tiandishang", name: "天地賞", builder: "新富筑建設", area: "清水市區", status: "completed", completion: "約 2018", sources: ["owner"] },
-  { id: "shijian-zhilv-2", name: "時間之旅2", builder: "和旺建設", area: "清水市區", status: "completed", completion: "約 2019", sources: ["owner"] },
+  /* ⚠️ **2026-10-01 他說「移除清水時間之旅2」，這一案已刪**（原本：和旺建設／約 2019／清水市區，無座標）。
+     🔵 **同名的「時間之旅華廈區」「時間之旅透天區」是另一案、建商是仁里建設，沒有被動到** ——
+        看到清單裡有華廈區／透天區卻沒有「2」，那是他指定的，不是漏打。 */
   { id: "lvhuo-shiguang", name: "綠活蒔光", builder: "鋐遠建設", area: "清水市區", status: "completed", completion: "約 2019", sources: ["owner"] },
   { id: "qingsongzuan", name: "清崧鑽", builder: "榮埕建設", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "yongshun-yafu-3", name: "勇順雅富3", builder: "勇順建設", area: "清水市區", status: "completed", completion: "約 2023", sources: ["owner"] },
