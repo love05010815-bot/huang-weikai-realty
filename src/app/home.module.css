@@ -1158,31 +1158,32 @@
 }
 
 
-/* ---------- 稅費試算 ---------- */
-/* 2026-09-08 系統擁有者指定：四張卡排成 2×2 四宮格。
-   之前是「一排三張」（三張卡時代的寫法），加了第四張「新青安 3.0」後變成
-   三張在上、一張獨自置中在第二排，他看了不要。
+/* ---------- 免費小工具 ---------- */
+/* 2026-09-08 系統擁有者指定：四張卡排成 2×2 四宮格（那時三張在上一張獨自置中，他不要）。
+   2026-10-01 加到六張後他說「排版範圍縮小一些，不要太占版面」：改成一排三張（六張剛好 2×3）、
+   卡片內距／圖示／字級都縮一階；1000px 以下回到一排兩張、760px 以下一欄。
    仍然用 flex 不用 grid：卡片數哪天又變成奇數，最後一排會自動置中，
    不會出現一張獨自撐滿整行的放大卡（跟 .serviceGrid 同一個道理）。 */
 .toolGrid {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 22px;
+  gap: 16px;
 }
 
 /* 整張卡就是連結，點哪裡都會過去，手機上比只有一行小字好按。 */
 .toolCard {
   /* 這個專案沒有全域 box-sizing reset，有邊框又設寬度就得自己寫 */
   box-sizing: border-box;
-  /* 扣掉一道 22px 間距後的一半，一排兩張；四張剛好 2×2 */
-  flex: 1 1 calc((100% - 22px) / 2);
-  max-width: calc((100% - 22px) / 2);
-  display: block;
+  /* 扣掉兩道 16px 間距後的三分之一，一排三張 */
+  flex: 1 1 calc((100% - 32px) / 3);
+  max-width: calc((100% - 32px) / 3);
+  display: flex;
+  flex-direction: column;
   background: #fff;
   border: 1px solid var(--line-warm);
   border-radius: var(--radius);
-  padding: 32px 26px;
+  padding: 20px 20px 18px;
   box-shadow: var(--shadow);
   text-decoration: none;
   color: inherit;
@@ -1190,47 +1191,51 @@
 }
 
 .toolCard:hover {
-  transform: translateY(-6px);
+  transform: translateY(-4px);
   border-color: var(--accent);
 }
 
 .toolIcon {
-  width: 54px;
-  height: 54px;
-  border-radius: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
   background: var(--accent-soft);
   color: var(--primary-dark);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
-  margin-bottom: 20px;
+  font-size: 20px;
+  margin-bottom: 12px;
 }
 
 .toolCard h3 {
-  font-size: 19px;
+  font-size: 16.5px;
   font-weight: 800;
-  margin: 0 0 10px;
+  margin: 0 0 6px;
 }
 
 .toolCard p {
-  font-size: 14.5px;
+  font-size: 13.5px;
+  line-height: 1.65;
   color: var(--muted);
   margin: 0;
 }
 
-/* 明確標出是誰提供的，避免看起來像我們自己算的。 */
+/* 明確標出是誰提供的，避免看起來像我們自己算的。
+   margin-top:auto 把「依據」跟「開始試算」推到卡底，同一排三張卡的按鈕才會齊高。 */
 .toolSource {
   display: block;
-  font-size: 12.5px;
+  font-size: 12px;
+  line-height: 1.5;
   color: var(--muted);
-  margin-top: 14px;
+  margin-top: auto;
+  padding-top: 10px;
 }
 
 .toolGo {
   display: inline-block;
-  margin-top: 10px;
-  font-size: 13.5px;
+  margin-top: 6px;
+  font-size: 13px;
   font-weight: 800;
   color: var(--primary);
 }
@@ -1250,6 +1255,14 @@
 
 .toolDisclaimer strong {
   color: var(--ink);
+}
+
+@media (max-width: 1000px) {
+  /* 平板：一排三張字會擠成豆腐塊，退回一排兩張 */
+  .toolCard {
+    flex-basis: calc((100% - 16px) / 2);
+    max-width: calc((100% - 16px) / 2);
+  }
 }
 
 @media (max-width: 760px) {
