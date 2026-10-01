@@ -2667,6 +2667,17 @@ export const PROJECTS: Project[] = [
         但他寫的屋齡 5 年（約 2021）跟微風一品2 的約 2017 差四年，**當成同一案去覆蓋會改到事實**。
         **微風一品2 的建商仍然是待確認。** 若他其實是要補微風一品2，再改。 */
   { id: "weifeng-yipin-3", name: "微風一品3", builder: "振昇建設", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+
+  /* ── 2026-10-01 龍井車站商圈補 4 案（兩組拆案）──
+     🔵 **「綠活薆蒔光」跟清水市區既有的「綠活蒔光」不是同一案** —— 中間多一個「薆」字，
+        建商也不同（這組是大居建設，清水那案是鋐遠建設），**不要合併、不要當錯字改掉**。
+        大居建設本來就同時有「綠活」系列（綠活HOUSE、綠活CASA）與「蒔光」系列（蒔光FIKA），
+        案名把兩個系列合起來是合理的。
+     🔵 采庭建設是新進建商，核心字沒撞到任何既有公司。 */
+  { id: "money-manni-2-huaxia", name: "MONEY曼尼2華廈區", builder: "采庭建設", area: "龍井車站", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "money-manni-2-toutian", name: "MONEY曼尼2透天區", builder: "采庭建設", area: "龍井車站", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "lvhuo-ai-shiguang-toutian", name: "綠活薆蒔光透天區", builder: "大居建設", area: "龍井車站", status: "newly", completion: "約 2024", sources: ["owner"] },
+  { id: "lvhuo-ai-shiguang-huaxia", name: "綠活薆蒔光華廈區", builder: "大居建設", area: "龍井車站", status: "newly", completion: "約 2024", sources: ["owner"] },
 ];
 
 /* ─────────────── 座標 ─────────────── */
