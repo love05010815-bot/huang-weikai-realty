@@ -1492,6 +1492,18 @@
   color: var(--primary);
 }
 
+/* ❤️ 詳情標題右邊那兩顆：收藏＋關閉（2026-10-02）。
+   收藏鈕按下去旁邊會冒一顆「查看我的最愛 →」，所以要能折行、靠右對齊 */
+.detailHeadBtns {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  max-width: 60%;
+}
+
 /* ═══════════ 在售物件：橫條式 ═══════════
    2026-08-26 系統擁有者拍板。右欄大約只有 476px 可用，/listings 那種
    「照片在上、文字在下」的直式卡片塞進來，標題會斷成一行 4 個字。

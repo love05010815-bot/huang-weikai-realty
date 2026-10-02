@@ -19,6 +19,7 @@ import SocialLinks from "@/app/_ui/SocialLinks";
 import SiteFooter from "@/app/_ui/SiteFooter";
 import PhotoCarousel from "../PhotoCarousel";
 import ListingPageView from "./ListingPageView";
+import FavButton from "@/app/_ui/favorites/FavButton";
 
 /** 照片存的是 Blob 網址或 public/listings 底下的檔名；分享預覽（og:image）與 JSON-LD 一定要絕對網址 */
 export function absolutePhoto(value: string): string {
@@ -147,6 +148,12 @@ export default function ListingView({ item, status }: Props) {
                     ))}
                   </ul>
 
+                  {/* ❤️ 收藏這戶（2026-10-02）。放在賣點下面、按鈕上面：先看完再決定要不要收。
+                      存客戶瀏覽器，收藏頁在 /favorites；足跡在 ListingPageView 記。 */}
+                  <div className={one.favRow}>
+                    <FavButton kind="listing" id={item.slug} title={item.title} sub={item.area} />
+                  </div>
+
                   <div className={one.actions}>
                     {/* ② 帶 slug 進預約表單，表單會顯示「您詢問的物件」並寫進備註 */}
                     <Link
@@ -175,7 +182,13 @@ export default function ListingView({ item, status }: Props) {
                     ))}
                   </div>
 
-                  <ListingPageView slug={item.slug} shareUrl={shareUrl} title={displayName} />
+                  <ListingPageView
+                    slug={item.slug}
+                    shareUrl={shareUrl}
+                    title={displayName}
+                    listingTitle={item.title}
+                    area={item.area}
+                  />
                 </div>
               </article>
             )}

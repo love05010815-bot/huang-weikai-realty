@@ -70,6 +70,11 @@
   margin: 0;
 }
 
+/* ❤️ 收藏鈕那一行（2026-10-02）：賣點清單跟按鈕之間 */
+.favRow {
+  margin: -4px 0 14px;
+}
+
 .shareBtn {
   align-self: flex-start;
   margin-top: 16px;

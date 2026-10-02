@@ -30,6 +30,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { OWNER } from "@/config/owner";
+import { FAVORITES_HREF } from "@/lib/favorites";
+import HeartIcon from "./favorites/HeartIcon";
+import { useSavedState } from "./favorites/store";
 import styles from "./SiteNav.module.css";
 
 /**
@@ -103,6 +106,36 @@ function NavItemLink({
   );
 }
 
+/**
+ * ❤️ 「我的最愛」入口（2026-10-02）。**不在 ITEMS 裡**，因為它長得跟其他八項不一樣：
+ *   桌機  只放愛心圖示＋收藏數（文字版四個字要 78px，1045px 那條線放不下，見 SiteNav.module.css）
+ *   手機  在漢堡選單裡是一行文字「我的最愛（N）」，跟其他項目一樣
+ * 數字從客戶瀏覽器的 localStorage 來（store.ts）；server 與 hydration 時一律 0，掛載後才變真的。
+ */
+function FavNavLink({ variant, onClick }: { variant: "desktop" | "mobile"; onClick?: () => void }) {
+  const { favs } = useSavedState();
+  const n = favs.length;
+
+  if (variant === "mobile") {
+    return (
+      <Link className={styles.link} href={FAVORITES_HREF} onClick={onClick}>
+        {n > 0 ? `我的最愛（${n}）` : "我的最愛"}
+      </Link>
+    );
+  }
+  return (
+    <Link
+      className={styles.favLink}
+      href={FAVORITES_HREF}
+      aria-label={n > 0 ? `我的最愛，${n} 筆` : "我的最愛"}
+      title="我的最愛"
+    >
+      <HeartIcon filled={n > 0} className={styles.favSvg} />
+      {n > 0 && <span className={styles.favBadge}>{n > 99 ? "99+" : n}</span>}
+    </Link>
+  );
+}
+
 export default function SiteNav({ variant }: { variant: Variant }) {
   const [open, setOpen] = useState(false);
 
@@ -138,6 +171,11 @@ export default function SiteNav({ variant }: { variant: Variant }) {
             <NavItemLink item={item} variant={variant} className={styles.desktopLink} />
           </li>
         ))}
+        {/* ❤️ 第九格：只有圖示（有收藏時多一顆數字，最寬「99+」約 49px）。
+            已照 SiteNav.module.css 檔頭的規矩重掃斷點：斷點不動、gap 20→14 吃掉它的寬度。 */}
+        <li>
+          <FavNavLink variant="desktop" />
+        </li>
       </ul>
 
       {/* 🚫 2026-09-03 試過把四顆社群 icon 塞進這條 header，**量過塞不下**：
@@ -191,6 +229,9 @@ export default function SiteNav({ variant }: { variant: Variant }) {
                     />
                   </li>
                 ))}
+                <li>
+                  <FavNavLink variant="mobile" onClick={close} />
+                </li>
               </ul>
 
               {/* 📞 一鍵撥號。

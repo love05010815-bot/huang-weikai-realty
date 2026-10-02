@@ -24,6 +24,9 @@ import lst from "./listings/listings.module.css";
 import FeaturedTitle from "./listings/FeaturedTitle";
 import PhotoCarousel from "./listings/PhotoCarousel";
 import VisitCounter from "./_visits/VisitCounter";
+// ❤️ 收藏鈕（2026-10-02）疊在卡片照片左上角；它是 client 元件，直接放進這個 server 頁沒問題
+import FavButton from "@/app/_ui/favorites/FavButton";
+import fav from "@/app/_ui/favorites/FavButton.module.css";
 
 // 標題只放三項最有搜尋量的 —— <title> 太長會被 Google 截掉，五項塞不下。
 // 完整五項寫在下面的 description 裡。
@@ -537,11 +540,23 @@ export default async function HomePage() {
                      按鈕放進連結裡是無效的 HTML，點擊行為也會打架。
                      改成照片區獨立，文字區整塊當連結。 */
                   <article key={item.slug} className={lst.card}>
-                    <PhotoCarousel
-                      photos={item.photos}
-                      alt={`${item.area}－${item.title}`}
-                      eager={i === 0}
-                    />
+                    {/* ❤️ 愛心疊在照片左上角（右上角是相簿的「1/3」）。
+                        不能放進下面那個 <Link> 裡 —— 按鈕包在連結裡是無效的 HTML。 */}
+                    <div className={fav.photoWrap}>
+                      <PhotoCarousel
+                        photos={item.photos}
+                        alt={`${item.area}－${item.title}`}
+                        eager={i === 0}
+                      />
+                      <FavButton
+                        variant="icon"
+                        className={fav.onPhoto}
+                        kind="listing"
+                        id={item.slug}
+                        title={item.title}
+                        sub={item.area}
+                      />
+                    </div>
                     <Link className={lst.body} href="/listings">
 
                       <span className={lst.area}>{item.area}</span>

@@ -44,6 +44,24 @@
    1045px 這條線對八項只剩約 16px 餘裕（比七項的 76px 少了六成），**這是最後一項了**——
    要再加第九項，字數再短都很可能得把斷點往上調，加之前務必重掃。
 
+   2026-10-02 加第九格「我的最愛」（只有愛心圖示＋收藏數，不是文字）之後照規矩重掃，
+   **斷點沒動，改的是 gap：20 → 14**。量的時候故意塞 100 筆收藏讓數字變成最寬的「99+」：
+
+     gap 20 時（/listings，production build、真的視窗寬度）：
+       1045px  ❌ 溢出 23px     1060px ❌ 溢出 8px     1065px ❌ 溢出 3px     1070px ✅ 0
+     gap 14 時（八個間距各省 6px ＝ 48px）：
+       1045px  ✅ 0（餘裕約 25px）  1070px ✅  1280px ✅
+
+   為什麼縮 gap 而不是把斷點拉到 1070：拉斷點等於 1045～1069 這段的客戶（13 吋筆電縮放 125%
+   很常落在這裡）全部改看漢堡選單；縮 6px 肉眼幾乎看不出來。**但這是最後一次能這樣省了**，
+   再加第十格就只能拉斷點。
+
+   ⚠️ **首頁的 header 比子頁寬 154px**（多一顆「📞 0909-787-865」電話藥丸，見 home.module.css 的
+      .navCtaPhone），上面所有掃描都是在子頁量的。首頁在 1045～1185px 本來就會溢出
+      （2026-10-02 量線上：1045px 溢出 117px、1200px 以上也還凸 11px 進右邊內距），
+      這是**加第九格之前就存在的狀況**，不是這次造成的；要處理是另一件事（把電話藥丸在桌機收成
+      只有圖示、或 ≥1045 隱藏），先報給系統擁有者，沒拍板前不要動。
+
    ⚠️ 這個數字在本檔出現兩次（.desktopNav 與 .mobile），**兩個一定要一致**。
       留空隙的話中間那段寬度會「兩套選單都在」或「兩套都不見」，
       而且只有把視窗拉到那個寬度才看得出來。
@@ -55,9 +73,13 @@
    讓六個公開頁共用同一份清單。搬家前後在 1045px 實測是同一組計算值。 */
 .desktopNav {
   display: flex;
+  /* 愛心那格是 20px 的圖示、文字那幾格是一行字，高度不同；置中才不會差 3px */
+  align-items: center;
   /* gap 從 26 縮到 20 是為了讓整條在 1000px 就放得下，
-     再寬一點的話 981px 的需求會頂到 1000 的斷點。 */
-  gap: 20px;
+     再寬一點的話 981px 的需求會頂到 1000 的斷點。
+     2026-10-02 再從 20 縮到 14：加了第九格「我的最愛」愛心，省下的 48px 剛好把它吃掉、
+     斷點 1045 不用動（掃描數字見檔頭）。**不能再縮了**，再加項目就只能拉斷點。 */
+  gap: 14px;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -75,6 +97,44 @@
 
 .desktopLink:hover {
   color: var(--primary, #2fa894);
+}
+
+/* ❤️ 我的最愛（2026-10-02）—— 桌機那條的第九格，只放愛心圖示＋收藏數，不放文字。
+   文字版「我的最愛」四個字要 78px，八項之後 1045px 那條線只剩 16px 餘裕，放不下；
+   圖示 20px＋數字最寬 26px 約 46px，所以照檔頭的規矩重掃過斷點（結果記在檔頭）。
+   實心紅 #d9466f 跟 FavButton 同一個顏色（/map 圖例「預售中」的玫瑰紅）。 */
+.favLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--ink, #22323f);
+  text-decoration: none;
+  line-height: 1;
+}
+
+.favLink:hover {
+  color: #d9466f;
+}
+
+.favSvg {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.favBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #d9466f;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 1044px) {

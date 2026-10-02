@@ -50,6 +50,8 @@ import PhotoCarousel from "../listings/PhotoCarousel";
 import CompareBar, { type CompareItem } from "./CompareBar";
 import { useCompare } from "./useCompare";
 import { COMPARE_MAX } from "@/lib/map-compare";
+import FavButton from "@/app/_ui/favorites/FavButton";
+import { recordTrail } from "@/app/_ui/favorites/store";
 import styles from "./Map.module.css";
 
 type AreaFilter = "all" | ProjectArea;
@@ -315,6 +317,37 @@ export default function ProjectExplorer({
     }
   }, []);
 
+  /**
+   * ❤️ 瀏覽足跡（2026-10-02）：點到哪個建案就記一筆，存在客戶自己的瀏覽器（lib/favorites.ts）。
+   * 記的是「建案」不是在售物件 —— 收藏頁回來會現查那個建案現在有幾件在售。
+   */
+  useEffect(() => {
+    if (!selected) return;
+    recordTrail({
+      kind: "project",
+      key: selected.id,
+      title: selected.name,
+      sub: `${selected.builder}・${AREA_LABEL[selected.area]}`,
+    });
+  }, [selected]);
+
+  /**
+   * `/map?project=<id>`：收藏頁的「到地圖看這個建案」會帶著 id 回來，進頁就選中那一案並捲到詳情
+   * （地圖自己會移到那根圖釘，見 LeafletMap 的換選取 effect）。
+   *
+   * 用 window.location 而不是 useSearchParams —— 這頁是靜態產生＋定時重生的（page.tsx 的 revalidate），
+   * useSearchParams 會要求整頁包 Suspense，不包 build 直接失敗。
+   * 捲動用 setTimeout 不用 requestAnimationFrame、也不帶 behavior:"smooth"：
+   * 兩個都在這頁實測過會「沒捲、也不報錯」（見 learning_silent_failure_pattern）。
+   */
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("project");
+    if (!id || !PROJECTS.some((p) => p.id === id)) return;
+    setSelectedId(id);
+    setSelectedSoloId(null);
+    window.setTimeout(() => detailRef.current?.scrollIntoView({ block: "start" }), 0);
+  }, []);
+
   return (
     // 比較列浮在畫面底下時多留一段底部空間，最後一張卡的按鈕才不會被它蓋住
     <div className={compareItems.length > 0 ? `${styles.explorer} ${styles.explorerWithBar}` : styles.explorer}>
@@ -494,9 +527,18 @@ export default function ProjectExplorer({
                   </h3>
                   {selected.alias && <p className={styles.detailAlias}>{`又稱 ${selected.alias}`}</p>}
                 </div>
-                <button type="button" className={styles.detailClose} onClick={() => setSelectedId(null)}>
-                  關閉 ✕
-                </button>
+                <div className={styles.detailHeadBtns}>
+                  {/* ❤️ 收藏這個建案（2026-10-02）。存客戶瀏覽器，收藏頁在 /favorites */}
+                  <FavButton
+                    kind="project"
+                    id={selected.id}
+                    title={selected.name}
+                    sub={`${selected.builder}・${AREA_LABEL[selected.area]}`}
+                  />
+                  <button type="button" className={styles.detailClose} onClick={() => setSelectedId(null)}>
+                    關閉 ✕
+                  </button>
+                </div>
               </header>
 
               <dl className={styles.detailList}>

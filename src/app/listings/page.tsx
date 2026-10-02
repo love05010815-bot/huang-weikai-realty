@@ -18,6 +18,9 @@ import SocialLinks from "@/app/_ui/SocialLinks";
 import lst from "./listings.module.css";
 import FeaturedTitle from "./FeaturedTitle";
 import PhotoCarousel from "./PhotoCarousel";
+// ❤️ 收藏鈕（2026-10-02）疊在卡片照片左上角；client 元件，直接放進這個 server 頁沒問題
+import FavButton from "@/app/_ui/favorites/FavButton";
+import fav from "@/app/_ui/favorites/FavButton.module.css";
 
 const TITLE = `精選好案｜台中海線房仲${OWNER.name}｜沙鹿梧棲清水龍井`;
 const DESCRIPTION = `${OWNER.name}目前主打的台中海線精選物件。沙鹿、梧棲、清水、龍井的透天與大樓，格局、屋況、生活機能一次看清楚，看中意可直接線上預約看屋。`;
@@ -123,12 +126,23 @@ export default async function ListingsPage() {
                 {listings.map((item, i) => (
                   <article key={item.slug} id={item.slug} className={lst.card}>
                     {/* 一張照片就是一張圖；兩張以上會自動變成可左右滑的相簿。
-                        第一排三張是首屏，封面圖立刻載；其餘等捲到才載。 */}
-                    <PhotoCarousel
-                      photos={item.photos}
-                      alt={`${item.area}－${item.title}`}
-                      eager={i < 3}
-                    />
+                        第一排三張是首屏，封面圖立刻載；其餘等捲到才載。
+                        ❤️ 愛心疊在照片左上角（右上角是相簿的「1/3」）。 */}
+                    <div className={fav.photoWrap}>
+                      <PhotoCarousel
+                        photos={item.photos}
+                        alt={`${item.area}－${item.title}`}
+                        eager={i < 3}
+                      />
+                      <FavButton
+                        variant="icon"
+                        className={fav.onPhoto}
+                        kind="listing"
+                        id={item.slug}
+                        title={item.title}
+                        sub={item.area}
+                      />
+                    </div>
                     <div className={lst.body}>
                       <span className={lst.area}>{item.area}</span>
                       <h2 className={lst.title}>{item.title}</h2>
