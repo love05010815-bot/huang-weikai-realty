@@ -29,10 +29,108 @@ import {
   readHouseolAction,
   saveMapListingAction,
   setMapListingStatusAction,
+  checkMapListingLinksAction,
 } from "@/lib/actions/map-listings";
 import styles from "./map-listings-admin.module.css";
 
 type ProjectOption = { id: string; name: string; builder: string; count: number };
+
+/**
+ * 🔴 連結警示橫幅。
+ *
+ * 2026-10-02 系統擁有者：「建案地圖若有客戶點不開的物件請於後台跳警示下架通知」。
+ *
+ * ## 為什麼長這樣
+ *
+ * ・**只有上架中的才算**。已下架的客戶本來就點不到，混進來會讓數字看起來很恐怖。
+ * ・**`gone` 跟 `unknown` 分開講**。`gone` 是愛屋明講「案件不存在或已下架」、要他動手；
+ *   `unknown` 是檢查不出來（愛屋改版或網路抖），**不能叫他下架**，只能請他自己點一次。
+ *   把兩種混成一句「N 筆有問題」，他遲早會把還在賣的物件下架掉。
+ * ・**沒問題時也要留一行**，寫上次檢查時間。完全不顯示的話，排程哪天壞了沒有人會發現 ——
+ *   這個專案的失敗模式一向是「畫面看起來正常」。
+ * ・**還沒檢查過（linkState 為 null）不說成沒問題**，顯示「還沒檢查過」並給那顆按鈕。
+ */
+function LinkAlert({
+  rows,
+  busy,
+  onCheck,
+  onJump,
+}: {
+  rows: MapListingRecord[];
+  busy: boolean;
+  onCheck: () => void;
+  onJump: (id: string) => void;
+}) {
+  const active = rows.filter((r) => r.status === "active");
+  const gone = active.filter((r) => r.linkState === "gone");
+  const unknown = active.filter((r) => r.linkState === "unknown");
+  const never = active.filter((r) => r.linkState === null && r.linkHref);
+  const checkedAt = active
+    .map((r) => r.linkCheckedAt)
+    .filter((d): d is Date => d instanceof Date || typeof d === "string")
+    .map((d) => new Date(d).getTime())
+    .filter((t) => Number.isFinite(t))
+    .sort((a, b) => b - a)[0];
+
+  const when = checkedAt
+    ? new Date(checkedAt).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    : null;
+
+  const btn = (
+    <button type="button" className={styles.checkBtn} onClick={onCheck} disabled={busy}>
+      {busy ? "檢查中…" : "現在檢查"}
+    </button>
+  );
+
+  if (gone.length === 0 && unknown.length === 0) {
+    return (
+      <p className={styles.linkOk}>
+        {never.length > 0
+          ? `🔗 有 ${never.length} 筆物件連結還沒檢查過。`
+          : `🔗 上架中的物件連結都點得開${when ? `（${when} 檢查）` : ""}。`}
+        {" "}
+        {btn}
+      </p>
+    );
+  }
+
+  return (
+    <div className={styles.linkAlert}>
+      {gone.length > 0 && (
+        <>
+          <b>{`🔴 有 ${gone.length} 筆物件客戶點不開，建議下架`}</b>
+          <ul>
+            {gone.map((r) => (
+              <li key={r.id}>
+                <button type="button" onClick={() => onJump(r.id)}>
+                  {r.title}
+                </button>
+                <span>{r.address ? `（${r.address}）` : ""}</span>
+                <em>{r.linkNote}</em>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {unknown.length > 0 && (
+        <p className={styles.linkUnknown}>
+          {`⚠️ 另有 ${unknown.length} 筆檢查不出來 —— `}
+          <b>這不代表有問題，也不代表沒問題</b>
+          {"，請自己點一次看看（愛屋可能改版了）："}
+          {unknown.map((r) => (
+            <button key={r.id} type="button" onClick={() => onJump(r.id)}>
+              {r.title}
+            </button>
+          ))}
+        </p>
+      )}
+      <p className={styles.linkFoot}>
+        {when ? `${when} 檢查。` : ""}
+        每天早上 11 點自動檢查一次。{btn}
+      </p>
+    </div>
+  );
+}
 
 /** 讀完愛屋型錄之後，畫面上要顯示的東西 */
 type ReadInfo = {
@@ -119,8 +217,31 @@ export default function MapListingsManager({
   const [importing, setImporting] = useState(false);
   const [readInfo, setReadInfo] = useState<ReadInfo | null>(null);
   const [pending, startTransition] = useTransition();
+  const [checking, setChecking] = useState(false);
+  /** 從警示跳過去之後，那一列閃一下 —— 不然捲到了也不知道是哪一筆 */
+  const [flash, setFlash] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const formColRef = useRef<HTMLDivElement>(null);
+
+  /** 「現在檢查」。平常是每天 11:00 的排程在跑，這顆給他改完想立刻看 */
+  async function runCheck() {
+    if (checking) return;
+    setChecking(true);
+    setMsg(null);
+    const res = await checkMapListingLinksAction();
+    setChecking(false);
+    if (!res.ok) {
+      setMsg({ kind: "err", text: res.error ?? "檢查失敗" });
+      return;
+    }
+    // 結果寫在資料庫，重新整理才看得到新的 linkState；這裡直接把頁面資料拉新
+    setMsg({
+      kind: res.gone ? "err" : "ok",
+      text: `檢查了 ${res.checked ?? 0} 筆：${res.gone ?? 0} 筆客戶點不開${
+        res.unknown ? `、${res.unknown} 筆檢查不出來` : ""
+      }${res.skipped ? `、${res.skipped} 筆不自動檢查` : ""}。重新整理這一頁看標記。`,
+    });
+  }
 
   /**
    * 建案挑選（2026-09-07 改）。原本是一顆 `<select>`，但建案有 500 多個，
@@ -427,6 +548,20 @@ export default function MapListingsManager({
     <div className={styles.wrap}>
       {msg && !draft && <p className={msg.kind === "ok" ? styles.ok : styles.error}>{msg.text}</p>}
 
+      {/* 🔴 連結警示（2026-10-02 他說「客戶點不開的物件請於後台跳警示下架通知」）。
+          擺在整頁最上面、清單之前 —— 這是「要你動手」的東西，不能埋在某一列裡面等你捲到。
+          每一列自己也會再標一次（見下面的 linkWarn），那是為了「捲下去之後還認得出是哪一筆」。 */}
+      <LinkAlert
+        rows={rows}
+        busy={checking}
+        onCheck={runCheck}
+        onJump={(id) => {
+          const el = document.getElementById(`ml-${id}`);
+          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+          setFlash(id);
+        }}
+      />
+
       <div className={styles.cols}>
         {/* ── 左：清單 ── */}
         <div className={styles.listCol}>
@@ -474,7 +609,18 @@ export default function MapListingsManager({
                 </h3>
                 <ul className={styles.items}>
                   {list.map((r, i) => (
-                    <li key={r.id} className={r.status === "sold" ? styles.itemSold : styles.item}>
+                    <li
+                      key={r.id}
+                      id={`ml-${r.id}`}
+                      className={[
+                        r.status === "sold" ? styles.itemSold : styles.item,
+                        // 🔴 上架中、而且愛屋說已下架 —— 客戶現在點進去會撲空
+                        r.status === "active" && r.linkState === "gone" ? styles.itemBroken : "",
+                        flash === r.id ? styles.itemFlash : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    >
                       <div className={styles.itemMain}>
                         {r.photos[0] ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -495,6 +641,18 @@ export default function MapListingsManager({
                             {r.photos.length > 0 && ` ・ ${r.photos.length} 張照片`}
                             {r.linkHref && " ・ 有物件資訊連結"}
                           </small>
+                          {/* 🔴 這一列自己的連結狀態。橫幅已經在最上面講過一次了，
+                              這裡是為了「捲下來之後還認得出是哪一筆」—— 清單裡每一列的事，
+                              訊息就印在那一列（整頁一行訊息等於沒訊息）。
+                              ⚠️ 只在上架中的物件顯示：已下架的客戶本來就點不到。 */}
+                          {r.status === "active" && r.linkState === "gone" && (
+                            <span className={styles.rowBroken}>
+                              🔴 客戶點不開 —— {r.linkNote || "愛屋顯示已下架"}
+                            </span>
+                          )}
+                          {r.status === "active" && r.linkState === "unknown" && (
+                            <span className={styles.rowUnsure}>⚠️ 檢查不出來 —— {r.linkNote}</span>
+                          )}
                           {/* 👆 兩顆按鈕分開看 ——「想看物件詳情」跟「想直接約」
                               是不同的訊號，加總成一個數字就看不出來了。
                               統計的 key 是這筆物件的 id，前台按鈕上掛的也是它。 */}

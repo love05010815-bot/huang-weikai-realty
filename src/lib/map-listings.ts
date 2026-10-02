@@ -24,6 +24,7 @@
 
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
+import type { LinkState } from "@/lib/map-listing-check";
 
 export type MapListingStatus = "active" | "sold";
 
@@ -54,6 +55,15 @@ export type MapListingRecord = {
   status: MapListingStatus;
   sortOrder: number;
   updatedAt: Date | null;
+  /**
+   * 連結檢查的結果（2026-10-02 加）。**`null` ＝ 還沒檢查過，不等於沒問題。**
+   * 判定規則、以及為什麼一定要有 `unknown` 這一種，見 `lib/map-listing-check.ts` 檔頭。
+   */
+  linkState: LinkState | null;
+  /** 檢查結論的一句話，直接顯示給他看 */
+  linkNote: string | null;
+  /** 上次檢查的時間 */
+  linkCheckedAt: Date | null;
 };
 
 /** 存進資料庫前的輸入 */
@@ -131,6 +141,16 @@ export async function ensureMapListingTable(): Promise<void> {
     await db.$executeRawUnsafe(`ALTER TABLE map_listing ADD COLUMN lng DOUBLE NULL AFTER lat`);
   }
 
+  // 2026-10-02 補連結檢查三欄（他說「客戶點不開的物件請於後台跳警示下架通知」）。
+  // ⚠️ 這三欄是**檢查結果的快取**，不是他填的資料 —— 他改物件時不要去動它們，
+  //    不然畫面會顯示「剛檢查過、沒問題」但其實沒檢查（又是一次靜默失效）。
+  const hasLinkState = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM map_listing LIKE 'link_state'`);
+  if (hasLinkState.length === 0) {
+    await db.$executeRawUnsafe(`ALTER TABLE map_listing ADD COLUMN link_state VARCHAR(16) NULL AFTER link_href`);
+    await db.$executeRawUnsafe(`ALTER TABLE map_listing ADD COLUMN link_note VARCHAR(255) NULL AFTER link_state`);
+    await db.$executeRawUnsafe(`ALTER TABLE map_listing ADD COLUMN link_checked_at DATETIME NULL AFTER link_note`);
+  }
+
   ensured = true;
 }
 
@@ -146,10 +166,19 @@ type Row = {
   points: string | null;
   photos: string | null;
   link_href: string | null;
+  link_state: string | null;
+  link_note: string | null;
+  link_checked_at: Date | null;
   status: string;
   sort_order: number;
   updated_at: Date | null;
 };
+
+/** 資料庫欄位是 VARCHAR，認不得的字一律當成「沒檢查過」，不要硬塞成 live */
+function toLinkState(raw: string | null): LinkState | null {
+  if (raw === "live" || raw === "gone" || raw === "unknown" || raw === "skipped") return raw;
+  return null;
+}
 
 /** JSON 欄位壞掉時回空陣列，不要讓整頁掛掉 —— 一筆資料髒不該害整個後台開不起來 */
 function parseArray(raw: string | null): string[] {
@@ -177,6 +206,9 @@ function toRecord(r: Row): MapListingRecord {
     status: r.status === "sold" ? "sold" : "active",
     sortOrder: r.sort_order,
     updatedAt: r.updated_at,
+    linkState: toLinkState(r.link_state),
+    linkNote: r.link_note?.trim() ? r.link_note.trim() : null,
+    linkCheckedAt: r.link_checked_at ?? null,
   };
 }
 
@@ -184,7 +216,7 @@ function toRecord(r: Row): MapListingRecord {
 export async function listAllMapListings(): Promise<MapListingRecord[]> {
   await ensureMapListingTable();
   const rows = await db.$queryRawUnsafe<Row[]>(
-    `SELECT id, project_id, title, address, lat, lng, points, photos, link_href, status, sort_order, updated_at
+    `SELECT id, project_id, title, address, lat, lng, points, photos, link_href, link_state, link_note, link_checked_at, status, sort_order, updated_at
        FROM map_listing ORDER BY project_id ASC, sort_order ASC, created_at ASC`,
   );
   return rows.map(toRecord);
@@ -208,7 +240,7 @@ export async function getSoloMapListings(): Promise<
   try {
     await ensureMapListingTable();
     const rows = await db.$queryRawUnsafe<Row[]>(
-      `SELECT id, project_id, title, address, lat, lng, points, photos, link_href, status, sort_order, updated_at
+      `SELECT id, project_id, title, address, lat, lng, points, photos, link_href, link_state, link_note, link_checked_at, status, sort_order, updated_at
          FROM map_listing
         WHERE status = 'active' AND (project_id = '' OR project_id IS NULL)
           AND lat IS NOT NULL AND lng IS NOT NULL
@@ -239,7 +271,7 @@ export async function getMapListingsByProject(): Promise<Map<string, PublicMapLi
   try {
     await ensureMapListingTable();
     const rows = await db.$queryRawUnsafe<Row[]>(
-      `SELECT id, project_id, title, address, lat, lng, points, photos, link_href, status, sort_order, updated_at
+      `SELECT id, project_id, title, address, lat, lng, points, photos, link_href, link_state, link_note, link_checked_at, status, sort_order, updated_at
          FROM map_listing WHERE status = 'active' ORDER BY sort_order ASC, created_at ASC`,
     );
     for (const row of rows) {
@@ -278,7 +310,7 @@ export async function getPublicMapListingsByIds(
   try {
     await ensureMapListingTable();
     const rows = await db.$queryRawUnsafe<Row[]>(
-      `SELECT id, project_id, title, address, lat, lng, points, photos, link_href, status, sort_order, updated_at
+      `SELECT id, project_id, title, address, lat, lng, points, photos, link_href, link_state, link_note, link_checked_at, status, sort_order, updated_at
          FROM map_listing
         WHERE status = 'active' AND id IN (${clean.map(() => "?").join(",")})`,
       ...clean,
@@ -448,4 +480,45 @@ export async function moveMapListing(id: string, direction: "up" | "down"): Prom
 
   await db.$executeRawUnsafe(`UPDATE map_listing SET sort_order = ? WHERE id = ?`, other.sort_order, id);
   await db.$executeRawUnsafe(`UPDATE map_listing SET sort_order = ? WHERE id = ?`, me.sort_order, other.id);
+}
+
+// ---------------------------------------------------------------- 連結檢查
+
+/**
+ * 把所有**上架中**的物件連結跑一次，結果寫回 `link_state` / `link_note` / `link_checked_at`。
+ *
+ * 2026-10-02 系統擁有者：「建案地圖若有客戶點不開的物件請於後台跳警示下架通知」。
+ *
+ * 🔵 **只檢查、不動 status。** 看到死連結要不要下架是他按的 ——
+ *    自動下架等於程式替他把物件從前台拿掉，萬一判錯（愛屋改版、網路抖）就是默默少一間在賣的房子。
+ *    判定本身也刻意分四種（live / gone / unknown / skipped），理由見 `map-listing-check.ts` 檔頭。
+ *
+ * 🔵 **已下架（sold）的不檢查** —— 那些本來就不在前台，客戶點不到。
+ */
+export async function checkMapListingLinks(): Promise<{
+  checked: number;
+  gone: number;
+  unknown: number;
+  live: number;
+  skipped: number;
+}> {
+  const { checkLinks, summarize } = await import("@/lib/map-listing-check");
+  await ensureMapListingTable();
+  const rows = await db.$queryRawUnsafe<{ id: string; link_href: string | null }[]>(
+    `SELECT id, link_href FROM map_listing WHERE status = 'active'`,
+  );
+  const results = await checkLinks(rows.map((r) => ({ id: r.id, href: r.link_href })));
+
+  const now = new Date();
+  for (const [id, r] of results) {
+    await db.$executeRawUnsafe(
+      `UPDATE map_listing SET link_state = ?, link_note = ?, link_checked_at = ? WHERE id = ?`,
+      r.state,
+      // 欄位是 VARCHAR(255)，備註可能含愛屋的錯誤訊息。切短一點，別讓一句話把 UPDATE 弄失敗。
+      r.note ? r.note.slice(0, 240) : null,
+      now,
+      id,
+    );
+  }
+  return { checked: results.size, ...summarize([...results.values()].map((r) => r.state)) };
 }

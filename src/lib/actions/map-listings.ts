@@ -197,3 +197,26 @@ export async function readHouseolAction(input: string): Promise<HouseolReadResul
  *    原因：sharp 的原生檔只帶得進 API 路由那支函式，寫成 server action 線上會噴
  *    libvips-cpp.so 找不到（2026-09-17 實際踩到）。細節寫在那支 route 的檔頭。
  */
+
+/**
+ * 立刻把所有上架中的物件連結檢查一遍（後台那顆「現在檢查」）。
+ *
+ * 2026-10-02 加。平常是 `vercel.json` 的 cron 每天跑一次（台北 11:00，`/api/map-listings/check`），
+ * 這顆是給他「剛改完想馬上看」用的。
+ *
+ * 🔵 **只檢查、不自動下架** —— 看到死連結要不要拿掉是他按「下架」。
+ * 🔴 只打愛屋，591 之類一律不發請求（白名單在 `lib/map-listing-check.ts`）。
+ */
+export async function checkMapListingLinksAction(): Promise<
+  Result & { checked?: number; gone?: number; unknown?: number; skipped?: number }
+> {
+  if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
+  try {
+    const { checkMapListingLinks } = await import("@/lib/map-listings");
+    const r = await checkMapListingLinks();
+    revalidateAll();
+    return { ok: true, checked: r.checked, gone: r.gone, unknown: r.unknown, skipped: r.skipped };
+  } catch (e) {
+    return { ok: false, error: describeError(e) };
+  }
+}
