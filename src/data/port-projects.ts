@@ -2596,7 +2596,15 @@ export const PROJECTS: Project[] = [
   { id: "gangwan-zhushi-huaxia", name: "港灣築詩華廈區", builder: "港灣建設", area: "龍井車站", status: "completed", completion: "約 2020", sources: ["owner"] },
   { id: "longjing-yilufa", name: "龍井一路發", builder: "三本久建設", area: "龍井車站", status: "completed", completion: "約 1997", sources: ["owner"] },
   { id: "yushu-dajie", name: "御墅大街", builder: "御墅家建設", area: "龍井車站", status: "completed", completion: "約 2021", sources: ["owner"] },
-  { id: "zhuangyuan-2", name: "樁園2", builder: "大樁建設體系", area: "龍井車站", status: "newly", completion: "約 2024", sources: ["owner"] },
+  /* ⚠️ **2026-10-01 他說「樁園2改攏井區大樁園2/2 年/大樁建設」** —— 讀成「改【龍井區】【大樁園2】」：
+     ① 「攏井區」是「龍井區」的錯字（攏／龍），而且**案名不可能叫「攏井區大樁園2」**（全站沒有案名帶行政區前綴的）；
+     ② **同一則訊息他給的座標證實了這個讀法** —— 24.18836,120.54344 離龍井車站商圈邊界 146 公尺、
+        而且不在任何色塊內，正好符合「龍井區」這個收容區（在龍井區、不在三塊商圈裡）的定義。
+     🔵 建商「大樁建設體系」與屋齡 2 年（＝約 2024）跟現存逐字相同，他只是重寫了一次，沒有改動
+        （他寫「大樁建設」，照通則對齊成既有的「大樁建設體系」，同鹿寮萬家福的大樁謙隱園）。
+     🔵 搬過來之後「龍井區」有 2 案（井上大院、大樁園2）。**仍然刻意不給它 PIN_GROUPS** ——
+        兩案相距約 700 公尺、而且這一區本來就是「散在三塊商圈之外」的集合，取重心沒有意義。 */
+  { id: "zhuangyuan-2", name: "大樁園2", builder: "大樁建設體系", area: "龍井", status: "newly", completion: "約 2024", sources: ["owner"] },
   { id: "juheng-guangyuhui-toutian", name: "聚恆光語繪透天區", builder: "聚恆建設", area: "龍井車站", status: "newly", completion: "約 2024", sources: ["owner"] },
   { id: "juheng-guangyuhui-huaxia", name: "聚恆光語繪華廈區", builder: "聚恆建設", area: "龍井車站", status: "newly", completion: "約 2024", sources: ["owner"] },
   { id: "haolong-wangchao", name: "豪隆王朝", builder: "樺陽建設", area: "龍井車站", status: "completed", completion: "約 1996", sources: ["owner"] },
@@ -3768,6 +3776,34 @@ export const COORDS: Record<string, Coord> = {
   "xiemao-fugui-zhuangyuan-5": { lat: 24.19014, lng: 120.52804, precision: "exact" }, // 頡懋富貴莊園5
   "xiemao-fugui-zhuangyuan-7": { lat: 24.18925, lng: 120.52745, precision: "exact" }, // 頡懋富貴莊園7
   "yushujia-zhule": { lat: 24.18909, lng: 120.53133, precision: "exact" }, // 御墅家築樂
+  /* ── 2026-10-01 龍井最後 19 案（他用 /map?fix=1 親手點的）──
+     核對過：id 全部存在、案名與註解相符、precision 全 exact、本批不重複、沒有覆蓋既有座標。
+     分區：龍井田中 15、龍井中央路 2、龍井區 1、龍井車站→龍井 1。
+     🔵 落在自己色塊外但只是雜訊的兩筆：璞樹閭2 露出 18 公尺、青年市 露出 2 公尺。
+     🔵 井上大院（龍井區）不驗色塊 —— 那一區本來就沒有色塊（ZONE_BY_AREA 給 null）。
+     🔵 樁園2 的座標離龍井車站商圈 146 公尺、不在任何色塊內 —— **那正是他同一則訊息要把它改掛龍井區的理由**，
+        案名也一起改成「大樁園2」（見 PROJECTS 裡那段註解）。
+     🔵 30 公尺內只有一對：御墅家18 ↔ 富貴龍田 23 m。
+     🔵 註解裡「樁園2」是舊案名。 */
+  "yushu-shouxi": { lat: 24.2032, lng: 120.52439, precision: "exact" }, // 御墅首璽
+  "zhu-zhenxin-2": { lat: 24.20643, lng: 120.52809, precision: "exact" }, // 築真心2
+  "longxin-dayue": { lat: 24.18943, lng: 120.53103, precision: "exact" }, // 龍鑫大悅
+  "dafude-jule": { lat: 24.18637, lng: 120.5289, precision: "exact" }, // 大富得居樂
+  "yushujia-21": { lat: 24.18546, lng: 120.53217, precision: "exact" }, // 御墅家21
+  "pushulv-2": { lat: 24.1858, lng: 120.52842, precision: "exact" }, // 璞樹閭2
+  "yushu-fule": { lat: 24.18597, lng: 120.52874, precision: "exact" }, // 御墅富樂
+  "yushu-chuanjia": { lat: 24.18482, lng: 120.52949, precision: "exact" }, // 御墅傳家
+  "pinyan-2": { lat: 24.18275, lng: 120.53128, precision: "exact" }, // 品硯2
+  "jinlong-tianxia": { lat: 24.1825, lng: 120.53113, precision: "exact" }, // 金龍天下
+  "yushujia-18": { lat: 24.18182, lng: 120.53108, precision: "exact" }, // 御墅家18
+  "fugui-longtian": { lat: 24.18166, lng: 120.53123, precision: "exact" }, // 富貴龍田
+  "xingfu-yushu": { lat: 24.18208, lng: 120.53045, precision: "exact" }, // 幸福御墅
+  "yushu-aijia": { lat: 24.18125, lng: 120.52797, precision: "exact" }, // 御墅愛家
+  "zhenshangmei": { lat: 24.17861, lng: 120.52805, precision: "exact" }, // 臻上美
+  "qingnianshi": { lat: 24.17942, lng: 120.52492, precision: "exact" }, // 青年市
+  "jingshang-dayuan": { lat: 24.1884, lng: 120.55032, precision: "exact" }, // 井上大院
+  "yushu-fenghe": { lat: 24.17769, lng: 120.53409, precision: "exact" }, // 御墅豐禾
+  "zhuangyuan-2": { lat: 24.18836, lng: 120.54344, precision: "exact" }, // 樁園2
 };
 
 /** 重劃區大致中心，地圖初始視角用 */
