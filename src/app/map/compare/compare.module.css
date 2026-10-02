@@ -70,8 +70,18 @@
   box-shadow: var(--shadow);
 }
 
+/* 🔴 一定要 table-layout: fixed，每戶一欄才會一樣寬（2026-10-02 系統擁有者問「為什麼照片不一樣大」）。
+   原本是 auto：瀏覽器照每欄「內容最寬能多寬」分配多出來的寬度，而 width:100% 的 <img> 在算這個
+   寬度時是拿照片的原始像素當內容寬 —— 線上實測（和築好好窩兩戶）：原圖 1477px 寬的那欄分到 315px、
+   800px 寬的只分到 241px（727px 的表），照片又是填滿欄寬，所以一張大一張小。固定佈局只看第一列：
+   第一欄照 .rowHead 的 width，其餘平均分，內容再怎麼寬都不影響。
+   ⚠️ 固定佈局下格子的 min-width 不可靠，最小寬度改放在表本身（--cols 由 CompareView 用 style 傳進來）。 */
 .table {
+  --head-w: 128px;
+  --col-w: 190px;
+  table-layout: fixed;
   width: 100%;
+  min-width: calc(var(--head-w) + var(--col-w) * var(--cols, 2));
   border-collapse: separate;
   border-spacing: 0;
   font-size: 14.5px;
@@ -85,7 +95,8 @@
   border-right: 1px solid var(--line);
   text-align: left;
   vertical-align: top;
-  min-width: 190px;
+  /* 固定欄寬下太長的字要能折行；CJK 本來就能斷，這是給連結或英數字串的保險 */
+  overflow-wrap: anywhere;
 }
 
 .table th:last-child,
@@ -106,8 +117,8 @@
   background: #fcfaf6;
   font-weight: 800;
   color: var(--ink);
-  width: 128px;
-  min-width: 112px;
+  /* 這個 width 就是固定佈局裡第一欄的寬（thead 第一列的這一格決定整欄） */
+  width: var(--head-w);
   white-space: nowrap;
 }
 
@@ -222,16 +233,18 @@
     padding: 26px 0 14px;
   }
 
+  .table {
+    --head-w: 96px;
+    --col-w: 150px;
+  }
+
   .table th,
   .table td {
     padding: 10px 10px;
-    min-width: 150px;
     font-size: 13.5px;
   }
 
   .rowHead {
-    width: 96px;
-    min-width: 88px;
     white-space: normal;
   }
 }
@@ -247,8 +260,7 @@
     overflow: visible;
   }
 
-  .table th,
-  .table td {
+  .table {
     min-width: 0;
   }
 }

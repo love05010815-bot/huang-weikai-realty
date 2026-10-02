@@ -12,6 +12,7 @@
  *
  * 頁首頁尾與 /map 同一套（Map.module.css），色票變數在 `.page` 上，表格自己的樣式在 compare.module.css。
  */
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { OWNER } from "@/config/owner";
 import { AREA_LABEL, type Project } from "@/data/port-projects";
@@ -161,7 +162,9 @@ export default function CompareView({ entries, dropped }: { entries: CompareEntr
               )}
 
               <div className={cmp.wrap}>
-                <table className={cmp.table}>
+                {/* --cols 給 CSS 算最小寬度（手機上左右滑的那條）；欄寬本身是 table-layout: fixed 平均分，
+                    每戶一樣寬、照片才一樣大（見 compare.module.css 的 .table 註解） */}
+                <table className={cmp.table} style={{ "--cols": entries.length } as CSSProperties}>
                   <thead>
                     <tr>
                       <th scope="col" className={cmp.rowHead}>
