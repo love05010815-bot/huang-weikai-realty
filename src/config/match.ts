@@ -8,8 +8,10 @@
  *   4. /api/line/webhook 收到 → 綁定 LINE userId → 回確認卡 → 通知你（LINE 推播＋Email＋admin 群）
  *   5. 之後新物件同步進來，自動推播給條件相符、且綁過 LINE 的買方
  *
- * 物件來源：愛屋店網（www.houseol.com.tw/sell_item?storeid=XXXX）的公開頁，
- * 不用登入、不用書籤小工具；每 30 分鐘自動同步（見 lib/match/sync.ts）。
+ * 物件來源（2026-10-02 起兩個，見 lib/match/sync.ts 與 lib/match/merge.ts）：
+ *   1. 太平洋官網 www.pacific.com.tw 的物件查詢 API —— 海線七家店（PACIFIC_STORES）的物件，主來源。
+ *   2. 愛屋店網 www.houseol.com.tw/sell_item?storeid=4817 的公開頁 —— 只補梧棲店「官網沒上架」的那幾筆。
+ * 都不用登入、不用書籤小工具；兩個來源輪流、各自每 30 分鐘同步一次。
  *
  * ⚠️ 官方帳號目前是「輕用量」方案，每月免費推播只有 200 則。
  *    reply（回覆）不計費，push（主動推播）才計費 —— 所以確認卡用 reply，
@@ -23,6 +25,8 @@ export const MATCH = {
    * 只同步這個店碼的物件，排除體系／聯賣物件；留空字串 = 店網上有的全收。
    */
   houseolStoreCode: "H229",
+  /** 店網那家店在太平洋官網的店碼（PACIFIC_STORES 的 key）—— 店網補進來的物件掛在這家店底下 */
+  houseolPacificStore: "CUK",
   /**
    * 幾分鐘同步一次。
    * 觸發來源是 keep-warm 排程每 10 分鐘來敲一次 /api/match/sync，端點自己判斷到時間才真的跑；
@@ -56,7 +60,31 @@ export const MATCH = {
   maxPriceChangesPerSync: 30,
 } as const;
 
-/** 表單「類型」選項。愛屋店網的型態會對應到這幾個（見 lib/match/houseol-parse.ts 的 TYPE_MAP） */
+/**
+ * 太平洋官網要收的店：海線七家（他 2026-10-02 給的名單，店碼是用各店電話從官網資料對出來的）。
+ * key 是官網物件資料裡的 storeID。官網把信義房屋、全台太平洋店的物件混在同一個池子裡，
+ * 沒列在這裡的一律不收。電話是店的公開電話，物件卡「聯絡」用。
+ */
+export const PACIFIC_STORES: Record<string, { name: string; phone: string }> = {
+  CUK: { name: "梧棲新市鎮旗艦加盟店", phone: "04-26572100" },
+  CBF: { name: "台中沙鹿特三加盟店", phone: "04-26354000" },
+  CRN: { name: "台中沙鹿旗艦加盟店", phone: "04-26520123" },
+  CZH: { name: "清水中山旗艦加盟店", phone: "04-26233000" },
+  CBQ: { name: "台中沙鹿中山加盟店", phone: "04-26634100" },
+  CBE: { name: "台中沙鹿靜宜加盟店", phone: "04-26361000" },
+  CSK: { name: "沙鹿幸福領航加盟店", phone: "04-26325000" },
+};
+
+/** 官網查詢用的縣市名（官網寫「臺」；存進資料庫時會轉成「台中市」） */
+export const PACIFIC_CITY = "臺中市";
+
+/**
+ * 官網一次只能查一個行政區，這八區就是海線七家店物件所在的地方（地圖模式一區一次回整份，八區約 10 秒）。
+ * 七家店偶爾有海線以外的物件（西屯、員林…每家十來筆），那些靠店網補、或就不收 —— 全臺中市兩萬筆要抓四分鐘，不划算。
+ */
+export const PACIFIC_DISTRICTS = ["梧棲區", "沙鹿區", "清水區", "龍井區", "大肚區", "大甲區", "大安區", "外埔區"] as const;
+
+/** 表單「類型」選項。店網與官網的型態都會對應到這幾個（見 houseol-parse.ts 的 TYPE_MAP、pacific-parse.ts 的 PACIFIC_TYPE_MAP） */
 export const MATCH_TYPES = ["電梯大樓", "華廈", "公寓", "透天厝", "套房", "土地"] as const;
 
 /**

@@ -11,14 +11,14 @@
  */
 import { redirect } from "next/navigation";
 import { adminEmails } from "@/auth";
-import { MATCH } from "@/config/match";
+import { MATCH, PACIFIC_STORES } from "@/config/match";
 import { CIS } from "@/app/admin/_components/cis";
 import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
 import { getAdminCheckArgs, isCurrentUserAdmin } from "@/lib/admin-check";
 import { describePreference } from "@/lib/match/matcher";
 import { countListings, getListings, listBuyersForAdmin, listListingsForAdmin, listViewingsForAdmin } from "@/lib/match/store";
 import { intakeUrl } from "@/lib/match/intake-key";
-import { getLastSyncResult, type SyncSummary } from "@/lib/match/sync";
+import { getLastSyncResults, type Source, type SyncSummary } from "@/lib/match/sync";
 import MatchAdmin, { type AdminBuyer, type AdminListing, type AdminViewing } from "./MatchAdmin";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +36,7 @@ export default async function MatchAdminPage() {
   let buyers: AdminBuyer[] = [];
   let listings: AdminListing[] = [];
   let counts = { available: 0, hidden: 0 };
-  let lastSync: SyncSummary | null = null;
+  let lastSync: Record<Source, SyncSummary | null> = { pacific: null, houseol: null };
   let intake = "";
   let loadError: string | null = null;
   try {
@@ -77,6 +77,7 @@ export default async function MatchAdminPage() {
     }));
     listings = (await listListingsForAdmin(80)).map((l) => ({
       id: l.id,
+      store: PACIFIC_STORES[l.storeId]?.name ?? l.storeId,
       title: l.title,
       area: `${l.city}${l.district}`,
       price: l.price,
@@ -88,7 +89,7 @@ export default async function MatchAdminPage() {
       syncedAt: iso(l.syncedAt),
     }));
     counts = await countListings();
-    lastSync = await getLastSyncResult();
+    lastSync = await getLastSyncResults();
     // 第一次進來會自動產生金鑰（見 lib/match/intake-key.ts）
     intake = await intakeUrl();
   } catch (e) {

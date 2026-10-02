@@ -3,14 +3,16 @@
  * 買方配對後台的操作介面：三個分頁（預約看屋／買方／物件同步）。
  *
  * 改狀態走 server action，改完 router.refresh() 重讀 —— 畫面上看到的一律是資料庫真的有的東西。
- * 「立即同步」打 /api/match/sync?force=1（那支的函式上限 60 秒），跑完也 refresh。
+ * 「立即同步」打 /api/match/sync?force=1&source=…，兩個來源各打一次（官網約 10 秒、店網約 30–40 秒；那支的函式上限 60 秒，
+ * 所以不能一次跑兩個），跑完也 refresh。
  */
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CHIP, CIS, cisCard, type ChipTone } from "@/app/admin/_components/cis";
-import { MATCH, VIEWING_STATUS } from "@/config/match";
+import { MATCH, PACIFIC_STORES, VIEWING_STATUS } from "@/config/match";
 import { rotateIntakeKeyAction, setViewingStatusAction } from "@/lib/actions/match";
+import { SOURCE_LABEL, type Source } from "@/lib/match/merge";
 import type { SyncSummary } from "@/lib/match/sync";
 import styles from "./match-admin.module.css";
 
@@ -50,6 +52,8 @@ export type AdminBuyer = {
 
 export type AdminListing = {
   id: string;
+  /** 哪家店的（PACIFIC_STORES 的店名；對不到就是店碼） */
+  store: string;
   title: string;
   area: string;
   price: number;
@@ -85,6 +89,31 @@ function Chip({ tone, children }: { tone: ChipTone; children: React.ReactNode })
   );
 }
 
+/** 一個來源最近一次同步的結果，濃縮成一行 */
+function syncText(s: SyncSummary): string {
+  if (!s.ran) return `沒有跑：${s.reason}`;
+  if (!s.ok) return `上次同步失敗（${fmt(s.at ?? null)}）：${s.reason}`;
+  const stores = s.stores
+    ? `；各店 ${Object.entries(s.stores)
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, v]) => `${PACIFIC_STORES[k]?.name ?? k} ${v}`)
+        .join("、")}`
+    : "";
+  return (
+    `上次同步 ${fmt(s.at ?? null)}：來源 ${s.total} 筆、收 ${s.fetched} 筆` +
+    (s.skipped ? `（另 ${s.skipped} 筆官網已有、讓給官網）` : "") +
+    `，新增 ${s.added}、更新 ${s.updated}、下架 ${s.hidden}` +
+    (s.removedLegacy ? `、清掉舊格式 ${s.removedLegacy}` : "") +
+    (s.priceChanged ? `、價格異動 ${s.priceChanged}` : "") +
+    (s.priceChangeSkipped && s.priceChanged ? "（異動筆數異常，沒有發價格通知）" : "") +
+    (s.complete === false ? "（這次沒抓完整，未做下架判斷）" : "") +
+    (s.notifiedBuyers ? `，推播 ${s.notifiedBuyers} 位買方` : "") +
+    (s.baseline ? "（第一次建立基準，不推播）" : "") +
+    `，${Math.round((s.ms ?? 0) / 1000)} 秒` +
+    stores
+  );
+}
+
 export default function MatchAdmin({
   intakeUrl,
   viewings,
@@ -97,7 +126,8 @@ export default function MatchAdmin({
   buyers: AdminBuyer[];
   listings: AdminListing[];
   counts: { available: number; hidden: number };
-  lastSync: SyncSummary | null;
+  /** 兩個來源各自最近一次的結果 */
+  lastSync: Record<Source, SyncSummary | null>;
   /** 手機快速建檔連結（不用登入；見 lib/match/intake-key.ts） */
   intakeUrl: string;
 }) {
@@ -106,7 +136,8 @@ export default function MatchAdmin({
   const [msg, setMsg] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState<SyncSummary | null>(null);
+  const [syncingSource, setSyncingSource] = useState<Source | null>(null);
+  const [syncResult, setSyncResult] = useState<Partial<Record<Source, SyncSummary>>>({});
 
   // 從買方子頁按「← 買方配對」回來要落在「買方」那一頁，不然每次都得再點一次
   useEffect(() => {
@@ -131,14 +162,19 @@ export default function MatchAdmin({
     setSyncing(true);
     setMsg(null);
     try {
-      const res = await fetch("/api/match/sync?force=1", { cache: "no-store" });
-      const data = (await res.json()) as SyncSummary;
-      setSyncResult(data);
+      // 兩個來源各跑一次（各 30–40 秒）；一起跑會撞到函式 60 秒的上限
+      for (const source of ["pacific", "houseol"] as const) {
+        setSyncingSource(source);
+        const res = await fetch(`/api/match/sync?force=1&source=${source}`, { cache: "no-store" });
+        const data = (await res.json()) as SyncSummary;
+        setSyncResult((prev) => ({ ...prev, [source]: data }));
+      }
       router.refresh();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
     } finally {
       setSyncing(false);
+      setSyncingSource(null);
     }
   }
 
@@ -177,7 +213,6 @@ export default function MatchAdmin({
     </button>
   );
 
-  const lastShown = syncResult ?? lastSync;
 
   return (
     <div>
@@ -358,17 +393,17 @@ export default function MatchAdmin({
                   在售 {counts.available} 戶 · 已下架 {counts.hidden} 戶
                 </div>
                 <div style={{ color: CIS.textMute, fontSize: 12, marginTop: 4 }}>
-                  來源：愛屋店網 storeid {MATCH.houseolStoreId}（店碼 {MATCH.houseolStoreCode || "不限"}），每 {MATCH.syncIntervalMin} 分鐘自動同步一次。
+                  來源：太平洋官網海線七家店（{Object.values(PACIFIC_STORES).map((s) => s.name).join("、")}）＋ 愛屋店網 storeid {MATCH.houseolStoreId}
+                  （只補梧棲店官網沒上架的）。兩個來源輪流、各每 {MATCH.syncIntervalMin} 分鐘自動同步一次。
                 </div>
-                {lastShown && (
-                  <div style={{ color: CIS.textSub, fontSize: 13, marginTop: 8 }}>
-                    {lastShown.ran
-                      ? lastShown.ok
-                        ? `上次同步 ${fmt(lastShown.at ?? null)}：店網 ${lastShown.total} 筆，新增 ${lastShown.added}、更新 ${lastShown.updated}、下架 ${lastShown.hidden}${lastShown.priceChanged ? `、價格異動 ${lastShown.priceChanged}` : ""}${lastShown.priceChangeSkipped && lastShown.priceChanged ? "（異動筆數異常，沒有發價格通知）" : ""}${lastShown.complete === false ? "（這次沒抓完整，未做下架判斷）" : ""}${lastShown.notifiedBuyers ? `，推播 ${lastShown.notifiedBuyers} 位買方` : ""}${lastShown.baseline ? "（第一次建立基準，不推播）" : ""}，${Math.round((lastShown.ms ?? 0) / 1000)} 秒`
-                        : `上次同步失敗：${lastShown.reason}`
-                      : `沒有跑：${lastShown.reason}`}
-                  </div>
-                )}
+                {(["pacific", "houseol"] as const).map((source) => {
+                  const s = syncResult[source] ?? lastSync[source];
+                  return (
+                    <div key={source} style={{ color: CIS.textSub, fontSize: 13, marginTop: 8 }}>
+                      <strong>{SOURCE_LABEL[source]}</strong>：{s ? syncText(s) : "還沒同步過"}
+                    </div>
+                  );
+                })}
               </div>
               <button
                 type="button"
@@ -376,7 +411,7 @@ export default function MatchAdmin({
                 disabled={syncing}
                 style={{ padding: "10px 18px", borderRadius: CIS.radiusSm, border: 0, background: CIS.blueDeep, color: "#fff", fontWeight: 700, cursor: syncing ? "default" : "pointer", opacity: syncing ? 0.6 : 1 }}
               >
-                {syncing ? "同步中（約 30–40 秒）…" : "立即同步"}
+                {syncing ? `同步中（${syncingSource ? SOURCE_LABEL[syncingSource] : ""}…官網約 10 秒、店網約 30–40 秒）` : "立即同步（兩個來源）"}
               </button>
             </div>
           </div>
@@ -388,6 +423,7 @@ export default function MatchAdmin({
                   <th>編號</th>
                   <th>物件</th>
                   <th>區域</th>
+                  <th>店</th>
                   <th>總價</th>
                   <th>格局</th>
                   <th>狀態</th>
@@ -404,6 +440,7 @@ export default function MatchAdmin({
                     </td>
                     <td>{l.title}</td>
                     <td>{l.area}</td>
+                    <td style={{ whiteSpace: "nowrap", fontSize: 12 }}>{l.store}</td>
                     <td>{l.price.toLocaleString("zh-TW")} 萬</td>
                     <td>
                       {l.rooms} 房 {l.size} 坪 {l.type}

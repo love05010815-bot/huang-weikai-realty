@@ -35,8 +35,8 @@ export const FLOOR_RANGES: Record<string, { min: number; max: number; label: str
  * 屋齡級距（2026-09-18 他指定的五段）。跟樓層一樣是**真的區間**：
  * 選「5–10 年」時新成屋不會出現，這跟舊的「幾年以內」語意不同。
  *
- * ⚠️ 20–30 年這一段他沒有列，所以目前選不到；要補就在這裡加一行，
- *    表單與 meta API 會自己跟著長出來。
+ * ⚠️ 2026-10-02 起表單**不再用這五段**：他要照愛屋那樣「幾年～幾年」自己選（AGE_OPTIONS）。
+ *    這份留著是為了資料庫裡還存著 a0…a30 的舊買方 —— normalizePreference 把它轉成 ageMin／ageMax。
  */
 export const AGE_RANGES: Record<string, { min: number; max: number; label: string }> = {
   a0: { min: 0, max: 5, label: "0–5 年" },
@@ -45,6 +45,20 @@ export const AGE_RANGES: Record<string, { min: number; max: number; label: strin
   a15: { min: 15, max: 20, label: "15–20 年" },
   a30: { min: 30, max: Infinity, label: "30 年以上" },
 };
+
+/**
+ * 屋齡「幾年～幾年」兩個下拉的選項（年）。2026-10-02 他要的：照愛屋那樣讓客人自己選區間。
+ * 下限、上限都從這裡選，「不限」是 0；只選上限就是「幾年內」，只選下限就是「幾年以上」。
+ */
+export const AGE_OPTIONS = [1, 3, 5, 10, 15, 20, 25, 30, 40, 50] as const;
+
+/** 「5–10 年」「10 年內」「5 年以上」；兩個都 0 回空字串 */
+export function ageLabel(min: number, max: number): string {
+  if (min > 0 && max > 0) return `${min}–${max} 年`;
+  if (max > 0) return `${max} 年內`;
+  if (min > 0) return `${min} 年以上`;
+  return "";
+}
 
 /** 土地類別的四個選項（只有買方勾了「土地」才會用到） */
 /**
@@ -130,12 +144,18 @@ export type Preference = {
   sizeMin: number;
   sizeMax: number;
   types: string[];
-  /** 屋齡級距，AGE_RANGES 的 key；"" = 不限。2026-09-18 起表單送的是這個 */
-  ageRange: string;
   /**
-   * 年，0 = 不限。**舊欄位**：2026-09-18 之前表單送的是「幾年以內」。
-   * 資料庫裡還有買方存著它，所以評分仍然認 —— 沒有 ageRange 時才會用到。
+   * 屋齡區間，年，0 = 不限（2026-10-02 起表單送的是這兩個：他要「幾年～幾年」自己選）。
+   * 兩端都含：ageMin 5、ageMax 10 時，5 年與 10 年都算符合。
    */
+  ageMin: number;
+  ageMax: number;
+  /**
+   * **舊欄位**：2026-09-18～10-02 的固定五段（AGE_RANGES 的 key）。資料庫裡還有買方存著，
+   * normalizePreference 會把它轉成 ageMin／ageMax，整理完一律是空字串。
+   */
+  ageRange: string;
+  /** **更舊的欄位**（2026-09-18 之前）：「幾年以內」。同樣轉成 ageMax，整理完一律是 0 */
   maxAge: number;
   features: string[];
   /** 希望樓層，FLOOR_RANGES 的 key；"" = 不限 */
@@ -199,6 +219,24 @@ const strList = (v: unknown): string[] => {
   return [];
 };
 
+/**
+ * 屋齡條件統一成 ageMin／ageMax。新表單直接給；舊買方存的 ageRange（五段）或 maxAge（幾年以內）轉過來，
+ * 不然他們的條件會靜靜失效。上下限顛倒就對調。
+ */
+function ageBounds(p: Record<string, unknown>): { ageMin: number; ageMax: number; ageRange: string; maxAge: number } {
+  let ageMin = num(p.ageMin);
+  let ageMax = num(p.ageMax);
+  if (!ageMin && !ageMax) {
+    const legacy = AGE_RANGES[String(p.ageRange ?? "")];
+    if (legacy) {
+      ageMin = legacy.min;
+      ageMax = Number.isFinite(legacy.max) ? legacy.max : 0;
+    } else if (num(p.maxAge) > 0) ageMax = num(p.maxAge);
+  }
+  if (ageMin && ageMax && ageMax < ageMin) [ageMin, ageMax] = [ageMax, ageMin];
+  return { ageMin, ageMax, ageRange: "", maxAge: 0 };
+}
+
 /** 把前端送來的任何東西整理成合法的 Preference（缺欄位、型別不對都不會炸） */
 export function normalizePreference(input: unknown): Preference {
   const p = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
@@ -211,8 +249,7 @@ export function normalizePreference(input: unknown): Preference {
     sizeMin: num(p.sizeMin),
     sizeMax: num(p.sizeMax),
     types: strList(p.types).slice(0, 10),
-    ageRange: AGE_RANGES[String(p.ageRange ?? "")] ? String(p.ageRange) : "",
-    maxAge: num(p.maxAge),
+    ...ageBounds(p),
     features: strList(p.features).slice(0, 10),
     floor: FLOOR_RANGES[String(p.floor ?? "")] ? String(p.floor) : "",
     landMin: num(p.landMin),
@@ -316,29 +353,20 @@ export function scoreListing(prefInput: Preference | unknown, listing: Matchable
     } else miss(cat ? `土地類別不符（${cat}）` : "不是土地物件");
   }
 
-  // 屋齡。兩套規則並存：
-  //   ageRange → 真的區間（現在的表單），選 5–10 年時新成屋不算符合
-  //   maxAge   → 幾年以內（2026-09-18 之前存下來的買方條件），不接著認的話他們的條件會靜靜失效
-  // 店網沒給屋齡時 age 會是 0（土地那些），那是「資料沒有」不是「屋齡 0」——
-  // 真的新成屋在解析時記成 0.5，兩者分得開。
+  // 屋齡：ageMin～ageMax 的真區間（兩端都含；舊的 ageRange／maxAge 在 normalizePreference 就轉成這兩個了）。
+  // 選 5–10 年時新成屋不算符合。沒給屋齡時 age 會是 0（土地、預售那些），那是「資料沒有」不是「屋齡 0」——
+  // 真的新成屋會是 0.3、0.5 這種小數，兩者分得開。
   const listingAge = num(listing.age);
-  if (pref.ageRange) {
-    const r = AGE_RANGES[pref.ageRange];
+  if (pref.ageMin > 0 || pref.ageMax > 0) {
+    const lo = pref.ageMin;
+    const hi = pref.ageMax || Infinity;
     if (listingAge <= 0) {
       score += Math.round(WEIGHTS.age * 0.5);
       miss("沒有屋齡資料", false);
-    } else if (listingAge >= r.min && listingAge <= r.max) {
+    } else if (listingAge >= lo && listingAge <= hi) {
       score += WEIGHTS.age;
-      reasons.push(listingAge < 1 ? `新成屋（${r.label}）` : `屋齡 ${listingAge} 年符合`);
+      reasons.push(listingAge < 1 ? `新成屋（${ageLabel(pref.ageMin, pref.ageMax)}）` : `屋齡 ${listingAge} 年符合`);
     } else miss(`屋齡不符（${listingAge} 年）`);
-  } else if (pref.maxAge > 0) {
-    if (listingAge <= pref.maxAge) {
-      score += WEIGHTS.age;
-      reasons.push(listingAge < 1 ? "新成屋" : `屋齡 ${listingAge} 年符合`);
-    } else if (listingAge <= pref.maxAge + 5) {
-      score += Math.round(WEIGHTS.age * 0.5);
-      miss(`屋齡略高（${listingAge} 年）`);
-    } else miss(`屋齡過高（${listingAge} 年）`);
   } else score += WEIGHTS.age;
 
   // 希望樓層。店網沒給樓層的（土地那 20 筆是「/」）不硬扣到 0，給一半 ——
@@ -423,8 +451,7 @@ export function describePreference(prefInput: Preference | unknown): string {
   if (p.roomsList.length) parts.push(p.roomsList.map(roomLabel).join("/"));
   if (p.sizeMin || p.sizeMax) parts.push(`${p.sizeMin || "不限"}–${p.sizeMax || "不限"} 坪`);
   if (p.types.length) parts.push(p.types.join("/"));
-  if (p.ageRange && AGE_RANGES[p.ageRange]) parts.push(`屋齡 ${AGE_RANGES[p.ageRange].label}`);
-  else if (p.maxAge) parts.push(`屋齡 ${p.maxAge} 年內`);
+  if (p.ageMin || p.ageMax) parts.push(`屋齡 ${ageLabel(p.ageMin, p.ageMax)}`);
   if (p.floor && FLOOR_RANGES[p.floor]) parts.push(FLOOR_RANGES[p.floor].label);
   if (p.landMin || p.landMax) parts.push(`地坪 ${p.landMin || "不限"}–${p.landMax || "不限"} 坪`);
   if (p.landCategories.length) parts.push(p.landCategories.join("/"));

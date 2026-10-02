@@ -63,6 +63,19 @@ export async function ensureMatchTables(): Promise<void> {
   if (hasLandSize.length === 0) {
     await db.$executeRawUnsafe("ALTER TABLE match_listing ADD COLUMN land_size DOUBLE NOT NULL DEFAULT 0 AFTER `size`");
   }
+  // 2026-10-02 物件改成兩個來源（太平洋官網＋愛屋店網，見 lib/match/merge.ts）時加的：
+  //   src        哪個來源寫的（下架、價格比對只動自己寫的）
+  //   houseol_id 愛屋編號（主鍵改成官網的 S 編號之後，愛屋編號當副欄位留著）
+  //   lat / lng  官網給的座標
+  for (const [col, ddl] of [
+    ["src", "ALTER TABLE match_listing ADD COLUMN src VARCHAR(16) NOT NULL DEFAULT '' AFTER store_code"],
+    ["houseol_id", "ALTER TABLE match_listing ADD COLUMN houseol_id VARCHAR(16) NOT NULL DEFAULT '' AFTER src"],
+    ["lat", "ALTER TABLE match_listing ADD COLUMN lat DOUBLE NULL AFTER source_url"],
+    ["lng", "ALTER TABLE match_listing ADD COLUMN lng DOUBLE NULL AFTER lat"],
+  ] as const) {
+    const has = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM match_listing LIKE '${col}'`);
+    if (has.length === 0) await db.$executeRawUnsafe(ddl);
+  }
 
   await db.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS match_buyer (
@@ -181,10 +194,14 @@ type ListingRow = {
   status: string;
   first_seen_at: Date | null;
   synced_at: Date | null;
+  src: string;
+  houseol_id: string;
+  lat: number | null;
+  lng: number | null;
 };
 
 const LISTING_COLS =
-  "id, store_id, store_code, title, city, district, address, price, original_price, unit_price, rooms, halls, baths, `size`, land_size, `type`, usage_type, age, `floor`, features, images, video, description, phone, source_url, status, first_seen_at, synced_at";
+  "id, store_id, store_code, title, city, district, address, price, original_price, unit_price, rooms, halls, baths, `size`, land_size, `type`, usage_type, age, `floor`, features, images, video, description, phone, source_url, status, first_seen_at, synced_at, src, houseol_id, lat, lng";
 
 function toListing(row: ListingRow): MatchListing {
   return {
@@ -213,6 +230,11 @@ function toListing(row: ListingRow): MatchListing {
     description: row.description ?? "",
     phone: row.phone,
     sourceUrl: row.source_url,
+    houseolId: row.houseol_id ?? "",
+    lat: row.lat == null ? null : n(row.lat),
+    lng: row.lng == null ? null : n(row.lng),
+    // 2026-10-02 之前的舊資料沒有 src，它們都是店網來的
+    src: row.src === "pacific" ? "pacific" : "houseol",
     status: row.status === "hidden" ? "hidden" : "available",
     firstSeenAt: row.first_seen_at,
     syncedAt: row.synced_at,
@@ -263,18 +285,17 @@ export async function listListingsForAdmin(limit = 500): Promise<MatchListing[]>
 
 /** 同步用：這家店目前庫裡有哪些物件（id → status） */
 /**
- * 同步前的快照：目前資料庫裡每一筆的狀態與價格。
+ * 同步前的快照：目前資料庫裡每一筆的狀態、價格、來源（整張表，兩個來源共用）。
  *
  * 價格是給「價格異動通知」比對用的 —— 抓回來的新價格跟這裡不一樣就是異動。
- * 同步當下就要先拿，upsert 之後舊價格就被蓋掉了。
+ * 同步當下就要先拿，upsert 之後舊價格就被蓋掉了。來源欄給 lib/match/merge.ts 判斷誰作主。
  */
-export async function getListingSnapshot(storeId: string): Promise<Map<string, { status: string; price: number }>> {
+export async function getListingSnapshot(): Promise<Map<string, { status: string; price: number; src: string }>> {
   await ensureMatchTables();
-  const rows = await db.$queryRawUnsafe<{ id: string; status: string; price: number }[]>(
-    `SELECT id, status, price FROM match_listing WHERE store_id = ?`,
-    storeId,
+  const rows = await db.$queryRawUnsafe<{ id: string; status: string; price: number; src: string | null }[]>(
+    `SELECT id, status, price, src FROM match_listing`,
   );
-  return new Map(rows.map((r) => [r.id, { status: r.status, price: n(r.price) }]));
+  return new Map(rows.map((r) => [r.id, { status: r.status, price: n(r.price), src: r.src ?? "" }]));
 }
 
 /**
@@ -286,7 +307,7 @@ export async function upsertListings(items: ListingUpsert[]): Promise<void> {
   const CHUNK = 50;
   for (let i = 0; i < items.length; i += CHUNK) {
     const chunk = items.slice(i, i + CHUNK);
-    const placeholders = chunk.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'available', NOW(), NULL)").join(",\n");
+    const placeholders = chunk.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'available', NOW(), NULL)").join(",\n");
     const values = chunk.flatMap((l) => [
       l.id,
       l.storeId,
@@ -313,15 +334,21 @@ export async function upsertListings(items: ListingUpsert[]): Promise<void> {
       l.description,
       l.phone,
       l.sourceUrl,
+      l.src,
+      l.houseolId,
+      l.lat,
+      l.lng,
     ]);
     await db.$executeRawUnsafe(
       `INSERT INTO match_listing
          (id, store_id, store_code, title, city, district, address, price, original_price, unit_price,
           rooms, halls, baths, \`size\`, land_size, \`type\`, usage_type, age, \`floor\`, features, images, video, description,
-          phone, source_url, status, synced_at, hidden_at)
+          phone, source_url, src, houseol_id, lat, lng, status, synced_at, hidden_at)
        VALUES ${placeholders}
        ON DUPLICATE KEY UPDATE
-         store_code = VALUES(store_code), title = VALUES(title), city = VALUES(city), district = VALUES(district),
+         store_id = VALUES(store_id), store_code = VALUES(store_code), src = VALUES(src), houseol_id = VALUES(houseol_id),
+         lat = VALUES(lat), lng = VALUES(lng),
+         title = VALUES(title), city = VALUES(city), district = VALUES(district),
          address = VALUES(address), price = VALUES(price), original_price = VALUES(original_price),
          unit_price = VALUES(unit_price), rooms = VALUES(rooms), halls = VALUES(halls), baths = VALUES(baths),
          \`size\` = VALUES(\`size\`), land_size = VALUES(land_size), \`type\` = VALUES(\`type\`), usage_type = VALUES(usage_type), age = VALUES(age),
@@ -345,6 +372,19 @@ export async function hideListings(ids: string[]): Promise<void> {
       ...chunk,
     );
   }
+}
+
+/**
+ * 清掉 2026-10-02 換主鍵之前的舊格式資料（主鍵是愛屋編號 AA…／AK…，現在一律是官網的 S 編號）。
+ * 兩個來源都是機器同步進來的、隨時抓得回來，所以直接刪；有預約指著的那幾筆留著（後台那一列還要讀得到）。
+ * 回刪了幾筆。
+ */
+export async function deleteLegacyListings(): Promise<number> {
+  await ensureMatchTables();
+  const affected = await db.$executeRawUnsafe(
+    `DELETE FROM match_listing WHERE id NOT LIKE 'S%' AND id NOT IN (SELECT listing_id FROM match_viewing)`,
+  );
+  return Number(affected) || 0;
 }
 
 export async function countListings(): Promise<{ available: number; hidden: number }> {

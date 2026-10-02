@@ -24,8 +24,12 @@ export type ApiPreference = {
   sizeMin?: number;
   sizeMax?: number;
   types?: string[];
+  /** 屋齡區間（年），0 = 不限。2026-10-02 起表單送的是這兩個 */
+  ageMin?: number;
+  ageMax?: number;
+  /** 2026-09-18～10-02 的固定五段（a0…a30），舊買方還存著；進表單時轉成上下限 */
   ageRange?: string;
-  /** 2026-09-18 之前存的舊欄位「幾年以內」；表單已經改成區間，只用來判斷要不要顯示 */
+  /** 2026-09-18 之前存的舊欄位「幾年以內」；進表單時轉成上限 */
   maxAge?: number;
   features?: string[];
   floor?: string;
@@ -44,7 +48,9 @@ export type PrefState = {
   sizeMin: string;
   sizeMax: string;
   types: string[];
-  ageRange: string;
+  /** 屋齡區間（年）；空字串 = 不限 */
+  ageMin: string;
+  ageMax: string;
   features: string[];
   floor: string;
   landMin: string;
@@ -60,7 +66,8 @@ export const EMPTY_PREF: PrefState = {
   sizeMin: "",
   sizeMax: "",
   types: [],
-  ageRange: "",
+  ageMin: "",
+  ageMax: "",
   features: [],
   floor: "",
   landMin: "",
@@ -79,13 +86,16 @@ export const ROOMS_FALLBACK = [
   { value: 4, label: "4 房以上" },
 ];
 
+/** 讀不到 /api/match/meta 時屋齡的兩個下拉還是給得出來（跟 matcher 的 AGE_OPTIONS 同一份數字） */
+export const AGES_FALLBACK = [1, 3, 5, 10, 15, 20, 25, 30, 40, 50].map((y) => ({ value: y, label: `${y} 年` }));
+
 export const EMPTY_META: MatchMeta = {
   cities: [],
   rooms: ROOMS_FALLBACK,
   types: [],
   features: [],
   floors: [],
-  ages: [],
+  ages: AGES_FALLBACK,
   landCategories: [],
   threshold: 60,
   addFriendUrl: "",
@@ -106,6 +116,18 @@ export function toggleTypeIn(p: PrefState, t: string): PrefState {
 
 export const wantsLand = (p: PrefState): boolean => p.types.includes(LAND_TYPE);
 
+/** 2026-09-18～10-02 的固定五段，舊買方的條件還存著這些 key；進表單時換成上下限（0 = 不限） */
+const LEGACY_AGE_RANGES: Record<string, [number, number]> = { a0: [0, 5], a5: [5, 10], a10: [10, 15], a15: [15, 20], a30: [30, 0] };
+
+/** 資料庫的屋齡條件 → 表單的兩個下拉。新格式直接用；舊的 ageRange／maxAge 轉過來，不然他回來改條件會看到空白 */
+function agePrefState(p: ApiPreference): { ageMin: string; ageMax: string } {
+  const numText = (v: number | undefined) => (Number(v) > 0 ? String(v) : "");
+  if (Number(p.ageMin) > 0 || Number(p.ageMax) > 0) return { ageMin: numText(p.ageMin), ageMax: numText(p.ageMax) };
+  const legacy = typeof p.ageRange === "string" ? LEGACY_AGE_RANGES[p.ageRange] : undefined;
+  if (legacy) return { ageMin: numText(legacy[0]), ageMax: numText(legacy[1]) };
+  return { ageMin: "", ageMax: numText(p.maxAge) };
+}
+
 /** 資料庫存的條件 → 表單狀態。0 代表「不限」，輸入框要留白而不是顯示 0。 */
 export function toPrefState(p: ApiPreference | null | undefined): PrefState {
   if (!p) return EMPTY_PREF;
@@ -121,7 +143,7 @@ export function toPrefState(p: ApiPreference | null | undefined): PrefState {
     sizeMin: numText(p.sizeMin),
     sizeMax: numText(p.sizeMax),
     types: strList(p.types),
-    ageRange: typeof p.ageRange === "string" ? p.ageRange : "",
+    ...agePrefState(p),
     features: strList(p.features),
     floor: typeof p.floor === "string" ? p.floor : "",
     landMin: numText(p.landMin),
@@ -143,8 +165,10 @@ export function toApiPreference(p: PrefState): Required<ApiPreference> {
     sizeMin: Number(p.sizeMin) || 0,
     sizeMax: Number(p.sizeMax) || 0,
     types: p.types,
-    ageRange: p.ageRange,
-    // 舊欄位歸零：他重填了條件，之前存的「幾年以內」就不該再跟著跑
+    ageMin: Number(p.ageMin) || 0,
+    ageMax: Number(p.ageMax) || 0,
+    // 舊欄位歸零：表單已經改成上下限，之前存的五段／「幾年以內」就不該再跟著跑
+    ageRange: "",
     maxAge: 0,
     features: p.features,
     floor: p.floor,

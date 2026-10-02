@@ -19,6 +19,8 @@ export type RawHouseolItem = {
   objId: string;
   /** 店碼（網址 /sell_item/H229-S.../ 的 H229） */
   storeCode: string;
+  /** 官網的 S 編號（網址 /sell_item/H229-S2413795/ 的 S2413795）。跟太平洋官網同一個，所以當主鍵 */
+  saleId: string;
   url: string;
   title: string;
   community: string;
@@ -105,6 +107,7 @@ export function parseBlocks(html: string): RawHouseolItem[] {
     if (!link || !objId) continue;
     const path = link[1].replace(/\/$/, "");
     const storeCode = path.match(/\/sell_item\/([^-/]+)-/)?.[1] ?? "";
+    const saleId = path.match(/-(S\d+)$/)?.[1] ?? "";
     const photos = [...block.matchAll(/<img oid="[^"]+" src="([^"]+)"/g)].map((m) => m[1]).filter((u) => !/nopic/.test(u));
     const mainImg = block.match(/<img src='([^']+)' class='image featured'/)?.[1];
     const youtube = block.match(/href='(\/\/www\.youtube\.com\/embed\/[^'?]+)/)?.[1];
@@ -112,6 +115,7 @@ export function parseBlocks(html: string): RawHouseolItem[] {
     items.push({
       objId,
       storeCode,
+      saleId,
       url: `${SITE}${path}/`,
       title: clean(link[2]),
       community: clean(block.match(/class="commu">([\s\S]*?)<\/a>/)?.[1]),
@@ -174,25 +178,48 @@ export type ListingUpsert = {
   description: string;
   phone: string;
   sourceUrl: string;
+  /** 愛屋編號（AA…）。店網一定有；官網從照片檔名對，對不到是空字串 */
+  houseolId: string;
+  /** 座標（官網才有；店網沒給就 null） */
+  lat: number | null;
+  lng: number | null;
+  /** 這筆是哪個來源寫的（lib/match/merge.ts 的規則靠它） */
+  src: "pacific" | "houseol";
 };
 
-/** 原始欄位 → 資料表的一筆 */
+/**
+ * 從標題猜需求標籤：車位種類、電梯、裝潢。店網與官網都只在標題講這些，兩邊共用。
+ *
+ * 平面／機械沒有獨立欄位，只能看標題。海線的寫法是「平車」（＝平面車位），
+ * 278 筆裡沒有一筆寫機械。判斷不出來的就只留「車位」，別亂貼標籤 ——
+ * 配對時買方要「平面車位」會把只標「車位」的也算進來（見 matcher 的 featureSatisfied）。
+ * 「機車位」是機車停車位，跟「機械」不會互相誤判。
+ */
+export function titleFeatures(title: string): string[] {
+  const t = String(title ?? "");
+  const out: string[] = [];
+  if (/車位|平車|坡平|機械/.test(t)) out.push("車位");
+  if (/平車|平面車|坡平|坡道平面/.test(t)) out.push("平面車位");
+  if (/機械/.test(t)) out.push("機械車位");
+  if (/電梯/.test(t)) out.push("電梯");
+  if (/裝潢|精裝|全新整理/.test(t)) out.push("含裝潢");
+  return out;
+}
+
+/**
+ * 原始欄位 → 資料表的一筆。
+ * storeId 是這家店在太平洋官網的店碼（MATCH.houseolPacificStore），店網補進來的物件要跟官網的掛在同一家店。
+ */
 export function toListingUpsert(raw: RawHouseolItem, storeId: string): ListingUpsert {
   const { city, district, address } = splitAddress(raw.address);
   const layout = raw.layout.match(/(\d+)\s*房\s*(\d+)\s*廳\s*(\d+)\s*衛/);
   const typeKey = Object.keys(TYPE_MAP).find((k) => raw.kind.includes(k));
-  const features = new Set(raw.features.map((f) => FEATURE_MAP[f] ?? f));
-  if (/車位/.test(raw.priceNote) || /車位|平車|坡平|機械/.test(raw.title)) features.add("車位");
-  // 平面／機械店網沒有獨立欄位，只能看標題。海線的寫法是「平車」（＝平面車位），
-  // 278 筆裡沒有一筆寫機械。判斷不出來的就只留「車位」，別亂貼標籤 ——
-  // 配對時買方要「平面車位」會把只標「車位」的也算進來（見 matcher 的 featureSatisfied）。
-  // 「機車位」是機車停車位，跟「機械」不會互相誤判。
-  if (/平車|平面車|坡平|坡道平面/.test(raw.title)) features.add("平面車位");
-  if (/機械/.test(raw.title)) features.add("機械車位");
-  if (/大樓|華廈/.test(raw.kind) || /電梯/.test(raw.title)) features.add("電梯");
-  if (/裝潢|精裝|全新整理/.test(raw.title)) features.add("含裝潢");
+  const features = new Set([...raw.features.map((f) => FEATURE_MAP[f] ?? f), ...titleFeatures(raw.title)]);
+  if (/車位/.test(raw.priceNote)) features.add("車位");
+  if (/大樓|華廈/.test(raw.kind)) features.add("電梯");
   return {
-    id: raw.objId,
+    // 主鍵用官網的 S 編號，官網同一間才會落在同一筆；舊頁面沒有 S 編號時退回愛屋編號
+    id: raw.saleId || raw.objId,
     storeId: String(storeId),
     storeCode: raw.storeCode,
     title: raw.title.slice(0, 255),
@@ -217,5 +244,9 @@ export function toListingUpsert(raw: RawHouseolItem, storeId: string): ListingUp
     description: [raw.community, raw.features.join("、")].filter(Boolean).join("｜"),
     phone: raw.phone.slice(0, 40),
     sourceUrl: raw.url,
+    houseolId: raw.objId,
+    lat: null,
+    lng: null,
+    src: "houseol",
   };
 }

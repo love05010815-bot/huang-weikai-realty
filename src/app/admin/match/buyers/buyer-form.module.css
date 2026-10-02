@@ -322,3 +322,19 @@
     height: 64px;
   }
 }
+
+/* 屋齡「幾年～幾年」兩個下拉並排（PreferenceForm） */
+.rangeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rangeRow .select {
+  flex: 1;
+  min-width: 0;
+}
+.rangeSep {
+  flex: none;
+  opacity: 0.7;
+  font-size: 14px;
+}

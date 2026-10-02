@@ -18,8 +18,12 @@ register("./alias-hooks.mjs", import.meta.url);
 register("./stub-hooks.mjs", import.meta.url);
 // SITE_URL 是模組載入當下就決定的，要在 import line.ts 之前設好
 process.env.APPOINTMENT_BASE_URL = "https://weikaihouse.com";
+// pacific-parse.ts 用相對路徑 import 隔壁的 houseol-parse（沒副檔名），要靠上面的 hook 解，所以得在 register 之後動態載
+const { houseolIdFromPic, pacificFloor, pacificToListingUpsert, pacificUsageType } = await import("../src/lib/match/pacific-parse.ts");
 import {
+  AGE_OPTIONS,
   AGE_RANGES,
+  ageLabel,
   describePreference,
   floorOf,
   landCategoryOf,
@@ -30,6 +34,7 @@ import {
 } from "../src/lib/match/matcher.ts";
 import { detectPriceChanges } from "../src/lib/match/diff.ts";
 import { parseBlocks, splitAddress, splitResponse, toListingUpsert } from "../src/lib/match/houseol-parse.ts";
+import { isBaseline, listingsToHide, pickDueSource, planHouseolWrites, sameSourceSnapshot } from "../src/lib/match/merge.ts";
 import { createBuyerToken, verifyBuyerToken } from "../src/lib/match/token.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -104,9 +109,12 @@ test("parseBlocks：真實頁面 10 筆，欄位完整", () => {
 
 test("toListingUpsert：轉成資料表格式並對應類型／需求標籤", () => {
   const it = parseBlocks(html).find((x) => x.objId === "AA6260018");
-  const l = toListingUpsert(it, "4817");
-  assert.equal(l.id, "AA6260018");
-  assert.equal(l.storeId, "4817");
+  const l = toListingUpsert(it, "CUK");
+  // 2026-10-02 起主鍵是官網的 S 編號（店網網址裡的那個），愛屋編號當副欄位
+  assert.equal(l.id, "S2413795");
+  assert.equal(l.houseolId, "AA6260018");
+  assert.equal(l.src, "houseol");
+  assert.equal(l.storeId, "CUK");
   assert.equal(l.storeCode, "H229");
   assert.equal(l.city, "台中市");
   assert.equal(l.district, "沙鹿區");
@@ -334,7 +342,7 @@ test("屋齡：店網沒給屋齡的（土地）只扣一半，不是當成新�
 test("屋齡：舊的『幾年以內』還認得（資料庫裡的舊買方條件不能靜靜失效）", () => {
   const old = { maxAge: 20 };
   assert.ok(scoreListing(old, listing({ age: 3 })).reasons.some((r) => r.includes("屋齡 3 年符合")));
-  assert.ok(scoreListing(old, listing({ age: 40 })).misses.some((m) => m.includes("屋齡過高")));
+  assert.ok(scoreListing(old, listing({ age: 40 })).misses.some((m) => m.includes("屋齡不符")));
   // 兩個都有時以新的區間為準
   assert.ok(scoreListing({ ageRange: "a5", maxAge: 20 }, listing({ age: 3 })).misses.some((m) => m.includes("屋齡不符")));
 });
@@ -342,6 +350,179 @@ test("屋齡：舊的『幾年以內』還認得（資料庫裡的舊買方條�
 test("AGE_RANGES：他指定的五段，20–30 年目前刻意沒有", () => {
   assert.deepEqual(Object.values(AGE_RANGES).map((r) => r.label), ["0–5 年", "5–10 年", "10–15 年", "15–20 年", "30 年以上"]);
   assert.ok(describePreference({ ageRange: "a15" }).includes("屋齡 15–20 年"));
+});
+
+// ---------------------------------------------------------------- 屋齡「幾年～幾年」（2026-10-02 他要的，照愛屋那樣自己選區間）
+
+test("屋齡區間：兩端都含、只選上限是「幾年內」、只選下限是「幾年以上」", () => {
+  const mid = { ageMin: 5, ageMax: 10 };
+  assert.ok(scoreListing(mid, listing({ age: 7 })).reasons.some((r) => r.includes("屋齡 7 年符合")));
+  assert.ok(scoreListing(mid, listing({ age: 5 })).reasons.some((r) => r.includes("屋齡 5 年符合")));
+  assert.ok(scoreListing(mid, listing({ age: 10 })).reasons.some((r) => r.includes("屋齡 10 年符合")));
+  assert.ok(scoreListing(mid, listing({ age: 0.5 })).misses.some((m) => m.includes("屋齡不符")));
+  assert.ok(scoreListing(mid, listing({ age: 25 })).misses.some((m) => m.includes("屋齡不符")));
+  assert.ok(scoreListing({ ageMax: 5 }, listing({ age: 0.5 })).reasons.some((r) => r.includes("新成屋")));
+  assert.ok(scoreListing({ ageMax: 5 }, listing({ age: 6 })).disqualified);
+  assert.ok(scoreListing({ ageMin: 30 }, listing({ age: 55 })).reasons.some((r) => r.includes("屋齡 55 年符合")));
+  assert.ok(scoreListing({ ageMin: 30 }, listing({ age: 12 })).disqualified);
+  // 沒給屋齡的（土地、預售）照樣只扣一半
+  assert.ok(scoreListing(mid, listing({ age: 0 })).misses.some((m) => m.includes("沒有屋齡資料")));
+  assert.equal(scoreListing(mid, listing({ age: 0 })).disqualified, false);
+  // 上下限填反了就對調，不會變成「什麼都不符合」
+  const flipped = normalizePreference({ ageMin: 10, ageMax: 5 });
+  assert.deepEqual([flipped.ageMin, flipped.ageMax], [5, 10]);
+});
+
+test("屋齡區間：摘要寫法、選項、舊格式整理完就不再帶著", () => {
+  assert.equal(ageLabel(5, 10), "5–10 年");
+  assert.equal(ageLabel(0, 5), "5 年內");
+  assert.equal(ageLabel(30, 0), "30 年以上");
+  assert.equal(ageLabel(0, 0), "");
+  assert.ok(describePreference({ ageMin: 5, ageMax: 10 }).includes("屋齡 5–10 年"));
+  assert.ok(describePreference({ ageMax: 20 }).includes("屋齡 20 年內"));
+  assert.ok(!describePreference({ city: "台中市" }).includes("屋齡"));
+  assert.deepEqual([...AGE_OPTIONS], [1, 3, 5, 10, 15, 20, 25, 30, 40, 50]);
+  const legacy = normalizePreference({ ageRange: "a30", maxAge: 20 });
+  assert.deepEqual([legacy.ageMin, legacy.ageMax, legacy.ageRange, legacy.maxAge], [30, 0, "", 0]);
+});
+
+// ---------------------------------------------------------------- 太平洋官網的物件（2026-10-02 起的主來源）
+//
+// 樣本 scripts/fixtures/pacific-items.json 是 2026-10-02 從官網 API 抓下來的真實資料（海線七家店的幾筆）。
+// 官網改版時先跑這個，壞了就知道要改 lib/match/pacific-parse.ts。
+
+const pacItems = JSON.parse(fs.readFileSync(path.join(here, "fixtures", "pacific-items.json"), "utf8"));
+const pac = (pred) => {
+  const it = pacItems.find(pred);
+  assert.ok(it, "fixture 缺樣本");
+  return pacificToListingUpsert(it, { phone: "04-26572100" });
+};
+
+test("官網解析：主鍵是 S 編號、臺中市轉台中市、店碼／來源／座標都帶著", () => {
+  const l = pac((x) => x.saleID === "S3487363");
+  assert.equal(l.id, "S3487363");
+  assert.equal(l.src, "pacific");
+  assert.equal(l.storeId, "CUK");
+  assert.equal(l.storeCode, "H229");
+  assert.equal(l.city, "台中市");
+  assert.equal(l.district, "梧棲區");
+  assert.equal(l.address, "四維中路");
+  assert.equal(l.type, "電梯大樓");
+  assert.deepEqual([l.rooms, l.halls, l.baths], [3, 2, 2]);
+  assert.equal(l.floor, "14/15");
+  assert.equal(l.age, 1.8);
+  assert.equal(l.houseolId, "AA6362125");
+  assert.ok(l.images.length === 1 && l.images[0].startsWith("https://"));
+  assert.ok(l.features.includes("車位") && l.features.includes("平面車位") && l.features.includes("電梯"), l.features.join());
+  assert.equal(l.phone, "04-26572100");
+  assert.equal(l.sourceUrl, "https://www.pacific.com.tw/Object/ObjectDetail/?saleID=S3487363");
+  assert.ok(l.lat > 24 && l.lat < 25 && l.lng > 120 && l.lng < 121, "座標");
+  assert.equal(l.unitPrice, null);
+});
+
+test("官網解析：降過價的帶原價、透天整棟的樓層、別墅算透天厝、土地類別認得", () => {
+  const drop = pac((x) => x.saleID === "S2930437");
+  assert.equal(drop.price, 838);
+  assert.equal(drop.originalPrice, 938);
+  const notDropped = pac((x) => x.saleID === "S3487363");
+  assert.equal(notDropped.originalPrice, null);
+  const whole = pac((x) => x.saleID === "S2975109");
+  assert.equal(whole.type, "透天厝");
+  assert.equal(whole.floor, "1-4/4");
+  const noFloor = pac((x) => x.saleID === "S3487205");
+  assert.equal(noFloor.type, "透天厝");
+  assert.equal(noFloor.floor, "");
+  const farm = pac((x) => /土地/.test(x.attributName || "") && /農地/.test(x.objectName || ""));
+  assert.equal(farm.type, "土地");
+  assert.equal(farm.usageType, "土地:農地");
+  assert.equal(landCategoryOf(farm.usageType), "農地");
+  assert.equal(farm.rooms, 0);
+  assert.ok(farm.size > 0 && farm.size === farm.landSize, "土地沒建坪就用地坪");
+  assert.equal(farm.age, 0);
+});
+
+test("官網解析：樓層字串、照片檔名的愛屋編號、土地類別字串", () => {
+  assert.equal(pacificFloor("14", 15), "14/15");
+  assert.equal(pacificFloor("1", 3, "3"), "1-3/3");
+  assert.equal(pacificFloor("0", 4), "1-4/4");
+  assert.equal(pacificFloor("0", null), "");
+  assert.equal(pacificFloor("-1", 14), "B1/14");
+  assert.equal(pacificFloor(null, 15), "");
+  assert.equal(pacificFloor("-99", 15), "");
+  assert.equal(houseolIdFromPic("https://hq.houseol.com.tw/images/pictures/H229AA6362125a.jpg"), "AA6362125");
+  assert.equal(houseolIdFromPic("https://x/y/nopic.jpg"), "");
+  assert.equal(houseolIdFromPic(null), "");
+  assert.equal(pacificUsageType("建地"), "土地:建地");
+  assert.equal(pacificUsageType("住宅用地"), "土地:住宅用地");
+  assert.equal(landCategoryOf(pacificUsageType("住宅用地")), "建地");
+  assert.equal(pacificUsageType("電梯大廈", "農地旁的大樓"), "電梯大廈");
+  // 七家店的土地在官網只寫「土地」，類別從標題猜
+  assert.equal(pacificUsageType("土地", "西濱有電臨路方正農地"), "土地:農地");
+  assert.equal(pacificUsageType("土地", "清水重劃區大面寬住4建地"), "土地:建地");
+  assert.equal(pacificUsageType("土地", "紫雲段商業區土地"), "土地:商業地");
+  assert.equal(pacificUsageType("土地", "鹿寮農建地"), "土地:農建地");
+  assert.equal(pacificUsageType("土地", "看不出來的土地"), "土地");
+  assert.equal(landCategoryOf(pacificUsageType("土地", "看不出來的土地")), "");
+});
+
+test("官網解析：整份樣本都轉得出來，而且配對引擎吃得下", () => {
+  const listings = pacItems.map((it) => pacificToListingUpsert(it));
+  assert.ok(listings.every((l) => l.id.startsWith("S") && l.city === "台中市" && l.district.endsWith("區")));
+  const ranked = rankListings({ city: "台中市", districts: ["梧棲區"] }, listings);
+  assert.ok(ranked.length > 0);
+  assert.ok(ranked.every((m) => m.listing.district === "梧棲區"));
+});
+
+// ---------------------------------------------------------------- 兩個來源怎麼合在同一張表（lib/match/merge.ts）
+
+test("輪流同步：都到期挑最久沒跑的、沒跑過的優先、都沒到期就不跑", () => {
+  const now = Date.parse("2026-10-02T10:00:00Z");
+  const h = 60 * 60_000;
+  const iv = 30 * 60_000;
+  const ago = (ms) => new Date(now - ms).toISOString();
+  assert.equal(pickDueSource(now, { pacific: null, houseol: null }, iv), "pacific");
+  assert.equal(pickDueSource(now, { pacific: ago(h), houseol: null }, iv), "houseol");
+  assert.equal(pickDueSource(now, { pacific: ago(2 * h), houseol: ago(h) }, iv), "pacific");
+  assert.equal(pickDueSource(now, { pacific: ago(10 * 60_000), houseol: ago(2 * h) }, iv), "houseol");
+  assert.equal(pickDueSource(now, { pacific: ago(5 * 60_000), houseol: ago(6 * 60_000) }, iv), null);
+  assert.equal(pickDueSource(now, { pacific: "不是時間", houseol: ago(1) }, iv), "pacific");
+});
+
+test("店網只補洞：官網有而且在售的讓給官網，其他照寫", () => {
+  const before = new Map([
+    ["S1", { status: "available", price: 100, src: "pacific" }],
+    ["S2", { status: "hidden", price: 100, src: "pacific" }],
+    ["S3", { status: "available", price: 100, src: "houseol" }],
+  ]);
+  const { upserts, skipped } = planHouseolWrites([{ id: "S1" }, { id: "S2" }, { id: "S3" }, { id: "S4" }], before);
+  assert.deepEqual(upserts.map((x) => x.id), ["S2", "S3", "S4"]);
+  assert.equal(skipped, 1);
+});
+
+test("下架只動自己來源寫的：沒看到的才下架，別人寫的、已下架的、舊格式的都不碰", () => {
+  const before = new Map([
+    ["S1", { status: "available", price: 100, src: "pacific" }],
+    ["S2", { status: "available", price: 100, src: "pacific" }],
+    ["S3", { status: "available", price: 100, src: "houseol" }],
+    ["S4", { status: "hidden", price: 100, src: "pacific" }],
+    ["AA1", { status: "available", price: 100, src: "" }],
+  ]);
+  assert.deepEqual(listingsToHide(before, new Set(["S1"]), "pacific"), ["S2"]);
+  assert.deepEqual(listingsToHide(before, new Set(), "houseol"), ["S3"]);
+});
+
+test("第一次跑當基準、價格只跟自己來源上次寫的比", () => {
+  const before = new Map([
+    ["S1", { status: "available", price: 100, src: "pacific" }],
+    ["AA1", { status: "available", price: 100, src: "" }],
+  ]);
+  assert.equal(isBaseline(before, "houseol"), true);
+  assert.equal(isBaseline(before, "pacific"), false);
+  assert.equal(isBaseline(new Map(), "pacific"), true);
+  assert.deepEqual([...sameSourceSnapshot(before, "pacific").keys()], ["S1"]);
+  // 店網寫到官網先前寫的 S1 時，價格差一點點不能算異動（不然每次輪替都會發假通知）
+  assert.deepEqual(detectPriceChanges(sameSourceSnapshot(before, "houseol"), [{ id: "S1", price: 90 }]), []);
+  assert.equal(detectPriceChanges(sameSourceSnapshot(before, "pacific"), [{ id: "S1", price: 90 }]).length, 1);
 });
 
 // ---------------------------------------------------------------- 價格異動
@@ -507,6 +688,19 @@ test("表單換算：取消「土地」會把土地欄位一起清掉", () => {
   assert.deepEqual(off.types, []);
   assert.equal(off.landMin, "");
   assert.deepEqual(off.landCategories, []);
+});
+
+test("表單換算：屋齡兩個下拉 —— 新格式直接進、舊買方的五段／幾年以內轉成上下限", () => {
+  assert.deepEqual([PS.toPrefState({ ageMin: 3, ageMax: 15 }).ageMin, PS.toPrefState({ ageMin: 3, ageMax: 15 }).ageMax], ["3", "15"]);
+  assert.deepEqual([PS.toPrefState({ ageRange: "a5" }).ageMin, PS.toPrefState({ ageRange: "a5" }).ageMax], ["5", "10"]);
+  assert.deepEqual([PS.toPrefState({ ageRange: "a0" }).ageMin, PS.toPrefState({ ageRange: "a0" }).ageMax], ["", "5"]);
+  assert.deepEqual([PS.toPrefState({ ageRange: "a30" }).ageMin, PS.toPrefState({ ageRange: "a30" }).ageMax], ["30", ""]);
+  assert.deepEqual([PS.toPrefState({ maxAge: 20 }).ageMin, PS.toPrefState({ maxAge: 20 }).ageMax], ["", "20"]);
+  assert.deepEqual([PS.toPrefState(null).ageMin, PS.toPrefState(null).ageMax], ["", ""]);
+  const out = PS.toApiPreference({ ...PS.EMPTY_PREF, ageMin: "3", ageMax: "15" });
+  assert.deepEqual([out.ageMin, out.ageMax, out.ageRange, out.maxAge], [3, 15, "", 0]);
+  // 舊買方的條件繞一圈（資料庫 → 表單 → API）之後，配對引擎看到的要跟原本一樣
+  assert.deepEqual(normalizePreference(PS.toApiPreference(PS.toPrefState({ ageRange: "a10" }))), normalizePreference({ ageRange: "a10" }));
 });
 
 // ---------------------------------------------------------------- 手機快速建檔的金鑰

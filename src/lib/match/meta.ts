@@ -7,7 +7,7 @@
  */
 import { MATCH, MATCH_FEATURES, MATCH_TYPES } from "@/config/match";
 import { addFriendUrl } from "./line";
-import { AGE_RANGES, FLOOR_RANGES, LAND_CATEGORIES, ROOM_OPTIONS } from "./matcher";
+import { AGE_OPTIONS, FLOOR_RANGES, LAND_CATEGORIES, ROOM_OPTIONS } from "./matcher";
 import { getMatchMeta } from "./store";
 
 export type MatchMetaPayload = {
@@ -17,7 +17,8 @@ export type MatchMetaPayload = {
   types: readonly string[];
   features: readonly string[];
   floors: { value: string; label: string }[];
-  ages: { value: string; label: string }[];
+  /** 屋齡「幾年～幾年」兩個下拉共用的年數選項（2026-10-02 起；不限不在裡面，表單自己加） */
+  ages: { value: number; label: string }[];
   landCategories: readonly string[];
   threshold: number;
   addFriendUrl: string;
@@ -29,7 +30,7 @@ export async function buildMatchMeta(): Promise<MatchMetaPayload> {
     types: MATCH_TYPES,
     features: MATCH_FEATURES,
     floors: Object.entries(FLOOR_RANGES).map(([value, r]) => ({ value, label: r.label })),
-    ages: Object.entries(AGE_RANGES).map(([value, r]) => ({ value, label: r.label })),
+    ages: AGE_OPTIONS.map((y) => ({ value: y, label: `${y} 年` })),
     landCategories: LAND_CATEGORIES,
     threshold: MATCH.threshold,
     addFriendUrl: addFriendUrl(),

@@ -5,7 +5,7 @@
  * 只負責畫欄位、把改動丟回去；**不包 <form>、不放送出按鈕**，外面自己決定怎麼送。
  * 樣式用 styles 傳進來：前台是淺色（match.module.css），後台是深色（admin 那邊的 module），
  * 兩份 CSS 的 class 名字一樣、顏色不一樣。用到的 class：
- *   field / label / two / chips / chip / chipOn / hint / input / select
+ *   field / label / two / chips / chip / chipOn / hint / input / select / rangeRow / rangeSep
  */
 import { LAND_TYPE, toggle, toggleTypeIn, type MatchMeta, type PrefState } from "./preference-state";
 
@@ -129,17 +129,30 @@ export default function PreferenceForm({
         </>
       )}
 
-      <label className={styles.field}>
-        屋齡
-        <select className={styles.select} value={pref.ageRange} onChange={(e) => set({ ageRange: e.target.value })}>
-          <option value="">不限</option>
-          {(meta?.ages ?? []).map((a) => (
-            <option key={a.value} value={a.value}>
-              {a.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      {/* 屋齡「幾年～幾年」兩個下拉（2026-10-02 他要的，照愛屋那樣讓客人自己選區間） */}
+      <div className={styles.field}>
+        <div className={styles.label}>屋齡</div>
+        <div className={styles.rangeRow}>
+          <select className={styles.select} value={pref.ageMin} onChange={(e) => set({ ageMin: e.target.value })} aria-label="屋齡下限">
+            <option value="">不限</option>
+            {(meta?.ages ?? []).map((a) => (
+              <option key={a.value} value={String(a.value)}>
+                {a.label}
+              </option>
+            ))}
+          </select>
+          <span className={styles.rangeSep}>～</span>
+          <select className={styles.select} value={pref.ageMax} onChange={(e) => set({ ageMax: e.target.value })} aria-label="屋齡上限">
+            <option value="">不限</option>
+            {(meta?.ages ?? []).map((a) => (
+              <option key={a.value} value={String(a.value)}>
+                {a.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <p className={styles.hint}>只選右邊就是「幾年內」，只選左邊就是「幾年以上」，都不選＝不看屋齡。</p>
+      </div>
 
       <label className={styles.field}>
         希望樓層
