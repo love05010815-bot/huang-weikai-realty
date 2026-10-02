@@ -305,6 +305,7 @@ export async function getListingSnapshot(): Promise<Map<string, { status: string
  *
  * 從愛屋物件頁補過的那幾筆（houseol_checked_at 有值，見 saveLandDetail）：類別、地坪、使用分區（description）
  * 不讓來源再蓋掉 —— 官網的土地只寫「土地」，蓋回去農地／建地就又分不出來了。
+ * 例外：愛屋也沒填類別的（「土地:(空白)」「土地:其他」），就讓來源從標題猜的那個進來，總比沒有好。
  *
  * 276 筆只要 6 句 —— 一筆一句的話 276 趟來回，在 Vercel 上就要十幾秒。
  */
@@ -361,7 +362,7 @@ export async function upsertListings(items: ListingUpsert[]): Promise<void> {
          \`type\` = VALUES(\`type\`), age = VALUES(age),
          \`floor\` = VALUES(\`floor\`), features = VALUES(features), images = VALUES(images), video = VALUES(video),
          phone = VALUES(phone), source_url = VALUES(source_url),
-         usage_type = IF(houseol_checked_at IS NULL, VALUES(usage_type), usage_type),
+         usage_type = IF(houseol_checked_at IS NULL OR usage_type IN ('', '土地', '土地:(空白)', '土地:其他'), VALUES(usage_type), usage_type),
          land_size = IF(houseol_checked_at IS NULL OR VALUES(land_size) > 0, VALUES(land_size), land_size),
          \`size\` = IF(houseol_checked_at IS NULL OR VALUES(\`size\`) > 0, VALUES(\`size\`), \`size\`),
          description = IF(houseol_checked_at IS NULL, VALUES(description), description),

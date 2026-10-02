@@ -13,6 +13,7 @@
  */
 import { MATCH } from "@/config/match";
 import { parseHouseolDetail } from "./houseol-parse";
+import { landCategoryOf } from "./matcher";
 import { countLandPending, listLandToEnrich, saveLandDetail } from "./store";
 
 const SITE = "https://www.houseol.com.tw";
@@ -69,7 +70,8 @@ export async function enrichLandFromHouseol({
             notFound++;
             return;
           }
-          await saveLandDetail(id, detail);
+          // 愛屋也沒填類別的（「土地:(空白)」「土地:其他」）不要蓋掉來源從標題猜的，地坪、使用分區照補
+          await saveLandDetail(id, landCategoryOf(detail.usageType) ? detail : { ...detail, usageType: "" });
           checked++;
           enriched++;
         } catch (e) {
