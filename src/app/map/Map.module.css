@@ -2241,37 +2241,38 @@
    樣式全部畫在 SVG 裡、divIcon 的重置沿用 .lmPin，這裡不用再放規則。 */
 
 /* ═══════════ 社區銷售報告書的入口（2026-10-02）═══════════
-   詳情面板 <dl> 底下那張可點的卡。只有後台發佈過的建案會出現（ProjectExplorer 的 hasReport）。
+   同日系統擁有者拍板：詳情面板的建案資料列表整段拿掉，**案名本身就是連結**、直接開 /map/report/<id>。
+   只有後台發佈過的建案案名才是連結（ProjectExplorer 的 hasReport），其餘是純文字。
    ⚠️ 新類名、放檔案最後，不跟上面任何 base 規則搶權重。 */
-.reportLink {
-  display: block;
-  margin-top: 14px;
-  padding: 14px 16px;
-  border: 1px solid var(--primary);
-  border-left-width: 5px;
-  border-radius: var(--radius);
-  background: #fff;
-  color: var(--ink);
+.detailTitleLink {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: inherit;
   text-decoration: none;
-  transition: background 0.15s ease, box-shadow 0.15s ease;
+  border-bottom: 2px solid transparent;
+  transition: border-color 0.15s ease;
 }
 
-.reportLink:hover {
-  background: #f3faf8;
-  box-shadow: var(--shadow);
+.detailTitleLink:hover {
+  border-bottom-color: var(--primary);
 }
 
-.reportLink b {
-  display: block;
-  font-size: 15.5px;
-  font-weight: 900;
+/* 案名旁的小藥丸，讓客戶知道這幾個字可以點 */
+.detailTitleHint {
+  font-style: normal;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.4;
   color: var(--primary);
+  background: var(--accent-soft);
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
-.reportLink span {
-  display: block;
-  margin-top: 4px;
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--muted);
+.detailTitleLink:hover .detailTitleHint {
+  background: var(--primary);
+  color: #fff;
 }

@@ -343,7 +343,7 @@ export default async function MapPage() {
               stats.located === stats.total
                 ? `位置由${OWNER.alias}本人逐一標定。`
                 : `其中 ${stats.located} 案的位置由${OWNER.alias}本人逐一標定；另外 ${stats.total - stats.located} 案還沒標上地圖，先列在下方清單裡。`
-            }點大樓圖示看建案資訊，我有物件在售的建案會一併列出物件。`}
+            }點大樓圖示看我在那個建案的在售物件；有社區銷售報告書的建案，點案名直接開。`}
           </p>
 
           <ProjectExplorer listings={listings} solo={solo} reports={reportIds} />

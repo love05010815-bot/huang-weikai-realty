@@ -4,8 +4,13 @@
  * 台中港市鎮中心 —— 建案地圖（總成）
  *
  * 2026-08-23 系統擁有者拍板：原本「地圖」與「建案總覽」是分開的兩層，
- * 現在合併成一個 —— **點地圖上的大樓圖示就顯示該建案資訊**，
- * 資訊下方接著列出瑋凱在該建案的在售物件。
+ * 現在合併成一個 —— **點地圖上的大樓圖示就顯示該建案**，
+ * 下方接著列出瑋凱在該建案的在售物件。
+ *
+ * 🔴 2026-10-02 系統擁有者拍板：**詳情面板那一段建案資料（建設公司／位置／完工／屋齡／戶數／
+ *    周邊機能／資料出處）整段不顯示了**，日後每棟直接做成「社區銷售報告書」（/map/report/<id>，
+ *    後台 /admin/reports），**點案名那幾個字直接開報告書**。沒有報告書的建案案名就是純文字。
+ *    不要把 <dl> 加回來。
  *
  * ## 版面為什麼長這樣
  *
@@ -32,11 +37,8 @@ import {
   AREA_LABEL,
   COORDS,
   PROJECTS,
-  SOURCES,
   STATUS_LABEL,
-  filledAmenities,
   AREA_FILTERS,
-  houseAge,
   projectStats,
   type Project,
   type ProjectArea,
@@ -72,7 +74,6 @@ export type ProjectListing = {
   linkHref: string | null;
 };
 
-const fmt = (n: number) => n.toLocaleString("zh-TW");
 
 /** 中文數字對照。只用來認建案名稱結尾的序號，不是通用轉換器。 */
 const CJK_NUM: Record<string, number> = {
@@ -501,7 +502,7 @@ export default function ProjectExplorer({
                   // 不要讓畫面看起來像壞掉。地圖色塊仍然在，客戶還是看得到位置。
                   "這一區目前沒有我在追蹤的建案。地圖上的色塊還在，可以先看看位置；" +
                   "想找這一帶的房子直接跟我說，我手上不一定有掛在網站上。"
-                : `地圖上有 ${rows.length} 個建案。點大樓圖示看建案資訊與我的在售物件；` +
+                : `地圖上有 ${rows.length} 個建案。點大樓圖示看我的在售物件，有社區銷售報告書的建案點案名直接開；` +
                   "縮小到看整個生活圈時，建案會收成一顆藍色膠囊，點它就展開。"}
             </p>
             {/* ⚠️ 這行不可以拿掉。商圈沒有官方界線，不講清楚就等於對外發表
@@ -526,7 +527,23 @@ export default function ProjectExplorer({
               <header className={styles.detailHead}>
                 <div>
                   <h3 className={styles.detailTitle}>
-                    {selected.name}
+                    {/* 📄 有已發佈的社區銷售報告書 → 案名就是連結，直接開（2026-10-02 系統擁有者拍板）。
+                        開新分頁 —— 這頁載入很重（Leaflet＋七百多案），同分頁跳走再回來，選中的建案與捲動位置都會掉。
+                        沒有報告書的建案案名是純文字，不給一顆點了會 404 的連結。 */}
+                    {hasReport.has(selected.id) ? (
+                      <Link
+                        className={styles.detailTitleLink}
+                        href={`/map/report/${selected.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={`開 ${selected.name} 的社區銷售報告書`}
+                      >
+                        {selected.name}
+                        <em className={styles.detailTitleHint}>社區銷售報告書 →</em>
+                      </Link>
+                    ) : (
+                      selected.name
+                    )}
                     <span className={BADGE_CLASS[selected.status]}>{STATUS_LABEL[selected.status]}</span>
                   </h3>
                   {selected.alias && <p className={styles.detailAlias}>{`又稱 ${selected.alias}`}</p>}
@@ -545,111 +562,9 @@ export default function ProjectExplorer({
                 </div>
               </header>
 
-              <dl className={styles.detailList}>
-                <div>
-                  <dt>建設公司</dt>
-                  <dd>{selected.builder}</dd>
-                </div>
-                <div>
-                  <dt>位置</dt>
-                  <dd>{AREA_LABEL[selected.area]}</dd>
-                </div>
-                <div>
-                  <dt>完工</dt>
-                  <dd>
-                    {/*
-                      ⚠️ 只有「帶年份」的才加「完工」兩個字。
-                      `completion` 的值很雜：「2023」「約 2025」「約 2016～17」是年份，
-                      但也有「興建中」「成屋」「新成屋」這種純狀態字。
-                      原本只特判了「興建中」，所以 45 案（成屋 34、新成屋 11）畫面上
-                      是「成屋 完工」「新成屋 完工」，唸不通 —— 2026-08-31 改成看有沒有
-                      四位數年份。新增別種狀態字時不用回來改。
-                    */}
-                    {/\d{4}/.test(selected.completion)
-                      ? `${selected.completion} 完工`
-                      : selected.completion}
-                  </dd>
-                </div>
-                {selected.units != null && (
-                  <div>
-                    <dt>總戶數</dt>
-                    <dd>{`${fmt(selected.units)} 戶`}</dd>
-                  </div>
-                )}
-                {houseAge(selected.completion) && (
-                  <div>
-                    <dt>屋齡</dt>
-                    <dd>{houseAge(selected.completion)}</dd>
-                  </div>
-                )}
-                {selected.streets && (
-                  <div>
-                    <dt>坐落</dt>
-                    <dd>{selected.streets}</dd>
-                  </div>
-                )}
-                {selected.layout && (
-                  <div>
-                    <dt>房型坪數</dt>
-                    <dd>{selected.layout}</dd>
-                  </div>
-                )}
-                {selected.floors && (
-                  <div>
-                    <dt>樓高</dt>
-                    <dd>{selected.floors}</dd>
-                  </div>
-                )}
-                {selected.publicRatio && (
-                  <div>
-                    <dt>公設比</dt>
-                    <dd>{selected.publicRatio}</dd>
-                  </div>
-                )}
-                {selected.siteAreaPing != null && (
-                  <div>
-                    <dt>基地面積</dt>
-                    <dd>{`約 ${fmt(selected.siteAreaPing)} 坪`}</dd>
-                  </div>
-                )}
-                {selected.note && (
-                  <div>
-                    <dt>備註</dt>
-                    <dd>{selected.note}</dd>
-                  </div>
-                )}
-                {filledAmenities(selected.area).length > 0 && (
-                  <div>
-                    <dt>周邊機能</dt>
-                    <dd>
-                      {filledAmenities(selected.area).map((g) => (
-                        <span key={g.label} className={styles.amenityGroup}>
-                          <b>{g.label}</b>
-                          {g.items.join("、")}
-                        </span>
-                      ))}
-                    </dd>
-                  </div>
-                )}
-                <div>
-                  <dt>資料出處</dt>
-                  <dd>{selected.sources.map((k) => SOURCES[k]?.label ?? k).join("、")}</dd>
-                </div>
-              </dl>
-
-              {/* 📄 社區銷售報告書的入口（2026-10-02）：後台 /admin/reports 發佈過的建案才有。
-                  開新分頁 —— 這頁載入很重（Leaflet＋七百多案），同分頁跳走再回來，選中的建案與捲動位置都會掉。 */}
-              {hasReport.has(selected.id) && (
-                <Link
-                  className={styles.reportLink}
-                  href={`/map/report/${selected.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <b>{`📄 ${selected.name} 社區銷售報告書`}</b>
-                  <span>建商與建築團隊、地段價值、社區特色、我在售的物件、實價登錄入口、同區競品與買方輪廓，一頁看完 →</span>
-                </Link>
-              )}
+              {/* 🔴 這裡原本有一段 <dl>（建設公司／位置／完工／屋齡／戶數／周邊機能／資料出處），
+                  2026-10-02 系統擁有者拍板整段拿掉：建案的介紹日後都做成「社區銷售報告書」，
+                  點上面的案名直接開。不要加回來。 */}
 
               {/* ── 我在這個建案的在售物件 ── */}
               {selectedListings.length > 0 ? (
@@ -791,7 +706,7 @@ export default function ProjectExplorer({
             </>
           ) : (
             <p className={styles.detailEmpty}>
-              點清單裡的建案、或地圖上的大樓圖示，這裡就會顯示建案資訊與我在那個建案的在售物件。
+              點清單裡的建案、或地圖上的大樓圖示，這裡就會顯示我在那個建案的在售物件；有社區銷售報告書的建案，點案名直接開。
               地圖上的 <b>⭐ 星號</b>是不屬於任何建案的單獨物件，點了也會顯示在這裡。
             </p>
           )}
