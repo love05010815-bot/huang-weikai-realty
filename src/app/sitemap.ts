@@ -19,6 +19,7 @@ import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/config/owner";
 import { listAllListings } from "@/lib/listings";
 import { getPublicPosts } from "@/lib/posts";
+import { listPublishedReports } from "@/lib/project-reports";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date();
@@ -80,5 +81,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     posts = [];
   }
 
-  return [...fixed, ...listings, ...posts];
+  // 社區銷售報告書（2026-10-02）。只有已發佈的（`listPublishedReports()` 自己過濾、讀不到回空陣列），
+  // 草稿那頁是 404。一樣不並行，連線池只有 3 條。
+  const reports: MetadataRoute.Sitemap = (await listPublishedReports()).map((r) => ({
+    url: SITE_URL + "/map/report/" + r.projectId,
+    lastModified: r.updatedAt ?? lastModified,
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
+
+  return [...fixed, ...listings, ...posts, ...reports];
 }

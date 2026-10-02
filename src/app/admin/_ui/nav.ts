@@ -38,6 +38,8 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { href: "/admin/match", label: "買方配對", icon: "handshake" },
       // 跟「精選好案」是兩套資料：這裡管的是 /map 上掛在各建案底下的物件
       { href: "/admin/map-listings", label: "建案地圖物件", icon: "map" },
+      // 一個建案一份：複製指令 → 他自己的 ChatGPT → 貼回 JSON → 發佈到 /map/report/<id>，/map 詳情多一顆入口。表 project_report。
+      { href: "/admin/reports", label: "社區銷售報告書", icon: "book" },
       { href: "/admin/videos", label: "影音", icon: "video" },
       // 每天早上自動抓進來的房產新聞（海線 → 中部 → 全台），他在這裡挑、按「拿去做」。抓取邏輯在 lib/news-fetch.ts。
       { href: "/admin/news", label: "房產新聞", icon: "news" },

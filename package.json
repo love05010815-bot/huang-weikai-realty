@@ -16,6 +16,7 @@
     "check:post591": "node --experimental-strip-types scripts/check-post591.mjs",
     "check:ext-license": "node --experimental-strip-types scripts/check-ext-license.mjs",
     "check:houseol": "node --experimental-strip-types scripts/check-houseol-facts.mjs",
+    "check:report": "node --experimental-strip-types scripts/check-project-report.mjs",
     "check:news": "node --experimental-strip-types scripts/check-news-fetch.mjs",
     "check:copywriter": "node --experimental-strip-types scripts/check-copywriter.mjs",
     "check:posts": "node --experimental-strip-types scripts/check-posts.mjs",

@@ -26,6 +26,7 @@ import { OWNER, SITE_URL } from "@/config/owner";
 import { DISTRICT, PROJECTS, SOURCES, projectStats, AREA_FILTERS } from "@/data/port-projects";
 import { ZONES } from "@/data/port-zones";
 import { getMapListingsByProject, getSoloMapListings } from "@/lib/map-listings";
+import { listPublishedReports } from "@/lib/project-reports";
 import ProjectExplorer, { type ProjectListing } from "./ProjectExplorer";
 import styles from "./Map.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
@@ -243,6 +244,8 @@ export default async function MapPage() {
   const byProject = await getMapListingsByProject();
   // ⭐ 不屬於任何建案的物件（社區不在建案總表裡），自己帶座標、地圖上畫星號
   const solo = await getSoloMapListings();
+  // 📄 哪些建案有已發佈的社區銷售報告書（/map/report/<id>）：詳情面板會多一顆入口。讀不到就空陣列。
+  const reportIds = (await listPublishedReports()).map((r) => r.projectId);
 
   const listings: Record<string, ProjectListing[]> = {};
   for (const [projectId, list] of byProject) {
@@ -343,7 +346,7 @@ export default async function MapPage() {
             }點大樓圖示看建案資訊，我有物件在售的建案會一併列出物件。`}
           </p>
 
-          <ProjectExplorer listings={listings} solo={solo} />
+          <ProjectExplorer listings={listings} solo={solo} reports={reportIds} />
         </div>
       </section>
 

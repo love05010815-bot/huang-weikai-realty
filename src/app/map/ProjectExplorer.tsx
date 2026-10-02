@@ -147,10 +147,14 @@ export type SoloMapListing = ProjectListing & { lat: number; lng: number };
 export default function ProjectExplorer({
   listings = {},
   solo = [],
+  reports = [],
 }: {
   listings?: Record<string, ProjectListing[]>;
   solo?: SoloMapListing[];
+  /** 📄 有已發佈「社區銷售報告書」的建案 id（後台 /admin/reports 發佈的），詳情面板多一顆入口 */
+  reports?: string[];
 }) {
+  const hasReport = useMemo(() => new Set(reports), [reports]);
   const [area, setArea] = useState<AreaFilter>("all");
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -632,6 +636,20 @@ export default function ProjectExplorer({
                   <dd>{selected.sources.map((k) => SOURCES[k]?.label ?? k).join("、")}</dd>
                 </div>
               </dl>
+
+              {/* 📄 社區銷售報告書的入口（2026-10-02）：後台 /admin/reports 發佈過的建案才有。
+                  開新分頁 —— 這頁載入很重（Leaflet＋七百多案），同分頁跳走再回來，選中的建案與捲動位置都會掉。 */}
+              {hasReport.has(selected.id) && (
+                <Link
+                  className={styles.reportLink}
+                  href={`/map/report/${selected.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <b>{`📄 ${selected.name} 社區銷售報告書`}</b>
+                  <span>建商與建築團隊、地段價值、社區特色、我在售的物件、實價登錄入口、同區競品與買方輪廓，一頁看完 →</span>
+                </Link>
+              )}
 
               {/* ── 我在這個建案的在售物件 ── */}
               {selectedListings.length > 0 ? (

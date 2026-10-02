@@ -2239,3 +2239,39 @@
    覺得跟建案圖釘右上角「我有物件在售」那顆徽章不是同一個語彙，改成跟徽章共用
    同一份 SVG（LeafletMap.tsx 的 soloStarSvg()，畫法抄 buildingSvg() 的星星）。
    樣式全部畫在 SVG 裡、divIcon 的重置沿用 .lmPin，這裡不用再放規則。 */
+
+/* ═══════════ 社區銷售報告書的入口（2026-10-02）═══════════
+   詳情面板 <dl> 底下那張可點的卡。只有後台發佈過的建案會出現（ProjectExplorer 的 hasReport）。
+   ⚠️ 新類名、放檔案最後，不跟上面任何 base 規則搶權重。 */
+.reportLink {
+  display: block;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--primary);
+  border-left-width: 5px;
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ink);
+  text-decoration: none;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.reportLink:hover {
+  background: #f3faf8;
+  box-shadow: var(--shadow);
+}
+
+.reportLink b {
+  display: block;
+  font-size: 15.5px;
+  font-weight: 900;
+  color: var(--primary);
+}
+
+.reportLink span {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--muted);
+}

@@ -1,0 +1,557 @@
+/* 社區銷售報告書（2026-10-02）。色票跟 /map 同一套（Map.module.css 的 .page），
+   但變數定義在 .paper 自己身上 —— 後台深色頁面裡預覽時一樣是白紙。 */
+
+.paper {
+  --primary: #2fa894;
+  --primary-dark: #227f71;
+  --ink: #22323f;
+  --accent: #f4a876;
+  --accent-soft: #fde7d6;
+  --muted: #5b6b73;
+  --line: #d9e2e6;
+  --line-warm: #d3e2e9;
+  --soft: #fde7d6;
+  --radius: 14px;
+  --shadow: 0 12px 30px rgba(34, 50, 63, 0.1);
+
+  font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif;
+  color: var(--ink);
+  background: #fff;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+
+.inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ---------- 封面 ---------- */
+.hero {
+  background: var(--ink);
+  color: #fff;
+  padding: 52px 0 44px;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.heroTitle {
+  margin: 12px 0 4px;
+  font-size: clamp(30px, 5vw, 46px);
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: 1px;
+}
+
+.heroSub {
+  margin: 0;
+  font-size: clamp(18px, 3vw, 26px);
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.tagline {
+  margin: 16px 0 0;
+  max-width: 680px;
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.byline {
+  margin: 22px 0 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.62);
+  white-space: pre;
+}
+
+/* ---------- 段落 ---------- */
+.section {
+  padding: 36px 0 6px;
+}
+
+.secHead {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.secNo {
+  color: var(--primary);
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+.secTitle {
+  margin: 0;
+  font-size: clamp(20px, 3vw, 26px);
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.subhead {
+  margin: 18px 0 8px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.subhead:first-child {
+  margin-top: 0;
+}
+
+/* 01 基本資料 */
+.facts {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.facts > div {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 12px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.facts > div:nth-child(odd) {
+  background: #fcfaf6;
+}
+
+.facts > div:last-child {
+  border-bottom: 0;
+}
+
+.facts dt {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.facts dd {
+  margin: 0;
+  font-weight: 600;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.todo {
+  display: inline-block;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: var(--soft);
+  color: #8a5b00;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+/* 02 定位 */
+.prose {
+  max-width: 760px;
+}
+
+.lead {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.body {
+  margin: 0;
+  font-size: 15.5px;
+}
+
+/* 03／08 卡片 */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.card,
+.cardAccent {
+  padding: 16px 18px;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  background: #fcfaf6;
+}
+
+.cardAccent {
+  border-top: 4px solid var(--accent);
+  background: #fff;
+}
+
+.card h4,
+.cardAccent h4 {
+  margin: 0 0 6px;
+  font-size: 15.5px;
+  font-weight: 900;
+  color: var(--primary);
+}
+
+.card p,
+.cardAccent p {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.75;
+}
+
+.amen {
+  margin-top: 14px;
+  padding: 12px 16px;
+  border-left: 4px solid var(--accent);
+  border-radius: 10px;
+  background: var(--soft);
+  font-size: 14px;
+}
+
+.amen p {
+  margin: 4px 0;
+}
+
+.amenTitle {
+  font-weight: 800;
+  color: #8a5b00;
+}
+
+.amen b {
+  margin-right: 6px;
+  color: var(--ink);
+}
+
+/* 04 特色、08 買方 */
+.bullets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.bullets li {
+  position: relative;
+  padding-left: 24px;
+  font-size: 15px;
+}
+
+.bullets li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--primary);
+  font-weight: 900;
+}
+
+/* 05 在售物件 */
+.units {
+  display: grid;
+  gap: 12px;
+}
+
+.unit {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.unitThumb {
+  min-width: 0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.unitBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.unitTitle {
+  margin: 0 0 8px;
+  font-size: 16.5px;
+  font-weight: 900;
+  line-height: 1.45;
+}
+
+.unitPoints {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.unitPoints li {
+  position: relative;
+  padding-left: 14px;
+}
+
+.unitPoints li::before {
+  content: "・";
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+.unitBtns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.btnOutline,
+.btnSolid {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.btnOutline {
+  border: 1px solid var(--line-warm);
+  background: #fff;
+  color: var(--primary);
+}
+
+.btnOutline:hover {
+  border-color: var(--accent);
+  background: var(--soft);
+}
+
+.btnSolid {
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+.btnSolid:hover {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
+.emptyUnits {
+  padding: 18px 20px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: #fcfaf6;
+}
+
+.emptyUnits p {
+  margin: 0 0 12px;
+  font-size: 14.5px;
+  color: var(--muted);
+}
+
+/* 06 行情 */
+.lvrBox {
+  padding: 18px 20px;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  background: #fcfaf6;
+}
+
+.lvrBox p {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+
+.small {
+  margin: 10px 0 0 !important;
+  font-size: 12.5px !important;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+/* 07 競品表 */
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 14.5px;
+}
+
+.table th,
+.table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.table thead th {
+  background: #fcfaf6;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.table tbody th {
+  font-weight: 800;
+}
+
+.table tbody th a {
+  color: var(--primary);
+}
+
+.table tbody tr:last-child th,
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.selfRow th,
+.selfRow td {
+  background: var(--accent-soft);
+}
+
+.selfTag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+/* 來源與免責 */
+.sources {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.disclaimer {
+  margin: 0 0 30px;
+  padding: 14px 16px;
+  border: 1px solid var(--line-warm);
+  border-left: 4px solid var(--accent);
+  border-radius: 10px;
+  background: var(--soft);
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+
+.disclaimer strong {
+  color: var(--ink);
+}
+
+/* 落款 */
+.agent {
+  background: var(--ink);
+  color: #fff;
+  padding: 28px 0 32px;
+}
+
+.agentName {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.agentName span {
+  margin-left: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.agentLine {
+  margin: 8px 0 0;
+  font-size: 15px;
+}
+
+.agentLine a {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.agentLine a:hover {
+  text-decoration: underline;
+}
+
+.agentLegal {
+  margin: 12px 0 0;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.6);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .hero {
+    padding: 36px 0 30px;
+  }
+
+  .section {
+    padding: 28px 0 4px;
+  }
+
+  .facts > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .unit {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .byline {
+    white-space: normal;
+  }
+}
+
+/* 他會把這頁存成 PDF 或印出來帶去跟屋主／客戶談 */
+@media print {
+  .paper {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .section {
+    break-inside: avoid;
+  }
+
+  .tableWrap {
+    overflow: visible;
+  }
+
+  .table {
+    min-width: 0;
+  }
+}
