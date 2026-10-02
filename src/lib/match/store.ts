@@ -72,6 +72,8 @@ export async function ensureMatchTables(): Promise<void> {
     ["houseol_id", "ALTER TABLE match_listing ADD COLUMN houseol_id VARCHAR(16) NOT NULL DEFAULT '' AFTER src"],
     ["lat", "ALTER TABLE match_listing ADD COLUMN lat DOUBLE NULL AFTER source_url"],
     ["lng", "ALTER TABLE match_listing ADD COLUMN lng DOUBLE NULL AFTER lat"],
+    // 土地的類別改用愛屋物件頁補（lib/match/land-enrich.ts）：查過就記時間，官網同步不再蓋掉補好的欄位
+    ["houseol_checked_at", "ALTER TABLE match_listing ADD COLUMN houseol_checked_at DATETIME NULL AFTER lng"],
   ] as const) {
     const has = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM match_listing LIKE '${col}'`);
     if (has.length === 0) await db.$executeRawUnsafe(ddl);
@@ -300,6 +302,10 @@ export async function getListingSnapshot(): Promise<Map<string, { status: string
 
 /**
  * 批次寫入（新增或更新）。一次 50 筆一句 INSERT … ON DUPLICATE KEY UPDATE，
+ *
+ * 從愛屋物件頁補過的那幾筆（houseol_checked_at 有值，見 saveLandDetail）：類別、地坪、使用分區（description）
+ * 不讓來源再蓋掉 —— 官網的土地只寫「土地」，蓋回去農地／建地就又分不出來了。
+ *
  * 276 筆只要 6 句 —— 一筆一句的話 276 趟來回，在 Vercel 上就要十幾秒。
  */
 export async function upsertListings(items: ListingUpsert[]): Promise<void> {
@@ -346,14 +352,19 @@ export async function upsertListings(items: ListingUpsert[]): Promise<void> {
           phone, source_url, src, houseol_id, lat, lng, status, synced_at, hidden_at)
        VALUES ${placeholders}
        ON DUPLICATE KEY UPDATE
-         store_id = VALUES(store_id), store_code = VALUES(store_code), src = VALUES(src), houseol_id = VALUES(houseol_id),
+         store_id = VALUES(store_id), store_code = VALUES(store_code), src = VALUES(src),
+         houseol_id = IF(VALUES(houseol_id) <> '', VALUES(houseol_id), houseol_id),
          lat = VALUES(lat), lng = VALUES(lng),
          title = VALUES(title), city = VALUES(city), district = VALUES(district),
          address = VALUES(address), price = VALUES(price), original_price = VALUES(original_price),
          unit_price = VALUES(unit_price), rooms = VALUES(rooms), halls = VALUES(halls), baths = VALUES(baths),
-         \`size\` = VALUES(\`size\`), land_size = VALUES(land_size), \`type\` = VALUES(\`type\`), usage_type = VALUES(usage_type), age = VALUES(age),
+         \`type\` = VALUES(\`type\`), age = VALUES(age),
          \`floor\` = VALUES(\`floor\`), features = VALUES(features), images = VALUES(images), video = VALUES(video),
-         description = VALUES(description), phone = VALUES(phone), source_url = VALUES(source_url),
+         phone = VALUES(phone), source_url = VALUES(source_url),
+         usage_type = IF(houseol_checked_at IS NULL, VALUES(usage_type), usage_type),
+         land_size = IF(houseol_checked_at IS NULL OR VALUES(land_size) > 0, VALUES(land_size), land_size),
+         \`size\` = IF(houseol_checked_at IS NULL OR VALUES(\`size\`) > 0, VALUES(\`size\`), \`size\`),
+         description = IF(houseol_checked_at IS NULL, VALUES(description), description),
          status = 'available', synced_at = NOW(), hidden_at = NULL`,
       ...values,
     );
@@ -385,6 +396,62 @@ export async function deleteLegacyListings(): Promise<number> {
     `DELETE FROM match_listing WHERE id NOT LIKE 'S%' AND id NOT IN (SELECT listing_id FROM match_viewing)`,
   );
   return Number(affected) || 0;
+}
+
+// ---------------------------------------------------------------- 土地類別改用愛屋物件頁補（lib/match/land-enrich.ts）
+
+const LAND_PENDING_WHERE = "status = 'available' AND \`type\` = '土地' AND houseol_checked_at IS NULL";
+
+/** 還沒去愛屋查過的在售土地，新的先 */
+export async function listLandToEnrich(limit = 20): Promise<{ id: string; title: string }[]> {
+  await ensureMatchTables();
+  return db.$queryRawUnsafe<{ id: string; title: string }[]>(
+    `SELECT id, title FROM match_listing WHERE ${LAND_PENDING_WHERE} ORDER BY first_seen_at DESC LIMIT ${Math.max(1, Math.min(200, limit))}`,
+  );
+}
+
+export async function countLandPending(): Promise<number> {
+  await ensureMatchTables();
+  const rows = await db.$queryRawUnsafe<{ n: bigint | number }[]>(`SELECT COUNT(*) AS n FROM match_listing WHERE ${LAND_PENDING_WHERE}`);
+  return Number(rows[0]?.n ?? 0);
+}
+
+/**
+ * 把愛屋物件頁讀到的東西寫進去，並記 houseol_checked_at。
+ * detail 給 null ＝ 愛屋沒有這一筆，只記時間（不再重試）、其他欄位不動。
+ * 只填有值的：類別空的不蓋、地坪 0 不蓋；土地沒建坪時順便把 size 補成地坪（配對坪數用的是 size）。
+ */
+export async function saveLandDetail(
+  id: string,
+  detail: { usageType: string; landSize: number; zoning: string; houseolId: string } | null,
+): Promise<void> {
+  await ensureMatchTables();
+  if (!detail) {
+    await db.$executeRawUnsafe(`UPDATE match_listing SET houseol_checked_at = NOW() WHERE id = ?`, id);
+    return;
+  }
+  const zoning = detail.zoning ? `使用分區：${detail.zoning}` : "";
+  await db.$executeRawUnsafe(
+    `UPDATE match_listing
+        SET usage_type = IF(? <> '', ?, usage_type),
+            land_size = IF(? > 0, ?, land_size),
+            \`size\` = IF(? > 0 AND \`size\` = 0, ?, \`size\`),
+            description = IF(? <> '', ?, description),
+            houseol_id = IF(? <> '', ?, houseol_id),
+            houseol_checked_at = NOW()
+      WHERE id = ?`,
+    detail.usageType,
+    detail.usageType,
+    detail.landSize,
+    detail.landSize,
+    detail.landSize,
+    detail.landSize,
+    zoning,
+    zoning,
+    detail.houseolId,
+    detail.houseolId,
+    id,
+  );
 }
 
 export async function countListings(): Promise<{ available: number; hidden: number }> {

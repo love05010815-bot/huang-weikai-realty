@@ -33,7 +33,7 @@ import {
   WEIGHTS,
 } from "../src/lib/match/matcher.ts";
 import { detectPriceChanges } from "../src/lib/match/diff.ts";
-import { parseBlocks, splitAddress, splitResponse, toListingUpsert } from "../src/lib/match/houseol-parse.ts";
+import { parseBlocks, parseHouseolDetail, splitAddress, splitResponse, toListingUpsert } from "../src/lib/match/houseol-parse.ts";
 import { isBaseline, listingsToHide, pickDueSource, planHouseolWrites, sameSourceSnapshot } from "../src/lib/match/merge.ts";
 import { createBuyerToken, verifyBuyerToken } from "../src/lib/match/token.ts";
 
@@ -471,6 +471,28 @@ test("官網解析：整份樣本都轉得出來，而且配對引擎吃得下",
   const ranked = rankListings({ city: "台中市", districts: ["梧棲區"] }, listings);
   assert.ok(ranked.length > 0);
   assert.ok(ranked.every((m) => m.listing.district === "梧棲區"));
+});
+
+// ---------------------------------------------------------------- 土地類別改用愛屋物件頁補（lib/match/land-enrich.ts）
+//
+// 樣本 scripts/fixtures/houseol-detail-land.html 是 2026-10-02 抓下來的真實物件頁（沙鹿特三店的一筆農地，
+// 用梧棲店的 storeid 讀的 —— 證明七家店共用 H229 代碼，別家店的物件頁一樣讀得到）。
+
+test("愛屋物件頁：讀得到類別、地坪、使用分區、愛屋編號", () => {
+  const html = fs.readFileSync(path.join(here, "fixtures", "houseol-detail-land.html"), "utf8");
+  const d = parseHouseolDetail(html);
+  assert.ok(d, "應該解析得出來");
+  assert.equal(d.kind, "土地");
+  assert.equal(d.usageType, "土地:農地");
+  assert.equal(landCategoryOf(d.usageType), "農地");
+  assert.equal(d.landSize, 876.94);
+  assert.equal(d.zoning, "一般農業區");
+  assert.equal(d.houseolId, "AK5344532");
+});
+
+test("愛屋物件頁：不是物件頁（404 的「畫面導引中」）回 null", () => {
+  assert.equal(parseHouseolDetail("<html><title>畫面導引中...</title></html>"), null);
+  assert.equal(parseHouseolDetail(""), null);
 });
 
 // ---------------------------------------------------------------- 兩個來源怎麼合在同一張表（lib/match/merge.ts）

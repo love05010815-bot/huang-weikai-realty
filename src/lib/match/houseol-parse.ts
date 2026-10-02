@@ -149,6 +149,42 @@ export function splitAddress(addr: string): { city: string; district: string; ad
   return m ? { city: m[1], district: m[2], address: m[3].trim() } : { city: "", district: "", address: String(addr ?? "") };
 }
 
+/** 物件頁（/sell_item/H229-S…/）解析出來、列表沒給的欄位 */
+export type HouseolDetail = {
+  /** 「型態/類別」右半，例如「土地:農地」；住宅是「住家」 */
+  usageType: string;
+  /** 「型態/類別」左半，例如「土地」「大樓」 */
+  kind: string;
+  /** 地坪，坪；沒有就 0 */
+  landSize: number;
+  /** 使用分區，例如「一般農業區」「第五種住宅區」；沒有就空字串 */
+  zoning: string;
+  /** 愛屋編號（頁面裡 H229$AK5344532 的 AK5344532）；找不到就空字串 */
+  houseolId: string;
+};
+
+/**
+ * 店網的物件頁 → 列表沒給的欄位。找不到「型態/類別」那一格就回 null（不是物件頁，例如 404 的「畫面導引中」）。
+ *
+ * 🔴 為什麼要讀物件頁：太平洋官網的土地只寫「土地」，農地／建地分不出來；愛屋的物件頁有
+ *    「型態/類別 土地 /土地:農地」。而且店網的物件頁**不限本店**：海線七家店在愛屋的代碼都是 H229，
+ *    別家店的 S 編號用梧棲店的 storeid 一樣讀得到（2026-10-02 實測）。用在 lib/match/land-enrich.ts。
+ */
+export function parseHouseolDetail(html: string): HouseolDetail | null {
+  const h = String(html ?? "");
+  const m = h.match(/型態\/類別<\/font>\s*<span>([^<]*)<\/span>/);
+  if (!m) return null;
+  const [kindRaw, usageRaw] = m[1].split("/");
+  const dl = (label: string) => clean(h.match(new RegExp("<dt>" + label + "</dt>\\s*<dd>([^<]*)</dd>"))?.[1]);
+  return {
+    kind: clean(kindRaw),
+    usageType: clean(usageRaw),
+    landSize: num(dl("地坪")),
+    zoning: dl("使用分區"),
+    houseolId: h.match(/[A-Z0-9]+\$([A-Z]{2}\d{7})/)?.[1] ?? "",
+  };
+}
+
 /** 存進 match_listing 的一筆（欄位名跟資料表一致，見 lib/match/store.ts） */
 export type ListingUpsert = {
   id: string;

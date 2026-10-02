@@ -13,7 +13,7 @@ import { CHIP, CIS, cisCard, type ChipTone } from "@/app/admin/_components/cis";
 import { MATCH, PACIFIC_STORES, VIEWING_STATUS } from "@/config/match";
 import { rotateIntakeKeyAction, setViewingStatusAction } from "@/lib/actions/match";
 import { SOURCE_LABEL, type Source } from "@/lib/match/merge";
-import type { SyncSummary } from "@/lib/match/sync";
+import type { SyncJob, SyncSummary } from "@/lib/match/sync";
 import styles from "./match-admin.module.css";
 
 export type AdminViewing = {
@@ -126,8 +126,8 @@ export default function MatchAdmin({
   buyers: AdminBuyer[];
   listings: AdminListing[];
   counts: { available: number; hidden: number };
-  /** 兩個來源各自最近一次的結果 */
-  lastSync: Record<Source, SyncSummary | null>;
+  /** 兩個來源與補土地類別，各自最近一次的結果 */
+  lastSync: Record<SyncJob, SyncSummary | null>;
   /** 手機快速建檔連結（不用登入；見 lib/match/intake-key.ts） */
   intakeUrl: string;
 }) {
@@ -136,8 +136,8 @@ export default function MatchAdmin({
   const [msg, setMsg] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
-  const [syncingSource, setSyncingSource] = useState<Source | null>(null);
-  const [syncResult, setSyncResult] = useState<Partial<Record<Source, SyncSummary>>>({});
+  const [syncingSource, setSyncingSource] = useState<SyncJob | null>(null);
+  const [syncResult, setSyncResult] = useState<Partial<Record<SyncJob, SyncSummary>>>({});
 
   // 從買方子頁按「← 買方配對」回來要落在「買方」那一頁，不然每次都得再點一次
   useEffect(() => {
@@ -162,13 +162,17 @@ export default function MatchAdmin({
     setSyncing(true);
     setMsg(null);
     try {
-      // 兩個來源各跑一次（各 30–40 秒）；一起跑會撞到函式 60 秒的上限
+      // 兩個來源各跑一次（各 30–40 秒）；一起跑會撞到函式 60 秒的上限。最後再補一次土地類別。
       for (const source of ["pacific", "houseol"] as const) {
         setSyncingSource(source);
         const res = await fetch(`/api/match/sync?force=1&source=${source}`, { cache: "no-store" });
         const data = (await res.json()) as SyncSummary;
         setSyncResult((prev) => ({ ...prev, [source]: data }));
       }
+      setSyncingSource("land");
+      const landRes = await fetch("/api/match/sync?force=1&job=land", { cache: "no-store" });
+      const landData = (await landRes.json()) as SyncSummary;
+      setSyncResult((prev) => ({ ...prev, land: landData }));
       router.refresh();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
@@ -404,6 +408,14 @@ export default function MatchAdmin({
                     </div>
                   );
                 })}
+                {(() => {
+                  const s = syncResult.land ?? lastSync.land;
+                  return (
+                    <div style={{ color: CIS.textSub, fontSize: 13, marginTop: 8 }}>
+                      <strong>土地類別（愛屋物件頁）</strong>：{s ? (s.ok ? `上次 ${fmt(s.at ?? null)}：${s.reason ?? ""}` : `上次失敗（${fmt(s.at ?? null)}）：${s.reason}`) : "還沒補過"}
+                    </div>
+                  );
+                })()}
               </div>
               <button
                 type="button"
@@ -411,7 +423,9 @@ export default function MatchAdmin({
                 disabled={syncing}
                 style={{ padding: "10px 18px", borderRadius: CIS.radiusSm, border: 0, background: CIS.blueDeep, color: "#fff", fontWeight: 700, cursor: syncing ? "default" : "pointer", opacity: syncing ? 0.6 : 1 }}
               >
-                {syncing ? `同步中（${syncingSource ? SOURCE_LABEL[syncingSource] : ""}…官網約 10 秒、店網約 30–40 秒）` : "立即同步（兩個來源）"}
+                {syncing
+                  ? `同步中（${syncingSource === "land" ? "補土地類別" : syncingSource ? SOURCE_LABEL[syncingSource] : ""}…官網約 25 秒、店網約 30–40 秒、土地約 20 秒）`
+                  : "立即同步（兩個來源＋土地類別）"}
               </button>
             </div>
           </div>

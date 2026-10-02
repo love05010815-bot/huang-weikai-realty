@@ -18,7 +18,7 @@ import { getAdminCheckArgs, isCurrentUserAdmin } from "@/lib/admin-check";
 import { describePreference } from "@/lib/match/matcher";
 import { countListings, getListings, listBuyersForAdmin, listListingsForAdmin, listViewingsForAdmin } from "@/lib/match/store";
 import { intakeUrl } from "@/lib/match/intake-key";
-import { getLastSyncResults, type Source, type SyncSummary } from "@/lib/match/sync";
+import { getLastSyncResults, type SyncJob, type SyncSummary } from "@/lib/match/sync";
 import MatchAdmin, { type AdminBuyer, type AdminListing, type AdminViewing } from "./MatchAdmin";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +36,7 @@ export default async function MatchAdminPage() {
   let buyers: AdminBuyer[] = [];
   let listings: AdminListing[] = [];
   let counts = { available: 0, hidden: 0 };
-  let lastSync: Record<Source, SyncSummary | null> = { pacific: null, houseol: null };
+  let lastSync: Record<SyncJob, SyncSummary | null> = { pacific: null, houseol: null, land: null };
   let intake = "";
   let loadError: string | null = null;
   try {

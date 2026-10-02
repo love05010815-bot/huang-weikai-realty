@@ -9,7 +9,9 @@
  *   - keep-warm 排程每 10 分鐘敲 /api/match/sync。這裡自己判斷哪個來源「距上次成功超過 30 分鐘」，
  *     **一次只跑一個**（官網約 10 秒、店網約 30 秒，一起跑會撞到 Vercel 60 秒的上限）；都沒到期就只是幾個 SELECT。
  *     跟 /api/news/daily 同一套想法，不需要密鑰。
- *   - 後台「立即同步」按鈕：force=true 指定來源，不看間隔（後台會兩個來源各按一次）。
+ *   - 後台「立即同步」按鈕：force=true 指定來源，不看間隔（後台會兩個來源各按一次，再補一次土地類別）。
+ *   - 兩個來源都不到期的那一次（每 30 分鐘至少一次）：拿來補土地的類別 —— 去愛屋物件頁讀農地／建地
+ *     （lib/match/land-enrich.ts；他 2026-10-02 說「土地改用愛屋抓取」）。
  *
  * 同步規則：
  *   - 主鍵是官網的 S 編號（店網網址裡也是同一個），兩邊同一間落在同一筆。重複同步只更新、不重複建立。
@@ -28,20 +30,24 @@ import { getConfig, setConfig } from "@/lib/google-calendar";
 import { detectPriceChanges, type PriceChange as PriceDiff } from "./diff";
 import { fetchAllListings } from "./houseol-fetch";
 import { toListingUpsert, type ListingUpsert } from "./houseol-parse";
+import { enrichLandFromHouseol, type LandEnrichSummary } from "./land-enrich";
 import { listingCarousel, priceChangeCarousel, pushMessages, text, type LineMessage } from "./line";
 import { rankListings } from "./matcher";
 import { isBaseline, listingsToHide, pickDueSource, planHouseolWrites, sameSourceSnapshot, SOURCE_LABEL, SOURCES, type Source } from "./merge";
 import { fetchPacificListings } from "./pacific-fetch";
 import { pacificToListingUpsert } from "./pacific-parse";
-import { deleteLegacyListings, ensureMatchTables, getListingSnapshot, hideListings, listBuyersForNotify, upsertListings } from "./store";
+import { countLandPending, deleteLegacyListings, ensureMatchTables, getListingSnapshot, hideListings, listBuyersForNotify, upsertListings } from "./store";
 import { createBuyerToken } from "./token";
 
 export type { Source } from "./merge";
 export { SOURCES, SOURCE_LABEL } from "./merge";
 
+/** 同步能跑的工作：兩個物件來源，加上「補土地類別」 */
+export type SyncJob = Source | "land";
+
 const KEY_LOCK = "match_sync_lock";
 const keyLastOk = (src: Source) => `match_sync_last_ok_${src}`;
-const keyLastResult = (src: Source) => `match_sync_last_result_${src}`;
+const keyLastResult = (job: SyncJob) => `match_sync_last_result_${job}`;
 
 /** 另一次同步還在跑就不重複跑；但鎖超過這麼久就當它死了（函式被 Vercel 砍掉不會來解鎖） */
 const LOCK_STALE_MS = 3 * 60_000;
@@ -53,6 +59,10 @@ export type SyncSummary = {
   ok: boolean;
   reason?: string;
   source?: Source;
+  /** 這次跑的是哪個工作（source 是來源同步；land 是補土地類別） */
+  job?: SyncJob;
+  /** 補土地類別的結果（job 是 land 時） */
+  land?: LandEnrichSummary;
   trigger?: "auto" | "manual";
   at?: string;
   ms?: number;
@@ -86,8 +96,8 @@ const OPT_OUT = "\n不想再收到可回覆「停止通知」。";
 /** 一筆價格異動：物件本身，加上同步前的舊價（判斷邏輯在 lib/match/diff.ts，那邊有測試） */
 type PriceChange = PriceDiff<ListingUpsert>;
 
-export async function getLastSyncResult(src: Source): Promise<SyncSummary | null> {
-  const raw = await getConfig(keyLastResult(src));
+export async function getLastSyncResult(job: SyncJob): Promise<SyncSummary | null> {
+  const raw = await getConfig(keyLastResult(job));
   if (!raw) return null;
   try {
     return JSON.parse(raw) as SyncSummary;
@@ -96,10 +106,10 @@ export async function getLastSyncResult(src: Source): Promise<SyncSummary | null
   }
 }
 
-/** 後台用：兩個來源各自最近一次的結果 */
-export async function getLastSyncResults(): Promise<Record<Source, SyncSummary | null>> {
-  const [pacific, houseol] = await Promise.all([getLastSyncResult("pacific"), getLastSyncResult("houseol")]);
-  return { pacific, houseol };
+/** 後台用：兩個來源與補土地類別，各自最近一次的結果 */
+export async function getLastSyncResults(): Promise<Record<SyncJob, SyncSummary | null>> {
+  const [pacific, houseol, land] = await Promise.all([getLastSyncResult("pacific"), getLastSyncResult("houseol"), getLastSyncResult("land")]);
+  return { pacific, houseol, land };
 }
 
 export function isSource(v: unknown): v is Source {
@@ -108,16 +118,21 @@ export function isSource(v: unknown): v is Source {
 
 /**
  * 跑一次同步。
- *   source 沒給：自動挑「距上次成功超過 syncIntervalMin 分鐘」的來源，一次只跑一個；都沒到期就不跑。
+ *   source 沒給：自動挑「距上次成功超過 syncIntervalMin 分鐘」的來源，一次只跑一個；
+ *               都沒到期就改去補土地類別（有東西要補才跑），再沒有就不跑。
  *   source 有給＋force：不看間隔立刻跑那一個（後台按鈕）。
+ *   job 給 land＋force：補土地類別，一次最多 60 筆（後台按鈕）。
  */
 export async function runListingSync({
   force = false,
   trigger = "auto",
   source,
-}: { force?: boolean; trigger?: "auto" | "manual"; source?: Source } = {}): Promise<SyncSummary> {
+  job,
+}: { force?: boolean; trigger?: "auto" | "manual"; source?: Source; job?: SyncJob } = {}): Promise<SyncSummary> {
   const startedAt = Date.now();
   await ensureMatchTables();
+
+  if (job === "land" && force) return runLand(trigger, startedAt, { limit: 60, budgetMs: 45_000 });
 
   let picked: Source | null = source ?? null;
   if (!picked || !force) {
@@ -130,7 +145,11 @@ export async function runListingSync({
         return { ran: false, ok: true, source: picked, reason: `距上次同步不到 ${MATCH.syncIntervalMin} 分鐘` };
       }
     } else {
-      if (!due) return { ran: false, ok: true, reason: `兩個來源都在 ${MATCH.syncIntervalMin} 分鐘內同步過` };
+      if (!due) {
+        // 兩個來源都不用跑的這一次，拿來補土地的類別（愛屋物件頁一筆一頁，慢慢補）
+        if ((await countLandPending()) > 0) return runLand(trigger, startedAt, { limit: 20, budgetMs: 30_000 });
+        return { ran: false, ok: true, reason: `兩個來源都在 ${MATCH.syncIntervalMin} 分鐘內同步過` };
+      }
       picked = due;
     }
   }
@@ -153,6 +172,28 @@ export async function runListingSync({
   summary.ms = Date.now() - startedAt;
   await setConfig(keyLastResult(picked), JSON.stringify(summary));
   if (summary.ok) await setConfig(keyLastOk(picked), new Date().toISOString());
+  return summary;
+}
+
+/** 補土地類別：跟來源同步共用同一把鎖，結果記在 land 那一格 */
+async function runLand(trigger: "auto" | "manual", startedAt: number, opts: { limit: number; budgetMs: number }): Promise<SyncSummary> {
+  const lock = await getConfig(KEY_LOCK);
+  if (lock && Date.now() - Date.parse(lock) < LOCK_STALE_MS) {
+    return { ran: false, ok: true, job: "land", reason: "另一次同步進行中" };
+  }
+  await setConfig(KEY_LOCK, new Date().toISOString());
+  let summary: SyncSummary;
+  try {
+    const land = await enrichLandFromHouseol(opts);
+    summary = { ran: true, ok: true, job: "land", trigger, at: new Date().toISOString(), land, reason: `補土地類別：查 ${land.checked} 筆、補到 ${land.enriched} 筆，還剩 ${land.pending} 筆` };
+  } catch (e) {
+    summary = { ran: true, ok: false, job: "land", trigger, at: new Date().toISOString(), reason: e instanceof Error ? e.message : String(e) };
+    console.error("[match/sync] 補土地類別失敗:", e);
+  } finally {
+    await setConfig(KEY_LOCK, null);
+  }
+  summary.ms = Date.now() - startedAt;
+  await setConfig(keyLastResult("land"), JSON.stringify(summary));
   return summary;
 }
 
