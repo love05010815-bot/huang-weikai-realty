@@ -549,7 +549,7 @@
       const name = after("聯絡人", TXT, 1)[0];
       if (name && C.name && name.value !== C.name) setNative(name, C.name);
       if (C.contract) clickRadioAfter("委託書", C.contract);
-      clickRadioAfter("服務費", C.serviceFee === false ? "不須服務費" : "收取服務費");
+      clickRadioAfter("服務費", C.serviceFee === false ? "不收服務費" : "收取服務費"); // 591 的選項字是「不收服務費」（2026-10-04 核對）
       clickLabel("我已閲讀並確認經紀業資料無誤", true) || clickLabel("我已閱讀並確認經紀業資料無誤", true);
       log("聯絡資料填完", "ok");
     } catch (e) {
