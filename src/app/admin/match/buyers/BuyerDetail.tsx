@@ -14,6 +14,7 @@ import ShareToBuyer from "@/app/match/ShareToBuyer";
 import type { ApiPreference, MatchMeta } from "@/app/match/preference-state";
 import { deleteBuyerAction, pushMatchesToBuyerAction } from "@/lib/actions/match";
 import type { BuyerBrief } from "@/lib/match/intake";
+import { lineText, type LineVia } from "@/lib/match/line-via";
 import AdminBuyerForm from "./AdminBuyerForm";
 import styles from "./buyer-form.module.css";
 
@@ -22,6 +23,8 @@ export type DetailBuyer = {
   name: string;
   phone: string;
   note: string;
+  lineVia: LineVia | "";
+  lineName: string;
   displayName: string | null;
   linked: boolean;
   followed: boolean;
@@ -76,7 +79,7 @@ export default function BuyerDetail({ buyer, brief, meta }: { buyer: DetailBuyer
       {flash && <p className={styles.msg}>{flash}</p>}
 
       {editing ? (
-        <AdminBuyerForm meta={meta} buyer={{ id: buyer.id, name: buyer.name, phone: buyer.phone, note: buyer.note, preference: buyer.preference }} onDone={() => setEditing(false)} />
+        <AdminBuyerForm meta={meta} buyer={{ id: buyer.id, name: buyer.name, phone: buyer.phone, note: buyer.note, lineVia: buyer.lineVia, lineName: buyer.lineName, preference: buyer.preference }} onDone={() => setEditing(false)} />
       ) : (
         <>
           <div className={styles.card}>
@@ -88,6 +91,7 @@ export default function BuyerDetail({ buyer, brief, meta }: { buyer: DetailBuyer
               {buyer.linked ? <Chip tone={buyer.followed ? "success" : "warn"}>✔ LINE {buyer.displayName ?? "已綁定"}</Chip> : <Chip tone="neutral">未綁定 LINE</Chip>}
               {buyer.linked && !buyer.followed && <Chip tone="warn">已封鎖</Chip>}
               {buyer.linked && buyer.followed && !buyer.notify && <Chip tone="neutral">已關閉通知</Chip>}
+              {lineText(buyer.lineVia, buyer.lineName) && <Chip tone="info">💬 {lineText(buyer.lineVia, buyer.lineName)}</Chip>}
             </div>
             {buyer.note && <p className={styles.note}>{buyer.note}</p>}
             <p className={styles.sectionTitle} style={{ marginTop: 14 }}>

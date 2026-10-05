@@ -313,3 +313,10 @@
   text-align: center;
   line-height: 1.8;
 }
+
+/* 結果卡上「私人 LINE：小凱」那一行（代客建檔 2026-10-05） */
+.lineInfo {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: #5b6b73;
+}

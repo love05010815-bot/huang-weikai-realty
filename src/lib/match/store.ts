@@ -13,6 +13,7 @@
 import { randomInt, randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import type { ListingUpsert } from "./houseol-parse";
+import { normalizeLineVia, type LineVia } from "./line-via";
 import { normalizePreference, type Preference } from "./matcher";
 
 let ensured = false;
@@ -107,6 +108,15 @@ export async function ensureMatchTables(): Promise<void> {
   const hasNote = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM match_buyer LIKE 'note'`);
   if (hasNote.length === 0) {
     await db.$executeRawUnsafe("ALTER TABLE match_buyer ADD COLUMN note TEXT NULL AFTER preference");
+  }
+  // line_via／line_name 是 2026-10-05 加的：客人的 LINE 是加他私人的還是官方的（private／official）、他在 LINE 上的 ID 或名稱。
+  // 代客建檔時手動記的，跟 line_user_id（官方帳號綁定）無關；見 lib/match/line-via.ts。
+  for (const [col, ddl] of [
+    ["line_via", "ALTER TABLE match_buyer ADD COLUMN line_via VARCHAR(16) NULL AFTER note"],
+    ["line_name", "ALTER TABLE match_buyer ADD COLUMN line_name VARCHAR(120) NULL AFTER line_via"],
+  ] as const) {
+    const has = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM match_buyer LIKE '${col}'`);
+    if (has.length === 0) await db.$executeRawUnsafe(ddl);
   }
 
   await db.$executeRawUnsafe(`
@@ -498,6 +508,10 @@ export type Buyer = {
   preference: Preference | null;
   /** 專員自己記的備註（買方看不到）。2026-09-26 代客建檔加的 */
   note: string;
+  /** 客人的 LINE 是加他私人的還是官方的（代客建檔手動記的，跟 lineUserId 無關）。2026-10-05 加 */
+  lineVia: LineVia | "";
+  /** 客人在 LINE 上的 ID 或名稱（手動記的） */
+  lineName: string;
   createdAt: Date | null;
   updatedAt: Date | null;
 };
@@ -512,6 +526,8 @@ type BuyerRow = {
   notify: number;
   preference: string | null;
   note: string | null;
+  line_via: string | null;
+  line_name: string | null;
   created_at: Date | null;
   updated_at: Date | null;
 };
@@ -535,12 +551,14 @@ function toBuyer(row: BuyerRow): Buyer {
     notify: Number(row.notify) !== 0,
     preference,
     note: row.note ?? "",
+    lineVia: normalizeLineVia(row.line_via),
+    lineName: row.line_name ?? "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
-const BUYER_COLS = "id, line_user_id, display_name, name, phone, followed, notify, preference, note, created_at, updated_at";
+const BUYER_COLS = "id, line_user_id, display_name, name, phone, followed, notify, preference, note, line_via, line_name, created_at, updated_at";
 
 export async function getBuyer(id: string): Promise<Buyer | null> {
   await ensureMatchTables();
@@ -600,6 +618,9 @@ export type BuyerUpsertInput = {
   preference?: Preference | null;
   /** 傳 undefined = 不動原本的；傳 "" = 清掉 */
   note?: string | null;
+  /** 客人的 LINE 是加私人的還是官方的、他的 LINE 名稱（同 note：undefined 不動、"" 清掉） */
+  lineVia?: LineVia | "" | null;
+  lineName?: string | null;
   followed?: boolean;
   notify?: boolean;
 };
@@ -639,6 +660,10 @@ export async function upsertBuyer(input: BuyerUpsertInput): Promise<Buyer> {
       name: byLine.name ?? byId.name,
       phone: byLine.phone ?? byId.phone,
       preference: newerPreference(byLine, byId),
+      // 手動記的那幾格也不能丟：LINE 那一筆沒記的，拿網頁那一筆的
+      note: byLine.note || byId.note,
+      lineVia: byLine.lineVia || byId.lineVia,
+      lineName: byLine.lineName || byId.lineName,
     };
   }
 
@@ -649,6 +674,8 @@ export async function upsertBuyer(input: BuyerUpsertInput): Promise<Buyer> {
     phone: input.phone || target?.phone || null,
     preference: input.preference ?? target?.preference ?? null,
     note: (input.note !== undefined ? input.note : target?.note) || null,
+    lineVia: (input.lineVia !== undefined ? input.lineVia : target?.lineVia) || null,
+    lineName: (input.lineName !== undefined ? input.lineName : target?.lineName) || null,
     followed: input.followed ?? target?.followed ?? true,
     notify: input.notify ?? target?.notify ?? true,
   };
@@ -657,7 +684,7 @@ export async function upsertBuyer(input: BuyerUpsertInput): Promise<Buyer> {
   if (!target) {
     const id = randomUUID();
     await db.$executeRawUnsafe(
-      `INSERT INTO match_buyer (id, line_user_id, display_name, name, phone, followed, notify, preference, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO match_buyer (id, line_user_id, display_name, name, phone, followed, notify, preference, note, line_via, line_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       merged.lineUserId,
       merged.displayName,
@@ -667,12 +694,14 @@ export async function upsertBuyer(input: BuyerUpsertInput): Promise<Buyer> {
       merged.notify ? 1 : 0,
       prefJson,
       merged.note,
+      merged.lineVia,
+      merged.lineName,
     );
     return (await getBuyer(id))!;
   }
 
   await db.$executeRawUnsafe(
-    `UPDATE match_buyer SET line_user_id = ?, display_name = ?, name = ?, phone = ?, followed = ?, notify = ?, preference = ?, note = ? WHERE id = ?`,
+    `UPDATE match_buyer SET line_user_id = ?, display_name = ?, name = ?, phone = ?, followed = ?, notify = ?, preference = ?, note = ?, line_via = ?, line_name = ? WHERE id = ?`,
     merged.lineUserId,
     merged.displayName,
     merged.name,
@@ -681,6 +710,8 @@ export async function upsertBuyer(input: BuyerUpsertInput): Promise<Buyer> {
     merged.notify ? 1 : 0,
     prefJson,
     merged.note,
+    merged.lineVia,
+    merged.lineName,
     target.id,
   );
   return (await getBuyer(target.id))!;

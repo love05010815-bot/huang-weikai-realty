@@ -11,6 +11,7 @@
 import { MATCH } from "@/config/match";
 import { OWNER } from "@/config/owner";
 import { listingCarousel, matchPageUrl, pushMessages, text } from "./line";
+import { normalizeLineVia, type LineVia } from "./line-via";
 import { describePreference, normalizePreference, rankListings, type Preference } from "./matcher";
 import {
   getBuyer,
@@ -28,6 +29,10 @@ export type BuyerFormInput = {
   name: string;
   phone: string;
   note: string;
+  /** 客人的 LINE 是加私人的還是官方的（"private"／"official"）；不認得的當沒選。2026-10-05 加 */
+  lineVia?: unknown;
+  /** 客人在 LINE 上的 ID 或名稱 */
+  lineName?: unknown;
   /** 表單送來的條件（toApiPreference 的結果）；這裡再 normalize 一次，不信任前端 */
   preference: unknown;
 };
@@ -43,6 +48,8 @@ export async function saveBuyerFromForm(id: string | null, input: BuyerFormInput
   const name = String(input.name ?? "").trim().slice(0, 40);
   const phone = normalizePhone(String(input.phone ?? "")).slice(0, 40);
   const note = String(input.note ?? "").trim().slice(0, 1000);
+  const lineVia = normalizeLineVia(input.lineVia);
+  const lineName = String(input.lineName ?? "").trim().slice(0, 80);
   if (!name) return { ok: false, error: "請填怎麼稱呼（例如「王先生」）" };
   if (phone.length < 8) return { ok: false, error: "電話至少 8 碼" };
   const preference = normalizePreference(input.preference);
@@ -56,7 +63,7 @@ export async function saveBuyerFromForm(id: string | null, input: BuyerFormInput
       merged = true;
     }
   }
-  const buyer = await upsertBuyer({ id: targetId, name, phone, note, preference });
+  const buyer = await upsertBuyer({ id: targetId, name, phone, note, lineVia, lineName, preference });
   return { ok: true, buyer, merged };
 }
 
@@ -167,6 +174,8 @@ export type IntakeBuyer = {
   name: string;
   phone: string;
   note: string;
+  lineVia: LineVia | "";
+  lineName: string;
   linked: boolean;
   followed: boolean;
   preference: Preference | null;
@@ -178,6 +187,8 @@ export function toIntakeBuyer(b: Buyer): IntakeBuyer {
     name: b.name || b.displayName || "",
     phone: b.phone ?? "",
     note: b.note,
+    lineVia: b.lineVia,
+    lineName: b.lineName,
     linked: Boolean(b.lineUserId),
     followed: b.followed,
     preference: b.preference,
@@ -190,6 +201,8 @@ export type IntakeRow = {
   name: string;
   phone: string;
   note: string;
+  lineVia: LineVia | "";
+  lineName: string;
   linked: boolean;
   followed: boolean;
   summary: string | null;
@@ -203,6 +216,8 @@ export function toIntakeRow(b: Buyer): IntakeRow {
     name: b.name || b.displayName || "",
     phone: b.phone ?? "",
     note: b.note,
+    lineVia: b.lineVia,
+    lineName: b.lineName,
     linked: Boolean(b.lineUserId),
     followed: b.followed,
     summary: b.preference ? describePreference(b.preference) : null,

@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { CHIP, CIS, cisCard, type ChipTone } from "@/app/admin/_components/cis";
 import { MATCH, PACIFIC_STORES, VIEWING_STATUS } from "@/config/match";
 import { rotateIntakeKeyAction, setViewingStatusAction } from "@/lib/actions/match";
+import { lineText, type LineVia } from "@/lib/match/line-via";
 import { SOURCE_LABEL, type Source } from "@/lib/match/merge";
 import type { SyncJob, SyncSummary } from "@/lib/match/sync";
 import styles from "./match-admin.module.css";
@@ -47,6 +48,9 @@ export type AdminBuyer = {
   summary: string | null;
   /** 專員自己記的備註（代客建檔時填的） */
   note: string;
+  /** 客人的 LINE 是加私人的還是官方的、他的 LINE 名稱（代客建檔時手動記的，跟 linked 無關） */
+  lineVia: LineVia | "";
+  lineName: string;
   updatedAt: string | null;
 };
 
@@ -368,6 +372,7 @@ export default function MatchAdmin({
                       {b.linked ? <Chip tone={b.followed ? "success" : "warn"}>✔ {b.displayName ?? "已綁定"}</Chip> : <Chip tone="neutral">未綁定</Chip>}
                       {b.linked && !b.followed && <Chip tone="warn">已封鎖</Chip>}
                       {b.linked && b.followed && !b.notify && <Chip tone="neutral">已關閉通知</Chip>}
+                      {lineText(b.lineVia, b.lineName) && <Chip tone="info">💬 {lineText(b.lineVia, b.lineName)}</Chip>}
                     </div>
                   </td>
                   <td>

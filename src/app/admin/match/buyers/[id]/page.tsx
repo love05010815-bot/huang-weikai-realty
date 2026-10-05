@@ -57,6 +57,8 @@ export default async function BuyerDetailPage({ params }: { params: Promise<{ id
         name: buyer.name || buyer.displayName || "（未填姓名）",
         phone: buyer.phone ?? "",
         note: buyer.note,
+        lineVia: buyer.lineVia,
+        lineName: buyer.lineName,
         displayName: buyer.displayName,
         linked: Boolean(buyer.lineUserId),
         followed: buyer.followed,

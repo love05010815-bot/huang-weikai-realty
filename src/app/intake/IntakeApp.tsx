@@ -16,6 +16,7 @@ import type { MatchMeta } from "@/app/match/preference-state";
 import ShareToBuyer from "@/app/match/ShareToBuyer";
 import { intakeListAction, intakeOpenAction, intakePushAction, intakeSaveAction, type IntakeSaveResult } from "@/lib/actions/intake";
 import type { IntakeRow } from "@/lib/match/intake";
+import { lineText } from "@/lib/match/line-via";
 import intakeStyles from "./intake.module.css";
 
 /** 表單類的 class 用 /match 的淺色版，其餘（按鈕列、結果區、名單）用這一頁自己的；同名以這一頁為準 */
@@ -74,7 +75,7 @@ export default function IntakeApp({ intakeKey, meta }: { intakeKey: string; meta
   const filtered = (rows ?? []).filter((r) => {
     const s = q.trim().toLowerCase();
     if (!s) return true;
-    return r.name.toLowerCase().includes(s) || r.phone.includes(s.replace(/\D/g, "") || s) || (r.summary ?? "").includes(s);
+    return r.name.toLowerCase().includes(s) || r.lineName.toLowerCase().includes(s) || r.phone.includes(s.replace(/\D/g, "") || s) || (r.summary ?? "").includes(s);
   });
 
   return (
@@ -99,7 +100,7 @@ export default function IntakeApp({ intakeKey, meta }: { intakeKey: string; meta
           key={editing && saved ? saved.buyer.id : "new"}
           meta={meta}
           styles={styles}
-          buyer={editing && saved ? { id: saved.buyer.id, name: saved.buyer.name, phone: saved.buyer.phone, note: saved.buyer.note, preference: saved.buyer.preference } : null}
+          buyer={editing && saved ? { id: saved.buyer.id, name: saved.buyer.name, phone: saved.buyer.phone, note: saved.buyer.note, lineVia: saved.buyer.lineVia, lineName: saved.buyer.lineName, preference: saved.buyer.preference } : null}
           onSave={(id, values) => intakeSaveAction(intakeKey, id, values)}
           afterSave={(r) => {
             if (r.ok) {
@@ -140,6 +141,7 @@ export default function IntakeApp({ intakeKey, meta }: { intakeKey: string; meta
                   <p className={styles.rowSummary}>{r.summary ?? "還沒填條件"}</p>
                   <div className={styles.rowMeta}>
                     {r.linked ? <span className={`${styles.tag} ${r.followed ? styles.tagOn : ""}`}>{r.followed ? "LINE 已綁" : "LINE 已封鎖"}</span> : <span className={styles.tag}>未綁 LINE</span>}
+                    {lineText(r.lineVia, r.lineName) && <span className={styles.tag}>{lineText(r.lineVia, r.lineName)}</span>}
                     {r.note && <span>📝 {r.note.length > 24 ? `${r.note.slice(0, 24)}…` : r.note}</span>}
                     <span>{opening === r.id ? "開啟中…" : fmtDay(r.updatedAt)}</span>
                   </div>
@@ -159,6 +161,7 @@ export default function IntakeApp({ intakeKey, meta }: { intakeKey: string; meta
             <a className={styles.phone} href={`tel:${saved.buyer.phone}`}>
               {saved.buyer.phone}
             </a>
+            {lineText(saved.buyer.lineVia, saved.buyer.lineName) && <p className={styles.lineInfo}>💬 {lineText(saved.buyer.lineVia, saved.buyer.lineName)}</p>}
             {saved.buyer.note && <p className={styles.note}>{saved.buyer.note}</p>}
             <p className={styles.sectionTitle} style={{ marginTop: 14 }}>
               購屋需求

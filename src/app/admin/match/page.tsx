@@ -73,6 +73,8 @@ export default async function MatchAdminPage() {
       notify: b.notify,
       summary: b.preference ? describePreference(b.preference) : null,
       note: b.note,
+      lineVia: b.lineVia,
+      lineName: b.lineName,
       updatedAt: iso(b.updatedAt),
     }));
     listings = (await listListingsForAdmin(80)).map((l) => ({

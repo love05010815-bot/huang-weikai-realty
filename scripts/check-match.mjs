@@ -34,6 +34,7 @@ import {
 } from "../src/lib/match/matcher.ts";
 import { detectPriceChanges } from "../src/lib/match/diff.ts";
 import { parseBlocks, parseHouseolDetail, splitAddress, splitResponse, toListingUpsert } from "../src/lib/match/houseol-parse.ts";
+import { lineText, lineViaLabel, normalizeLineVia } from "../src/lib/match/line-via.ts";
 import { isBaseline, listingsToHide, pickDueSource, planHouseolWrites, sameSourceSnapshot } from "../src/lib/match/merge.ts";
 import { createBuyerToken, verifyBuyerToken } from "../src/lib/match/token.ts";
 
@@ -845,6 +846,20 @@ test("預約通知：帶上買方的購屋條件，跟後台「買方」那一�
 test("預約通知：沒留過條件也要有那一行，不能整行消失", () => {
   const body = LINE.viewingNotifyText(fakeViewing, [fakeListing("L1")], null, null);
   assert.match(body, /購屋條件：（沒有留過配對條件）/);
+});
+
+test("LINE 從哪裡加的：只認 private／official，畫面那一行字三種組合都對", () => {
+  assert.equal(normalizeLineVia("private"), "private");
+  assert.equal(normalizeLineVia("official"), "official");
+  assert.equal(normalizeLineVia("私人 LINE"), "");
+  assert.equal(normalizeLineVia(null), "");
+  assert.equal(lineViaLabel("private"), "私人 LINE");
+  assert.equal(lineViaLabel(""), "");
+  assert.equal(lineText("private", " 小凱 "), "私人 LINE：小凱");
+  assert.equal(lineText("official", ""), "官方 LINE");
+  assert.equal(lineText("", "kai_0912"), "LINE：kai_0912");
+  assert.equal(lineText("", ""), "");
+  assert.equal(lineText(null, undefined), "");
 });
 
 if (process.exitCode) {

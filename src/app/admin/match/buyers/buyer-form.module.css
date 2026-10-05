@@ -338,3 +338,18 @@
   opacity: 0.7;
   font-size: 14px;
 }
+
+/* 代客建檔「LINE 從哪裡加的」：兩顆選一顆 ＋ 後面一格記 ID／名稱；手機太窄時那一格自己換到下一行 */
+.lineRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.lineRow .input {
+  flex: 1 1 150px;
+  width: auto;
+  min-width: 0;
+  margin-top: 0;
+}

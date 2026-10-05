@@ -1,6 +1,6 @@
 "use client";
 /**
- * 買方表單（怎麼稱呼、電話、備註 ＋ 跟 /match 共用的條件表單）。
+ * 買方表單（怎麼稱呼、LINE 從哪裡加的、電話、備註 ＋ 跟 /match 共用的條件表單）。
  *
  * 只負責畫表單、把填好的東西交給 onSave；**怎麼存、存完去哪**由外面決定：
  *   後台     → AdminBuyerForm：saveBuyerAction（看登入），存好跳詳情頁
@@ -10,6 +10,7 @@
 import { useState } from "react";
 import PreferenceForm from "@/app/match/PreferenceForm";
 import { EMPTY_PREF, toApiPreference, toPrefState, type ApiPreference, type MatchMeta, type PrefState } from "@/app/match/preference-state";
+import { LINE_VIA_OPTIONS, type LineVia } from "@/lib/match/line-via";
 
 type Styles = { readonly [key: string]: string };
 
@@ -18,6 +19,8 @@ export type EditableBuyer = {
   name: string;
   phone: string;
   note: string;
+  lineVia: LineVia | "";
+  lineName: string;
   preference: ApiPreference | null;
 };
 
@@ -25,6 +28,8 @@ export type BuyerFormValues = {
   name: string;
   phone: string;
   note: string;
+  lineVia: LineVia | "";
+  lineName: string;
   preference: ReturnType<typeof toApiPreference>;
 };
 
@@ -47,6 +52,8 @@ export default function BuyerEditor<R extends { ok: boolean; error?: string }>({
   const [name, setName] = useState(buyer?.name ?? "");
   const [phone, setPhone] = useState(buyer?.phone ?? "");
   const [note, setNote] = useState(buyer?.note ?? "");
+  const [lineVia, setLineVia] = useState<LineVia | "">(buyer?.lineVia ?? "");
+  const [lineName, setLineName] = useState(buyer?.lineName ?? "");
   // 新建時縣市先幫他選好第一個（＝在售物件最多的那個，台中市），在外面少點一下才看得到行政區
   const [pref, setPref] = useState<PrefState>(() =>
     buyer?.preference ? toPrefState(buyer.preference) : { ...EMPTY_PREF, city: meta.cities[0]?.city ?? "" },
@@ -59,7 +66,7 @@ export default function BuyerEditor<R extends { ok: boolean; error?: string }>({
     setBusy(true);
     setError(null);
     try {
-      const r = await onSave(buyer?.id ?? null, { name, phone, note, preference: toApiPreference(pref) });
+      const r = await onSave(buyer?.id ?? null, { name, phone, note, lineVia, lineName, preference: toApiPreference(pref) });
       if (!r.ok) {
         setError(r.error ?? "存檔失敗，請再試一次");
         return;
@@ -79,6 +86,32 @@ export default function BuyerEditor<R extends { ok: boolean; error?: string }>({
           怎麼稱呼
           <input className={styles.input} value={name} onChange={(e) => setName(e.target.value)} placeholder="例如：王先生、陳小姐" autoComplete="off" />
         </label>
+        {/* 2026-10-05 他要的：客人的 LINE 是加私人的還是官方的，後面一格記 ID／名稱（lib/match/line-via.ts）。
+            這一格用 div 不用 label：label 會把第一顆按鈕當成自己的控制項，點到標題字就等於按了「私人 LINE」 */}
+        <div className={styles.field}>
+          LINE 從哪裡加的
+          <div className={styles.lineRow}>
+            {LINE_VIA_OPTIONS.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                className={`${styles.chip} ${lineVia === o.value ? styles.chipOn : ""}`}
+                aria-pressed={lineVia === o.value}
+                onClick={() => setLineVia((v) => (v === o.value ? "" : o.value))}
+              >
+                {o.label}
+              </button>
+            ))}
+            <input
+              className={styles.input}
+              value={lineName}
+              onChange={(e) => setLineName(e.target.value)}
+              placeholder="LINE 的 ID 或名稱"
+              aria-label="LINE 的 ID 或名稱"
+              autoComplete="off"
+            />
+          </div>
+        </div>
         <label className={styles.field}>
           電話
           <input className={styles.input} type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0912345678" autoComplete="off" />
