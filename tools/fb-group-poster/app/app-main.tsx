@@ -91,7 +91,7 @@ function App() {
       </header>
 
       <section className="lic">
-        <label htmlFor="lic-key">授權碼（黃瑋凱給的，這批同事共用一組；只給店內同事用、不要轉傳。沒有有效授權碼，發佈、抓社團、帶入都不會動）</label>
+        <label htmlFor="lic-key">授權碼（黃瑋凱給你的，一人一組、綁定你第一次驗證的這台電腦；不要給別人用。沒有有效授權碼，發佈、抓社團、帶入都不會動）</label>
         <div className="lic-row">
           <input
             id="lic-key"
