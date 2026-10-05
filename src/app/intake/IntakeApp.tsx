@@ -4,7 +4,7 @@
  *
  * 三個畫面切換、不換頁、不登入：金鑰跟著每一次 server action 一起送，伺服器那邊驗。
  *   form    填一位（新建，或從名單／結果按「改條件」進來編輯）
- *   list    客戶名單（2026-09-26 他要的）：搜姓名或電話，點一位就開結果
+ *   list    客戶名單（2026-09-26 他要的）：搜姓名或電話，點一位就開結果；往左滑露出「刪除」（2026-10-05，SwipeRow）
  *   result  這位的資料、符合幾間、傳給客戶
  * 表單（BuyerEditor）、傳給客戶（ShareToBuyer）、物件清單（MatchList）都跟後台共用，只換淺色樣式。
  */
@@ -14,10 +14,11 @@ import MatchList from "@/app/match/MatchList";
 import matchStyles from "@/app/match/match.module.css";
 import type { MatchMeta } from "@/app/match/preference-state";
 import ShareToBuyer from "@/app/match/ShareToBuyer";
-import { intakeListAction, intakeOpenAction, intakePushAction, intakeSaveAction, type IntakeSaveResult } from "@/lib/actions/intake";
+import { intakeDeleteAction, intakeListAction, intakeOpenAction, intakePushAction, intakeSaveAction, type IntakeSaveResult } from "@/lib/actions/intake";
 import type { IntakeRow } from "@/lib/match/intake";
 import { lineText } from "@/lib/match/line-via";
 import intakeStyles from "./intake.module.css";
+import SwipeRow from "./SwipeRow";
 
 /** 表單類的 class 用 /match 的淺色版，其餘（按鈕列、結果區、名單）用這一頁自己的；同名以這一頁為準 */
 const styles = { ...matchStyles, ...intakeStyles };
@@ -37,6 +38,10 @@ export default function IntakeApp({ intakeKey, meta }: { intakeKey: string; meta
   const [rowsError, setRowsError] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [opening, setOpening] = useState<string | null>(null);
+  // 名單往左滑刪除：哪一列現在是打開的（一次只開一列）、哪一列正在刪、刪完的提示
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
 
   const top = () => window.scrollTo({ top: 0 });
 
@@ -53,13 +58,16 @@ export default function IntakeApp({ intakeKey, meta }: { intakeKey: string; meta
   function goNew() {
     setSaved(null);
     setEditing(false);
+    setFlash(null);
     setView("form");
     top();
   }
 
   async function open(id: string) {
     setOpening(id);
+    setOpenId(null);
     setRowsError(null);
+    setFlash(null);
     const r = await intakeOpenAction(intakeKey, id);
     setOpening(null);
     if (!r.ok) {
@@ -70,6 +78,22 @@ export default function IntakeApp({ intakeKey, meta }: { intakeKey: string; meta
     setEditing(false);
     setView("result");
     top();
+  }
+
+  /** 名單上往左滑、按兩下「刪除」之後。伺服器拒絕（名下有預約）就把理由放在名單上面。 */
+  async function remove(r: IntakeRow) {
+    setDeleting(r.id);
+    setRowsError(null);
+    const res = await intakeDeleteAction(intakeKey, r.id);
+    setDeleting(null);
+    setOpenId(null);
+    if (!res.ok) {
+      setRowsError(res.error);
+      return;
+    }
+    setRows((cur) => (cur ?? []).filter((x) => x.id !== r.id));
+    if (saved?.buyer.id === r.id) setSaved(null);
+    setFlash(`已刪掉「${r.name || r.phone}」`);
   }
 
   const filtered = (rows ?? []).filter((r) => {
@@ -125,7 +149,9 @@ export default function IntakeApp({ intakeKey, meta }: { intakeKey: string; meta
       {view === "list" && (
         <div className={styles.wrap}>
           {rowsError && <p className={styles.msg}>{rowsError}</p>}
+          {flash && <p className={styles.msg}>{flash}</p>}
           <input className={styles.search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="搜姓名、電話或條件" inputMode="search" />
+          {rows && rows.length > 0 && <p className={styles.swipeHint}>往左滑可以刪除</p>}
           {!rows && !rowsError ? (
             <p className={styles.muted}>讀取中…</p>
           ) : filtered.length === 0 ? (
@@ -133,19 +159,28 @@ export default function IntakeApp({ intakeKey, meta }: { intakeKey: string; meta
           ) : (
             <div className={styles.rows}>
               {filtered.map((r) => (
-                <button key={r.id} type="button" className={styles.row} onClick={() => open(r.id)} disabled={opening === r.id}>
-                  <div className={styles.rowTop}>
-                    <span className={styles.rowName}>{r.name || "（未填姓名）"}</span>
-                    <span className={styles.rowPhone}>{r.phone}</span>
-                  </div>
-                  <p className={styles.rowSummary}>{r.summary ?? "還沒填條件"}</p>
-                  <div className={styles.rowMeta}>
-                    {r.linked ? <span className={`${styles.tag} ${r.followed ? styles.tagOn : ""}`}>{r.followed ? "LINE 已綁" : "LINE 已封鎖"}</span> : <span className={styles.tag}>未綁 LINE</span>}
-                    {lineText(r.lineVia, r.lineName) && <span className={styles.tag}>{lineText(r.lineVia, r.lineName)}</span>}
-                    {r.note && <span>📝 {r.note.length > 24 ? `${r.note.slice(0, 24)}…` : r.note}</span>}
-                    <span>{opening === r.id ? "開啟中…" : fmtDay(r.updatedAt)}</span>
-                  </div>
-                </button>
+                <SwipeRow
+                  key={r.id}
+                  styles={styles}
+                  open={openId === r.id}
+                  onOpenChange={(o) => setOpenId((cur) => (o ? r.id : cur === r.id ? null : cur))}
+                  onDelete={() => remove(r)}
+                  deleting={deleting === r.id}
+                >
+                  <button type="button" className={styles.row} onClick={() => open(r.id)} disabled={opening === r.id}>
+                    <div className={styles.rowTop}>
+                      <span className={styles.rowName}>{r.name || "（未填姓名）"}</span>
+                      <span className={styles.rowPhone}>{r.phone}</span>
+                    </div>
+                    <p className={styles.rowSummary}>{r.summary ?? "還沒填條件"}</p>
+                    <div className={styles.rowMeta}>
+                      {r.linked ? <span className={`${styles.tag} ${r.followed ? styles.tagOn : ""}`}>{r.followed ? "LINE 已綁" : "LINE 已封鎖"}</span> : <span className={styles.tag}>未綁 LINE</span>}
+                      {lineText(r.lineVia, r.lineName) && <span className={styles.tag}>{lineText(r.lineVia, r.lineName)}</span>}
+                      {r.note && <span>📝 {r.note.length > 24 ? `${r.note.slice(0, 24)}…` : r.note}</span>}
+                      <span>{opening === r.id ? "開啟中…" : fmtDay(r.updatedAt)}</span>
+                    </div>
+                  </button>
+                </SwipeRow>
               ))}
             </div>
           )}

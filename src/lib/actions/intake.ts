@@ -7,6 +7,7 @@
  *
  * ⚠️ 2026-09-26 起這條路也回得到**整份名單**（他要在 /intake 看已建立的客戶）——
  *    也就是說拿到連結的人看得到客戶姓名、電話、需求。連結外流就到後台「重新產生」。
+ *    2026-10-05 起也刪得掉（名單往左滑）—— 同一把金鑰，同一句話。
  */
 import { revalidatePath } from "next/cache";
 import { verifyIntakeKey } from "@/lib/match/intake-key";
@@ -21,7 +22,7 @@ import {
   type IntakeBuyer,
   type IntakeRow,
 } from "@/lib/match/intake";
-import { getBuyer } from "@/lib/match/store";
+import { deleteBuyer, getBuyer } from "@/lib/match/store";
 
 // ⚠️ 這裡不能寫 `export type { IntakeBuyer, IntakeRow }` 轉出去：
 //    "use server" 的檔案會被當成「每個 export 都是 action」處理，那一行在執行期會變成
@@ -78,4 +79,17 @@ export async function intakePushAction(key: string, buyerId: string): Promise<{ 
   } catch (e) {
     return { ok: false, error: describeError(e) };
   }
+}
+
+/** 名單上往左滑刪掉一位（打錯、測試資料用）。名下有預約的刪不掉，理由在 store.deleteBuyer。 */
+export async function intakeDeleteAction(key: string, id: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!(await verifyIntakeKey(key))) return { ok: false, error: INVALID };
+  try {
+    const r = await deleteBuyer(id);
+    if (!r.ok) return { ok: false, error: r.reason ?? "刪除失敗" };
+  } catch (e) {
+    return { ok: false, error: describeError(e) };
+  }
+  revalidatePath("/admin/match");
+  return { ok: true };
 }
