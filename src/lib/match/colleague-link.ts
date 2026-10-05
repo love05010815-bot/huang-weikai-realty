@@ -1,7 +1,7 @@
 /**
  * 同事相關的純函式（不碰資料庫，scripts/check-match.mjs 測得到；資料庫那半在 colleagues.ts）。
  */
-import { SITE_URL } from "@/config/owner";
+import { BRANCH_SITE, SITE_URL } from "@/config/owner";
 
 /** 給客人看的那一面（配對頁、預約完成頁）：只有名字、電話、LINE 連結，金鑰絕對不能跟著出去 */
 export type ColleagueContact = { name: string; phone: string; lineUrl: string };
@@ -25,4 +25,16 @@ export function lineUrlFromInput(raw: unknown): string {
 /** 同事的快速建檔連結（跟本人的同一個頁面，金鑰不同） */
 export function colleagueIntakeUrl(key: string): string {
   return `${SITE_URL}/intake?key=${encodeURIComponent(key)}`;
+}
+
+/**
+ * 同事的**客人**收到的那條連結 —— 店頭官網的「好案配對找房」
+ * （2026-10-05 他說「把同事版的物件配對改這個官網內的配對給客人連結」）。
+ *
+ * 識別碼放在 ? 後面而不是 # 後面：靜態站讀 location.search 比讀 hash 穩，#match 單純讓瀏覽器
+ * 捲到配對那一段。客人點開之後那一頁會拿這個識別碼打 /api/match/brief（配對結果、該找哪位同事）
+ * 與 /api/match/viewing（送預約，預約會推到該同事的手機）。
+ */
+export function branchMatchUrl(token: string): string {
+  return `${BRANCH_SITE.url}/?b=${encodeURIComponent(token)}#match`;
 }
