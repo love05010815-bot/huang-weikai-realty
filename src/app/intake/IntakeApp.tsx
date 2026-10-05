@@ -8,7 +8,7 @@
  *               預算／區域／型態三排標籤篩選（2026-10-05，規則在 lib/match/buyer-filter.ts）
  *   result      這位的資料、符合幾間、傳給客戶
  *   viewings    自己客人的預約看屋（2026-10-05 同事版加的：同事沒有後台，預約只能在這裡看）；
- *               同事在這裡開手機通知（PushSetup，Web Push）
+ *               同事在這裡開手機通知（PushSetup，Web Push）；每筆有「已完成」，按了就收進底下「顯示已完成」
  *   colleagues  同事管理（只有本人的連結有）：新增、停用、重新產生連結、刪除
  * 表單（BuyerEditor）、傳給客戶（ShareToBuyer）、物件清單（MatchList）都跟後台共用，只換淺色樣式。
  *
@@ -32,6 +32,7 @@ import {
   intakeRotateColleagueKeyAction,
   intakeSaveAction,
   intakeSetColleagueAction,
+  intakeSetViewingStatusAction,
   intakeViewingsAction,
   type IntakeSaveResult,
 } from "@/lib/actions/intake";
@@ -80,6 +81,9 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
   // 預約看屋（每次進來重撈，客人可能剛按了預約）
   const [viewings, setViewings] = useState<IntakeViewingRow[] | null>(null);
   const [viewingsError, setViewingsError] = useState<string | null>(null);
+  // 已完成的預設收起來（他說「完成之後不再顯示在預約的項目裡」），底下一顆「顯示已完成」可以翻
+  const [showDone, setShowDone] = useState(false);
+  const [vBusy, setVBusy] = useState<string | null>(null);
   // 同事管理（只有本人）
   const [colleagues, setColleagues] = useState<IntakeColleagueRow[] | null>(null);
   const [colleaguesError, setColleaguesError] = useState<string | null>(null);
@@ -169,6 +173,20 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
     setFlash(`已刪掉「${r.name || r.phone}」`);
   }
 
+  /** 預約卡上的「已完成」／「恢復」。完成要先問一聲（按錯了底下「顯示已完成」還找得到、可以恢復） */
+  async function setViewingStatus(v: IntakeViewingRow, status: "done" | "pending") {
+    if (status === "done" && !window.confirm(`「${v.name}」的看屋已完成？完成後會從這裡消失（底下「顯示已完成」還找得到）。`)) return;
+    setVBusy(v.id);
+    setViewingsError(null);
+    const r = await intakeSetViewingStatusAction(intakeKey, v.id, status);
+    setVBusy(null);
+    if (!r.ok) {
+      setViewingsError(r.error);
+      return;
+    }
+    setViewings((cur) => (cur ?? []).map((x) => (x.id === v.id ? { ...x, status: r.status, statusLabel: r.statusLabel } : x)));
+  }
+
   async function copyText(text: string, label: string, setter: (s: string | null) => void) {
     try {
       await navigator.clipboard.writeText(text);
@@ -243,6 +261,55 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
   const typeChips = distinctCounts(rows ?? [], "types");
   const budgetChipCounts = budgetCounts(rows ?? []);
   const chipClass = (on: boolean) => `${styles.fchip} ${on ? styles.fchipOn : ""}`;
+  const activeViewings = (viewings ?? []).filter((v) => v.status !== "done");
+  const doneViewings = (viewings ?? []).filter((v) => v.status === "done");
+
+  /** 預約那一列（進行中和已完成共用，已完成的淡一點、按鈕變「恢復」） */
+  const viewingCard = (v: IntakeViewingRow) => (
+    <div key={v.id} className={`${styles.vrow} ${v.status === "done" ? styles.vrowOff : ""}`}>
+      <div className={styles.rowTop}>
+        <span className={styles.rowName}>{v.name}</span>
+        <span className={`${styles.tag} ${statusTag(v.status)}`}>{v.statusLabel}</span>
+      </div>
+      <div className={styles.vlist}>
+        {v.listings.map((l) => (
+          <div key={l.id} className={styles.vitem}>
+            {l.sourceUrl ? (
+              <a className={styles.vtitle} href={l.sourceUrl} target="_blank" rel="noopener noreferrer">
+                {l.title} ↗
+              </a>
+            ) : (
+              <span className={styles.vtitle}>{l.title}</span>
+            )}
+            <span className={styles.vaddr}>
+              {l.address || "（地址不詳）"}
+              {l.price > 0 ? ` · ${l.price.toLocaleString("zh-TW")} 萬` : ""}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className={styles.rowMeta}>
+        <span>🕒 {v.preferredAt || "時間待安排"}</span>
+        <a className={styles.rowPhone} href={`tel:${v.phone}`}>
+          {v.phone}
+        </a>
+        <span>{v.code}</span>
+        <span>{fmtDay(v.createdAt)}</span>
+      </div>
+      {v.note && <p className={styles.rowSummary}>📝 {v.note}</p>}
+      <div className={styles.actions}>
+        {v.status === "done" ? (
+          <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setViewingStatus(v, "pending")} disabled={vBusy === v.id}>
+            {vBusy === v.id ? "處理中…" : "恢復到進行中"}
+          </button>
+        ) : (
+          <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setViewingStatus(v, "done")} disabled={vBusy === v.id}>
+            {vBusy === v.id ? "處理中…" : "✓ 已完成"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
   const subText =
     view === "list"
@@ -250,7 +317,7 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
       : view === "result"
         ? "存好了"
         : view === "viewings"
-          ? `預約看屋${viewings ? `（${viewings.length}）` : ""}`
+          ? `預約看屋${viewings ? `（${activeViewings.length}）` : ""}`
           : view === "colleagues"
             ? "同事名單：每人一條自己的連結，客人各管各的"
             : who.colleague
@@ -477,46 +544,19 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
           {who.colleague && <PushSetup intakeKey={intakeKey} publicKey={who.pushPublicKey} styles={styles} />}
           {!viewings && !viewingsError ? (
             <p className={styles.muted}>讀取中…</p>
-          ) : viewings && viewings.length === 0 ? (
-            <p className={styles.muted}>還沒有預約。客人在專屬連結裡按「預約看屋」之後，會出現在這裡。</p>
+          ) : viewings && activeViewings.length === 0 ? (
+            <p className={styles.muted}>{doneViewings.length ? "進行中的預約都處理完了。" : "還沒有預約。客人在專屬連結裡按「預約看屋」之後，會出現在這裡。"}</p>
           ) : (
-            <div className={styles.rows}>
-              {(viewings ?? []).map((v) => (
-                <div key={v.id} className={styles.vrow}>
-                  <div className={styles.rowTop}>
-                    <span className={styles.rowName}>{v.name}</span>
-                    <span className={`${styles.tag} ${statusTag(v.status)}`}>{v.statusLabel}</span>
-                  </div>
-                  <div className={styles.vlist}>
-                    {v.listings.map((l) => (
-                      <div key={l.id} className={styles.vitem}>
-                        {l.sourceUrl ? (
-                          <a className={styles.vtitle} href={l.sourceUrl} target="_blank" rel="noopener noreferrer">
-                            {l.title} ↗
-                          </a>
-                        ) : (
-                          <span className={styles.vtitle}>{l.title}</span>
-                        )}
-                        <span className={styles.vaddr}>
-                          {l.address || "（地址不詳）"}
-                          {l.price > 0 ? ` · ${l.price.toLocaleString("zh-TW")} 萬` : ""}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className={styles.rowMeta}>
-                    <span>🕒 {v.preferredAt || "時間待安排"}</span>
-                    <a className={styles.rowPhone} href={`tel:${v.phone}`}>
-                      {v.phone}
-                    </a>
-                    <span>{v.code}</span>
-                    <span>{fmtDay(v.createdAt)}</span>
-                  </div>
-                  {v.note && <p className={styles.rowSummary}>📝 {v.note}</p>}
-                </div>
-              ))}
-            </div>
+            <div className={styles.rows}>{activeViewings.map(viewingCard)}</div>
           )}
+          {doneViewings.length > 0 && (
+            <p className={styles.muted} style={{ marginTop: 12 }}>
+              <button type="button" className={styles.linkBtn} onClick={() => setShowDone((s) => !s)}>
+                {showDone ? "收起已完成" : `顯示已完成（${doneViewings.length}）`}
+              </button>
+            </p>
+          )}
+          {showDone && doneViewings.length > 0 && <div className={styles.rows}>{doneViewings.map(viewingCard)}</div>}
         </div>
       )}
 

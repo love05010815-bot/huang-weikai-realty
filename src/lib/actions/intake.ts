@@ -29,6 +29,7 @@ import {
 import {
   buildBuyerBrief,
   buyerOwnedBy,
+  intakeStatusLabel,
   listIntakeRows,
   listIntakeViewings,
   pushBriefToBuyer,
@@ -44,7 +45,8 @@ import {
 } from "@/lib/match/intake";
 import { actorOwnerId, resolveIntakeActor, type IntakeActor } from "@/lib/match/intake-key";
 import { countPushSubscriptions, deletePushSubscription, parseSubscription, savePushSubscription, sendTestPush } from "@/lib/match/push";
-import { deleteBuyer, getBuyer } from "@/lib/match/store";
+import { deleteBuyer, getBuyer, getViewing } from "@/lib/match/store";
+import { applyViewingStatus } from "@/lib/match/viewing-status";
 
 // ⚠️ 這裡不能寫 `export type { IntakeBuyer, IntakeRow }` 轉出去：
 //    "use server" 的檔案會被當成「每個 export 都是 action」處理，那一行在執行期會變成
@@ -139,6 +141,29 @@ export async function intakeViewingsAction(key: string): Promise<Fail | { ok: tr
   if (!actor) return { ok: false, error: INVALID };
   try {
     return { ok: true, rows: await listIntakeViewings(actorOwnerId(actor), 100) };
+  } catch (e) {
+    return { ok: false, error: describeError(e) };
+  }
+}
+
+/**
+ * 預約卡上的「已完成」／「恢復」（2026-10-05 他要的：「設定一個已完成的選項，完成之後不再顯示在預約的項目裡」）。
+ * 只能動自己客人的預約；沒掛買方的預約只有本人能動。走 applyViewingStatus —— 跟後台下拉、LINE 指令同一段。
+ */
+export async function intakeSetViewingStatusAction(key: string, id: string, status: "done" | "pending"): Promise<Fail | { ok: true; status: string; statusLabel: string }> {
+  const actor = await resolveIntakeActor(key);
+  if (!actor) return { ok: false, error: INVALID };
+  if (status !== "done" && status !== "pending") return { ok: false, error: "無效的狀態" };
+  try {
+    const viewing = await getViewing(id);
+    if (!viewing) return { ok: false, error: "找不到這筆預約" };
+    const buyer = viewing.buyerId ? await getBuyer(viewing.buyerId) : null;
+    const mine = buyer ? buyerOwnedBy(buyer, actorOwnerId(actor)) : actor.kind === "owner";
+    if (!mine) return { ok: false, error: "這筆預約不在你的名單裡" };
+    const r = await applyViewingStatus(id, status);
+    if (!r.ok) return { ok: false, error: r.error ?? "改不了狀態" };
+    revalidatePath("/admin/match");
+    return { ok: true, status, statusLabel: intakeStatusLabel(status, actor.kind === "colleague") };
   } catch (e) {
     return { ok: false, error: describeError(e) };
   }

@@ -269,7 +269,12 @@ export type IntakeViewingRow = {
   createdAt: string | null;
 };
 
-/** colleague = 同事的客人：他們不綁官方 LINE，「待綁定 LINE／已綁定，待確認」這兩個狀態對他們來說就是「待聯絡」 */
+/** 預約狀態給 /intake 看的字。colleague = 同事的客人：他們不綁官方 LINE，「待綁定 LINE／已綁定，待確認」對他們就是「待聯絡」 */
+export function intakeStatusLabel(status: string, colleague: boolean): string {
+  if (colleague && (status === "pending" || status === "linked")) return "待聯絡";
+  return VIEWING_STATUS[status] ?? status;
+}
+
 export function toIntakeViewingRow(v: ViewingWithListing, listingById: Map<string, MatchListing>, colleague = false): IntakeViewingRow {
   return {
     id: v.id,
@@ -285,7 +290,7 @@ export function toIntakeViewingRow(v: ViewingWithListing, listingById: Map<strin
     preferredAt: v.preferredAt,
     note: v.note,
     status: v.status,
-    statusLabel: colleague && (v.status === "pending" || v.status === "linked") ? "待聯絡" : (VIEWING_STATUS[v.status] ?? v.status),
+    statusLabel: intakeStatusLabel(v.status, colleague),
     createdAt: v.createdAt ? new Date(v.createdAt).toISOString() : null,
   };
 }
