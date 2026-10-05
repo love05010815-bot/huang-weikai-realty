@@ -135,7 +135,7 @@ export async function updateColleague(
 
 /**
  * 停用（離職）：連結作廢、金鑰換掉、手機通知訂閱清掉。之後「重新啟用」會拿到一條新連結。
- * 他的客人還掛在他名下（名單各管各的，不自動轉）；本人要接手就按「接手他的客人」（transferBuyersToOwner）。
+ * 他的客人還掛在他名下（名單各管各的，永遠不轉給本人 —— 他說離職同事帶走自己的名單）；要清掉就「刪除」她（deleteColleague 連客人一起清）。
  */
 export async function offboardColleague(id: string): Promise<Colleague | null> {
   await ensureMatchTables();
