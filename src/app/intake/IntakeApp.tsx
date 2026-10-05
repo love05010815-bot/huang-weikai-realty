@@ -46,8 +46,21 @@ const styles = { ...matchStyles, ...intakeStyles };
 type Saved = Extract<IntakeSaveResult, { ok: true }>;
 type View = "form" | "list" | "result" | "viewings" | "colleagues";
 
-/** 這條連結是誰的：本人（可以管同事、可以推播）還是同事 */
-export type IntakeWho = { colleague: boolean; name: string };
+/** 這條連結是誰的：本人（可以管同事、可以推播）還是同事；同事的話還帶 LINE 通知綁了沒、綁定碼 */
+export type IntakeWho = {
+  colleague: boolean;
+  name: string;
+  /** 同事的 LINE 綁好了沒（綁了新預約才推得到他） */
+  lineBound: boolean;
+  /** 同事在官方帳號要傳的六碼（本人的連結是空字串） */
+  bindCode: string;
+  /** 官方帳號加好友連結 */
+  addFriendUrl: string;
+};
+
+/** 給同事的綁定說明（本人複製轉傳、同事頁面也顯示同一段） */
+const bindHowTo = (addFriend: string, code: string) =>
+  `① 用你的 LINE 加官方帳號好友：${addFriend}\n② 在官方帳號傳這一句：綁定 ${code}\n綁好之後，你客人的看屋預約會通知到你的 LINE。`;
 
 const fmtDay = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString("zh-TW", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric" }) : "";
@@ -461,6 +474,25 @@ export default function IntakeApp({ intakeKey, meta, who }: { intakeKey: string;
       {view === "viewings" && (
         <div className={styles.wrap}>
           {viewingsError && <p className={styles.msg}>{viewingsError}</p>}
+          {who.colleague &&
+            (who.lineBound ? (
+              <p className={styles.muted}>✅ 新預約會通知到你的 LINE。</p>
+            ) : (
+              <div className={styles.card}>
+                <p className={styles.sectionTitle}>想在 LINE 收到新預約通知？</p>
+                <p className={styles.muted} style={{ whiteSpace: "pre-wrap" }}>
+                  {bindHowTo(who.addFriendUrl, who.bindCode)}
+                </p>
+                <div className={styles.actions}>
+                  <a className={`${styles.btn} ${styles.btnLine}`} href={who.addFriendUrl} target="_blank" rel="noopener noreferrer">
+                    加官方帳號好友
+                  </a>
+                  <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => copyText(`綁定 ${who.bindCode}`, "綁定指令", setViewingsError)}>
+                    複製「綁定 {who.bindCode}」
+                  </button>
+                </div>
+              </div>
+            ))}
           {!viewings && !viewingsError ? (
             <p className={styles.muted}>讀取中…</p>
           ) : viewings && viewings.length === 0 ? (
@@ -547,6 +579,7 @@ export default function IntakeApp({ intakeKey, meta, who }: { intakeKey: string;
                     <span>{c.lineUrl ? "LINE ✔" : "沒填 LINE"}</span>
                     <span>{c.buyers} 位客人</span>
                     <span>{fmtDay(c.createdAt)} 加入</span>
+                    <span>{c.lineBound ? "🔔 LINE 通知已綁定" : `🔕 LINE 通知未綁定（綁定碼 ${c.bindCode}）`}</span>
                   </div>
                   <p className={styles.curl}>{c.url}</p>
                   <div className={styles.actions}>
@@ -559,6 +592,11 @@ export default function IntakeApp({ intakeKey, meta, who }: { intakeKey: string;
                     <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => rotateColleague(c)}>
                       重新產生連結
                     </button>
+                    {!c.lineBound && (
+                      <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => copyText(bindHowTo(who.addFriendUrl, c.bindCode), "綁定說明", setCMsg)}>
+                        複製綁定說明
+                      </button>
+                    )}
                     {c.buyers === 0 && (
                       <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => removeColleague(c)}>
                         刪除

@@ -13,6 +13,7 @@
 import type { Metadata } from "next";
 import { OWNER } from "@/config/owner";
 import { resolveIntakeActor, type IntakeActor } from "@/lib/match/intake-key";
+import { addFriendUrl } from "@/lib/match/line";
 import { buildMatchMeta } from "@/lib/match/meta";
 import IntakeApp from "./IntakeApp";
 import styles from "./intake.module.css";
@@ -57,7 +58,17 @@ export default async function IntakePage({ searchParams }: { searchParams: Promi
   const meta = await buildMatchMeta();
   return (
     <>
-      <IntakeApp intakeKey={key} meta={meta} who={{ colleague: actor.kind === "colleague", name: actor.colleague?.name ?? OWNER.alias }} />
+      <IntakeApp
+        intakeKey={key}
+        meta={meta}
+        who={{
+          colleague: actor.kind === "colleague",
+          name: actor.colleague?.name ?? OWNER.alias,
+          lineBound: Boolean(actor.colleague?.lineUserId),
+          bindCode: actor.colleague?.bindCode ?? "",
+          addFriendUrl: addFriendUrl(),
+        }}
+      />
       <p style={{ textAlign: "center", fontSize: 11, color: "#8a9aa2", margin: "0 0 16px" }}>
         {actor.colleague ? `${actor.colleague.name}（${OWNER.company}）` : OWNER.name}｜內部工具
       </p>

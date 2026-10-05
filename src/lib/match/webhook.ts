@@ -20,6 +20,7 @@
 import { VIEWING_STATUS } from "@/config/match";
 import { saveMessage } from "@/lib/line-bot/store";
 import { getAgentLineIds, isAgent } from "./agents";
+import { bindColleagueLine, getColleagueByBindCode } from "./colleagues";
 import { agentCardMessage, pushMessages, replyMessages, text, viewingConfirmFlex, welcomeFlex } from "./line";
 import { describePreference } from "./matcher";
 import {
@@ -45,6 +46,8 @@ const EDIT_RE = /^(修改條件|更改條件|改條件|更新條件|修改需求
 const STOP_RE = /^(停止通知|取消通知|不要通知|停止推播|退出配對)$/;
 const RESUME_RE = /^(恢復通知|開啟通知|繼續通知|重新通知)$/;
 const CARD_RE = /^(名片|聯絡方式|怎麼聯絡)$/;
+/** 同事綁 LINE 通知（2026-10-05）：「綁定 AB12CD」；六碼跟 BK- 編號長得不一樣，不會撞到買方的預約確認 */
+const BIND_RE = /^(?:同事)?綁定\s*([A-Za-z0-9]{6})$/;
 
 /** 他自己叫名片卡時可以多帶參數：「名片 3」「名片 編號 編號」（見 replyCard） */
 const AGENT_CARD_RE = /^(名片|我的名片|自我介紹)\s*(.*)$/;
@@ -82,6 +85,13 @@ export async function handleMatchTextMessage(params: Ctx): Promise<boolean> {
   //    2026-09-16 之前真的會這樣。先攔下來，順便讓他可以直接用 LINE 改狀態、不必開後台。
   if (await isAgent(params.userId)) {
     return handleAgentMessage(params, message);
+  }
+
+  // 同事綁 LINE 通知：放在買方流程前面，綁成功之後他客人的預約就推到這支 LINE（lib/match/colleagues.ts）
+  const bind = message.match(BIND_RE);
+  if (bind) {
+    await bindColleague(params, bind[1]);
+    return true;
   }
 
   const code = message.match(CODE_RE)?.[0]?.toUpperCase();
@@ -363,4 +373,18 @@ async function replyMyViewings({ userId, replyToken }: { userId: string; replyTo
   }
   await replyMessages(replyToken, [text(msg)]);
   await saveMessage(userId, "assistant", msg, "bot");
+}
+
+// ---------------------------------------------------------------- 同事綁 LINE 通知（2026-10-05）
+
+/** 「綁定 AB12CD」：用六碼找同事，把這支 LINE 記在他名下。碼不對就講清楚去哪裡拿。 */
+async function bindColleague({ userId, replyToken }: Ctx, code: string): Promise<void> {
+  const c = await getColleagueByBindCode(code);
+  if (!c || !c.active) {
+    await replyMessages(replyToken, [text("這個綁定碼不對或已失效。請打開你的代客建檔連結 →「預約」，照上面那六碼再傳一次。")]);
+    return;
+  }
+  await bindColleagueLine(c.id, userId);
+  await replyMessages(replyToken, [text(`綁定成功！之後${c.name}客人的看屋預約會通知到這裡。`)]);
+  await saveMessage(userId, "assistant", `［系統］同事「${c.name}」綁定 LINE 通知`, "bot");
 }
