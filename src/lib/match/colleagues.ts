@@ -9,9 +9,8 @@
  *   - 同事的客人**不碰官方帳號**：配對頁、預約完成頁顯示同事的名字／電話／LINE，新預約不通知本人。
  *   - 同事沒有後台；本人在自己的 /intake 多一頁「同事」管理（新增、停用、重新產生連結、刪除）。
  * 停用的同事：金鑰立刻失效；他的客人點舊的專屬連結會退回官方帳號那條路（至少找得到人）。
- * LINE 通知（2026-10-05 他問「這份預約可以回彈到同事的 line 裡面嗎」）：LINE 推不到個人帳號，只能走官方帳號 ——
- * 同事用自己的 LINE 加官方帳號、傳「綁定 六碼」（bind_code），webhook 把他的 userId 記進 line_user_id，
- * 之後他客人的預約就 push 到他那裡（計費一則）。客人還是完全不碰官方帳號。
+ * 新預約通知（2026-10-05 他拍板）：**走手機通知（Web Push，lib/match/push.ts），不綁本人的官方 LINE** ——
+ * 走官方帳號的話每一則本人在後台都看得到，他說「會有偷取同事客人的嫌疑」。
  * 純函式（LINE 連結整理、建檔網址）在 colleague-link.ts，測試吃那邊。
  */
 import { randomBytes, randomUUID } from "node:crypto";
@@ -28,10 +27,6 @@ export type Colleague = {
   lineUrl: string;
   /** 他的快速建檔金鑰（連結本身就是鑰匙，跟本人的同一種） */
   intakeKey: string;
-  /** 同事自己的 LINE userId（加官方帳號、傳「綁定 六碼」之後才有）；null = 還沒綁，新預約不會推給他 */
-  lineUserId: string | null;
-  /** 綁定碼：同事在官方帳號傳「綁定 XXXXXX」用的六碼 */
-  bindCode: string;
   active: boolean;
   createdAt: Date | null;
   updatedAt: Date | null;
@@ -43,14 +38,12 @@ type Row = {
   phone: string | null;
   line_url: string | null;
   intake_key: string;
-  line_user_id: string | null;
-  bind_code: string | null;
   active: number;
   created_at: Date | null;
   updated_at: Date | null;
 };
 
-const COLS = "id, name, phone, line_url, intake_key, line_user_id, bind_code, active, created_at, updated_at";
+const COLS = "id, name, phone, line_url, intake_key, active, created_at, updated_at";
 
 function toColleague(r: Row): Colleague {
   return {
@@ -59,8 +52,6 @@ function toColleague(r: Row): Colleague {
     phone: r.phone ?? "",
     lineUrl: r.line_url ?? "",
     intakeKey: r.intake_key,
-    lineUserId: r.line_user_id ?? null,
-    bindCode: r.bind_code ?? "",
     active: Number(r.active) !== 0,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -69,15 +60,6 @@ function toColleague(r: Row): Colleague {
 
 /** 24 bytes → 32 個 base64url 字元（跟本人的金鑰同一種做法） */
 export const newColleagueKey = (): string => randomBytes(24).toString("base64url");
-
-/** 綁定碼：六碼，避開 0/O、1/I 這種手機上看不清的字 */
-const BIND_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-export function newBindCode(): string {
-  const bytes = randomBytes(6);
-  let s = "";
-  for (const b of bytes) s += BIND_ALPHABET[b % BIND_ALPHABET.length];
-  return s;
-}
 
 /** 給客人看的那一面：只有名字、電話、LINE 連結，金鑰絕對不能跟著出去 */
 export function colleagueContact(c: Colleague): ColleagueContact {
@@ -108,20 +90,19 @@ export async function createColleague(input: { name: string; phone: string; line
   await ensureMatchTables();
   const id = randomUUID();
   await db.$executeRawUnsafe(
-    `INSERT INTO match_colleague (id, name, phone, line_url, intake_key, bind_code, active) VALUES (?, ?, ?, ?, ?, ?, 1)`,
+    `INSERT INTO match_colleague (id, name, phone, line_url, intake_key, active) VALUES (?, ?, ?, ?, ?, 1)`,
     id,
     input.name,
     input.phone,
     input.lineUrl,
     newColleagueKey(),
-    newBindCode(),
   );
   return (await getColleague(id))!;
 }
 
 export async function updateColleague(
   id: string,
-  patch: { name?: string; phone?: string; lineUrl?: string; active?: boolean; lineUserId?: string | null },
+  patch: { name?: string; phone?: string; lineUrl?: string; active?: boolean },
 ): Promise<Colleague | null> {
   await ensureMatchTables();
   const sets: string[] = [];
@@ -141,10 +122,6 @@ export async function updateColleague(
   if (patch.active !== undefined) {
     sets.push("active = ?");
     values.push(patch.active ? 1 : 0);
-  }
-  if (patch.lineUserId !== undefined) {
-    sets.push("line_user_id = ?");
-    values.push(patch.lineUserId);
   }
   if (sets.length) {
     values.push(id);
@@ -170,6 +147,8 @@ export async function countBuyersOfColleague(id: string): Promise<number> {
 export async function deleteColleague(id: string): Promise<{ ok: boolean; reason?: string }> {
   const n = await countBuyersOfColleague(id);
   if (n > 0) return { ok: false, reason: `名下還有 ${n} 位客人，先把客人刪掉，或改成「停用」就好` };
+  // 他手機上的通知訂閱一起清（直接下 SQL，不從 push.ts import —— 那邊 import 這裡，別繞成圈）
+  await db.$executeRawUnsafe(`DELETE FROM match_push_subscription WHERE colleague_id = ?`, id);
   await db.$executeRawUnsafe(`DELETE FROM match_colleague WHERE id = ?`, id);
   return { ok: true };
 }
@@ -182,31 +161,4 @@ export async function contactForOwner(colleagueId: string | null): Promise<Colle
   if (!colleagueId) return null;
   const c = await getColleague(colleagueId);
   return c && c.active ? colleagueContact(c) : null;
-}
-
-// ---------------------------------------------------------------- LINE 通知的綁定
-
-/** 用綁定碼找同事（大小寫不分）；沒有這一碼就 null */
-export async function getColleagueByBindCode(code: string): Promise<Colleague | null> {
-  const c = String(code ?? "").trim().toUpperCase();
-  if (!/^[A-Z0-9]{6}$/.test(c)) return null;
-  await ensureMatchTables();
-  const rows = await db.$queryRawUnsafe<Row[]>(`SELECT ${COLS} FROM match_colleague WHERE UPPER(bind_code) = ? LIMIT 1`, c);
-  return rows[0] ? toColleague(rows[0]) : null;
-}
-
-/** 這支 LINE 是哪位同事綁的（webhook 用：同事傳的訊息不該走買方流程） */
-export async function getColleagueByLine(lineUserId: string): Promise<Colleague | null> {
-  if (!lineUserId) return null;
-  await ensureMatchTables();
-  const rows = await db.$queryRawUnsafe<Row[]>(`SELECT ${COLS} FROM match_colleague WHERE line_user_id = ? LIMIT 1`, lineUserId);
-  return rows[0] ? toColleague(rows[0]) : null;
-}
-
-/** 把這支 LINE 綁給這位同事；同一支 LINE 只能綁一位（之前綁在別人身上的清掉） */
-export async function bindColleagueLine(id: string, lineUserId: string): Promise<Colleague | null> {
-  await ensureMatchTables();
-  await db.$executeRawUnsafe(`UPDATE match_colleague SET line_user_id = NULL WHERE line_user_id = ? AND id <> ?`, lineUserId, id);
-  await db.$executeRawUnsafe(`UPDATE match_colleague SET line_user_id = ? WHERE id = ?`, lineUserId, id);
-  return getColleague(id);
 }

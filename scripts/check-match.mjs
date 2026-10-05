@@ -38,6 +38,7 @@ import { detectPriceChanges } from "../src/lib/match/diff.ts";
 import { parseBlocks, parseHouseolDetail, splitAddress, splitResponse, toListingUpsert } from "../src/lib/match/houseol-parse.ts";
 import { BUDGET_TIERS, EMPTY_FILTER, budgetCounts, distinctCounts, isFilterActive, matchesBudget, matchesFilter, toggleIn } from "../src/lib/match/buyer-filter.ts";
 import { lineText, lineViaLabel, normalizeLineVia } from "../src/lib/match/line-via.ts";
+import { colleagueViewingPush, testPush } from "../src/lib/match/push-payload.ts";
 import { isBaseline, listingsToHide, pickDueSource, planHouseolWrites, sameSourceSnapshot } from "../src/lib/match/merge.ts";
 import { createBuyerToken, verifyBuyerToken } from "../src/lib/match/token.ts";
 
@@ -846,15 +847,18 @@ test("預約通知：帶上買方的購屋條件，跟後台「買方」那一�
   assert.ok(body.includes(`購屋條件：${describePreference(pref)}`), body);
 });
 
-test("給同事的預約通知：只有編號和去哪裡看，絕對不帶客人資料（官方帳號是本人的，他看得到）", () => {
-  const body = LINE.colleagueViewingNotifyText(fakeViewing);
-  assert.match(body, /新的看屋預約 BK-/);
-  assert.ok(body.includes("「預約」"), body);
-  assert.ok(!body.includes("陳小姐"), "不能有客人姓名");
-  assert.ok(!body.includes("0912345678"), "不能有客人電話");
-  assert.ok(!body.includes(fakeViewing.preferredAt), "不能有看屋時間");
-  assert.ok(!body.includes("已確認"), "同事不能用專員指令");
-  assert.ok(!body.includes("/admin/match"), "同事沒有後台");
+test("同事的手機通知：標題有編號、內容有客人與物件、點開落在他的「預約」頁", () => {
+  const p = colleagueViewingPush(fakeViewing, [fakeListing("L1"), fakeListing("L2")], "https://weikaihouse.com/intake?key=k&v=viewings");
+  assert.equal(p.title, `新預約看屋 ${fakeViewing.code}`);
+  assert.ok(p.body.includes("陳小姐"), p.body);
+  assert.ok(p.body.includes("等 2 間"), p.body);
+  assert.ok(p.body.includes(fakeViewing.preferredAt), p.body);
+  assert.ok(p.url.endsWith("&v=viewings"));
+  assert.equal(p.tag, `viewing-${fakeViewing.code}`);
+  const one = colleagueViewingPush({ ...fakeViewing, preferredAt: "" }, [fakeListing("L1")], "u");
+  assert.ok(!one.body.includes("等 "), one.body);
+  assert.ok(one.body.includes("時間待安排"), one.body);
+  assert.ok(testPush("u").title.includes("測試"));
 });
 
 test("預約通知：沒留過條件也要有那一行，不能整行消失", () => {

@@ -12,7 +12,8 @@
  * 同事版（2026-10-05）：金鑰分兩種 —— 本人的（appointment_config）與同事的（match_colleague.intake_key）。
  * resolveIntakeActor 認出是誰之後，**每一個動作都只在他自己的名單裡做**：
  *   本人   = colleague_id IS NULL 的客人；也只有本人能管同事（最下面那幾支）。
- *   同事   = colleague_id 是他的客人；不能推播（同事的客人不碰官方帳號）。
+ *   同事   = colleague_id 是他的客人；不能推播（同事的客人不碰官方帳號）；
+ *            可以開手機通知（Web Push，lib/match/push.ts）收自己客人的新預約。
  */
 import { revalidatePath } from "next/cache";
 import { OWNER } from "@/config/owner";
@@ -42,6 +43,7 @@ import {
   type IntakeViewingRow,
 } from "@/lib/match/intake";
 import { actorOwnerId, resolveIntakeActor, type IntakeActor } from "@/lib/match/intake-key";
+import { countPushSubscriptions, deletePushSubscription, parseSubscription, savePushSubscription, sendTestPush } from "@/lib/match/push";
 import { deleteBuyer, getBuyer } from "@/lib/match/store";
 
 // ⚠️ 這裡不能寫 `export type { IntakeBuyer, IntakeRow }` 轉出去：
@@ -154,7 +156,7 @@ async function ownerOnly(key: string): Promise<IntakeActor | Fail> {
 async function colleagueRows(): Promise<IntakeColleagueRow[]> {
   const rows: IntakeColleagueRow[] = [];
   // 連線池只有 3 條：循序問，不要 Promise.all
-  for (const c of await listColleagues()) rows.push(toIntakeColleagueRow(c, await countBuyersOfColleague(c.id)));
+  for (const c of await listColleagues()) rows.push(toIntakeColleagueRow(c, await countBuyersOfColleague(c.id), await countPushSubscriptions(c.id)));
   return rows;
 }
 
@@ -183,7 +185,7 @@ export async function intakeAddColleagueAction(
   try {
     const c = await createColleague({ name, phone, lineUrl });
     const rows = await colleagueRows();
-    const created = rows.find((r) => r.id === c.id) ?? toIntakeColleagueRow(c, 0);
+    const created = rows.find((r) => r.id === c.id) ?? toIntakeColleagueRow(c, 0, 0);
     return { ok: true, rows, created };
   } catch (e) {
     return { ok: false, error: describeError(e) };
@@ -238,6 +240,52 @@ export async function intakeDeleteColleagueAction(key: string, id: string): Prom
     const r = await deleteColleague(id);
     if (!r.ok) return { ok: false, error: r.reason ?? "刪除失敗" };
     return { ok: true, rows: await colleagueRows() };
+  } catch (e) {
+    return { ok: false, error: describeError(e) };
+  }
+}
+
+// ---------------------------------------------------------------- 同事的手機通知（Web Push，只有同事的連結）
+
+async function colleagueOnly(key: string): Promise<IntakeActor | Fail> {
+  const actor = await resolveIntakeActor(key);
+  if (!actor) return { ok: false, error: INVALID };
+  if (actor.kind !== "colleague") return { ok: false, error: "本人的預約走官方帳號和 Email 通知，這個功能只給同事的連結" };
+  return actor;
+}
+
+/** 這支手機訂好了（PushSetup.tsx 把瀏覽器給的訂閱資料送上來存） */
+export async function intakeSubscribePushAction(key: string, subscription: unknown, userAgent: string): Promise<{ ok: true } | Fail> {
+  const gate = await colleagueOnly(key);
+  if ("ok" in gate) return gate;
+  const sub = parseSubscription(subscription);
+  if (!sub) return { ok: false, error: "訂閱資料看不懂，請重新整理再試一次" };
+  try {
+    await savePushSubscription(gate.colleague!.id, sub, String(userAgent ?? ""));
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: describeError(e) };
+  }
+}
+
+/** 同事按「關閉通知」 */
+export async function intakeUnsubscribePushAction(key: string, endpoint: string): Promise<{ ok: true } | Fail> {
+  const gate = await colleagueOnly(key);
+  if ("ok" in gate) return gate;
+  try {
+    await deletePushSubscription(gate.colleague!.id, String(endpoint ?? ""));
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: describeError(e) };
+  }
+}
+
+/** 同事按「傳一則測試通知」：推給他名下每一支手機 */
+export async function intakeTestPushAction(key: string): Promise<{ ok: true; sent: number; failed: number; removed: number } | Fail> {
+  const gate = await colleagueOnly(key);
+  if ("ok" in gate) return gate;
+  try {
+    return { ok: true, ...(await sendTestPush(gate.colleague!)) };
   } catch (e) {
     return { ok: false, error: describeError(e) };
   }

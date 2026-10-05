@@ -139,17 +139,26 @@ export async function ensureMatchTables(): Promise<void> {
       UNIQUE KEY uq_match_colleague_key (intake_key)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
-  // 同事的 LINE 通知（2026-10-05 他問「這份預約可以回彈到同事的 line 裡面嗎」）：
-  // line_user_id = 同事自己的 LINE（加官方帳號後傳「綁定 六碼」綁的）、bind_code = 那六碼。一句一欄（TiDB）。
-  for (const [col, ddl] of [
-    ["line_user_id", "ALTER TABLE match_colleague ADD COLUMN line_user_id VARCHAR(64) NULL AFTER line_url"],
-    ["bind_code", "ALTER TABLE match_colleague ADD COLUMN bind_code VARCHAR(12) NOT NULL DEFAULT '' AFTER line_user_id"],
-  ] as const) {
-    const has = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM match_colleague LIKE '${col}'`);
-    if (has.length === 0) await db.$executeRawUnsafe(ddl);
-  }
-  // 比這個欄位早建的同事還沒有綁定碼，補一個（六碼大寫十六進位）
-  await db.$executeRawUnsafe(`UPDATE match_colleague SET bind_code = UPPER(SUBSTRING(MD5(RAND()), 1, 6)) WHERE bind_code = ''`);
+  // （正式站的 match_colleague 還留著 line_user_id、bind_code 兩欄：2026-10-05 當天做了官方帳號綁定又拿掉，
+  //   改走下面的手機通知。欄位沒用了、也沒刪，別拿它們判斷任何事。）
+
+  // 同事的手機通知（Web Push，2026-10-05 他說「不綁我的官方 line 了」）：一支手機一筆訂閱。見 lib/match/push.ts
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS match_push_subscription (
+      id            VARCHAR(36)  NOT NULL,
+      colleague_id  VARCHAR(36)  NOT NULL,
+      endpoint      TEXT         NOT NULL,
+      endpoint_hash CHAR(64)     NOT NULL,
+      p256dh        VARCHAR(255) NOT NULL,
+      auth          VARCHAR(64)  NOT NULL,
+      ua            VARCHAR(255) NOT NULL DEFAULT '',
+      created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_ok_at    DATETIME     NULL,
+      PRIMARY KEY (id),
+      UNIQUE KEY uq_match_push_endpoint (endpoint_hash),
+      KEY idx_match_push_colleague (colleague_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
 
   await db.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS match_viewing (

@@ -307,15 +307,13 @@ export type IntakeColleagueRow = {
   active: boolean;
   /** 他的快速建檔連結（本人要傳給他） */
   url: string;
-  /** 他的 LINE 有沒有綁好（綁了新預約才推得到他） */
-  lineBound: boolean;
-  /** 同事在官方帳號要傳的「綁定 六碼」那六碼 */
-  bindCode: string;
+  /** 開了手機通知的裝置數（0 = 還沒開，新預約推不到他） */
+  pushDevices: number;
   buyers: number;
   createdAt: string | null;
 };
 
-export function toIntakeColleagueRow(c: Colleague, buyers: number): IntakeColleagueRow {
+export function toIntakeColleagueRow(c: Colleague, buyers: number, pushDevices: number): IntakeColleagueRow {
   return {
     id: c.id,
     name: c.name,
@@ -323,8 +321,7 @@ export function toIntakeColleagueRow(c: Colleague, buyers: number): IntakeCollea
     lineUrl: c.lineUrl,
     active: c.active,
     url: colleagueIntakeUrl(c.intakeKey),
-    lineBound: Boolean(c.lineUserId),
-    bindCode: c.bindCode,
+    pushDevices,
     buyers,
     createdAt: c.createdAt ? new Date(c.createdAt).toISOString() : null,
   };

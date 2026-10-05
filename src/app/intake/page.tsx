@@ -15,8 +15,8 @@ import type { Metadata } from "next";
 import { cache } from "react";
 import { OWNER } from "@/config/owner";
 import { resolveIntakeActor, type IntakeActor } from "@/lib/match/intake-key";
-import { addFriendUrl } from "@/lib/match/line";
 import { buildMatchMeta } from "@/lib/match/meta";
+import { getPushPublicKey } from "@/lib/match/push";
 import IntakeApp from "./IntakeApp";
 import styles from "./intake.module.css";
 
@@ -44,17 +44,20 @@ const actorFor = cache((key: string | undefined) => resolveIntakeActor(key));
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ key?: string }> }): Promise<Metadata> {
   const { key } = await searchParams;
-  let colleague = false;
+  let actor: IntakeActor | null = null;
   try {
-    colleague = (await actorFor(key))?.kind === "colleague";
+    actor = await actorFor(key);
   } catch {
     // 資料庫連不上：頁面本體會顯示錯誤，圖示用本人的就好
   }
-  return colleague ? { ...BASE_METADATA, icons: { icon: COLLEAGUE_ICON, apple: COLLEAGUE_ICON } } : BASE_METADATA;
+  if (!actor || !key) return BASE_METADATA;
+  // manifest 每條連結一份（start_url 要帶金鑰）：iPhone 的手機通知要它、Android 加到主畫面也照它（intake/manifest/route.ts）
+  const manifest = `/intake/manifest?key=${encodeURIComponent(key)}`;
+  return actor.kind === "colleague" ? { ...BASE_METADATA, manifest, icons: { icon: COLLEAGUE_ICON, apple: COLLEAGUE_ICON } } : { ...BASE_METADATA, manifest };
 }
 
-export default async function IntakePage({ searchParams }: { searchParams: Promise<{ key?: string }> }) {
-  const { key } = await searchParams;
+export default async function IntakePage({ searchParams }: { searchParams: Promise<{ key?: string; v?: string }> }) {
+  const { key, v } = await searchParams;
 
   let actor: IntakeActor | null = null;
   try {
@@ -79,18 +82,23 @@ export default async function IntakePage({ searchParams }: { searchParams: Promi
   }
 
   const meta = await buildMatchMeta();
+  // 同事才有手機通知；公鑰第一次用到時會自己產生（lib/match/push.ts）。拿不到就給空字串，畫面會說通知服務沒準備好
+  let pushPublicKey = "";
+  if (actor.kind === "colleague") {
+    try {
+      pushPublicKey = await getPushPublicKey();
+    } catch (e) {
+      console.error("[intake] 拿不到推播公鑰:", e);
+    }
+  }
   return (
     <>
       <IntakeApp
         intakeKey={key}
         meta={meta}
-        who={{
-          colleague: actor.kind === "colleague",
-          name: actor.colleague?.name ?? OWNER.alias,
-          lineBound: Boolean(actor.colleague?.lineUserId),
-          bindCode: actor.colleague?.bindCode ?? "",
-          addFriendUrl: addFriendUrl(),
-        }}
+        who={{ colleague: actor.kind === "colleague", name: actor.colleague?.name ?? OWNER.alias, pushPublicKey }}
+        // 手機通知點開會帶 ?v=viewings，直接落在「預約」
+        initialView={v === "viewings" ? "viewings" : undefined}
       />
       <p style={{ textAlign: "center", fontSize: 11, color: "#8a9aa2", margin: "0 0 16px" }}>
         {actor.colleague ? `${actor.colleague.name}（${OWNER.company}）` : OWNER.name}｜內部工具

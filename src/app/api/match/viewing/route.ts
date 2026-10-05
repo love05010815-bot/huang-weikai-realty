@@ -15,7 +15,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { colleagueContact, getColleague } from "@/lib/match/colleagues";
-import { addFriendUrl, colleagueViewingNotifyText, notifyOwnerNewViewing, oaMessageUrl, pushMessages, text } from "@/lib/match/line";
+import { addFriendUrl, notifyOwnerNewViewing, oaMessageUrl } from "@/lib/match/line";
+import { notifyColleagueNewViewing } from "@/lib/match/push";
 import { qrDataUrl } from "@/lib/match/qr";
 import { createViewing, getListings, upsertBuyer } from "@/lib/match/store";
 import { verifyBuyerToken } from "@/lib/match/token";
@@ -80,22 +81,17 @@ export async function POST(req: NextRequest) {
     // 通知失敗不能讓買方看到錯誤 —— 預約已經成立了
     // buyer.preference 是他在 /api/match/search 留下的購屋條件（upsertBuyer 不會覆蓋掉舊的），
     // 跟著通知一起送給他本人，省得為了看客戶要什麼再開一次後台。
-    // 同事的客人（2026-10-05 同事版）：不通知本人（名單各管各的），同事在自己的「預約」頁看得到；
-    // 之後要做「有新預約 LINE 通知同事」再接這裡。同事停用了會回 null → 當本人的客人處理，至少有人接。
+    // 同事的客人（2026-10-05 同事版）：不通知本人（名單各管各的），推到同事自己的手機（Web Push，lib/match/push.ts）——
+    // 不經官方帳號、不經本人。沒開通知的手機就只留 console，他在自己的「預約」頁看得到。
+    // 同事停用了會回 null → 當本人的客人處理，至少有人接。
     const owner = buyer.colleagueId ? await getColleague(buyer.colleagueId) : null;
     const colleague = owner && owner.active ? colleagueContact(owner) : null;
     if (owner && colleague) {
-      // 同事綁了 LINE 就推給他（計費一則）；沒綁只留 console，他在自己的「預約」頁看得到
-      if (owner.lineUserId) {
-        try {
-          // 通知裡沒有客人資料（理由見 colleagueViewingNotifyText）
-          const ok = await pushMessages(owner.lineUserId, [text(colleagueViewingNotifyText(viewing))]);
-          console.log(`[match/viewing] ${viewing.code} 推給同事「${owner.name}」${ok ? "成功" : "失敗（LINE 沒收）"}`);
-        } catch (e) {
-          console.error(`[match/viewing] ${viewing.code} 推給同事失敗:`, e);
-        }
-      } else {
-        console.log(`[match/viewing] ${viewing.code} 是同事「${owner.name}」的客人（還沒綁 LINE），不通知本人`);
+      try {
+        const r = await notifyColleagueNewViewing(owner, viewing, listings);
+        console.log(`[match/viewing] ${viewing.code} 同事「${owner.name}」的手機通知：送出 ${r.sent}、失敗 ${r.failed}、失效移除 ${r.removed}`);
+      } catch (e) {
+        console.error(`[match/viewing] ${viewing.code} 推給同事手機失敗:`, e);
       }
     } else {
       try {
