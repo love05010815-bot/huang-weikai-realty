@@ -269,7 +269,8 @@ export type IntakeViewingRow = {
   createdAt: string | null;
 };
 
-export function toIntakeViewingRow(v: ViewingWithListing, listingById: Map<string, MatchListing>): IntakeViewingRow {
+/** colleague = 同事的客人：他們不綁官方 LINE，「待綁定 LINE／已綁定，待確認」這兩個狀態對他們來說就是「待聯絡」 */
+export function toIntakeViewingRow(v: ViewingWithListing, listingById: Map<string, MatchListing>, colleague = false): IntakeViewingRow {
   return {
     id: v.id,
     code: v.code,
@@ -284,7 +285,7 @@ export function toIntakeViewingRow(v: ViewingWithListing, listingById: Map<strin
     preferredAt: v.preferredAt,
     note: v.note,
     status: v.status,
-    statusLabel: VIEWING_STATUS[v.status] ?? v.status,
+    statusLabel: colleague && (v.status === "pending" || v.status === "linked") ? "待聯絡" : (VIEWING_STATUS[v.status] ?? v.status),
     createdAt: v.createdAt ? new Date(v.createdAt).toISOString() : null,
   };
 }
@@ -294,7 +295,7 @@ export async function listIntakeViewings(colleagueId: string | null, limit = 100
   const raw = await listViewingsForAdmin(limit, colleagueId);
   // 一筆預約可能包含好幾間，物件一次撈齊（已下架、已售的也撈得到，預約紀錄不該因為物件下架就看不到是哪一間）
   const listingById = new Map((await getListings([...new Set(raw.flatMap((v) => v.listingIds))])).map((l) => [l.id, l]));
-  return raw.map((v) => toIntakeViewingRow(v, listingById));
+  return raw.map((v) => toIntakeViewingRow(v, listingById, Boolean(colleagueId)));
 }
 
 // ---------------------------------------------------------------- 同事（只有本人的連結看得到）
