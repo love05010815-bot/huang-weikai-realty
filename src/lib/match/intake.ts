@@ -260,7 +260,8 @@ export type IntakeViewingRow = {
   code: string;
   name: string;
   phone: string;
-  listingTitles: string[];
+  /** 這筆預約包含的物件：案名、完整地址、價格、物件頁連結（2026-10-05 他說只有案名不知道是哪一間） */
+  listings: { id: string; title: string; address: string; price: number; sourceUrl: string }[];
   preferredAt: string;
   note: string;
   status: string;
@@ -268,13 +269,18 @@ export type IntakeViewingRow = {
   createdAt: string | null;
 };
 
-export function toIntakeViewingRow(v: ViewingWithListing, titleById: Map<string, string>): IntakeViewingRow {
+export function toIntakeViewingRow(v: ViewingWithListing, listingById: Map<string, MatchListing>): IntakeViewingRow {
   return {
     id: v.id,
     code: v.code,
     name: v.name,
     phone: v.phone,
-    listingTitles: v.listingIds.map((id) => titleById.get(id) ?? v.listingTitle ?? id),
+    listings: v.listingIds.map((id) => {
+      const l = listingById.get(id);
+      return l
+        ? { id, title: l.title, address: `${l.city}${l.district}${l.address}`, price: l.price, sourceUrl: l.sourceUrl }
+        : { id, title: v.listingTitle || id, address: "", price: 0, sourceUrl: "" };
+    }),
     preferredAt: v.preferredAt,
     note: v.note,
     status: v.status,
@@ -286,9 +292,9 @@ export function toIntakeViewingRow(v: ViewingWithListing, titleById: Map<string,
 /** 自己客人的預約，最新的在前（跟後台「預約看屋」分頁同一支查詢，只是名單不同） */
 export async function listIntakeViewings(colleagueId: string | null, limit = 100): Promise<IntakeViewingRow[]> {
   const raw = await listViewingsForAdmin(limit, colleagueId);
-  // 一筆預約可能包含好幾間，標題一次撈齊
-  const titleById = new Map((await getListings([...new Set(raw.flatMap((v) => v.listingIds))])).map((l) => [l.id, l.title]));
-  return raw.map((v) => toIntakeViewingRow(v, titleById));
+  // 一筆預約可能包含好幾間，物件一次撈齊（已下架、已售的也撈得到，預約紀錄不該因為物件下架就看不到是哪一間）
+  const listingById = new Map((await getListings([...new Set(raw.flatMap((v) => v.listingIds))])).map((l) => [l.id, l]));
+  return raw.map((v) => toIntakeViewingRow(v, listingById));
 }
 
 // ---------------------------------------------------------------- 同事（只有本人的連結看得到）

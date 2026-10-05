@@ -461,3 +461,24 @@
   word-break: break-all;
   user-select: all;
 }
+
+/* 預約那一列裡的每一間：案名（可點開物件頁）＋ 地址 · 價格 */
+.vlist {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0 2px;
+}
+.vitem {
+  display: grid;
+  gap: 2px;
+  font-size: 14px;
+}
+.vtitle {
+  font-weight: 700;
+  color: #22323f;
+  text-decoration: none;
+}
+.vaddr {
+  font-size: 13px;
+  color: #5b6b73;
+}

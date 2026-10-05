@@ -473,7 +473,23 @@ export default function IntakeApp({ intakeKey, meta, who }: { intakeKey: string;
                     <span className={styles.rowName}>{v.name}</span>
                     <span className={`${styles.tag} ${statusTag(v.status)}`}>{v.statusLabel}</span>
                   </div>
-                  <p className={styles.rowSummary}>{v.listingTitles.join("、")}</p>
+                  <div className={styles.vlist}>
+                    {v.listings.map((l) => (
+                      <div key={l.id} className={styles.vitem}>
+                        {l.sourceUrl ? (
+                          <a className={styles.vtitle} href={l.sourceUrl} target="_blank" rel="noopener noreferrer">
+                            {l.title} ↗
+                          </a>
+                        ) : (
+                          <span className={styles.vtitle}>{l.title}</span>
+                        )}
+                        <span className={styles.vaddr}>
+                          {l.address || "（地址不詳）"}
+                          {l.price > 0 ? ` · ${l.price.toLocaleString("zh-TW")} 萬` : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                   <div className={styles.rowMeta}>
                     <span>🕒 {v.preferredAt || "時間待安排"}</span>
                     <a className={styles.rowPhone} href={`tel:${v.phone}`}>
