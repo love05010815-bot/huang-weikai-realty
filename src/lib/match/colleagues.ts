@@ -9,8 +9,9 @@
  *   - 同事的客人**不碰官方帳號**：配對頁、預約完成頁顯示同事的名字／電話／LINE，新預約不通知本人。
  *   - 同事沒有後台；本人在自己的 /intake 多一頁「同事」管理（新增、停用、重新產生連結、刪除）。
  * 停用（離職，2026-10-05 他說「如果該名同事離職，則不可以再使用這條連結」）：offboardColleague —— active = 0 **而且金鑰換掉**
- * （之後就算誤按「重新啟用」，舊連結也打不開）、手機通知訂閱清掉。他的客人點舊的專屬連結會退回官方帳號那條路（至少找得到人）；
- * 他名下的客人本人可以用 transferBuyersToOwner 接手（只有停用的同事才給接，不然就違反「誰都看不到誰的」）。
+ * （之後就算誤按「重新啟用」，舊連結也打不開）、手機通知訂閱清掉。他的客人點舊的專屬連結會退回官方帳號那條路（至少找得到人）。
+ * 🔴 **離職同事的客人不轉給本人**（他 2026-10-05 說「不要有接手他的客人的按鈕，離職同事可帶走她的客戶名單」）：
+ * 客人留在她名下、誰都看不到；她離職前在自己的「客戶名單」按「匯出名單」帶走。之後本人要清掉就「刪除」她 —— 連她的客人、預約一起刪（deleteColleague）。
  * 新預約通知（2026-10-05 他拍板）：**走手機通知（Web Push，lib/match/push.ts），不綁本人的官方 LINE** ——
  * 走官方帳號的話每一則本人在後台都看得到，他說「會有偷取同事客人的嫌疑」。
  * 純函式（LINE 連結整理、建檔網址）在 colleague-link.ts，測試吃那邊。
@@ -143,15 +144,6 @@ export async function offboardColleague(id: string): Promise<Colleague | null> {
   return getColleague(id);
 }
 
-/** 把停用同事名下的客人全部轉到本人名單（colleague_id → NULL）。回轉了幾位；同事還在職就不轉（回 -1） */
-export async function transferBuyersToOwner(id: string): Promise<number> {
-  const c = await getColleague(id);
-  if (!c || c.active) return -1;
-  const n = await countBuyersOfColleague(id);
-  if (n > 0) await db.$executeRawUnsafe(`UPDATE match_buyer SET colleague_id = NULL WHERE colleague_id = ?`, id);
-  return n;
-}
-
 /** 重新產生他的連結 —— 舊連結立刻失效（他手機桌面那個要重新加） */
 export async function rotateColleagueKey(id: string): Promise<Colleague | null> {
   await ensureMatchTables();
@@ -165,14 +157,27 @@ export async function countBuyersOfColleague(id: string): Promise<number> {
   return Number(rows[0]?.n ?? 0);
 }
 
-/** 名下還有客人的不刪 —— 刪了他的客人會變成沒人的（既不是本人的、也找不到同事），名單上就消失了 */
-export async function deleteColleague(id: string): Promise<{ ok: boolean; reason?: string }> {
-  const n = await countBuyersOfColleague(id);
-  if (n > 0) return { ok: false, reason: `名下還有 ${n} 位客人，先把客人刪掉，或改成「停用」就好` };
-  // 他手機上的通知訂閱一起清（直接下 SQL，不從 push.ts import —— 那邊 import 這裡，別繞成圈）
+/**
+ * 刪同事。在職而且名下有客人的不給刪（先「停用（離職）」）。
+ * 停用的（離職了、名單她已經帶走）就整個清：她的客人、那些客人的預約、她手機的通知訂閱，最後是她本人。
+ * 不轉給本人、也不留下沒主人的客人 —— 沒主人的客人誰都看不到，預約卻會在本人的清單冒出來。
+ */
+export async function deleteColleague(id: string): Promise<{ ok: boolean; reason?: string; buyers?: number; viewings?: number }> {
+  const c = await getColleague(id);
+  if (!c) return { ok: false, reason: "找不到這位同事" };
+  const buyers = await countBuyersOfColleague(id);
+  if (c.active && buyers > 0) return { ok: false, reason: `名下還有 ${buyers} 位客人，先按「停用（離職）」再刪` };
+  const vrows = await db.$queryRawUnsafe<{ n: bigint | number }[]>(
+    `SELECT COUNT(*) AS n FROM match_viewing WHERE buyer_id IN (SELECT id FROM match_buyer WHERE colleague_id = ?)`,
+    id,
+  );
+  const viewings = Number(vrows[0]?.n ?? 0);
+  await db.$executeRawUnsafe(`DELETE FROM match_viewing WHERE buyer_id IN (SELECT id FROM match_buyer WHERE colleague_id = ?)`, id);
+  await db.$executeRawUnsafe(`DELETE FROM match_buyer WHERE colleague_id = ?`, id);
+  // 手機通知訂閱也清（直接下 SQL，不從 push.ts import —— 那邊 import 這裡，別繞成圈）
   await db.$executeRawUnsafe(`DELETE FROM match_push_subscription WHERE colleague_id = ?`, id);
   await db.$executeRawUnsafe(`DELETE FROM match_colleague WHERE id = ?`, id);
-  return { ok: true };
+  return { ok: true, buyers, viewings };
 }
 
 /**

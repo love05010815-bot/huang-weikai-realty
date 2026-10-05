@@ -25,7 +25,6 @@ import {
   listColleagues,
   offboardColleague,
   rotateColleagueKey,
-  transferBuyersToOwner,
   updateColleague,
 } from "@/lib/match/colleagues";
 import {
@@ -249,20 +248,6 @@ export async function intakeSetColleagueAction(
   }
 }
 
-/** 接手停用（離職）同事名下的客人：全部轉到本人名單。在職的不給接（名單各管各的） */
-export async function intakeTakeOverColleagueBuyersAction(key: string, id: string): Promise<Fail | { ok: true; rows: IntakeColleagueRow[]; moved: number }> {
-  const gate = await ownerOnly(key);
-  if ("ok" in gate) return gate;
-  try {
-    const moved = await transferBuyersToOwner(id);
-    if (moved < 0) return { ok: false, error: "這位同事還在職，先按「停用（離職）」才能接手他的客人" };
-    revalidatePath("/admin/match");
-    return { ok: true, rows: await colleagueRows(), moved };
-  } catch (e) {
-    return { ok: false, error: describeError(e) };
-  }
-}
-
 /** 重新產生同事的連結 —— 舊的立刻失效 */
 export async function intakeRotateColleagueKeyAction(key: string, id: string): Promise<Fail | { ok: true; rows: IntakeColleagueRow[] }> {
   const gate = await ownerOnly(key);
@@ -275,14 +260,15 @@ export async function intakeRotateColleagueKeyAction(key: string, id: string): P
   }
 }
 
-/** 刪同事。名下有客人的刪不掉（改停用就好），理由在 colleagues.deleteColleague */
-export async function intakeDeleteColleagueAction(key: string, id: string): Promise<Fail | { ok: true; rows: IntakeColleagueRow[] }> {
+/** 刪同事。在職且有客人的刪不掉；停用的連她的客人、預約一起清（理由在 colleagues.deleteColleague） */
+export async function intakeDeleteColleagueAction(key: string, id: string): Promise<Fail | { ok: true; rows: IntakeColleagueRow[]; buyers: number; viewings: number }> {
   const gate = await ownerOnly(key);
   if ("ok" in gate) return gate;
   try {
     const r = await deleteColleague(id);
     if (!r.ok) return { ok: false, error: r.reason ?? "刪除失敗" };
-    return { ok: true, rows: await colleagueRows() };
+    revalidatePath("/admin/match");
+    return { ok: true, rows: await colleagueRows(), buyers: r.buyers ?? 0, viewings: r.viewings ?? 0 };
   } catch (e) {
     return { ok: false, error: describeError(e) };
   }

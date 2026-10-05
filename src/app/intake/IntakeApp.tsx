@@ -33,7 +33,6 @@ import {
   intakeSaveAction,
   intakeSetColleagueAction,
   intakeSetViewingStatusAction,
-  intakeTakeOverColleagueBuyersAction,
   intakeViewingsAction,
   type IntakeSaveResult,
 } from "@/lib/actions/intake";
@@ -220,7 +219,7 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
     if (
       c.active &&
       !window.confirm(
-        `停用「${c.name}」（離職）？\n・他的連結立刻失效，手機通知也停\n・他的客人點舊的專屬連結會改走你的官方帳號\n・他名下 ${c.buyers} 位客人還掛在他那裡，之後可以按「接手他的客人」轉到你的名單`,
+        `停用「${c.name}」（離職）？\n・他的連結立刻失效，手機通知也停\n・他的客人點舊的專屬連結會改走你的官方帳號\n・他名下 ${c.buyers} 位客人留在他那裡（你看不到）；他離職前可以在自己的「客戶名單」按「匯出名單」帶走`,
       )
     )
       return;
@@ -234,18 +233,12 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
     setCMsg(c.active ? `「${c.name}」已停用，舊連結不能用了。` : `「${c.name}」重新啟用了，這是新的連結，記得傳給他。`);
   }
 
-  /** 接手離職同事的客人：全部轉到自己的名單 */
-  async function takeOverColleague(c: IntakeColleagueRow) {
-    if (!window.confirm(`把「${c.name}」名下 ${c.buyers} 位客人轉到你的名單？轉了之後會出現在你的「客戶名單」，他們之後的預約也會通知你。`)) return;
-    setCMsg(null);
-    const r = await intakeTakeOverColleagueBuyersAction(intakeKey, c.id);
-    if (!r.ok) {
-      setCMsg(r.error);
-      return;
-    }
-    setColleagues(r.rows);
-    setRows(null);
-    setCMsg(`已把 ${r.moved} 位客人轉到你的名單。`);
+  /** 客戶名單整份複製成文字（離職同事帶走名單用，本人也能用）：一行一位，Tab 分隔，貼到 Excel 會自動分欄 */
+  async function exportRows() {
+    const all = rows ?? [];
+    const line = (cells: string[]) => cells.map((c) => c.replace(/[\t\r\n]+/g, " ")).join("\t");
+    const text = [line(["姓名", "電話", "LINE", "購屋條件", "備註"]), ...all.map((r) => line([r.name, r.phone, lineText(r.lineVia, r.lineName), r.summary ?? "", r.note]))].join("\n");
+    await copyText(text, `${all.length} 位客人的名單`, setFlash);
   }
 
   async function rotateColleague(c: IntakeColleagueRow) {
@@ -260,8 +253,10 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
     setCMsg(`「${c.name}」的連結換新了，記得把新的傳給他。`);
   }
 
+  /** 刪同事：停用的會連她的客人、預約一起從系統清掉（她已經帶走名單），所以問得很清楚 */
   async function removeColleague(c: IntakeColleagueRow) {
-    if (!window.confirm(`刪掉「${c.name}」？`)) return;
+    const ask = c.buyers > 0 ? `刪掉「${c.name}」？她名下 ${c.buyers} 位客人和他們的預約會一起從系統刪掉（她已經帶走名單再按）。這個動作不能復原。` : `刪掉「${c.name}」？`;
+    if (!window.confirm(ask)) return;
     setCMsg(null);
     const r = await intakeDeleteColleagueAction(intakeKey, c.id);
     if (!r.ok) {
@@ -269,7 +264,7 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
       return;
     }
     setColleagues(r.rows);
-    setCMsg(`已刪掉「${c.name}」。`);
+    setCMsg(r.buyers > 0 ? `已刪掉「${c.name}」，連同 ${r.buyers} 位客人、${r.viewings} 筆預約。` : `已刪掉「${c.name}」。`);
   }
 
   const filtering = isFilterActive(filter);
@@ -469,7 +464,14 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
               )}
             </div>
           )}
-          {rows && rows.length > 0 && <p className={styles.swipeHint}>往左滑可以刪除</p>}
+          {rows && rows.length > 0 && (
+            <p className={styles.swipeHint}>
+              <button type="button" className={styles.linkBtn} style={{ margin: 0, fontSize: 12 }} onClick={exportRows}>
+                匯出名單（複製）
+              </button>
+              　往左滑可以刪除
+            </p>
+          )}
           {!rows && !rowsError ? (
             <p className={styles.muted}>讀取中…</p>
           ) : filtered.length === 0 ? (
@@ -641,12 +643,7 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
                         重新產生連結
                       </button>
                     )}
-                    {!c.active && c.buyers > 0 && (
-                      <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => takeOverColleague(c)}>
-                        接手他的客人（{c.buyers} 位）
-                      </button>
-                    )}
-                    {c.buyers === 0 && (
+                    {(!c.active || c.buyers === 0) && (
                       <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => removeColleague(c)}>
                         刪除
                       </button>
