@@ -8,7 +8,9 @@
  *   - 誰都看不到誰的客人：同事的連結只列自己的；本人的連結與後台只列本人的（colleague_id IS NULL）。
  *   - 同事的客人**不碰官方帳號**：配對頁、預約完成頁顯示同事的名字／電話／LINE，新預約不通知本人。
  *   - 同事沒有後台；本人在自己的 /intake 多一頁「同事」管理（新增、停用、重新產生連結、刪除）。
- * 停用的同事：金鑰立刻失效；他的客人點舊的專屬連結會退回官方帳號那條路（至少找得到人）。
+ * 停用（離職，2026-10-05 他說「如果該名同事離職，則不可以再使用這條連結」）：offboardColleague —— active = 0 **而且金鑰換掉**
+ * （之後就算誤按「重新啟用」，舊連結也打不開）、手機通知訂閱清掉。他的客人點舊的專屬連結會退回官方帳號那條路（至少找得到人）；
+ * 他名下的客人本人可以用 transferBuyersToOwner 接手（只有停用的同事才給接，不然就違反「誰都看不到誰的」）。
  * 新預約通知（2026-10-05 他拍板）：**走手機通知（Web Push，lib/match/push.ts），不綁本人的官方 LINE** ——
  * 走官方帳號的話每一則本人在後台都看得到，他說「會有偷取同事客人的嫌疑」。
  * 純函式（LINE 連結整理、建檔網址）在 colleague-link.ts，測試吃那邊。
@@ -128,6 +130,26 @@ export async function updateColleague(
     await db.$executeRawUnsafe(`UPDATE match_colleague SET ${sets.join(", ")} WHERE id = ?`, ...values);
   }
   return getColleague(id);
+}
+
+/**
+ * 停用（離職）：連結作廢、金鑰換掉、手機通知訂閱清掉。之後「重新啟用」會拿到一條新連結。
+ * 他的客人還掛在他名下（名單各管各的，不自動轉）；本人要接手就按「接手他的客人」（transferBuyersToOwner）。
+ */
+export async function offboardColleague(id: string): Promise<Colleague | null> {
+  await ensureMatchTables();
+  await db.$executeRawUnsafe(`UPDATE match_colleague SET active = 0, intake_key = ? WHERE id = ?`, newColleagueKey(), id);
+  await db.$executeRawUnsafe(`DELETE FROM match_push_subscription WHERE colleague_id = ?`, id);
+  return getColleague(id);
+}
+
+/** 把停用同事名下的客人全部轉到本人名單（colleague_id → NULL）。回轉了幾位；同事還在職就不轉（回 -1） */
+export async function transferBuyersToOwner(id: string): Promise<number> {
+  const c = await getColleague(id);
+  if (!c || c.active) return -1;
+  const n = await countBuyersOfColleague(id);
+  if (n > 0) await db.$executeRawUnsafe(`UPDATE match_buyer SET colleague_id = NULL WHERE colleague_id = ?`, id);
+  return n;
 }
 
 /** 重新產生他的連結 —— 舊連結立刻失效（他手機桌面那個要重新加） */

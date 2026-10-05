@@ -33,6 +33,7 @@ import {
   intakeSaveAction,
   intakeSetColleagueAction,
   intakeSetViewingStatusAction,
+  intakeTakeOverColleagueBuyersAction,
   intakeViewingsAction,
   type IntakeSaveResult,
 } from "@/lib/actions/intake";
@@ -214,8 +215,15 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
     setCMsg(`已新增「${r.created.name}」。把下面他的連結傳給他：用手機打開 →「加入主畫面」→ 從主畫面開 →「預約」→「開啟手機通知」。`);
   }
 
+  /** 停用 = 離職：連結作廢（金鑰換掉）、手機通知停；重新啟用會給一條新連結 */
   async function toggleColleague(c: IntakeColleagueRow) {
-    if (c.active && !window.confirm(`停用「${c.name}」？他的連結立刻失效，他的客人點舊連結會改走官方帳號。`)) return;
+    if (
+      c.active &&
+      !window.confirm(
+        `停用「${c.name}」（離職）？\n・他的連結立刻失效，手機通知也停\n・他的客人點舊的專屬連結會改走你的官方帳號\n・他名下 ${c.buyers} 位客人還掛在他那裡，之後可以按「接手他的客人」轉到你的名單`,
+      )
+    )
+      return;
     setCMsg(null);
     const r = await intakeSetColleagueAction(intakeKey, c.id, { active: !c.active });
     if (!r.ok) {
@@ -223,6 +231,21 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
       return;
     }
     setColleagues(r.rows);
+    setCMsg(c.active ? `「${c.name}」已停用，舊連結不能用了。` : `「${c.name}」重新啟用了，這是新的連結，記得傳給他。`);
+  }
+
+  /** 接手離職同事的客人：全部轉到自己的名單 */
+  async function takeOverColleague(c: IntakeColleagueRow) {
+    if (!window.confirm(`把「${c.name}」名下 ${c.buyers} 位客人轉到你的名單？轉了之後會出現在你的「客戶名單」，他們之後的預約也會通知你。`)) return;
+    setCMsg(null);
+    const r = await intakeTakeOverColleagueBuyersAction(intakeKey, c.id);
+    if (!r.ok) {
+      setCMsg(r.error);
+      return;
+    }
+    setColleagues(r.rows);
+    setRows(null);
+    setCMsg(`已把 ${r.moved} 位客人轉到你的名單。`);
   }
 
   async function rotateColleague(c: IntakeColleagueRow) {
@@ -603,17 +626,26 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
                     <span>{fmtDay(c.createdAt)} 加入</span>
                     <span>{c.pushDevices > 0 ? `🔔 手機通知已開（${c.pushDevices} 支）` : "🔕 還沒開手機通知"}</span>
                   </div>
-                  <p className={styles.curl}>{c.url}</p>
+                  {c.active ? <p className={styles.curl}>{c.url}</p> : <p className={styles.curl}>（已停用：舊連結已失效；重新啟用會給一條新連結）</p>}
                   <div className={styles.actions}>
-                    <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => copyText(c.url, `${c.name}的連結`, setCMsg)}>
-                      複製連結
-                    </button>
+                    {c.active && (
+                      <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => copyText(c.url, `${c.name}的連結`, setCMsg)}>
+                        複製連結
+                      </button>
+                    )}
                     <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => toggleColleague(c)}>
-                      {c.active ? "停用" : "啟用"}
+                      {c.active ? "停用（離職）" : "重新啟用"}
                     </button>
-                    <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => rotateColleague(c)}>
-                      重新產生連結
-                    </button>
+                    {c.active && (
+                      <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => rotateColleague(c)}>
+                        重新產生連結
+                      </button>
+                    )}
+                    {!c.active && c.buyers > 0 && (
+                      <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => takeOverColleague(c)}>
+                        接手他的客人（{c.buyers} 位）
+                      </button>
+                    )}
                     {c.buyers === 0 && (
                       <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => removeColleague(c)}>
                         刪除

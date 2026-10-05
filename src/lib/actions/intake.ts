@@ -23,7 +23,9 @@ import {
   createColleague,
   deleteColleague,
   listColleagues,
+  offboardColleague,
   rotateColleagueKey,
+  transferBuyersToOwner,
   updateColleague,
 } from "@/lib/match/colleagues";
 import {
@@ -239,7 +241,23 @@ export async function intakeSetColleagueAction(
       clean.lineUrl = url;
     }
     if (!(await updateColleague(id, clean))) return { ok: false, error: "找不到這位同事" };
+    // 停用 = 離職：連結作廢（金鑰換掉）、手機通知訂閱清掉（lib/match/colleagues.ts 的 offboardColleague）
+    if (clean.active === false) await offboardColleague(id);
     return { ok: true, rows: await colleagueRows() };
+  } catch (e) {
+    return { ok: false, error: describeError(e) };
+  }
+}
+
+/** 接手停用（離職）同事名下的客人：全部轉到本人名單。在職的不給接（名單各管各的） */
+export async function intakeTakeOverColleagueBuyersAction(key: string, id: string): Promise<Fail | { ok: true; rows: IntakeColleagueRow[]; moved: number }> {
+  const gate = await ownerOnly(key);
+  if ("ok" in gate) return gate;
+  try {
+    const moved = await transferBuyersToOwner(id);
+    if (moved < 0) return { ok: false, error: "這位同事還在職，先按「停用（離職）」才能接手他的客人" };
+    revalidatePath("/admin/match");
+    return { ok: true, rows: await colleagueRows(), moved };
   } catch (e) {
     return { ok: false, error: describeError(e) };
   }
