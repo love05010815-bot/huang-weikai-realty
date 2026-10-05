@@ -10,7 +10,7 @@
  */
 import { MATCH, VIEWING_STATUS } from "@/config/match";
 import { OWNER } from "@/config/owner";
-import { branchMatchUrl, colleagueIntakeUrl } from "./colleague-link";
+import { colleagueIntakeUrl } from "./colleague-link";
 import type { Colleague } from "./colleagues";
 import { listingCarousel, matchPageUrl, pushMessages, text } from "./line";
 import { normalizeLineVia, type LineVia } from "./line-via";
@@ -88,8 +88,6 @@ export type BriefMatch = {
   title: string;
   price: number;
   meta: string;
-  /** 門牌。店頭官網的物件卡要顯示地址（2026-10-05 同事版；meta 只有「市區 · 坪 · 房」） */
-  address: string;
   sourceUrl: string;
   image: string | null;
 };
@@ -146,17 +144,13 @@ export async function buildBuyerBrief(buyer: Buyer, showMax = 40, signer: string
       title: m.listing.title,
       price: m.listing.price,
       meta: metaLine(m.listing),
-      address: m.listing.address,
       sourceUrl: m.listing.sourceUrl,
       image: m.listing.images?.[0] && /^https:\/\//.test(m.listing.images[0]) ? m.listing.images[0] : null,
     }));
   }
   const summary = buyer.preference ? describePreference(buyer.preference) : null;
   const token = createBuyerToken(buyer.id);
-  // 同事的客人（2026-10-05）：連結改走店頭官網的「好案配對找房」。那一頁拿同一個識別碼打
-  // /api/match/brief 要**同一份**配對結果、打 /api/match/viewing 送預約（預約照樣推到同事手機），
-  // 客人看到的是店頭官網而不是本人的個人網站。本人自己的客人照舊走 /match（官方帳號那條路）。
-  const link = token ? (buyer.colleagueId ? branchMatchUrl(token) : matchPageUrl(undefined, token, { go: true })) : null;
+  const link = token ? matchPageUrl(undefined, token, { go: true }) : null;
   const name = buyer.name || buyer.displayName || "您";
   return { summary, matched, total, matches, link, message: link ? buildMessage(name, summary, matched, link, signer) : "" };
 }

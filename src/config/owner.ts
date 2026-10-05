@@ -98,19 +98,3 @@ export const LINE_QR: string | null = null;
 
 /** 網站網址（通知信裡的連結、Open Graph 用） */
 export const SITE_URL = process.env.APPOINTMENT_BASE_URL || "http://localhost:3000";
-
-/**
- * 店頭官網（太平洋房屋 梧棲新市鎮旗艦加盟店）—— 另一個 Vercel 專案、純靜態站，
- * 原始碼在 D:梧棲店官網（repo love05010815-bot/pacific-wuchi-site），不在這個專案裡。
- *
- * 2026-10-05 他說「把同事版的物件配對改這個官網內的配對給客人連結」：
- * **同事的客人**收到的配對連結指到這裡的「好案配對找房」（#match），那一頁用買方識別碼
- * 打我們的 /api/match/brief 要配對結果、打 /api/match/viewing 送預約（CORS 白名單在 lib/match/cors.ts）。
- * 本人自己的客人照舊走 weikaihouse.com/match —— 那條有官方帳號綁定、推播。
- */
-export const BRANCH_SITE = {
-  name: "太平洋房屋 梧棲新市鎮旗艦加盟店",
-  url: "https://pacifi-realtor-wuchi.vercel.app",
-  phone: "04-2657-2100",
-  phoneRaw: "0426572100",
-} as const;

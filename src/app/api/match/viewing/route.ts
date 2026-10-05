@@ -15,7 +15,6 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { colleagueContact, getColleague } from "@/lib/match/colleagues";
-import { corsHeaders } from "@/lib/match/cors";
 import { addFriendUrl, notifyOwnerNewViewing, oaMessageUrl } from "@/lib/match/line";
 import { notifyColleagueNewViewing } from "@/lib/match/push";
 import { qrDataUrl } from "@/lib/match/qr";
@@ -29,23 +28,7 @@ const clean = (v: unknown, max: number): string => String(v ?? "").trim().slice(
 /** 一筆預約最多幾間。看屋一天跑不完十間以上，多半是誤觸或機器人 */
 const MAX_LISTINGS = 10;
 
-/**
- * 2026-10-05：同事的客人在**店頭官網**那一頁按預約，也是打這一支（他說「把同事版的物件配對
- * 改這個官網內的配對」）。跨網域要回 CORS 標頭，白名單在 lib/match/cors.ts。
- * 本體一個字沒動 —— 回應接回來補上標頭就好，免得每一個 return 都要改。
- */
 export async function POST(req: NextRequest) {
-  const res = await handlePost(req);
-  for (const [k, v] of Object.entries(corsHeaders(req.headers.get("origin"), "POST,OPTIONS"))) res.headers.set(k, v);
-  return res;
-}
-
-/** 瀏覽器跨網域送 JSON 前會先問一聲 */
-export async function OPTIONS(req: NextRequest) {
-  return new NextResponse(null, { status: 204, headers: corsHeaders(req.headers.get("origin"), "POST,OPTIONS") });
-}
-
-async function handlePost(req: NextRequest): Promise<NextResponse> {
   let body: Record<string, unknown> = {};
   try {
     body = (await req.json()) as Record<string, unknown>;

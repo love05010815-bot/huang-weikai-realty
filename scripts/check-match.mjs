@@ -21,8 +21,7 @@ process.env.APPOINTMENT_BASE_URL = "https://weikaihouse.com";
 // pacific-parse.ts 用相對路徑 import 隔壁的 houseol-parse（沒副檔名），要靠上面的 hook 解，所以得在 register 之後動態載
 const { houseolIdFromPic, pacificFloor, pacificToListingUpsert, pacificUsageType } = await import("../src/lib/match/pacific-parse.ts");
 // colleague-link.ts 有 import "@/config/owner"（別名），一樣要在 register 之後動態載
-const { branchMatchUrl, colleagueIntakeUrl, lineUrlFromInput } = await import("../src/lib/match/colleague-link.ts");
-const { corsHeaders, corsOriginAllowed } = await import("../src/lib/match/cors.ts");
+const { colleagueIntakeUrl, lineUrlFromInput } = await import("../src/lib/match/colleague-link.ts");
 import {
   AGE_OPTIONS,
   AGE_RANGES,
@@ -930,26 +929,6 @@ test("同事的 LINE：ID 轉成加好友網址、line.me 連結照收、不像�
   assert.equal(lineUrlFromInput(""), "");
   assert.equal(lineUrlFromInput(null), "");
   assert.ok(colleagueIntakeUrl("k".repeat(32)).endsWith("/intake?key=" + "k".repeat(32)));
-});
-
-test("同事的客人連結指到店頭官網的配對區，CORS 只開店頭官網", () => {
-  const u = branchMatchUrl("abc.123.sig");
-  assert.ok(u.startsWith("https://pacifi-realtor-wuchi.vercel.app/?b="), u);
-  assert.ok(u.endsWith("#match"), u);
-  assert.equal(new URL(u).searchParams.get("b"), "abc.123.sig");
-  assert.ok(branchMatchUrl("a b&c").includes("a%20b%26c")); // 識別碼要編碼，不能把網址切斷
-  // CORS：名單上的才給，差一個字、子網域、冒充的都不給
-  assert.ok(corsOriginAllowed("https://pacifi-realtor-wuchi.vercel.app"));
-  assert.ok(!corsOriginAllowed("http://pacifi-realtor-wuchi.vercel.app"));
-  assert.ok(!corsOriginAllowed("https://pacifi-realtor-wuchi.vercel.app.evil.example"));
-  assert.ok(!corsOriginAllowed("https://weikaihouse.com"));
-  assert.ok(!corsOriginAllowed(null));
-  const h = corsHeaders("https://pacifi-realtor-wuchi.vercel.app", "POST,OPTIONS");
-  assert.equal(h["Access-Control-Allow-Origin"], "https://pacifi-realtor-wuchi.vercel.app");
-  assert.equal(h["Access-Control-Allow-Methods"], "POST,OPTIONS");
-  assert.equal(h["Access-Control-Allow-Credentials"], undefined); // 不帶 cookie，別人借不到登入狀態
-  assert.equal(corsHeaders("https://evil.example")["Access-Control-Allow-Origin"], undefined);
-  assert.equal(corsHeaders(null).Vary, "Origin");
 });
 
 if (process.exitCode) {
