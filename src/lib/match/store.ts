@@ -115,11 +115,14 @@ export async function ensureMatchTables(): Promise<void> {
     ["line_via", "ALTER TABLE match_buyer ADD COLUMN line_via VARCHAR(16) NULL AFTER note"],
     ["line_name", "ALTER TABLE match_buyer ADD COLUMN line_name VARCHAR(120) NULL AFTER line_via"],
     // colleague_id 是 2026-10-05 同事版加的：這位客人是誰的（NULL = 本人的）。見 lib/match/colleagues.ts
-    ["colleague_id", "ALTER TABLE match_buyer ADD COLUMN colleague_id VARCHAR(36) NULL AFTER line_name, ADD INDEX idx_match_buyer_colleague (colleague_id)"],
+    // ⚠️ 加欄位跟加索引要分兩句：TiDB 不吃「同一句 ADD COLUMN 又 ADD INDEX 那個新欄位」（錯誤 1072，2026-10-05 正式站踩到）
+    ["colleague_id", "ALTER TABLE match_buyer ADD COLUMN colleague_id VARCHAR(36) NULL AFTER line_name"],
   ] as const) {
     const has = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM match_buyer LIKE '${col}'`);
     if (has.length === 0) await db.$executeRawUnsafe(ddl);
   }
+  const hasColleagueIdx = await db.$queryRawUnsafe<unknown[]>(`SHOW INDEX FROM match_buyer WHERE Key_name = 'idx_match_buyer_colleague'`);
+  if (hasColleagueIdx.length === 0) await db.$executeRawUnsafe("ALTER TABLE match_buyer ADD INDEX idx_match_buyer_colleague (colleague_id)");
 
   // 同事（2026-10-05）：名單各管各的，每人一把自己的快速建檔金鑰。見 lib/match/colleagues.ts
   await db.$executeRawUnsafe(`
