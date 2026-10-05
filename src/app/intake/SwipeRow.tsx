@@ -75,7 +75,10 @@ export default function SwipeRow({
       if (Math.abs(dx) < SLOP && Math.abs(dy) < SLOP) return;
       d.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
       if (d.axis === "x") {
-        el.setPointerCapture(e.pointerId);
+        // 手指已經離開（或合成事件）時這行會丟 InvalidPointerId，抓不到也沒關係，move 照樣收得到
+        try {
+          el.setPointerCapture(e.pointerId);
+        } catch {}
         el.style.transition = "none";
       }
     }
