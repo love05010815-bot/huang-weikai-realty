@@ -102,7 +102,7 @@ export default function KeysManager({
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
   const live = rows.filter((r) => !r.revoked && !r.expired);
-  const bound = live.filter((r) => r.installs > 0).length;
+  const bound = live.filter((r) => isPersonalLicense(r) && r.installs > 0).length;
   const launched = rows.filter((r) => r.launchedInstalls > 0).length;
   const totalLaunches = rows.reduce((sum, r) => sum + r.launchCount, 0);
   /** 還在跑的舊共用碼：一人一組之後要提醒他收回 */
@@ -206,7 +206,7 @@ export default function KeysManager({
       <section className={styles.card}>
         <h2 className={styles.h2}>已發出的授權碼（{rows.length}）</h2>
         <p className={k.summary}>
-          發出 <b>{rows.length}</b> 組 ｜ 有效且已綁定 <b>{bound}</b> 組 ｜ 上架過 <b>{launched}</b> 組 ｜ 上架總計 <b>{totalLaunches}</b> 次
+          發出 <b>{rows.length}</b> 組 ｜ 已綁定 <b>{bound}</b> 位同事（一人一組的碼） ｜ 上架過 <b>{launched}</b> 組 ｜ 上架總計 <b>{totalLaunches}</b> 次
         </p>
         {legacy.length > 0 && (
           <p className={styles.badText}>
