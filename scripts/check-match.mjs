@@ -846,14 +846,14 @@ test("預約通知：帶上買方的購屋條件，跟後台「買方」那一�
   assert.ok(body.includes(`購屋條件：${describePreference(pref)}`), body);
 });
 
-test("給同事的預約通知：有客人、物件地址、條件，沒有專員指令那幾行", () => {
-  const body = LINE.colleagueViewingNotifyText(fakeViewing, [fakeListing("L1"), fakeListing("L2")], null);
-  assert.match(body, /你的客人預約看屋 BK-/);
-  assert.match(body, /共 2 間/);
-  assert.match(body, /姓名：陳小姐/);
-  assert.match(body, /購屋條件：（沒有留過配對條件）/);
-  assert.ok(body.includes("代客建檔頁「預約」"), body);
-  assert.ok(!body.includes("已確認"), "同事不能用專員指令，通知裡不該教他回「已確認」");
+test("給同事的預約通知：只有編號和去哪裡看，絕對不帶客人資料（官方帳號是本人的，他看得到）", () => {
+  const body = LINE.colleagueViewingNotifyText(fakeViewing);
+  assert.match(body, /新的看屋預約 BK-/);
+  assert.ok(body.includes("「預約」"), body);
+  assert.ok(!body.includes("陳小姐"), "不能有客人姓名");
+  assert.ok(!body.includes("0912345678"), "不能有客人電話");
+  assert.ok(!body.includes(fakeViewing.preferredAt), "不能有看屋時間");
+  assert.ok(!body.includes("已確認"), "同事不能用專員指令");
   assert.ok(!body.includes("/admin/match"), "同事沒有後台");
 });
 

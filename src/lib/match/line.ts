@@ -533,28 +533,15 @@ export function viewingNotifyText(
 
 /**
  * 推給**同事**的新預約通知（2026-10-05 同事版）—— 純函式，check:match 測得到。
- * 跟本人那一則差在最後幾行：同事不能在官方帳號改狀態（那是專員指令），也沒有後台，
- * 所以只講「直接聯絡客人」「在你的建檔頁「預約」看得到」。
+ *
+ * 🔴 **刻意不帶客人資料**（姓名、電話、物件、條件都不放）：官方帳號是本人的，推出去的每一則他在
+ *    LINE 官方帳號管理後台的聊天紀錄裡都看得到 —— 他 2026-10-05 說「這樣我就看得到同事客人的預約，
+ *    會有偷取同事客人的嫌疑」。所以這裡只說「有一筆、編號多少、去哪裡看」，內容留在同事自己的建檔頁。
  */
-export function colleagueViewingNotifyText(viewing: Viewing, listings: ListingLike[], preference: Preference | null = null): string {
-  const first = listings[0] ?? null;
-  const multi = listings.length > 1;
-  const where = first ? `${first.city}${first.district}${first.address}` : "";
-  const lines = [
-    `🔔 你的客人預約看屋 ${viewing.code}`,
-    multi ? `物件：共 ${listings.length} 間` : `物件：${first?.title ?? viewing.listingId}`,
-    ...(multi
-      ? listings.map((l, i) => `　${i + 1}. ${l.title}｜${l.city}${l.district}${l.address}｜${fmtWan(l.price)}`)
-      : where
-        ? [`地點：${where}`]
-        : []),
-    `時間：${viewing.preferredAt || "待安排"}`,
-    `姓名：${viewing.name}`,
-    `電話：${viewing.phone}`,
-    `購屋條件：${preference ? describePreference(preference) : "（沒有留過配對條件）"}`,
-    viewing.note ? `備註：${viewing.note}` : null,
-    "",
-    `📞 請直接聯絡客人安排時間。這筆預約在你的代客建檔頁「預約」裡也看得到。`,
-  ].filter((l): l is string => l !== null);
-  return lines.join("\n");
+export function colleagueViewingNotifyText(viewing: Pick<Viewing, "code">): string {
+  return [
+    `🔔 你有一筆新的看屋預約 ${viewing.code}`,
+    "打開你的代客建檔頁 →「預約」，就看得到客人、時間和物件。",
+    "（這裡刻意不放客人資料，詳細內容只在你自己的頁面）",
+  ].join("\n");
 }

@@ -88,7 +88,8 @@ export async function POST(req: NextRequest) {
       // 同事綁了 LINE 就推給他（計費一則）；沒綁只留 console，他在自己的「預約」頁看得到
       if (owner.lineUserId) {
         try {
-          const ok = await pushMessages(owner.lineUserId, [text(colleagueViewingNotifyText(viewing, listings, buyer.preference))]);
+          // 通知裡沒有客人資料（理由見 colleagueViewingNotifyText）
+          const ok = await pushMessages(owner.lineUserId, [text(colleagueViewingNotifyText(viewing))]);
           console.log(`[match/viewing] ${viewing.code} 推給同事「${owner.name}」${ok ? "成功" : "失敗（LINE 沒收）"}`);
         } catch (e) {
           console.error(`[match/viewing] ${viewing.code} 推給同事失敗:`, e);
