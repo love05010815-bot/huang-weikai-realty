@@ -3,9 +3,13 @@
  *
  * 2026-09-11 他說的：「提供給同事的檔案請設定在 9/20 後失效，我要綁定不可以外流」；同一天下午改口：
  * 「這批的同事一起使用同一個授權碼就好，不用紀錄是誰下載，我只要知道有幾個人使用授權碼並刊登」。
- * 所以現在是：**一組碼一批人共用**。每台 Chrome 第一次驗證成功就登記一台（安裝編號＝外掛端 crypto.randomUUID()），
- * 一組碼有「電腦數上限」（預設 20，後台可改），超過就擋（seat_limit）—— 這是防外流的閘，不記名字。
- * 後台看的是：這組碼有幾台電腦在用、其中幾台上架過、上架幾次。到期日預設看批次（LICENSE_BATCH_EXPIRES，台灣時間當天結束），後台可延長／停用。
+ * 9/11 下午起是「一組碼一批人共用」：每台 Chrome 第一次驗證成功就登記一台（安裝編號＝外掛端 crypto.randomUUID()），
+ * 一組碼有「電腦數上限」，超過就擋（seat_limit）。
+ * **2026-10-05 他再拍板（外掛 1.6.4 起）：「同事的改為一人一組授權碼，並綁定單一台電腦使用」** —— 用同一套機制做：
+ * 新發的碼 max_installs 預設 1（名稱＝同事名字），第一台登記上去就是「綁定」，第二台來就擋，理由回 bound_elsewhere
+ * （外掛 1.5.0 起的 MESSAGES 本來就有這句，舊版外掛也看得懂）；換電腦＝後台「解除綁定」（刪掉那組的 install 列）再貼一次。
+ * 舊的共用碼（max_installs > 1）照舊運作到到期或停用，後台標成「舊的共用碼」。
+ * 後台看的是：每組碼綁了沒、上架幾次。到期日預設看批次（LICENSE_BATCH_EXPIRES，台灣時間當天結束），後台可延長／停用。
  *
  * ⚠️ 擋的是「檔案轉傳就能用」，不是防駭：外掛是明碼 JS，懂程式的人拆得掉；對象是不會寫程式的同事。
  * ⚠️ 1.4.0 以前發出去的 zip 沒有這道檢查、也不會連伺服器，收不回來 —— 要請同事換新版。
@@ -17,8 +21,8 @@ export const LICENSE_DEFAULT_EXPIRES = "2026-09-20";
 /** 各批的截止日（台灣日期），他一批一批說的：第一批 9/20、第二批 9/30（2026-09-14 說的）。再有新批次往後加 */
 export const LICENSE_BATCH_EXPIRES = ["2026-09-20", "2026-09-30"];
 
-/** 一組碼預設能登記幾台 Chrome。他說一批同事共用，上限只是防外流的閘（後台每組可改） */
-export const LICENSE_DEFAULT_MAX_INSTALLS = 20;
+/** 一組碼預設能登記幾台 Chrome：2026-10-05 起一人一組、綁一台 → 1（9/11～10/04 是 20，一批共用）。舊的共用碼後台仍可改上限 */
+export const LICENSE_DEFAULT_MAX_INSTALLS = 1;
 
 /**
  * 新增授權碼時表單預設的到期日：還沒過的批次裡**最晚**的那個（現在發的就是最新一批；9/14 起預設 9/30）；
@@ -59,7 +63,7 @@ export type LicenseRecord = {
   createdAt: Date;
 };
 
-export type LicenseReason = "no_key" | "revoked" | "expired" | "seat_limit";
+export type LicenseReason = "no_key" | "revoked" | "expired" | "seat_limit" | "bound_elsewhere";
 export type LicenseDecision = { ok: true; register: boolean } | { ok: false; reason: LicenseReason };
 
 /** 產一組授權碼。rand 由呼叫端給（正式用 crypto.randomBytes，測試用固定值） */
@@ -106,6 +110,11 @@ export function normalizeMaxInstalls(n: unknown): number | null {
   return Number.isInteger(v) && v >= 1 && v <= 999 ? v : null;
 }
 
+/** 一人一組的碼（2026-10-05 起的預設）：上限 1 台＝綁定第一台。舊的共用碼上限 > 1 */
+export function isPersonalLicense(row: { maxInstalls: number }): boolean {
+  return row.maxInstalls === 1;
+}
+
 /**
  * 判定。順序有意義：停用優先於過期，過期優先於台數 ——
  * 一組被停用又滿額的碼，同事看到的理由應該是「停用」，不是「已達上限」。
@@ -116,6 +125,7 @@ export function decideLicense(row: LicenseRecord | null, known: boolean, now: Da
   if (row.revokedAt) return { ok: false, reason: "revoked" };
   if (now.getTime() > row.expiresAt.getTime()) return { ok: false, reason: "expired" };
   if (known) return { ok: true, register: false };
-  if (row.installs >= row.maxInstalls) return { ok: false, reason: "seat_limit" };
+  // 滿了：一人一組的碼（上限 1）回「綁在另一台」，舊的共用碼回「已達上限」—— 同事看到的那句話不一樣
+  if (row.installs >= row.maxInstalls) return { ok: false, reason: isPersonalLicense(row) ? "bound_elsewhere" : "seat_limit" };
   return { ok: true, register: true };
 }

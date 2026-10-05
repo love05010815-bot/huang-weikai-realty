@@ -47,7 +47,7 @@ export default async function Post591Page() {
           <b>不會上傳、不會存檔</b>。
         </p>
         <p className={styles.lede}>
-          <Link href="/admin/post591/keys">🔑 同事授權碼</Link>：同事版外掛（1.5.0 起）要有授權碼才能用，一組碼一批同事共用，在那裡新增、停用、延長、看幾台電腦在用和上架幾次（到期後改日期就好，不用換檔案）。
+          <Link href="/admin/post591/keys">🔑 同事授權碼</Link>：同事版外掛要有授權碼才能用，2026-10-05 起（外掛 1.6.4 起）一人一組、只能綁一台電腦：在那裡新增（填同事名字）、停用、延長、解除綁定（同事換電腦用）、看誰上架幾次（到期後改日期就好，不用換檔案）。
         </p>
       </header>
       <Post591Manager />

@@ -8,6 +8,8 @@
  *
  * 歷史：1.5.0～1.5.2（2026-09-11 上午）是「一人一組、綁第一台」，綁定存在 ext_license.install_id；
  * 下午他改成「一批共用一組」，舊的綁定在 ensureLicenseTable() 一次性搬進 install 表，install_id／bound_at 兩欄留著不用。
+ * 2026-10-05（外掛 1.6.4 起）又改回「一人一組、綁一台」—— 不碰表結構，就是新碼 max_installs 預設 1；
+ * 「解除綁定」＝ resetLicenseInstalls()（刪那組的 install 列），同事在新電腦貼同一組碼就綁到新的那台。
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
@@ -262,7 +264,7 @@ export async function setLicenseRevoked(id: string, revoked: boolean): Promise<v
   );
 }
 
-/** 清掉這組碼登記過的電腦：名額歸零，大家下次驗證重新登記（同事重裝 Chrome 佔了名額、或想重算人數時用） */
+/** 清掉這組碼登記過的電腦＝一人一組的「解除綁定」／舊共用碼的「重設電腦清單」：下次驗證重新登記（換電腦、重灌 Chrome 時用） */
 export async function resetLicenseInstalls(id: string): Promise<void> {
   await ensureThenRun(() => db.$executeRaw`DELETE FROM ext_license_install WHERE license_id = ${id}`);
 }

@@ -93,7 +93,7 @@
     revoked: "這組授權碼已被停用，請找黃瑋凱。",
     expired: "授權已到期，請找黃瑋凱延長。",
     seat_limit: "這組授權碼能用的電腦數已達上限，跟黃瑋凱說一聲（他在後台調高就好）。",
-    bound_elsewhere: "這組授權碼已綁在另一台電腦的 Chrome，跟黃瑋凱說一聲。",
+    bound_elsewhere: "這組授權碼已經綁在另一台電腦上了（一人一組、只認第一台）。要換電腦請黃瑋凱在後台「解除綁定」，再貼一次就好。",
     offline: "連不上驗證伺服器（weikaihouse.com），確認網路後再試一次。",
     server_error: "驗證伺服器暫時有問題，等幾分鐘再試。",
     bad_request: "驗證資料不完整，到 chrome://extensions 按 ↻ 重新載入外掛再試。",

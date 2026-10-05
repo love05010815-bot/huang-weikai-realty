@@ -65,8 +65,18 @@ console.log("C. 判定順序");
   eq("上限改小於已登記數：舊的照用、新的擋", core.decideLicense(row({ installs: 5, maxInstalls: 3 }), true, now).ok + "/" + core.decideLicense(row({ installs: 5, maxInstalls: 3 }), false, now).reason, "true/seat_limit");
   eq("停用優先於滿額", core.decideLicense(row({ installs: 20, revokedAt: now }), false, now).reason, "revoked");
   eq("過期優先於滿額", core.decideLicense(row({ installs: 20 }), false, new Date("2026-10-01T00:00:00Z")).reason, "expired");
+  // 2026-10-05 他拍板「一人一組、綁定單一台電腦」：上限 1 的碼，第一台登記＝綁定；第二台 → bound_elsewhere（不是 seat_limit）；綁定的那台永遠放行
+  const one = (over) => row({ maxInstalls: 1, ...over });
+  eq("一人一組：第一台 → ok 並綁定", JSON.stringify(core.decideLicense(one(), false, now)), JSON.stringify({ ok: true, register: true }));
+  eq("一人一組：第二台 → bound_elsewhere", core.decideLicense(one({ installs: 1 }), false, now).reason, "bound_elsewhere");
+  eq("一人一組：綁定的那台 → ok 不再登記", JSON.stringify(core.decideLicense(one({ installs: 1 }), true, now)), JSON.stringify({ ok: true, register: false }));
+  eq("一人一組：解除綁定後（0 台）新的一台又能綁", core.decideLicense(one({ installs: 0 }), false, now).ok, true);
+  eq("一人一組：停用優先於綁定", core.decideLicense(one({ installs: 1, revokedAt: now }), false, now).reason, "revoked");
+  eq("一人一組：過期優先於綁定", core.decideLicense(one({ installs: 1 }), false, new Date("2026-10-01T00:00:00Z")).reason, "expired");
+  eq("isPersonalLicense：上限 1 是、20 不是", core.isPersonalLicense(one()) + "/" + core.isPersonalLicense(row()), "true/false");
+  eq("舊的共用碼滿了還是 seat_limit", core.decideLicense(row({ installs: 20 }), false, now).reason, "seat_limit");
   eq("上限只收 1～999 整數", [core.normalizeMaxInstalls(20), core.normalizeMaxInstalls("5"), core.normalizeMaxInstalls(0), core.normalizeMaxInstalls(1000), core.normalizeMaxInstalls("x")].map(String).join("/"), "20/5/null/null/null");
-  eq("預設上限", core.LICENSE_DEFAULT_MAX_INSTALLS, 20);
+  eq("預設上限：2026-10-05 起一人一組 → 1", core.LICENSE_DEFAULT_MAX_INSTALLS, 1);
   eq("安裝編號：UUID 可", core.isValidInstallId("3b2f0c4e-1d2a-4f6b-9c8d-0a1b2c3d4e5f"), true);
   eq("安裝編號：亂碼不可", core.isValidInstallId("<script>"), false);
 }
@@ -169,6 +179,10 @@ for (const reason of ["no_key_set", "no_key", "revoked", "expired", "seat_limit"
 }
 eq("到期帶日期", L.message({ ok: false, reason: "expired", expiresText: "2026-09-20" }), "授權已於 2026-09-20 到期，請找黃瑋凱延長。");
 eq("ok 沒訊息", L.message({ ok: true }), "");
+{
+  const m = L.message({ ok: false, reason: "bound_elsewhere" });
+  ok(/另一台電腦/.test(m) && /解除綁定/.test(m), "一人一組被擋：講「另一台電腦」＋「解除綁定」", m.slice(0, 34) + "…", "");
+}
 
 console.log("F. background.js 在假 Chrome 裡跑一遍（importScripts、sender 判斷、開分頁）");
 {

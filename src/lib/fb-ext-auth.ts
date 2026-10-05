@@ -34,7 +34,7 @@ const REASON_TEXT: Record<string, string> = {
   revoked: "這組授權碼已被停用，請找黃瑋凱。",
   expired: "授權已到期，請找黃瑋凱延長。",
   seat_limit: "這組授權碼能用的電腦數已達上限，跟黃瑋凱說一聲。",
-  bound_elsewhere: "這組授權碼已綁在另一台電腦的 Chrome，跟黃瑋凱說一聲。",
+  bound_elsewhere: "這組授權碼已經綁在另一台電腦上了（一人一組、只認第一台）。要換電腦請黃瑋凱在後台「解除綁定」，再貼一次就好。",
   bad_request: "驗證資料不完整，到 chrome://extensions 按 ↻ 重新載入外掛再試。",
   rate_limited: "太頻繁了，等一分鐘再試。",
 };
