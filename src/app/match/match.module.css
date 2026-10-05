@@ -36,6 +36,8 @@
 .select,
 .textarea {
   display: block;
+  /* 不加這行，padding 會讓三格比卡片寬 26px、手機上右邊被切掉（2026-10-05 在 /intake 看到的） */
+  box-sizing: border-box;
   width: 100%;
   margin-top: 6px;
   padding: 11px 12px;
