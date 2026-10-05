@@ -34,6 +34,7 @@ import {
 } from "../src/lib/match/matcher.ts";
 import { detectPriceChanges } from "../src/lib/match/diff.ts";
 import { parseBlocks, parseHouseolDetail, splitAddress, splitResponse, toListingUpsert } from "../src/lib/match/houseol-parse.ts";
+import { BUDGET_TIERS, EMPTY_FILTER, budgetCounts, distinctCounts, isFilterActive, matchesBudget, matchesFilter, toggleIn } from "../src/lib/match/buyer-filter.ts";
 import { lineText, lineViaLabel, normalizeLineVia } from "../src/lib/match/line-via.ts";
 import { isBaseline, listingsToHide, pickDueSource, planHouseolWrites, sameSourceSnapshot } from "../src/lib/match/merge.ts";
 import { createBuyerToken, verifyBuyerToken } from "../src/lib/match/token.ts";
@@ -860,6 +861,46 @@ test("LINE 從哪裡加的：只認 private／official，畫面那一行字三�
   assert.equal(lineText("", "kai_0912"), "LINE：kai_0912");
   assert.equal(lineText("", ""), "");
   assert.equal(lineText(null, undefined), "");
+});
+
+test("名單篩選：預算「N 萬以下」含 N、「3000 萬以上」不含 3000、沒填預算哪一段都在", () => {
+  assert.equal(matchesBudget(1500, 1500), true);
+  assert.equal(matchesBudget(1501, 1500), false);
+  assert.equal(matchesBudget(3000, "over"), false);
+  assert.equal(matchesBudget(3001, "over"), true);
+  assert.equal(matchesBudget(0, 800), true);
+  assert.equal(matchesBudget(0, "over"), true);
+  assert.equal(matchesBudget(99999, ""), true);
+  assert.ok(BUDGET_TIERS.some((t) => t.label === "1500 萬以下"));
+});
+
+test("名單篩選：三組之間是「而且」、一組裡面是「或」、沒填的那一項視為不限", () => {
+  const rows = [
+    { budgetMax: 900, districts: ["清水區"], types: ["透天厝"] },
+    { budgetMax: 1400, districts: ["沙鹿區", "梧棲區"], types: ["電梯大樓"] },
+    { budgetMax: 0, districts: [], types: [] },
+    { budgetMax: 5000, districts: ["清水區"], types: ["土地"] },
+  ];
+  const pick = (f) => rows.filter((r) => matchesFilter(r, { ...EMPTY_FILTER, ...f })).map((r) => r.budgetMax);
+  assert.deepEqual(pick({}), [900, 1400, 0, 5000]);
+  assert.deepEqual(pick({ budget: 1000 }), [900, 0]);
+  assert.deepEqual(pick({ districts: ["清水區"] }), [900, 0, 5000]);
+  assert.deepEqual(pick({ districts: ["沙鹿區", "清水區"] }), [900, 1400, 0, 5000]);
+  assert.deepEqual(pick({ districts: ["清水區"], types: ["透天厝"] }), [900, 0]);
+  assert.deepEqual(pick({ budget: "over", types: ["土地"] }), [0, 5000]);
+  assert.equal(isFilterActive(EMPTY_FILTER), false);
+  assert.equal(isFilterActive({ ...EMPTY_FILTER, budget: 800 }), true);
+  assert.deepEqual(distinctCounts(rows, "districts"), [
+    { value: "清水區", count: 2 },
+    { value: "梧棲區", count: 1 },
+    { value: "沙鹿區", count: 1 },
+  ]);
+  assert.deepEqual(distinctCounts(rows, "types").map((c) => c.value).sort(), ["土地", "透天厝", "電梯大樓"]);
+  assert.deepEqual(toggleIn(["a"], "b"), ["a", "b"]);
+  assert.deepEqual(toggleIn(["a", "b"], "a"), ["b"]);
+  const bc = budgetCounts(rows);
+  assert.equal(bc.get(1000), 2); // 900 ＋ 沒填
+  assert.equal(bc.get("over"), 2); // 5000 ＋ 沒填
 });
 
 if (process.exitCode) {

@@ -4,7 +4,8 @@
  *
  * 三個畫面切換、不換頁、不登入：金鑰跟著每一次 server action 一起送，伺服器那邊驗。
  *   form    填一位（新建，或從名單／結果按「改條件」進來編輯）
- *   list    客戶名單（2026-09-26 他要的）：搜姓名或電話，點一位就開結果；往左滑露出「刪除」（2026-10-05，SwipeRow）
+ *   list    客戶名單（2026-09-26 他要的）：搜姓名或電話，點一位就開結果；往左滑露出「刪除」（2026-10-05，SwipeRow）；
+ *           預算／區域／型態三排標籤篩選（2026-10-05，規則在 lib/match/buyer-filter.ts）
  *   result  這位的資料、符合幾間、傳給客戶
  * 表單（BuyerEditor）、傳給客戶（ShareToBuyer）、物件清單（MatchList）都跟後台共用，只換淺色樣式。
  */
@@ -15,6 +16,7 @@ import matchStyles from "@/app/match/match.module.css";
 import type { MatchMeta } from "@/app/match/preference-state";
 import ShareToBuyer from "@/app/match/ShareToBuyer";
 import { intakeDeleteAction, intakeListAction, intakeOpenAction, intakePushAction, intakeSaveAction, type IntakeSaveResult } from "@/lib/actions/intake";
+import { BUDGET_TIERS, EMPTY_FILTER, budgetCounts, distinctCounts, isFilterActive, matchesFilter, toggleIn, type RowFilter } from "@/lib/match/buyer-filter";
 import type { IntakeRow } from "@/lib/match/intake";
 import { lineText } from "@/lib/match/line-via";
 import intakeStyles from "./intake.module.css";
@@ -37,6 +39,8 @@ export default function IntakeApp({ intakeKey, meta }: { intakeKey: string; meta
   const [rows, setRows] = useState<IntakeRow[] | null>(null);
   const [rowsError, setRowsError] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  // 預算／區域／型態篩選（換畫面不會清掉，回名單還在）
+  const [filter, setFilter] = useState<RowFilter>(EMPTY_FILTER);
   const [opening, setOpening] = useState<string | null>(null);
   // 名單往左滑刪除：哪一列現在是打開的（一次只開一列）、哪一列正在刪、刪完的提示
   const [openId, setOpenId] = useState<string | null>(null);
@@ -96,18 +100,31 @@ export default function IntakeApp({ intakeKey, meta }: { intakeKey: string; meta
     setFlash(`已刪掉「${r.name || r.phone}」`);
   }
 
+  const filtering = isFilterActive(filter);
   const filtered = (rows ?? []).filter((r) => {
+    if (!matchesFilter(r, filter)) return false;
     const s = q.trim().toLowerCase();
     if (!s) return true;
     return r.name.toLowerCase().includes(s) || r.lineName.toLowerCase().includes(s) || r.phone.includes(s.replace(/\D/g, "") || s) || (r.summary ?? "").includes(s);
   });
+  // 三排標籤：預算固定幾段，區域／型態只放名單裡真的有人選的，各標幾位
+  const districtChips = distinctCounts(rows ?? [], "districts");
+  const typeChips = distinctCounts(rows ?? [], "types");
+  const budgetChipCounts = budgetCounts(rows ?? []);
+  const chipClass = (on: boolean) => `${styles.fchip} ${on ? styles.fchipOn : ""}`;
 
   return (
     <div className={styles.page}>
       <div className={styles.top}>
         <div>
           <h1 className={styles.title}>代客建檔</h1>
-          <p className={styles.sub}>{view === "list" ? `客戶名單${rows ? `（${rows.length}）` : ""}` : view === "result" ? "存好了" : "接到來電就記，存好直接看配對"}</p>
+          <p className={styles.sub}>
+            {view === "list"
+              ? `客戶名單${rows ? `（${filtering || q.trim() ? `符合 ${filtered.length}／${rows.length}` : rows.length}）` : ""}`
+              : view === "result"
+                ? "存好了"
+                : "接到來電就記，存好直接看配對"}
+          </p>
         </div>
         <div className={styles.headBtns}>
           <button type="button" className={`${styles.headBtn} ${view === "form" && !editing ? styles.headBtnOn : ""}`} onClick={goNew}>
@@ -151,6 +168,71 @@ export default function IntakeApp({ intakeKey, meta }: { intakeKey: string; meta
           {rowsError && <p className={styles.msg}>{rowsError}</p>}
           {flash && <p className={styles.msg}>{flash}</p>}
           <input className={styles.search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="搜姓名、電話或條件" inputMode="search" />
+          {rows && rows.length > 0 && (
+            <div className={styles.filters}>
+              <div className={styles.filterRow}>
+                <span className={styles.filterLabel}>預算</span>
+                <div className={styles.filterChips}>
+                  {BUDGET_TIERS.map((t) => (
+                    <button
+                      key={String(t.value)}
+                      type="button"
+                      className={chipClass(filter.budget === t.value)}
+                      aria-pressed={filter.budget === t.value}
+                      onClick={() => setFilter((f) => ({ ...f, budget: f.budget === t.value ? "" : t.value }))}
+                    >
+                      {t.label}
+                      <i className={styles.fchipN}>{budgetChipCounts.get(t.value) ?? 0}</i>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className={styles.filterRow}>
+                <span className={styles.filterLabel}>區域</span>
+                <div className={styles.filterChips}>
+                  {districtChips.length === 0 && <span className={styles.filterNone}>還沒有人選區域</span>}
+                  {districtChips.map((c) => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      className={chipClass(filter.districts.includes(c.value))}
+                      aria-pressed={filter.districts.includes(c.value)}
+                      onClick={() => setFilter((f) => ({ ...f, districts: toggleIn(f.districts, c.value) }))}
+                    >
+                      {c.value.replace(/區$/, "")}
+                      <i className={styles.fchipN}>{c.count}</i>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className={styles.filterRow}>
+                <span className={styles.filterLabel}>型態</span>
+                <div className={styles.filterChips}>
+                  {typeChips.length === 0 && <span className={styles.filterNone}>還沒有人選型態</span>}
+                  {typeChips.map((c) => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      className={chipClass(filter.types.includes(c.value))}
+                      aria-pressed={filter.types.includes(c.value)}
+                      onClick={() => setFilter((f) => ({ ...f, types: toggleIn(f.types, c.value) }))}
+                    >
+                      {c.value}
+                      <i className={styles.fchipN}>{c.count}</i>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {filtering && (
+                <p className={styles.filterInfo}>
+                  符合 {filtered.length} 位（沒填那一項的客人視為不限，也會列出來）
+                  <button type="button" className={styles.filterClear} onClick={() => setFilter(EMPTY_FILTER)}>
+                    清除篩選
+                  </button>
+                </p>
+              )}
+            </div>
+          )}
           {rows && rows.length > 0 && <p className={styles.swipeHint}>往左滑可以刪除</p>}
           {!rows && !rowsError ? (
             <p className={styles.muted}>讀取中…</p>

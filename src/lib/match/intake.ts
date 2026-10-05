@@ -206,6 +206,10 @@ export type IntakeRow = {
   linked: boolean;
   followed: boolean;
   summary: string | null;
+  /** 篩選用（lib/match/buyer-filter.ts）：預算上限（萬，0 = 沒填）、區域、型態 */
+  budgetMax: number;
+  districts: string[];
+  types: string[];
   /** ISO 字串，給畫面顯示「幾號更新的」 */
   updatedAt: string | null;
 };
@@ -221,6 +225,9 @@ export function toIntakeRow(b: Buyer): IntakeRow {
     linked: Boolean(b.lineUserId),
     followed: b.followed,
     summary: b.preference ? describePreference(b.preference) : null,
+    budgetMax: b.preference?.budgetMax ?? 0,
+    districts: b.preference?.districts ?? [],
+    types: b.preference?.types ?? [],
     updatedAt: b.updatedAt ? new Date(b.updatedAt).toISOString() : null,
   };
 }
