@@ -14,6 +14,7 @@
 }
 .top {
   display: flex;
+  flex-wrap: wrap; /* 同事版多了「預約」「同事」兩顆，手機放不下就整排換到標題下面 */
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
@@ -437,4 +438,26 @@
   font-weight: 700;
   text-decoration: underline;
   cursor: pointer;
+}
+
+/* 預約看屋、同事名單的一列（不是按鈕，所以不用 .row）；同事版 2026-10-05 */
+.vrow {
+  padding: 12px;
+  border: 1px solid #e3eaee;
+  border-radius: 12px;
+  background: #fff;
+}
+.vrowOff {
+  opacity: 0.6;
+}
+.tagOff {
+  background: #fde8e8;
+  color: #b91c1c;
+}
+.curl {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #5b6b73;
+  word-break: break-all;
+  user-select: all;
 }

@@ -45,6 +45,17 @@ export default async function BuyerDetailPage({ params }: { params: Promise<{ id
       </div>,
     );
   }
+  // 同事版（2026-10-05）：名單各管各的，同事的客人後台也不給看（列表本來就沒列，這裡擋直接打網址的）
+  if (buyer.colleagueId) {
+    return shell(
+      <div className={styles.wrap}>
+        <a className={styles.back} href="/admin/match?tab=buyers">
+          ← 買方配對
+        </a>
+        <p className={styles.muted}>這位是同事的客人，後台看不到（名單各管各的）。</p>
+      </div>,
+    );
+  }
 
   // 幾個查詢循序做：連線池只有 3 條
   const meta = await buildMatchMeta();

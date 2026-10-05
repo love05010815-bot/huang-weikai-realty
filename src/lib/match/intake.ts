@@ -8,20 +8,25 @@
  *   pushBriefToBuyer   從官方帳號推物件卡給他（計費）
  *   listIntakeRows     名單（2026-09-26 他要在 /intake 也看得到已建立的客戶）
  */
-import { MATCH } from "@/config/match";
+import { MATCH, VIEWING_STATUS } from "@/config/match";
 import { OWNER } from "@/config/owner";
+import { colleagueIntakeUrl } from "./colleague-link";
+import type { Colleague } from "./colleagues";
 import { listingCarousel, matchPageUrl, pushMessages, text } from "./line";
 import { normalizeLineVia, type LineVia } from "./line-via";
 import { describePreference, normalizePreference, rankListings, type Preference } from "./matcher";
 import {
   getBuyer,
   getBuyerByPhone,
+  getListings,
   listAvailableListings,
-  listBuyersForAdmin,
+  listBuyersOf,
+  listViewingsForAdmin,
   normalizePhone,
   upsertBuyer,
   type Buyer,
   type MatchListing,
+  type ViewingWithListing,
 } from "./store";
 import { createBuyerToken } from "./token";
 
@@ -39,12 +44,20 @@ export type BuyerFormInput = {
 
 export type SaveResult = { ok: true; buyer: Buyer; merged: boolean } | { ok: false; error: string };
 
+export const NOT_YOURS = "這位客人不在你的名單裡";
+
+/** 這位客人是不是這份名單的（null = 本人的名單）。同事版 2026-10-05：誰都不能動別人的客人 */
+export function buyerOwnedBy(buyer: Buyer, colleagueId: string | null): boolean {
+  return (buyer.colleagueId ?? null) === colleagueId;
+}
+
 /**
  * 存買方。id 為 null = 新建。
  * 新建時用電話查重 —— 同一個人打第二次電話、或他之前自己在 /match 留過條件，
  * 都不該變成兩筆；找到就更新那一筆，回 merged = true 讓畫面提醒一聲。
+ * colleagueId：這份名單是誰的（null = 本人）。查重只在同一份名單裡查，改既有的也只能改自己的。
  */
-export async function saveBuyerFromForm(id: string | null, input: BuyerFormInput): Promise<SaveResult> {
+export async function saveBuyerFromForm(id: string | null, input: BuyerFormInput, colleagueId: string | null = null): Promise<SaveResult> {
   const name = String(input.name ?? "").trim().slice(0, 40);
   const phone = normalizePhone(String(input.phone ?? "")).slice(0, 40);
   const note = String(input.note ?? "").trim().slice(0, 1000);
@@ -56,14 +69,17 @@ export async function saveBuyerFromForm(id: string | null, input: BuyerFormInput
 
   let targetId = id;
   let merged = false;
-  if (!targetId) {
-    const existing = await getBuyerByPhone(phone);
+  if (targetId) {
+    const existing = await getBuyer(targetId);
+    if (!existing || !buyerOwnedBy(existing, colleagueId)) return { ok: false, error: NOT_YOURS };
+  } else {
+    const existing = await getBuyerByPhone(phone, colleagueId);
     if (existing) {
       targetId = existing.id;
       merged = true;
     }
   }
-  const buyer = await upsertBuyer({ id: targetId, name, phone, note, lineVia, lineName, preference });
+  const buyer = await upsertBuyer({ id: targetId, name, phone, note, lineVia, lineName, preference, colleagueId });
   return { ok: true, buyer, merged };
 }
 
@@ -100,9 +116,9 @@ function metaLine(l: MatchListing): string {
   return parts.join(" · ");
 }
 
-/** 建議傳給客戶的那段話。他可以在畫面上改過再傳。 */
-function buildMessage(name: string, summary: string | null, matched: number, link: string): string {
-  const who = `${name}您好，我是太平洋房屋的${OWNER.alias}。`;
+/** 建議傳給客戶的那段話。他可以在畫面上改過再傳。signer = 署名（本人或同事） */
+function buildMessage(name: string, summary: string | null, matched: number, link: string, signer: string): string {
+  const who = `${name}您好，我是太平洋房屋的${signer}。`;
   if (!summary) return `${who}\n這是您的專屬找房連結，填好購屋條件就會自動配對，看中意可以直接預約看屋：\n${link}`;
   if (matched === 0) {
     return `${who}\n您的需求（${summary}）我已經記下來了，目前還沒有完全符合的物件，有新的進來會第一時間通知您。\n想調整條件可以點這裡：\n${link}`;
@@ -114,7 +130,7 @@ function buildMessage(name: string, summary: string | null, matched: number, lin
  * 這位買方的「簡報」：符合幾間、前幾間長什麼樣、專屬連結、建議訊息。
  * 配對用的是跟 /api/match/search 同一支 rankListings，所以他看到的跟客戶點開看到的一模一樣。
  */
-export async function buildBuyerBrief(buyer: Buyer, showMax = 40): Promise<BuyerBrief> {
+export async function buildBuyerBrief(buyer: Buyer, showMax = 40, signer: string = OWNER.alias): Promise<BuyerBrief> {
   let matches: BriefMatch[] = [];
   let matched = 0;
   let total = 0;
@@ -136,7 +152,7 @@ export async function buildBuyerBrief(buyer: Buyer, showMax = 40): Promise<Buyer
   const token = createBuyerToken(buyer.id);
   const link = token ? matchPageUrl(undefined, token, { go: true }) : null;
   const name = buyer.name || buyer.displayName || "您";
-  return { summary, matched, total, matches, link, message: link ? buildMessage(name, summary, matched, link) : "" };
+  return { summary, matched, total, matches, link, message: link ? buildMessage(name, summary, matched, link, signer) : "" };
 }
 
 /**
@@ -232,7 +248,72 @@ export function toIntakeRow(b: Buyer): IntakeRow {
   };
 }
 
-/** 名單：最近更新的在前。跟後台「買方」分頁是同一份資料。 */
-export async function listIntakeRows(limit = 300): Promise<IntakeRow[]> {
-  return (await listBuyersForAdmin(limit)).map(toIntakeRow);
+/** 名單：最近更新的在前。colleagueId null = 本人的（跟後台「買方」分頁同一份），同事 id = 他自己的。 */
+export async function listIntakeRows(limit = 300, colleagueId: string | null = null): Promise<IntakeRow[]> {
+  return (await listBuyersOf(colleagueId, limit)).map(toIntakeRow);
+}
+
+// ---------------------------------------------------------------- 預約看屋（同事版 2026-10-05：同事沒有後台，在 /intake 看）
+
+export type IntakeViewingRow = {
+  id: string;
+  code: string;
+  name: string;
+  phone: string;
+  listingTitles: string[];
+  preferredAt: string;
+  note: string;
+  status: string;
+  statusLabel: string;
+  createdAt: string | null;
+};
+
+export function toIntakeViewingRow(v: ViewingWithListing, titleById: Map<string, string>): IntakeViewingRow {
+  return {
+    id: v.id,
+    code: v.code,
+    name: v.name,
+    phone: v.phone,
+    listingTitles: v.listingIds.map((id) => titleById.get(id) ?? v.listingTitle ?? id),
+    preferredAt: v.preferredAt,
+    note: v.note,
+    status: v.status,
+    statusLabel: VIEWING_STATUS[v.status] ?? v.status,
+    createdAt: v.createdAt ? new Date(v.createdAt).toISOString() : null,
+  };
+}
+
+/** 自己客人的預約，最新的在前（跟後台「預約看屋」分頁同一支查詢，只是名單不同） */
+export async function listIntakeViewings(colleagueId: string | null, limit = 100): Promise<IntakeViewingRow[]> {
+  const raw = await listViewingsForAdmin(limit, colleagueId);
+  // 一筆預約可能包含好幾間，標題一次撈齊
+  const titleById = new Map((await getListings([...new Set(raw.flatMap((v) => v.listingIds))])).map((l) => [l.id, l.title]));
+  return raw.map((v) => toIntakeViewingRow(v, titleById));
+}
+
+// ---------------------------------------------------------------- 同事（只有本人的連結看得到）
+
+export type IntakeColleagueRow = {
+  id: string;
+  name: string;
+  phone: string;
+  lineUrl: string;
+  active: boolean;
+  /** 他的快速建檔連結（本人要傳給他） */
+  url: string;
+  buyers: number;
+  createdAt: string | null;
+};
+
+export function toIntakeColleagueRow(c: Colleague, buyers: number): IntakeColleagueRow {
+  return {
+    id: c.id,
+    name: c.name,
+    phone: c.phone,
+    lineUrl: c.lineUrl,
+    active: c.active,
+    url: colleagueIntakeUrl(c.intakeKey),
+    buyers,
+    createdAt: c.createdAt ? new Date(c.createdAt).toISOString() : null,
+  };
 }

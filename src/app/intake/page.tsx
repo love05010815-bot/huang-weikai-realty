@@ -6,10 +6,13 @@
  *
  * 金鑰在網址上（見 lib/match/intake-key.ts）：不對就只給一句「連結無效」，什麼都不透露。
  * 不給搜尋引擎收錄、不放進任何選單。
+ *
+ * 同事版（2026-10-05）：同一個頁面，金鑰分本人的跟同事的（match_colleague）。同事看到的是自己的名單，
+ * 畫面上的署名、客人看到的聯絡方式都換成同事（見 lib/match/colleagues.ts）。
  */
 import type { Metadata } from "next";
 import { OWNER } from "@/config/owner";
-import { verifyIntakeKey } from "@/lib/match/intake-key";
+import { resolveIntakeActor, type IntakeActor } from "@/lib/match/intake-key";
 import { buildMatchMeta } from "@/lib/match/meta";
 import IntakeApp from "./IntakeApp";
 import styles from "./intake.module.css";
@@ -29,9 +32,9 @@ export const metadata: Metadata = {
 export default async function IntakePage({ searchParams }: { searchParams: Promise<{ key?: string }> }) {
   const { key } = await searchParams;
 
-  let valid = false;
+  let actor: IntakeActor | null = null;
   try {
-    valid = await verifyIntakeKey(key);
+    actor = await resolveIntakeActor(key);
   } catch (e) {
     return (
       <div className={styles.page}>
@@ -39,7 +42,7 @@ export default async function IntakePage({ searchParams }: { searchParams: Promi
       </div>
     );
   }
-  if (!valid || !key) {
+  if (!actor || !key) {
     return (
       <div className={styles.page}>
         <div className={styles.invalid}>
@@ -54,9 +57,9 @@ export default async function IntakePage({ searchParams }: { searchParams: Promi
   const meta = await buildMatchMeta();
   return (
     <>
-      <IntakeApp intakeKey={key} meta={meta} />
+      <IntakeApp intakeKey={key} meta={meta} who={{ colleague: actor.kind === "colleague", name: actor.colleague?.name ?? OWNER.alias }} />
       <p style={{ textAlign: "center", fontSize: 11, color: "#8a9aa2", margin: "0 0 16px" }}>
-        {OWNER.name}｜內部工具
+        {actor.colleague ? `${actor.colleague.name}（${OWNER.company}）` : OWNER.name}｜內部工具
       </p>
     </>
   );

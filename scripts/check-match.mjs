@@ -20,6 +20,8 @@ register("./stub-hooks.mjs", import.meta.url);
 process.env.APPOINTMENT_BASE_URL = "https://weikaihouse.com";
 // pacific-parse.ts 用相對路徑 import 隔壁的 houseol-parse（沒副檔名），要靠上面的 hook 解，所以得在 register 之後動態載
 const { houseolIdFromPic, pacificFloor, pacificToListingUpsert, pacificUsageType } = await import("../src/lib/match/pacific-parse.ts");
+// colleague-link.ts 有 import "@/config/owner"（別名），一樣要在 register 之後動態載
+const { colleagueIntakeUrl, lineUrlFromInput } = await import("../src/lib/match/colleague-link.ts");
 import {
   AGE_OPTIONS,
   AGE_RANGES,
@@ -901,6 +903,17 @@ test("名單篩選：三組之間是「而且」、一組裡面是「或」、�
   const bc = budgetCounts(rows);
   assert.equal(bc.get(1000), 2); // 900 ＋ 沒填
   assert.equal(bc.get("over"), 2); // 5000 ＋ 沒填
+});
+
+test("同事的 LINE：ID 轉成加好友網址、line.me 連結照收、不像樣的回空", () => {
+  assert.equal(lineUrlFromInput("abc_123"), "https://line.me/ti/p/~abc_123");
+  assert.equal(lineUrlFromInput("@abc.123"), "https://line.me/ti/p/~abc.123");
+  assert.equal(lineUrlFromInput(" https://line.me/ti/p/XYZ "), "https://line.me/ti/p/XYZ");
+  assert.equal(lineUrlFromInput("https://evil.example/x"), "");
+  assert.equal(lineUrlFromInput("中文"), "");
+  assert.equal(lineUrlFromInput(""), "");
+  assert.equal(lineUrlFromInput(null), "");
+  assert.ok(colleagueIntakeUrl("k".repeat(32)).endsWith("/intake?key=" + "k".repeat(32)));
 });
 
 if (process.exitCode) {

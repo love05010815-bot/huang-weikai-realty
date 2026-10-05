@@ -7,6 +7,7 @@
  * 回的東西只有他自己填過的（條件、姓名、電話）—— 不回 LINE userId、不回別人的任何資料。
  */
 import { NextRequest, NextResponse } from "next/server";
+import { contactForOwner } from "@/lib/match/colleagues";
 import { getBuyer } from "@/lib/match/store";
 import { verifyBuyerToken } from "@/lib/match/token";
 
@@ -25,6 +26,8 @@ export async function GET(req: NextRequest) {
       name: buyer.name,
       phone: buyer.phone,
       notify: buyer.notify,
+      // 同事的客人（2026-10-05）：配對頁的署名、加 LINE 那顆按鈕要換成同事的；本人的是 null
+      colleague: await contactForOwner(buyer.colleagueId),
     });
   } catch (e) {
     console.error("[match/me] 讀取失敗:", e);

@@ -114,10 +114,28 @@ export async function ensureMatchTables(): Promise<void> {
   for (const [col, ddl] of [
     ["line_via", "ALTER TABLE match_buyer ADD COLUMN line_via VARCHAR(16) NULL AFTER note"],
     ["line_name", "ALTER TABLE match_buyer ADD COLUMN line_name VARCHAR(120) NULL AFTER line_via"],
+    // colleague_id 是 2026-10-05 同事版加的：這位客人是誰的（NULL = 本人的）。見 lib/match/colleagues.ts
+    ["colleague_id", "ALTER TABLE match_buyer ADD COLUMN colleague_id VARCHAR(36) NULL AFTER line_name, ADD INDEX idx_match_buyer_colleague (colleague_id)"],
   ] as const) {
     const has = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM match_buyer LIKE '${col}'`);
     if (has.length === 0) await db.$executeRawUnsafe(ddl);
   }
+
+  // 同事（2026-10-05）：名單各管各的，每人一把自己的快速建檔金鑰。見 lib/match/colleagues.ts
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS match_colleague (
+      id            VARCHAR(36)  NOT NULL,
+      name          VARCHAR(80)  NOT NULL,
+      phone         VARCHAR(40)  NOT NULL DEFAULT '',
+      line_url      VARCHAR(200) NOT NULL DEFAULT '',
+      intake_key    VARCHAR(64)  NOT NULL,
+      active        TINYINT(1)   NOT NULL DEFAULT 1,
+      created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uq_match_colleague_key (intake_key)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
 
   await db.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS match_viewing (
@@ -512,6 +530,8 @@ export type Buyer = {
   lineVia: LineVia | "";
   /** 客人在 LINE 上的 ID 或名稱（手動記的） */
   lineName: string;
+  /** 這位客人是誰的：null = 本人的，其餘 = 同事（match_colleague.id）。2026-10-05 同事版加 */
+  colleagueId: string | null;
   createdAt: Date | null;
   updatedAt: Date | null;
 };
@@ -528,6 +548,7 @@ type BuyerRow = {
   note: string | null;
   line_via: string | null;
   line_name: string | null;
+  colleague_id: string | null;
   created_at: Date | null;
   updated_at: Date | null;
 };
@@ -553,12 +574,13 @@ function toBuyer(row: BuyerRow): Buyer {
     note: row.note ?? "",
     lineVia: normalizeLineVia(row.line_via),
     lineName: row.line_name ?? "",
+    colleagueId: row.colleague_id ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
-const BUYER_COLS = "id, line_user_id, display_name, name, phone, followed, notify, preference, note, line_via, line_name, created_at, updated_at";
+const BUYER_COLS = "id, line_user_id, display_name, name, phone, followed, notify, preference, note, line_via, line_name, colleague_id, created_at, updated_at";
 
 export async function getBuyer(id: string): Promise<Buyer | null> {
   await ensureMatchTables();
@@ -574,13 +596,15 @@ export const normalizePhone = (phone: string): string => String(phone ?? "").rep
  * 資料庫裡的電話多半已經是純數字（預約表單存進來的），但保險起見比對時把 - 與空白拿掉。
  * 同一支電話對到好幾筆時回最近更新的那一筆。
  */
-export async function getBuyerByPhone(phone: string): Promise<Buyer | null> {
+export async function getBuyerByPhone(phone: string, colleagueId: string | null = null): Promise<Buyer | null> {
   const p = normalizePhone(phone);
   if (p.length < 8) return null;
   await ensureMatchTables();
+  // 只在同一份名單裡找（<=> 是 null 安全的等於）：同事的客人跟本人的客人同一支電話，是兩筆、不合併
   const rows = await db.$queryRawUnsafe<BuyerRow[]>(
-    `SELECT ${BUYER_COLS} FROM match_buyer WHERE REPLACE(REPLACE(phone, '-', ''), ' ', '') = ? ORDER BY updated_at DESC LIMIT 1`,
+    `SELECT ${BUYER_COLS} FROM match_buyer WHERE REPLACE(REPLACE(phone, '-', ''), ' ', '') = ? AND colleague_id <=> ? ORDER BY updated_at DESC LIMIT 1`,
     p,
+    colleagueId,
   );
   return rows[0] ? toBuyer(rows[0]) : null;
 }
@@ -621,6 +645,8 @@ export type BuyerUpsertInput = {
   /** 客人的 LINE 是加私人的還是官方的、他的 LINE 名稱（同 note：undefined 不動、"" 清掉） */
   lineVia?: LineVia | "" | null;
   lineName?: string | null;
+  /** 這位客人是誰的（undefined 不動；null = 本人） */
+  colleagueId?: string | null;
   followed?: boolean;
   notify?: boolean;
 };
@@ -664,6 +690,7 @@ export async function upsertBuyer(input: BuyerUpsertInput): Promise<Buyer> {
       note: byLine.note || byId.note,
       lineVia: byLine.lineVia || byId.lineVia,
       lineName: byLine.lineName || byId.lineName,
+      colleagueId: byLine.colleagueId ?? byId.colleagueId,
     };
   }
 
@@ -676,6 +703,7 @@ export async function upsertBuyer(input: BuyerUpsertInput): Promise<Buyer> {
     note: (input.note !== undefined ? input.note : target?.note) || null,
     lineVia: (input.lineVia !== undefined ? input.lineVia : target?.lineVia) || null,
     lineName: (input.lineName !== undefined ? input.lineName : target?.lineName) || null,
+    colleagueId: input.colleagueId !== undefined ? input.colleagueId : (target?.colleagueId ?? null),
     followed: input.followed ?? target?.followed ?? true,
     notify: input.notify ?? target?.notify ?? true,
   };
@@ -684,7 +712,7 @@ export async function upsertBuyer(input: BuyerUpsertInput): Promise<Buyer> {
   if (!target) {
     const id = randomUUID();
     await db.$executeRawUnsafe(
-      `INSERT INTO match_buyer (id, line_user_id, display_name, name, phone, followed, notify, preference, note, line_via, line_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO match_buyer (id, line_user_id, display_name, name, phone, followed, notify, preference, note, line_via, line_name, colleague_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       merged.lineUserId,
       merged.displayName,
@@ -696,12 +724,13 @@ export async function upsertBuyer(input: BuyerUpsertInput): Promise<Buyer> {
       merged.note,
       merged.lineVia,
       merged.lineName,
+      merged.colleagueId,
     );
     return (await getBuyer(id))!;
   }
 
   await db.$executeRawUnsafe(
-    `UPDATE match_buyer SET line_user_id = ?, display_name = ?, name = ?, phone = ?, followed = ?, notify = ?, preference = ?, note = ?, line_via = ?, line_name = ? WHERE id = ?`,
+    `UPDATE match_buyer SET line_user_id = ?, display_name = ?, name = ?, phone = ?, followed = ?, notify = ?, preference = ?, note = ?, line_via = ?, line_name = ?, colleague_id = ? WHERE id = ?`,
     merged.lineUserId,
     merged.displayName,
     merged.name,
@@ -712,6 +741,7 @@ export async function upsertBuyer(input: BuyerUpsertInput): Promise<Buyer> {
     merged.note,
     merged.lineVia,
     merged.lineName,
+    merged.colleagueId,
     target.id,
   );
   return (await getBuyer(target.id))!;
@@ -752,12 +782,19 @@ export async function setBuyerFlagsByLine(
   return getBuyerByLine(lineUserId);
 }
 
-export async function listBuyersForAdmin(limit = 300): Promise<Buyer[]> {
+/** 一份名單：null = 本人的客人，其餘 = 那位同事的（2026-10-05 同事版：誰都看不到誰的） */
+export async function listBuyersOf(colleagueId: string | null, limit = 300): Promise<Buyer[]> {
   await ensureMatchTables();
   const rows = await db.$queryRawUnsafe<BuyerRow[]>(
-    `SELECT ${BUYER_COLS} FROM match_buyer ORDER BY updated_at DESC LIMIT ${Math.max(1, Math.min(2000, limit))}`,
+    `SELECT ${BUYER_COLS} FROM match_buyer WHERE colleague_id <=> ? ORDER BY updated_at DESC LIMIT ${Math.max(1, Math.min(2000, limit))}`,
+    colleagueId,
   );
   return rows.map(toBuyer);
+}
+
+/** 後台「買方」分頁 = 本人的客人 */
+export async function listBuyersForAdmin(limit = 300): Promise<Buyer[]> {
+  return listBuyersOf(null, limit);
 }
 
 // ---------------------------------------------------------------- 預約看屋
@@ -946,8 +983,11 @@ export type ViewingWithListing = Viewing & {
   buyerDisplayName: string | null;
 };
 
-/** 後台清單：帶上物件名稱與買方的 LINE 顯示名稱，最新的在前 */
-export async function listViewingsForAdmin(limit = 300): Promise<ViewingWithListing[]> {
+/**
+ * 預約清單：帶上物件名稱與買方的 LINE 顯示名稱，最新的在前。
+ * colleagueId null = 本人的（後台用：買方是本人的、或沒掛買方的）；給同事 id = 只有他客人的預約（2026-10-05 同事版）。
+ */
+export async function listViewingsForAdmin(limit = 300, colleagueId: string | null = null): Promise<ViewingWithListing[]> {
   await ensureMatchTables();
   const rows = await db.$queryRawUnsafe<(ViewingRow & { listing_title: string | null; listing_city: string | null; listing_district: string | null; listing_price: number | null; buyer_display_name: string | null })[]>(
     `SELECT v.id, v.code, v.listing_id, v.listing_ids, v.buyer_id, v.line_user_id, v.name, v.phone, v.preferred_at, v.note, v.status, v.agent_note, v.linked_at, v.created_at, v.updated_at,
@@ -956,7 +996,9 @@ export async function listViewingsForAdmin(limit = 300): Promise<ViewingWithList
        FROM match_viewing v
        LEFT JOIN match_listing l ON l.id = v.listing_id
        LEFT JOIN match_buyer b ON b.id = v.buyer_id
+      WHERE ${colleagueId ? "b.colleague_id = ?" : "b.colleague_id IS NULL"}
       ORDER BY v.created_at DESC LIMIT ${Math.max(1, Math.min(2000, limit))}`,
+    ...(colleagueId ? [colleagueId] : []),
   );
   return rows.map((row) => ({
     ...toViewing(row),

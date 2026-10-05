@@ -17,6 +17,7 @@
  *
  * 條件表單的欄位在 PreferenceForm.tsx、狀態換算在 preference-state.ts —— 後台代客建檔用同一份。
  */
+import type { ColleagueContact } from "@/lib/match/colleague-link";
 import { useCallback, useEffect, useState } from "react";
 import styles from "./match.module.css";
 import PreferenceForm from "./PreferenceForm";
@@ -58,7 +59,7 @@ type SearchResult = {
   matches: Match[];
 };
 
-type Me = { buyerId: string; preference: ApiPreference | null; name: string | null; phone: string | null; notify: boolean };
+type Me = { buyerId: string; preference: ApiPreference | null; name: string | null; phone: string | null; notify: boolean; colleague?: ColleagueContact | null };
 
 type Booking = {
   viewing: { code: string; preferredAt: string; name: string; phone: string };
@@ -67,7 +68,9 @@ type Booking = {
   listings: { id: string; title: string; city: string; district: string; address: string; price: number }[];
   /** 送出時已經下架、被剔除的間數 */
   dropped: number;
-  line: { confirmText: string; oaMessageUrl: string; addFriendUrl: string; qrDataUrl: string };
+  /** 本人的客人才有（導官方帳號）；同事的客人是 null，改看 colleague（2026-10-05 同事版） */
+  line: { confirmText: string; oaMessageUrl: string; addFriendUrl: string; qrDataUrl: string } | null;
+  colleague: ColleagueContact | null;
 };
 
 type Step = "form" | "results" | "booking" | "success";
@@ -135,7 +138,11 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return data;
 }
 
-export default function MatchApp({ initial }: { initial?: MatchInitial | null } = {}) {
+/**
+ * colleague：這位客人是同事的（2026-10-05 同事版）→ 署名、加 LINE、預約完成頁全部換成同事的，不碰官方帳號。
+ * 伺服器端先認出來的從 props 進來；用 ?k= 在瀏覽器裡認的從 /api/match/me 回來。
+ */
+export default function MatchApp({ initial, colleague: colleagueProp = null }: { initial?: MatchInitial | null; colleague?: ColleagueContact | null } = {}) {
   const [meta, setMeta] = useState<MatchMeta | null>(null);
   const [step, setStep] = useState<Step>(initial?.result ? "results" : "form");
   const [pref, setPref] = useState<PrefState>(() => (initial?.preference ? toPrefState(initial.preference) : EMPTY_PREF));
@@ -153,6 +160,7 @@ export default function MatchApp({ initial }: { initial?: MatchInitial | null } 
   const [buyerId, setBuyerId] = useState<string | null>(initial?.buyerId ?? null);
   /** 從官方帳號連結帶進來的買方識別碼；有它就不靠瀏覽器記的編號 */
   const [token, setToken] = useState<string | null>(initial?.token ?? null);
+  const [colleague, setColleague] = useState<ColleagueContact | null>(colleagueProp);
   const [loaded, setLoaded] = useState<string | null>(
     // 伺服器帶了條件但沒有結果（他還沒留條件時 result 是 null）→ 跟原本一樣提示一句
     initial?.preference && !initial.result ? "已帶入您目前設定的條件，改好按「開始配對」就會更新，之後的新物件通知也照新條件配。" : null,
@@ -194,6 +202,7 @@ export default function MatchApp({ initial }: { initial?: MatchInitial | null } 
         .then((me) => {
           setBuyerId(me.buyerId);
           writeBuyerId(me.buyerId);
+          if (me.colleague !== undefined) setColleague(me.colleague);
           if (me.preference) {
             const loadedPref = toPrefState(me.preference);
             setPref(loadedPref);
@@ -376,13 +385,26 @@ export default function MatchApp({ initial }: { initial?: MatchInitial | null } 
           ← 修改條件
         </button>
         <p className={styles.summary}>{result.summary}</p>
-        {meta?.addFriendUrl && (
+        {colleague ? (
           <div className={styles.banner}>
-            加入官方 LINE，之後有符合條件的新物件會自動通知您。{" "}
-            <a href={meta.addFriendUrl} target="_blank" rel="noopener noreferrer">
-              加入好友 →
-            </a>
+            有想問的可以直接找{colleague.name}：{" "}
+            {colleague.lineUrl && (
+              <a href={colleague.lineUrl} target="_blank" rel="noopener noreferrer">
+                加 LINE →
+              </a>
+            )}
+            {colleague.lineUrl && colleague.phone ? "　" : ""}
+            {colleague.phone && <a href={`tel:${colleague.phone.replace(/\D/g, "")}`}>撥電話 {colleague.phone}</a>}
           </div>
+        ) : (
+          meta?.addFriendUrl && (
+            <div className={styles.banner}>
+              加入官方 LINE，之後有符合條件的新物件會自動通知您。{" "}
+              <a href={meta.addFriendUrl} target="_blank" rel="noopener noreferrer">
+                加入好友 →
+              </a>
+            </div>
+          )
         )}
         {result.matches.length === 0 ? (
           <div className={styles.empty}>
@@ -396,7 +418,7 @@ export default function MatchApp({ initial }: { initial?: MatchInitial | null } 
                   目前在售的 {result.total} 間裡，沒有同時符合您所有條件的。
                   可以按上面的「修改條件」放寬其中一項（例如屋齡或預算）再找一次。
                 </p>
-                <p>您填的條件我們已經記下來了 —— 加官方 LINE 好友，之後有符合的新物件會第一時間通知您。</p>
+                <p>{colleague ? `您填的條件${colleague.name}已經記下來了，有符合的新物件會再通知您。` : "您填的條件我們已經記下來了 —— 加官方 LINE 好友，之後有符合的新物件會第一時間通知您。"}</p>
               </>
             )}
           </div>
@@ -516,49 +538,72 @@ export default function MatchApp({ initial }: { initial?: MatchInitial | null } 
         {booking.dropped > 0 && (
           <p className={styles.hint}>其中 {booking.dropped} 間在送出時已經下架，沒有列入這次預約。</p>
         )}
-        <div className={styles.box}>
-          您的預約已經送出，專員已經收到通知，會盡快與您聯繫。
-          <br />
-          下面這一步是為了讓您在官方 LINE 收到確認卡，之後有新物件也能第一時間通知您。
-        </div>
-        {isDesktop ? (
+        {booking.colleague || !booking.line ? (
           <>
-            {/* 電腦上 line.me/R/… 會被導到 LINE 官網首頁，只能請他用手機掃 */}
+            {/* 同事的客人（2026-10-05 同事版）：不導官方帳號，直接給同事的 LINE 與電話 */}
             <div className={styles.box}>
-              <b>用手機掃這個 QR code</b>
-              <ol>
-                <li>掃描後會開啟官方 LINE，訊息已經填好</li>
-                <li>直接按送出「{booking.line.confirmText}」</li>
-                <li>立即收到預約確認卡</li>
-              </ol>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img className={styles.qr} src={booking.line.qrDataUrl} alt="用手機掃描開啟官方 LINE" width={220} height={220} />
+              您的預約已經送出，{booking.colleague?.name ?? "專員"}會盡快與您聯繫。
+              <br />
+              有急事可以直接聯絡，說預約編號 {booking.viewing.code} 就可以。
             </div>
-            <p className={styles.hint}>
-              手機上才能直接開啟 LINE。若您正在用手機看這頁，可以按{" "}
-              <a href={booking.line.oaMessageUrl}>這裡前往官方 LINE</a>。
-            </p>
+            {booking.colleague?.lineUrl && (
+              <a className={`${styles.btn} ${styles.btnLine}`} href={booking.colleague.lineUrl} target="_blank" rel="noopener noreferrer">
+                LINE 聯絡{booking.colleague.name}
+              </a>
+            )}
+            {booking.colleague?.phone && (
+              <a className={`${styles.btn} ${styles.btnPrimary}`} href={`tel:${booking.colleague.phone.replace(/\D/g, "")}`}>
+                撥電話 {booking.colleague.phone}
+              </a>
+            )}
           </>
         ) : (
           <>
             <div className={styles.box}>
-              最後一步：
-              <ol>
-                <li>點下方按鈕開啟官方 LINE（尚未加好友會先引導加入）</li>
-                <li>直接送出已預先填好的「{booking.line.confirmText}」</li>
-                <li>立即收到預約確認卡，專員將與您聯繫</li>
-              </ol>
+              您的預約已經送出，專員已經收到通知，會盡快與您聯繫。
+              <br />
+              下面這一步是為了讓您在官方 LINE 收到確認卡，之後有新物件也能第一時間通知您。
             </div>
-            <a className={`${styles.btn} ${styles.btnLine}`} href={booking.line.oaMessageUrl}>
-              前往官方 LINE 完成預約
-            </a>
-            <p className={styles.hint}>
-              若按鈕沒有反應，請先{" "}
-              <a href={booking.line.addFriendUrl} target="_blank" rel="noopener noreferrer">
-                加入官方帳號好友
-              </a>
-              ，再傳送「{booking.line.confirmText}」。
-            </p>
+            {isDesktop ? (
+              <>
+                {/* 電腦上 line.me/R/… 會被導到 LINE 官網首頁，只能請他用手機掃 */}
+                <div className={styles.box}>
+                  <b>用手機掃這個 QR code</b>
+                  <ol>
+                    <li>掃描後會開啟官方 LINE，訊息已經填好</li>
+                    <li>直接按送出「{booking.line.confirmText}」</li>
+                    <li>立即收到預約確認卡</li>
+                  </ol>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img className={styles.qr} src={booking.line.qrDataUrl} alt="用手機掃描開啟官方 LINE" width={220} height={220} />
+                </div>
+                <p className={styles.hint}>
+                  手機上才能直接開啟 LINE。若您正在用手機看這頁，可以按{" "}
+                  <a href={booking.line.oaMessageUrl}>這裡前往官方 LINE</a>。
+                </p>
+              </>
+            ) : (
+              <>
+                <div className={styles.box}>
+                  最後一步：
+                  <ol>
+                    <li>點下方按鈕開啟官方 LINE（尚未加好友會先引導加入）</li>
+                    <li>直接送出已預先填好的「{booking.line.confirmText}」</li>
+                    <li>立即收到預約確認卡，專員將與您聯繫</li>
+                  </ol>
+                </div>
+                <a className={`${styles.btn} ${styles.btnLine}`} href={booking.line.oaMessageUrl}>
+                  前往官方 LINE 完成預約
+                </a>
+                <p className={styles.hint}>
+                  若按鈕沒有反應，請先{" "}
+                  <a href={booking.line.addFriendUrl} target="_blank" rel="noopener noreferrer">
+                    加入官方帳號好友
+                  </a>
+                  ，再傳送「{booking.line.confirmText}」。
+                </p>
+              </>
+            )}
           </>
         )}
         <button type="button" className={styles.linkBtn} onClick={() => go("form")}>

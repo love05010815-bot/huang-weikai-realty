@@ -14,6 +14,7 @@
  * 為了一間不見就把整筆退回去，對買方來說更莫名其妙。
  */
 import { NextRequest, NextResponse } from "next/server";
+import { contactForOwner } from "@/lib/match/colleagues";
 import { addFriendUrl, notifyOwnerNewViewing, oaMessageUrl } from "@/lib/match/line";
 import { qrDataUrl } from "@/lib/match/qr";
 import { createViewing, getListings, upsertBuyer } from "@/lib/match/store";
@@ -79,10 +80,17 @@ export async function POST(req: NextRequest) {
     // 通知失敗不能讓買方看到錯誤 —— 預約已經成立了
     // buyer.preference 是他在 /api/match/search 留下的購屋條件（upsertBuyer 不會覆蓋掉舊的），
     // 跟著通知一起送給他本人，省得為了看客戶要什麼再開一次後台。
-    try {
-      await notifyOwnerNewViewing(viewing, listings, null, buyer.preference);
-    } catch (e) {
-      console.error("[match/viewing] 通知失敗:", e);
+    // 同事的客人（2026-10-05 同事版）：不通知本人（名單各管各的），同事在自己的「預約」頁看得到；
+    // 之後要做「有新預約 LINE 通知同事」再接這裡。同事停用了會回 null → 當本人的客人處理，至少有人接。
+    const colleague = await contactForOwner(buyer.colleagueId);
+    if (colleague) {
+      console.log(`[match/viewing] ${viewing.code} 是同事「${colleague.name}」的客人，不通知本人`);
+    } else {
+      try {
+        await notifyOwnerNewViewing(viewing, listings, null, buyer.preference);
+      } catch (e) {
+        console.error("[match/viewing] 通知失敗:", e);
+      }
     }
 
     const confirmText = `預約確認 ${viewing.code}`;
@@ -92,13 +100,17 @@ export async function POST(req: NextRequest) {
         buyerId: buyer.id,
         listings: listings.map((l) => ({ id: l.id, title: l.title, city: l.city, district: l.district, address: l.address, price: l.price })),
         dropped,
-        line: {
-          confirmText,
-          oaMessageUrl: oaMessageUrl(confirmText),
-          addFriendUrl: addFriendUrl(),
-          // 桌機按那顆按鈕會被 LINE 導到官網首頁（深層連結只在手機有效），所以一併給 QR
-          qrDataUrl: qrDataUrl(oaMessageUrl(confirmText)),
-        },
+        // 同事的客人：不導官方帳號，畫面改顯示同事的聯絡方式（line 給 null）；本人的客人照舊
+        colleague,
+        line: colleague
+          ? null
+          : {
+              confirmText,
+              oaMessageUrl: oaMessageUrl(confirmText),
+              addFriendUrl: addFriendUrl(),
+              // 桌機按那顆按鈕會被 LINE 導到官網首頁（深層連結只在手機有效），所以一併給 QR
+              qrDataUrl: qrDataUrl(oaMessageUrl(confirmText)),
+            },
       },
       { status: 201 },
     );

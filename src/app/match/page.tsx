@@ -18,8 +18,9 @@ import { OWNER, SITE_URL } from "@/config/owner";
 import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
 import SiteFooter from "@/app/_ui/SiteFooter";
+import { contactForOwner, type ColleagueContact } from "@/lib/match/colleagues";
 import { runMatchSearch } from "@/lib/match/search";
-import { getBuyer } from "@/lib/match/store";
+import { getBuyer, type Buyer } from "@/lib/match/store";
 import { verifyBuyerToken } from "@/lib/match/token";
 import styles from "../home.module.css";
 import matchStyles from "./match.module.css";
@@ -43,25 +44,21 @@ export const dynamic = "force-dynamic";
  * 專屬連結那條路：驗識別碼 → 讀他存的條件 → 配對 → 把結果當 initial 交給 MatchApp。
  * 任何一步出錯都退回一般流程（initial = null），不讓客戶看到錯誤畫面。
  */
-async function PrefetchedMatch({ k }: { k: string }) {
+async function PrefetchedMatch({ k, buyer, colleague }: { k: string; buyer: Buyer; colleague: ColleagueContact | null }) {
   let initial: MatchInitial | null = null;
   try {
-    const buyerId = verifyBuyerToken(k);
-    const buyer = buyerId ? await getBuyer(buyerId) : null;
-    if (buyer) {
-      initial = {
-        buyerId: buyer.id,
-        token: k,
-        preference: buyer.preference,
-        name: buyer.name,
-        phone: buyer.phone,
-        result: buyer.preference ? await runMatchSearch(buyer.preference, buyer.id) : null,
-      };
-    }
+    initial = {
+      buyerId: buyer.id,
+      token: k,
+      preference: buyer.preference,
+      name: buyer.name,
+      phone: buyer.phone,
+      result: buyer.preference ? await runMatchSearch(buyer.preference, buyer.id) : null,
+    };
   } catch (e) {
     console.error("[match] 專屬連結預先配對失敗（退回一般流程）:", e);
   }
-  return <MatchApp initial={initial} />;
+  return <MatchApp initial={initial} colleague={colleague} />;
 }
 
 /** 配對還在算時的畫面。重點是講清楚「條件已經設好了」—— 不然客戶看到等待就以為要重填 */
@@ -79,7 +76,22 @@ function MatchLoading() {
 
 export default async function MatchPage({ searchParams }: { searchParams: Promise<{ k?: string; go?: string }> }) {
   const sp = await searchParams;
-  const prefetchKey = sp.go === "1" && typeof sp.k === "string" && sp.k ? sp.k : null;
+  const k = typeof sp.k === "string" && sp.k ? sp.k : null;
+  // 識別碼先認人（一次快查）：要知道這位客人是本人的還是同事的，整頁的署名才對（2026-10-05 同事版）；
+  // 配對那段慢的還是留給下面的 Suspense 串流。認不出來就當一般訪客。
+  let buyer: Buyer | null = null;
+  let colleague: ColleagueContact | null = null;
+  if (k) {
+    try {
+      const buyerId = verifyBuyerToken(k);
+      buyer = buyerId ? await getBuyer(buyerId) : null;
+      colleague = buyer ? await contactForOwner(buyer.colleagueId) : null;
+    } catch (e) {
+      console.error("[match] 專屬連結認人失敗（退回一般流程）:", e);
+      buyer = null;
+    }
+  }
+  const prefetch = sp.go === "1" && k && buyer ? { k, buyer } : null;
   return (
     <div className={styles.page}>
       <header className={styles.header}>
@@ -109,16 +121,16 @@ export default async function MatchPage({ searchParams }: { searchParams: Promis
             <h1 className={styles.sectionTitle}>自動配對找房</h1>
             <p className={styles.sectionDesc}>
               告訴我們您的購屋條件，系統會從目前在售的物件裡自動配對，看中意可以直接預約看屋。
-              預約完成後在官方 LINE 收到確認，之後有符合條件的新物件也會第一時間通知您。
+              {colleague ? `預約送出後，${colleague.name}會與您聯繫。` : "預約完成後在官方 LINE 收到確認，之後有符合條件的新物件也會第一時間通知您。"}
             </p>
           </div>
           <div className={styles.container}>
-            {prefetchKey ? (
+            {prefetch ? (
               <Suspense fallback={<MatchLoading />}>
-                <PrefetchedMatch k={prefetchKey} />
+                <PrefetchedMatch k={prefetch.k} buyer={prefetch.buyer} colleague={colleague} />
               </Suspense>
             ) : (
-              <MatchApp />
+              <MatchApp colleague={colleague} />
             )}
           </div>
         </section>

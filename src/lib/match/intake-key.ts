@@ -14,6 +14,7 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { SITE_URL } from "@/config/owner";
 import { getConfig, setConfig } from "@/lib/google-calendar";
+import { getColleagueByKey, type Colleague } from "./colleagues";
 
 const KEY = "match_intake_key";
 /** 24 bytes → 32 個 base64url 字元，夠長、也不會讓網址難看到爆 */
@@ -54,3 +55,19 @@ export async function verifyIntakeKey(given: unknown): Promise<boolean> {
 export async function intakeUrl(): Promise<string> {
   return `${SITE_URL}/intake?key=${encodeURIComponent(await getIntakeKey())}`;
 }
+
+// ---------------------------------------------------------------- 同事版（2026-10-05）：金鑰分兩種
+
+/** 這把金鑰是誰的：本人（appointment_config 那把）或某位同事（match_colleague.intake_key） */
+export type IntakeActor = { kind: "owner"; colleague: null } | { kind: "colleague"; colleague: Colleague };
+
+/** 先比本人的，再查同事的；停用的同事不算 */
+export async function resolveIntakeActor(given: unknown): Promise<IntakeActor | null> {
+  if (keysMatch(given, await getConfig(KEY))) return { kind: "owner", colleague: null };
+  if (typeof given !== "string" || given.length < 20 || given.length > 80) return null;
+  const c = await getColleagueByKey(given);
+  return c && c.active ? { kind: "colleague", colleague: c } : null;
+}
+
+/** 名單歸誰：本人 = null、同事 = 他的 id（對應 match_buyer.colleague_id） */
+export const actorOwnerId = (actor: IntakeActor): string | null => actor.colleague?.id ?? null;
