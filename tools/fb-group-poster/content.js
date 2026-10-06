@@ -4,8 +4,11 @@
  * 進場：後台按「開始發佈」→ 背景程式開社團分頁 → 這支向背景要資料（fbq:current）→ 沒有任務就什麼都不做
  *   （你自己在逛 FB 不會被打擾）；有任務就：確認粉專身分 → 打開發文框 → 填文案 → 上傳圖片 → 停手。
  *
- * 🔴 **永遠不替你按「發佈」。** 填好後右下角面板請你自己核對、按 Facebook 的「發佈」，
- *    發佈完再按面板的「下一個社團」，才會換下一個。
+ * 兩種模式（後台「設定 → 自動按發佈」決定，隨任務送來 job.autoPost）：
+ *   - 半自動（同事版預設）：填好後右下角面板請你自己核對、按 Facebook 的「發佈」，發佈完再按面板的「下一個社團」。
+ *   - 自動（他 2026-10-06 要的「全部自動發布，發布完我再一一檢查」）：填好、圖片傳完、「發佈」鈕可按 → 替他按 →
+ *     看到視窗關掉才算發出去 → 等 job.autoGapSec 秒 → 自動換下一個。🔴 身分對不上、文案沒填完整、圖片沒傳好、
+ *     找不到可按的發佈鈕、FB 說不能發 —— 一律退回半自動停在那裡等他，不硬發；每日上限照樣由背景程式擋。
  * 🔴 不抓 Facebook 任何資料、不送任何東西到別的地方。
  *
  * Chrome 對「放到背景超過 5 分鐘」的分頁會凍住計時器，填表看起來會像卡住 —— 別切走，讓它在前景跑完。
@@ -201,6 +204,47 @@
       buttons([{ label: "關閉面板", onClick: () => panel.remove() }]);
     }
 
+    /** 自動模式：替他按「發佈」、確認發出去、等一下、換下一個。任何不確定都退回半自動停著等他。 */
+    async function autoPost(dialog) {
+      log("自動發佈：等「發佈」鈕可以按（圖片上傳中它會先鎖住）…", "");
+      const btn = await waitPostButton(dialog, L, 90000);
+      if (!btn) {
+        log("⚠ 找不到可以按的「發佈」鈕（圖片可能還在上傳，或 Facebook 改版）。請你自己按。", "fbq-bad");
+        await report("ready", "自動發佈沒做：找不到可按的發佈鈕，等你自己按");
+        controls(true);
+        return;
+      }
+      await sleep(800);
+      const baseline = (document.body.innerText || "").slice(0, 6000); // 按之前頁面上就有的字，之後不算數
+      btn.click();
+      log("已替你按下「發佈」，等 Facebook 回應…", "");
+      const outcome = await waitPostOutcome(dialog, L, 30000, baseline);
+      if (outcome === "blocked") {
+        log("⛔ Facebook 說不能發（暫時被封鎖／違反守則之類）。這個社團標成失敗，停在這裡讓你看。", "fbq-bad");
+        await report("failed", "自動發佈：Facebook 拒絕");
+        controls(false);
+        return;
+      }
+      if (outcome === "unknown") {
+        log("⚠ 按了「發佈」但沒看到視窗關掉，不確定有沒有發出去。請你自己看一下，再按下面。", "fbq-bad");
+        await report("ready", "自動按了發佈但不確定有沒有成功，等你確認");
+        controls(true);
+        return;
+      }
+      log(outcome === "pending" ? "已送出，等社團管理員審核。" : "已發佈 ✓", "fbq-ok");
+      await report(outcome, outcome === "pending" ? "自動發佈，等待審核" : "自動發佈");
+      const gap = Number(job.autoGapSec) || 0;
+      if (gap > 0) {
+        log("等 " + gap + " 秒再換下一個（連發太快容易被當垃圾訊息）。", "");
+        if ((await countdown(gap)) === "stop") return onStop();
+      }
+      if (advancing) return;
+      advancing = true;
+      buttons([{ label: "換下一個社團中…", onClick: () => {} }]);
+      const r = await send("fbq:next", { status: outcome, message: outcome === "pending" ? "自動發佈，等待審核" : "自動發佈" });
+      if (r.done) finishScreen(r.reason);
+    }
+
     controls(false);
 
     // 登入檢查
@@ -322,27 +366,37 @@
       }
 
       // 4. 填文案（排版照後台，換行與空行一模一樣）
+      let fillOk = true; // 自動模式只在文案完整填進去時才替他按發佈
       if (job.ad.text && job.ad.text.trim()) {
         log("填入文案…");
         const box = dialog.querySelector('div[role="textbox"]');
         const how = await fillComposer(box, job.ad.text);
+        fillOk = how === "paste" || how === "lines";
         if (how === "failed") log("文案沒填進去，請自己貼上再發佈。", "fbq-bad");
         else if (how === "partial") log("⚠ 排版可能沒完全照後台，發佈前請看一下換行。", "fbq-bad");
         else log("文案已填好，排版照後台。", "");
       }
 
       // 5. 上傳圖片
+      let imagesOk = true;
       if (job.ad.images && job.ad.images.length) {
         log("上傳 " + job.ad.images.length + " 張圖片…");
         try {
           await uploadImages(dialog, job.ad.images, L);
           log("圖片已加入。", "");
         } catch (e) {
+          imagesOk = false;
           log("圖片上傳沒成功（" + (e.message || e) + "）。你可以自己在視窗裡拖圖片進去。", "fbq-bad");
         }
       }
 
-      // 6. 交給使用者按發佈
+      // 6. 自動模式：替他按「發佈」；條件不齊就退回半自動
+      if (job.autoPost) {
+        if (fillOk && imagesOk) return await autoPost(dialog);
+        log("⚠ 自動發佈先不做：" + (!fillOk ? "文案沒完整填進去" : "圖片沒上傳成功") + "。請你自己核對後按「發佈」。", "fbq-bad");
+      }
+
+      // 6'. 半自動：交給使用者按發佈
       log("內容已填好。請核對後按 Facebook 的「發佈」。", "fbq-ok");
       log("發佈完，回來按下面的「✅ 我按過發佈了，下一個社團」。", "fbq-strong");
       await report("ready", "已填好，等你按發佈");
@@ -356,6 +410,79 @@
       await report("failed", String(e && e.message ? e.message : e));
       controls(true);
     }
+  }
+
+  /* ───────── 自動按「發佈」 ───────── */
+  /**
+   * 發文視窗裡的「發佈」鈕：文字要**整個**就是「發佈／張貼／Post」（不是「發佈到…」「排程發佈」那種），
+   * 而且不在任何一則貼文裡（跟找發文框同一道安全鎖）。同名的取視窗最下面那顆。
+   */
+  function findPostButton(dialog, L) {
+    const re = FBQ.exactRe(FBQ.words(L, "postButton"));
+    const cands = [...dialog.querySelectorAll('[role="button"], button')].filter((el) => {
+      if (el.offsetParent === null || el.closest('[role="article"]')) return false;
+      return re.test(textOf(el)) || re.test(el.getAttribute("aria-label") || "");
+    });
+    return cands.length ? cands[cands.length - 1] : null;
+  }
+  const isDisabled = (el) => !el || el.getAttribute("aria-disabled") === "true" || el.disabled === true;
+
+  /** 等「發佈」鈕變成可按（圖片還在上傳時 FB 會先把它鎖住） */
+  async function waitPostButton(dialog, L, timeoutMs) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const b = findPostButton(dialog, L);
+      if (b && !isDisabled(b)) return b;
+      await sleep(500);
+    }
+    return null;
+  }
+
+  /**
+   * 按下「發佈」之後看結果：視窗消失＝發出去了（頁面上同時出現「等待審核」字樣＝進審核）；
+   * 出現「暫時被封鎖／違反守則」類字＝FB 拒絕；時間到視窗還在＝不確定（退回半自動讓他看）。
+   */
+  async function waitPostOutcome(dialog, L, timeoutMs, baseline) {
+    const deadline = Date.now() + timeoutMs;
+    const pendWords = FBQ.words(L, "pendingApproval");
+    const blockWords = FBQ.words(L, "blocked");
+    // 只認「按了發佈之後才出現」的字——社團頁側欄本來就可能有「待審核貼文」這種字，不能算。
+    // 一個詞一個詞比（不是整組 regex）：側欄有「待審核」，發出去後跳出「等待管理員審核」仍要算進審核。
+    const freshAny = (words, body) =>
+      words.some((w) => {
+        const re = new RegExp(FBQ.escapeRe(w), "i");
+        return re.test(body) && !re.test(baseline || "");
+      });
+    while (Date.now() < deadline) {
+      const body = (document.body.innerText || "").slice(0, 6000);
+      if (freshAny(blockWords, body)) return "blocked";
+      if (!document.contains(dialog) || dialog.offsetParent === null) return freshAny(pendWords, body) ? "pending" : "posted";
+      await sleep(500);
+    }
+    return "unknown";
+  }
+
+  /** 自動模式換下一個社團前先等一下：面板倒數，可以立刻換或停止 */
+  function countdown(sec) {
+    return new Promise((resolve) => {
+      let left = Math.max(0, Math.round(sec));
+      let timer = null;
+      const finish = (v) => {
+        clearInterval(timer);
+        resolve(v);
+      };
+      const draw = () =>
+        buttons([
+          { label: "立刻換下一個（" + left + " 秒後自動換）", primary: true, onClick: () => finish("next") },
+          { label: "停止全部", danger: true, onClick: () => finish("stop") },
+        ]);
+      draw();
+      timer = setInterval(() => {
+        left -= 1;
+        if (left <= 0) finish("next");
+        else draw();
+      }, 1000);
+    });
   }
 
   /* ───────── 發文身分 ───────── */
@@ -430,10 +557,11 @@
     for (let i = 0; i < dataUrls.length; i++) files.push(await dataUrlToFile(dataUrls[i], "ad-" + (i + 1)));
     const dt = new DataTransfer();
     files.forEach((f) => dt.items.add(f));
+    // 縮圖數要在觸發 change **之前**數，不然縮圖同步長出來的話會一直等不到「變多」、白等 60 秒
+    const before = dialog.querySelectorAll("img").length;
     input.files = dt.files;
     input.dispatchEvent(new Event("change", { bubbles: true }));
     // 等縮圖出現
-    const before = dialog.querySelectorAll("img").length;
     const deadline = Date.now() + 60000;
     while (Date.now() < deadline) {
       if (dialog.querySelectorAll("img").length > before) break;

@@ -34,7 +34,8 @@ type ScanState = { status: "scanning" | "done"; found?: number; groups?: ScanGro
  */
 type Identity = { id: string; name: string; kind: "page" | "account"; note: string };
 /** tailText＝固定尾段，每則廣告自動接在文案後面（預設值在 config/fb-tail.ts） */
-type Settings = { pageName: string; locale: "zh-TW" | "en"; dailyLimit: number; tailText: string };
+/** autoPost：外掛填好後自己按「發佈」、自動換下一個（他 2026-10-06 要的）；autoGapSec：自動模式每個社團之間等幾秒 */
+type Settings = { pageName: string; locale: "zh-TW" | "en"; dailyLimit: number; tailText: string; autoPost: boolean; autoGapSec: number };
 type ResultRow = { groupId: string; groupName: string; status: string; message: string; at: string };
 type HistoryJob = { id: string; at: number; adTitle: string; identityName?: string; total: number; results: ResultRow[]; status: string };
 type Progress = {
@@ -50,7 +51,7 @@ type Progress = {
 };
 
 /** 預設設定；固定尾段的預設值由外面給（後台＝黃瑋凱的那段、同事版＝空白讓同事自己填） */
-const defaultSettings = (tail: string): Settings => ({ pageName: "", locale: "zh-TW", dailyLimit: 10, tailText: tail });
+const defaultSettings = (tail: string): Settings => ({ pageName: "", locale: "zh-TW", dailyLimit: 10, tailText: tail, autoPost: false, autoGapSec: 20 });
 
 export type ImportDraft = { title: string; text: string; missing: string[] };
 /** 「從愛屋帶入」打哪裡：後台走 /api/admin/fb/*（Google 登入）、同事版走 weikaihouse.com/api/fb-ext/*（授權碼） */
@@ -190,9 +191,13 @@ export default function FbGroupManager({
     (async () => {
       setAds(await idbGet<Ad[]>("ads", []));
       setGroups(await idbGet<Group[]>("groups", []));
-      const s = { ...defaultSettings(defaultTail), ...(await idbGet<Partial<Settings>>("settings", {})) };
+      const stored = await idbGet<Partial<Settings>>("settings", {});
+      const s = { ...defaultSettings(defaultTail), ...stored };
       // 後台：他 9/18 之前存的尾段裡有三條被截斷的死連結（樂屋／FB粉專／YouTube）→ 開頁時換成完整網址
       if (migrateTail) s.tailText = migrateTail(s.tailText);
+      // 自動發佈：他自己的後台預設開（2026-10-06 他要的「全部自動發布，發完再檢查」）；同事版預設關——手冊寫的是「發佈永遠自己按」。
+      // 只在他還沒存過這個設定時套預設，存過就照他存的。
+      if (typeof stored.autoPost !== "boolean") s.autoPost = mode === "admin";
       setSettings(s);
       // 舊資料只有單一「粉專名稱」→ 自動升級成第一個發文身分，不用他重打
       let ids = await idbGet<Identity[]>("identities", []);
@@ -664,6 +669,8 @@ export default function FbGroupManager({
       identity: { name: pubIdentity.name, kind: pubIdentity.kind },
       locale: settings.locale,
       dailyLimit: settings.dailyLimit,
+      autoPost: !!settings.autoPost,
+      autoGapSec: Math.max(0, Number(settings.autoGapSec) || 0),
       requirePageIdentity: true,
       ad: { text: finalText, images: pubAd.images.map((im) => im.dataUrl) },
       groups: picked.map((g) => ({ id: g.id, name: g.name, url: g.url })),
@@ -808,6 +815,16 @@ export default function FbGroupManager({
                   <p className={styles.hint}>
                     每天最多發 <b>{settings.dailyLimit > 0 ? `${settings.dailyLimit} 個社團` : "不限"}</b>
                     （<b>每個身分分開算</b>，可到設定改）。同一篇短時間發太多社團容易被判定垃圾訊息。
+                  </p>
+                  <p className={styles.hint}>
+                    {settings.autoPost ? (
+                      <>
+                        ⚡ <b>自動發佈已開</b>：外掛填好會自己按「發佈」、等 {settings.autoGapSec} 秒換下一個社團，發完到「發佈紀錄」檢查。
+                        身分對不上、文案沒填完整、圖片沒上傳好、Facebook 說不能發——這幾種會停下來等你，不會硬發。那個 Facebook 視窗要留在前面，別縮小或切走。
+                      </>
+                    ) : (
+                      <>外掛填好會停下來等你自己按「發佈」。想讓它自己按，到「設定」打開「自動按發佈」。</>
+                    )}
                   </p>
                 </>
               ) : (
@@ -1435,6 +1452,26 @@ export default function FbGroupManager({
               <div>
                 <label className={styles.lbl}>每日最多發幾個社團（0 = 不限）</label>
                 <input className={styles.input} type="number" min={0} value={settings.dailyLimit} onChange={(e) => setSettings((s) => ({ ...s, dailyLimit: Math.max(0, Number(e.target.value) || 0) }))} />
+              </div>
+              <div>
+                <label className={styles.lbl}>自動按「發佈」</label>
+                <label className={styles.checkItem}>
+                  <input type="checkbox" checked={settings.autoPost} onChange={(e) => setSettings((s) => ({ ...s, autoPost: e.target.checked }))} />
+                  <span>外掛填好後自己按「發佈」、自動換下一個社團；發完到「發佈紀錄」逐一檢查</span>
+                </label>
+                <p className={styles.hint}>身分對不上、文案沒填完整、圖片沒上傳好、Facebook 拒絕——這幾種會停下來等你。每日上限照樣擋。</p>
+              </div>
+              <div>
+                <label className={styles.lbl}>自動模式：每個社團之間等幾秒</label>
+                <input
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  disabled={!settings.autoPost}
+                  value={settings.autoGapSec}
+                  onChange={(e) => setSettings((s) => ({ ...s, autoGapSec: Math.max(0, Number(e.target.value) || 0) }))}
+                />
+                <p className={styles.hint}>連發太快容易被 Facebook 當垃圾訊息，建議 20 秒以上。</p>
               </div>
             </div>
             <p className={styles.okText}>設定會自動儲存。</p>
