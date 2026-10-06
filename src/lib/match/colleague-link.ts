@@ -44,6 +44,8 @@ export type BranchFilters = {
   /** 屋齡區間，年，兩端都含 */
   ageMin?: number;
   ageMax?: number;
+  /** 車位種類（店官網 2026-10-06 晚上加的；單值，別的字它會不理） */
+  stall?: "平面" | "機械";
 };
 
 /** 店官網只認海線四區；其他區（大甲、大肚…）傳了也沒用，先濾掉 */
@@ -74,6 +76,10 @@ export function branchFiltersFromPreference(input: unknown): BranchFilters {
   if (p.budgetMax > 0) f.priceMax = p.budgetMax;
   if (p.ageMin > 0) f.ageMin = p.ageMin;
   if (p.ageMax > 0) f.ageMax = p.ageMax;
+  // 「其他需求」裡的車位種類 → stall。店官網只收一個值，兩種都勾（＝有車位就好）就不送，讓客人自己選
+  const flat = p.features.includes("平面車位");
+  const mech = p.features.includes("機械車位");
+  if (flat !== mech) f.stall = flat ? "平面" : "機械";
   return f;
 }
 
@@ -96,6 +102,7 @@ export function branchMatchUrl(selfLink: string, filters: BranchFilters = {}): s
   if (filters.priceMax) qs.set("priceMax", String(filters.priceMax));
   if (filters.ageMin) qs.set("ageMin", String(filters.ageMin));
   if (filters.ageMax) qs.set("ageMax", String(filters.ageMax));
+  if (filters.stall) qs.set("stall", filters.stall);
   qs.set("book", selfLink);
   return `${BRANCH_SITE.url}/?${qs.toString()}#match`;
 }

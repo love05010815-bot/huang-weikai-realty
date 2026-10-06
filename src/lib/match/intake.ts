@@ -118,8 +118,9 @@ function metaLine(l: MatchListing): string {
 
 /**
  * 建議傳給客戶的那段話。他可以在畫面上改過再傳。signer = 署名（本人或同事）。
- * viaBranch = 同事的客人（2026-10-06）：連結是店官網的好案配對 —— 那邊不會依他的條件先篩、也沒有預約，
- * 所以不寫「目前有 N 間符合」「可以直接預約」，改成「看到喜歡的跟我說」。
+ * viaBranch = 同事的客人（2026-10-06 晚上版）：連結是店官網的好案配對預約模式 —— 那邊會依他填的條件先篩好
+ * （區域、類型、房數、總價、屋齡、車位；其他條件帶不過去），客人勾物件按「前往預約看屋」才跳回我們的預約表單。
+ * 店官網篩出幾間我們不知道，所以不寫「目前有 N 間符合」。
  */
 function buildMessage(name: string, summary: string | null, matched: number, link: string, signer: string, viaBranch = false): string {
   const who = `${name}您好，我是太平洋房屋的${signer}。`;

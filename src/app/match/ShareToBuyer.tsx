@@ -70,7 +70,7 @@ export default function ShareToBuyer({
       {flash && <p className={styles.msg}>{flash}</p>}
       <p className={styles.muted}>
         {viaBranch
-          ? "客戶點開是店官網的「好案配對找房」，已經依你填的條件先篩好（區域、類型、房數、總價、屋齡），他也可以自己改。他勾想看的物件按「前往預約看屋」，預約就會進到你這裡、手機跳通知。訊息可以先改再傳。"
+          ? "客戶點開是店官網的「好案配對找房」，已經依你填的條件先篩好（區域、類型、房數、總價、屋齡、車位），他也可以自己改。他勾想看的物件按「前往預約看屋」，預約就會進到你這裡、手機跳通知。訊息可以先改再傳。"
           : "客戶點開這個連結就直接看到依他條件配好的物件，可以直接預約看屋；之後改條件也會寫回這一筆。訊息可以先改再傳。"}
       </p>
       <textarea className={styles.textarea} value={msg} onChange={(e) => setMsg(e.target.value)} rows={5} />

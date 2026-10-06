@@ -938,6 +938,11 @@ test("同事的客人連結：店官網預約模式，條件對成店官網的�
   assert.deepEqual(f, { district: ["沙鹿區", "梧棲區"], attribut: ["透天厝", "別墅", "電梯大廈", "樓中樓"], room: [3, 4], priceMax: 1500, ageMin: 3, ageMax: 10 });
   assert.deepEqual(branchFiltersFromPreference({}), {});
   assert.deepEqual(branchFiltersFromPreference(null), {});
+  // 車位：勾一種才送 stall（店官網單值）；兩種都勾＝有車位就好，不送；電梯、近捷運店官網沒得篩，不送
+  assert.deepEqual(branchFiltersFromPreference({ features: ["平面車位", "電梯"] }), { stall: "平面" });
+  assert.deepEqual(branchFiltersFromPreference({ features: ["機械車位"] }), { stall: "機械" });
+  assert.deepEqual(branchFiltersFromPreference({ features: ["平面車位", "機械車位", "近捷運"] }), {});
+  assert.equal(new URL(branchMatchUrl(self, { stall: "平面" })).searchParams.get("stall"), "平面");
   const u = branchMatchUrl(self, f);
   const p = new URL(u);
   assert.equal(p.origin, "https://pacifi-realtor-wuchi.vercel.app");
