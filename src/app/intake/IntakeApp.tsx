@@ -553,6 +553,7 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
               matched={saved.brief.matched}
               canPush={!who.colleague && saved.buyer.linked && saved.buyer.followed}
               onPush={() => intakePushAction(intakeKey, saved.buyer.id)}
+              viaBranch={!!who.colleague}
             />
           </div>
 

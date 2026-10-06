@@ -22,6 +22,7 @@ export default function ShareToBuyer({
   matched,
   canPush,
   onPush,
+  viaBranch = false,
 }: {
   styles: Styles;
   buyerName: string;
@@ -31,6 +32,11 @@ export default function ShareToBuyer({
   /** 買方有綁 LINE 而且還是好友，才有推播那顆按鈕 */
   canPush: boolean;
   onPush?: () => Promise<{ ok: boolean; error?: string; count?: number }>;
+  /**
+   * 同事的客人（2026-10-06）：連結是店官網的好案配對（純連結，客人自己篩、沒有預約），
+   * 不是依條件配好的專屬頁 —— 說明文字要講對，不然同事會以為客人點開就看到配好的物件。
+   */
+  viaBranch?: boolean;
 }) {
   const [msg, setMsg] = useState(message);
   const [flash, setFlash] = useState<string | null>(null);
@@ -62,7 +68,11 @@ export default function ShareToBuyer({
   return (
     <>
       {flash && <p className={styles.msg}>{flash}</p>}
-      <p className={styles.muted}>客戶點開這個連結就直接看到依他條件配好的物件，可以直接預約看屋；之後改條件也會寫回這一筆。訊息可以先改再傳。</p>
+      <p className={styles.muted}>
+        {viaBranch
+          ? "客戶點開是店官網的「好案配對找房」，自己篩區域、總價、房數、看詳情；店官網沒有預約，看到喜歡的會來跟你說。你幫他填的條件系統記著，有新物件進來你在名單裡點他就看得到。訊息可以先改再傳。"
+          : "客戶點開這個連結就直接看到依他條件配好的物件，可以直接預約看屋；之後改條件也會寫回這一筆。訊息可以先改再傳。"}
+      </p>
       <textarea className={styles.textarea} value={msg} onChange={(e) => setMsg(e.target.value)} rows={5} />
       <div className={styles.actions}>
         <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => copy(msg, "訊息")}>

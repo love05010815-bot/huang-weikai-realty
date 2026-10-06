@@ -21,7 +21,7 @@ process.env.APPOINTMENT_BASE_URL = "https://weikaihouse.com";
 // pacific-parse.ts 用相對路徑 import 隔壁的 houseol-parse（沒副檔名），要靠上面的 hook 解，所以得在 register 之後動態載
 const { houseolIdFromPic, pacificFloor, pacificToListingUpsert, pacificUsageType } = await import("../src/lib/match/pacific-parse.ts");
 // colleague-link.ts 有 import "@/config/owner"（別名），一樣要在 register 之後動態載
-const { colleagueIntakeUrl, lineUrlFromInput } = await import("../src/lib/match/colleague-link.ts");
+const { branchMatchUrl, colleagueIntakeUrl, lineUrlFromInput } = await import("../src/lib/match/colleague-link.ts");
 import {
   AGE_OPTIONS,
   AGE_RANGES,
@@ -929,6 +929,8 @@ test("同事的 LINE：ID 轉成加好友網址、line.me 連結照收、不像�
   assert.equal(lineUrlFromInput(""), "");
   assert.equal(lineUrlFromInput(null), "");
   assert.ok(colleagueIntakeUrl("k".repeat(32)).endsWith("/intake?key=" + "k".repeat(32)));
+  // 同事的客人連結 = 店官網的好案配對，純連結、不帶任何參數（2026-10-06）
+  assert.equal(branchMatchUrl(), "https://pacifi-realtor-wuchi.vercel.app/#match");
 });
 
 if (process.exitCode) {
