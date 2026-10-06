@@ -10,10 +10,6 @@
  * ?k=識別碼：從官方帳號的連結進來，認得出是同一位買方 —— 先帶回他上次設定的條件，
  *   之後改的也寫回同一筆（換手機、清掉瀏覽資料都不會變成兩個人）。讀完立刻把 k 從網址上拿掉。
  * ?k=識別碼&go=1：專員在後台代客建檔後傳給客戶的連結。條件已經填好，進來直接看結果。
- * ?k=識別碼&go=1&items=S編號,S編號：**同事的客人**從店頭官網勾完物件、按「前往預約看屋」跳回來（2026-10-06；
- *   同事的客人連結是店官網的好案配對，見 lib/match/colleague-link.ts 的 branchMatchUrl）。那幾間直接勾好、
- *   進預約表單，已下架的剔除並提示；「再挑物件」連回店官網同一條帶條件的連結，不留在這一頁逛
- *   （他說同事的客人要跟個人網站分開、這一頁的外觀不能變 —— 所以只是多認一個看不見的參數）。
  *   🔴 這條路的結果是 **page.tsx 在伺服器端先配好、跟著 HTML 一起送過來的**（initial prop），
  *      不是進來之後再打 API。2026-09-27 他反映客戶點開要等 5 秒才有物件、以為要重填 ——
  *      原本是先畫出一張空表單，再等 /me → /search 兩趟。現在客戶第一眼就是物件，
@@ -21,7 +17,7 @@
  *
  * 條件表單的欄位在 PreferenceForm.tsx、狀態換算在 preference-state.ts —— 後台代客建檔用同一份。
  */
-import { branchFiltersFromPreference, branchMatchUrl, parseItemIds, type ColleagueContact } from "@/lib/match/colleague-link";
+import type { ColleagueContact } from "@/lib/match/colleague-link";
 import { useCallback, useEffect, useState } from "react";
 import styles from "./match.module.css";
 import PreferenceForm from "./PreferenceForm";
@@ -165,8 +161,6 @@ export default function MatchApp({ initial, colleague: colleagueProp = null }: {
   /** 從官方帳號連結帶進來的買方識別碼；有它就不靠瀏覽器記的編號 */
   const [token, setToken] = useState<string | null>(initial?.token ?? null);
   const [colleague, setColleague] = useState<ColleagueContact | null>(colleagueProp);
-  /** 這位客人是從店頭官網跳回來的（網址帶 items=）：預約表單與完成頁的「再挑物件」要連回店官網，不是留在這裡 */
-  const [fromBranch, setFromBranch] = useState(false);
   const [loaded, setLoaded] = useState<string | null>(
     // 伺服器帶了條件但沒有結果（他還沒留條件時 result 是 null）→ 跟原本一樣提示一句
     initial?.preference && !initial.result ? "已帶入您目前設定的條件，改好按「開始配對」就會更新，之後的新物件通知也照新條件配。" : null,
@@ -225,39 +219,24 @@ export default function MatchApp({ initial, colleague: colleagueProp = null }: {
           // 連結失效不用嚇買方，就當一般訪客重新填一次
         });
     }
-    // ?book=單一編號：LINE 卡片的「預約看屋」。?items=S1,S2：同事的客人在店頭官網勾完物件、按「前往預約看屋」跳回來。
-    // 兩種都直接進預約表單；已下架的剔除並提示（不為了一間不見就把整批退回去）。
-    const wanted = parseItemIds([params.get("items"), params.get("book")].filter(Boolean).join(","));
-    const viaBranch = params.has("items");
-
-    if (k || viaBranch) {
+    if (k) {
       // 不管哪條路，識別碼都要從網址上拿掉 —— 網址會被截圖、被轉貼，留著等於把他的資料給別人
       params.delete("k");
       params.delete("go");
-      params.delete("items");
       const rest = params.toString();
       window.history.replaceState(null, "", rest ? `${window.location.pathname}?${rest}` : window.location.pathname);
     }
 
-    if (wanted.length) {
-      setFromBranch(viaBranch);
-      Promise.all(wanted.map((id) => api<Listing>(`/api/match/listing/${encodeURIComponent(id)}`).catch(() => null))).then((found) => {
-        const ok = found.filter((l): l is Listing => l !== null);
-        const missing = wanted.length - ok.length;
-        if (missing > 0) setNotice(ok.length ? `您選的物件裡有 ${missing} 間已經下架或成交了，其餘照常預約。` : "您選的物件已經下架或成交了，請回店官網重新挑選。");
-        if (ok.length) {
-          setPicked(ok);
+    const bookId = params.get("book");
+    if (bookId) {
+      api<Listing>(`/api/match/listing/${encodeURIComponent(bookId)}`)
+        .then((listing) => {
+          setPicked([listing]);
           setStep("booking");
-        }
-      });
+        })
+        .catch((e: Error) => setNotice(e.message));
     }
   }, []);
-
-  /** 從店官網來的客人「回去再挑物件」的那條連結：店官網的預約模式，帶著他的條件與專屬連結（跟同事傳給他的同一條） */
-  const branchBack =
-    fromBranch && token && typeof window !== "undefined"
-      ? branchMatchUrl(`${window.location.origin}/match?k=${encodeURIComponent(token)}&go=1`, branchFiltersFromPreference(toApiPreference(pref)))
-      : null;
 
   async function onSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -469,16 +448,9 @@ export default function MatchApp({ initial, colleague: colleagueProp = null }: {
   if (step === "booking" && picked.length > 0) {
     return (
       <div className={styles.wrap}>
-        {branchBack ? (
-          <a className={styles.linkBtn} href={branchBack}>
-            ← 回店官網再挑物件
-          </a>
-        ) : (
-          <button type="button" className={styles.linkBtn} onClick={() => go(result ? "results" : "form")}>
-            ← {result ? "返回結果（可再加物件）" : "重新配對"}
-          </button>
-        )}
-        {notice && <p className={styles.hint}>{notice}</p>}
+        <button type="button" className={styles.linkBtn} onClick={() => go(result ? "results" : "form")}>
+          ← {result ? "返回結果（可再加物件）" : "重新配對"}
+        </button>
         {picked.length > 1 && <p className={styles.summary}>這 {picked.length} 間會一起送出，只會有一個預約編號。</p>}
         {picked.map((p) => (
           <div key={p.id} className={`${styles.listing} ${styles.compact}`}>
@@ -634,15 +606,9 @@ export default function MatchApp({ initial, colleague: colleagueProp = null }: {
             )}
           </>
         )}
-        {branchBack ? (
-          <a className={styles.linkBtn} href={branchBack}>
-            回店官網再找其他物件
-          </a>
-        ) : (
-          <button type="button" className={styles.linkBtn} onClick={() => go("form")}>
-            再找其他物件
-          </button>
-        )}
+        <button type="button" className={styles.linkBtn} onClick={() => go("form")}>
+          再找其他物件
+        </button>
       </div>
     );
   }

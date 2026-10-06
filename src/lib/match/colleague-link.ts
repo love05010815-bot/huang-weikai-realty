@@ -29,6 +29,15 @@ export function colleagueIntakeUrl(key: string): string {
 }
 
 /**
+ * 同事的客人從店官網勾完物件跳回來的預約頁（/match/book，店官網品牌、沒有凱心成家）。
+ * 店官網會在後面接 &items=S編號,S編號。token = 這位客人的識別碼（認人、帶姓名電話、預約記到哪位業務名下）。
+ * 2026-10-06 晚上他說「所有同事的代客建檔都不要再經過我的個人網站」—— 所以不再給 /match 那一頁。
+ */
+export function branchBookUrl(token: string): string {
+  return `${SITE_URL}/match/book?k=${encodeURIComponent(token)}`;
+}
+
+/**
  * 店官網「好案配對找房」吃的篩選參數 —— 2026-10-06 兩個視窗談定的契約。全部選填、都是純值、沒有個資；
  * 客人到了店官網還可以自己改。坪數、樓層、其他需求、土地類別店官網沒有這幾個篩選，就不送。
  */
@@ -87,12 +96,12 @@ export function branchFiltersFromPreference(input: unknown): BranchFilters {
  * 同事的**客人**收到的那條連結 —— 店頭官網的「好案配對找房」預約模式（2026-10-06 他在店官網那個視窗定的：
  * 「客人連結要打開已經依業務填的條件篩好的好案配對、可以勾物件一起預約、預約要送回業務的代客建檔讓他收到通知」）。
  *
- * 契約（兩個視窗談定）：?<條件>&book=<URL-encode 的專屬連結>#match。
- * 店官網看到 book= 才開預約模式（物件卡多一個勾選框、下面「前往預約看屋」）；按了就跳到那條專屬連結並加上
+ * 契約（兩個視窗談定）：?<條件>&book=<URL-encode 的預約連結>#match。
+ * 店官網看到 book= 才開預約模式（物件卡多一個勾選框、下面「前往預約看屋」）；按了就跳到那條連結並加上
  * &items=S編號,S編號（只有 S 開頭、最多 10 間、不重複）。店官網本身不收姓名電話、不打我們任何 API。
  * 沒有 book= 的一般訪客看到的店官網完全不變。
  *
- * selfLink = 這位客人在我們這邊的專屬連結（/match?k=…&go=1），呼叫端給 —— 這個函式不碰 SITE_URL。
+ * selfLink = 這位客人的預約連結（branchBookUrl，/match/book?k=…），呼叫端給 —— 這個函式不碰 SITE_URL。
  */
 export function branchMatchUrl(selfLink: string, filters: BranchFilters = {}): string {
   const qs = new URLSearchParams();

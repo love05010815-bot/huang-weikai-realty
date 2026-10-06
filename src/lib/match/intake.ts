@@ -10,7 +10,7 @@
  */
 import { MATCH, VIEWING_STATUS } from "@/config/match";
 import { OWNER } from "@/config/owner";
-import { branchFiltersFromPreference, branchMatchUrl, colleagueIntakeUrl } from "./colleague-link";
+import { branchBookUrl, branchFiltersFromPreference, branchMatchUrl, colleagueIntakeUrl } from "./colleague-link";
 import type { Colleague } from "./colleagues";
 import { listingCarousel, matchPageUrl, pushMessages, text } from "./line";
 import { normalizeLineVia, type LineVia } from "./line-via";
@@ -158,13 +158,13 @@ export async function buildBuyerBrief(buyer: Buyer, showMax = 40, signer: string
     }));
   }
   const summary = buyer.preference ? describePreference(buyer.preference) : null;
-  // 同事的客人（2026-10-06 他說「業務的好案配對要跟我的個人網站分開」）：連結是店官網的好案配對，
-  // 帶著他填的條件先篩好、並以 book= 夾帶這位客人的專屬連結（客人在店官網勾完物件、按「前往預約看屋」才跳回來填預約）。
+  // 同事的客人（2026-10-06 他說「業務的好案配對要跟我的個人網站分開」「不要再經過我的個人網站」）：
+  // 連結是店官網的好案配對，帶著他填的條件先篩好、並以 book= 夾帶這位客人的預約頁（/match/book，店官網品牌）；
+  // 客人在店官網勾完物件、按「前往預約看屋」就直接進預約表單，從頭到尾看不到凱心成家。
   // 本人自己的客人照舊直接是帶識別碼的專屬連結（/match，官方帳號那條路）。
   const viaBranch = !!buyer.colleagueId;
   const token = createBuyerToken(buyer.id);
-  const self = token ? matchPageUrl(undefined, token, { go: true }) : null;
-  const link = self ? (viaBranch ? branchMatchUrl(self, branchFiltersFromPreference(buyer.preference)) : self) : null;
+  const link = !token ? null : viaBranch ? branchMatchUrl(branchBookUrl(token), branchFiltersFromPreference(buyer.preference)) : matchPageUrl(undefined, token, { go: true });
   const name = buyer.name || buyer.displayName || "您";
   return { summary, matched, total, matches, link, message: link ? buildMessage(name, summary, matched, link, signer, viaBranch) : "" };
 }

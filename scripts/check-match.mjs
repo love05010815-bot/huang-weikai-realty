@@ -21,7 +21,7 @@ process.env.APPOINTMENT_BASE_URL = "https://weikaihouse.com";
 // pacific-parse.ts 用相對路徑 import 隔壁的 houseol-parse（沒副檔名），要靠上面的 hook 解，所以得在 register 之後動態載
 const { houseolIdFromPic, pacificFloor, pacificToListingUpsert, pacificUsageType } = await import("../src/lib/match/pacific-parse.ts");
 // colleague-link.ts 有 import "@/config/owner"（別名），一樣要在 register 之後動態載
-const { branchFiltersFromPreference, branchMatchUrl, colleagueIntakeUrl, lineUrlFromInput, parseItemIds } = await import("../src/lib/match/colleague-link.ts");
+const { branchBookUrl, branchFiltersFromPreference, branchMatchUrl, colleagueIntakeUrl, lineUrlFromInput, parseItemIds } = await import("../src/lib/match/colleague-link.ts");
 import {
   AGE_OPTIONS,
   AGE_RANGES,
@@ -958,6 +958,12 @@ test("同事的客人連結：店官網預約模式，條件對成店官網的�
   assert.ok(!u.includes("&go=1"));
   // 沒條件就只有 book=
   assert.deepEqual([...new URL(branchMatchUrl(self)).searchParams.keys()], ["book"]);
+  // 同事的客人實際拿到的：book= 是 /match/book?k=識別碼（店官網品牌的預約頁，不是 /match），店官網會接 &items=
+  const book = branchBookUrl("abc.123.s/g+");
+  assert.ok(book.endsWith("/match/book?k=abc.123.s%2Fg%2B"), book);
+  const full = new URL(branchMatchUrl(book, { room: [2] }));
+  assert.equal(full.searchParams.get("book"), book);
+  assert.equal(new URL(full.searchParams.get("book") + "&items=S1,S2").searchParams.get("items"), "S1,S2");
   // items=：去重、去空、只留像編號的、最多 10 間
   assert.deepEqual(parseItemIds("S2876998,S3487964,,S2876998, R123"), ["S2876998", "S3487964", "R123"]);
   assert.deepEqual(parseItemIds("S1,<script>,S2"), ["S1", "S2"]);
