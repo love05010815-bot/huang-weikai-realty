@@ -10,7 +10,7 @@
  */
 import { MATCH, VIEWING_STATUS } from "@/config/match";
 import { OWNER } from "@/config/owner";
-import { branchMatchUrl, colleagueIntakeUrl } from "./colleague-link";
+import { branchFiltersFromPreference, branchMatchUrl, colleagueIntakeUrl } from "./colleague-link";
 import type { Colleague } from "./colleagues";
 import { listingCarousel, matchPageUrl, pushMessages, text } from "./line";
 import { normalizeLineVia, type LineVia } from "./line-via";
@@ -124,8 +124,8 @@ function metaLine(l: MatchListing): string {
 function buildMessage(name: string, summary: string | null, matched: number, link: string, signer: string, viaBranch = false): string {
   const who = `${name}您好，我是太平洋房屋的${signer}。`;
   if (viaBranch) {
-    const need = summary ? `您的需求（${summary}）我已經記下來了，有符合的新物件會第一時間通知您。\n` : "";
-    return `${who}\n${need}目前在售的物件都在店官網，可以依區域、總價、房數自己篩：\n${link}\n看到喜歡的直接跟我說，我幫您安排看屋。`;
+    const lead = summary ? `依您的需求（${summary}）我先在店官網幫您篩好了，點這裡看：` : "這是店官網的找房頁，可以依區域、總價、房數自己篩：";
+    return `${who}\n${lead}\n${link}\n想看的勾起來（可以一次勾好幾間），按「前往預約看屋」就會送到我這裡，我再跟您約時間。`;
   }
   if (!summary) return `${who}\n這是您的專屬找房連結，填好購屋條件就會自動配對，看中意可以直接預約看屋：\n${link}`;
   if (matched === 0) {
@@ -157,11 +157,13 @@ export async function buildBuyerBrief(buyer: Buyer, showMax = 40, signer: string
     }));
   }
   const summary = buyer.preference ? describePreference(buyer.preference) : null;
-  // 同事的客人（2026-10-06 他說「業務的好案配對要跟我的個人網站分開」）：連結是店官網的好案配對，不帶識別碼；
-  // 本人自己的客人照舊是帶識別碼的專屬連結（/match，官方帳號那條路）。
+  // 同事的客人（2026-10-06 他說「業務的好案配對要跟我的個人網站分開」）：連結是店官網的好案配對，
+  // 帶著他填的條件先篩好、並以 book= 夾帶這位客人的專屬連結（客人在店官網勾完物件、按「前往預約看屋」才跳回來填預約）。
+  // 本人自己的客人照舊直接是帶識別碼的專屬連結（/match，官方帳號那條路）。
   const viaBranch = !!buyer.colleagueId;
-  const token = viaBranch ? null : createBuyerToken(buyer.id);
-  const link = viaBranch ? branchMatchUrl() : token ? matchPageUrl(undefined, token, { go: true }) : null;
+  const token = createBuyerToken(buyer.id);
+  const self = token ? matchPageUrl(undefined, token, { go: true }) : null;
+  const link = self ? (viaBranch ? branchMatchUrl(self, branchFiltersFromPreference(buyer.preference)) : self) : null;
   const name = buyer.name || buyer.displayName || "您";
   return { summary, matched, total, matches, link, message: link ? buildMessage(name, summary, matched, link, signer, viaBranch) : "" };
 }

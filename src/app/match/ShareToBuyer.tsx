@@ -33,8 +33,8 @@ export default function ShareToBuyer({
   canPush: boolean;
   onPush?: () => Promise<{ ok: boolean; error?: string; count?: number }>;
   /**
-   * 同事的客人（2026-10-06）：連結是店官網的好案配對（純連結，客人自己篩、沒有預約），
-   * 不是依條件配好的專屬頁 —— 說明文字要講對，不然同事會以為客人點開就看到配好的物件。
+   * 同事的客人（2026-10-06）：連結是店官網的好案配對（帶著條件先篩好、勾物件按「前往預約看屋」才跳回我們這裡填預約），
+   * 不是我們自己那頁依條件配好的專屬頁 —— 說明文字要講對，不然同事會以為客人點開就是我們的配對頁。
    */
   viaBranch?: boolean;
 }) {
@@ -70,7 +70,7 @@ export default function ShareToBuyer({
       {flash && <p className={styles.msg}>{flash}</p>}
       <p className={styles.muted}>
         {viaBranch
-          ? "客戶點開是店官網的「好案配對找房」，自己篩區域、總價、房數、看詳情；店官網沒有預約，看到喜歡的會來跟你說。你幫他填的條件系統記著，有新物件進來你在名單裡點他就看得到。訊息可以先改再傳。"
+          ? "客戶點開是店官網的「好案配對找房」，已經依你填的條件先篩好（區域、類型、房數、總價、屋齡），他也可以自己改。他勾想看的物件按「前往預約看屋」，預約就會進到你這裡、手機跳通知。訊息可以先改再傳。"
           : "客戶點開這個連結就直接看到依他條件配好的物件，可以直接預約看屋；之後改條件也會寫回這一筆。訊息可以先改再傳。"}
       </p>
       <textarea className={styles.textarea} value={msg} onChange={(e) => setMsg(e.target.value)} rows={5} />

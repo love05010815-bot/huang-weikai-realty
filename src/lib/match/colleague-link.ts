@@ -2,6 +2,7 @@
  * 同事相關的純函式（不碰資料庫，scripts/check-match.mjs 測得到；資料庫那半在 colleagues.ts）。
  */
 import { BRANCH_SITE, SITE_URL } from "@/config/owner";
+import { normalizePreference } from "./matcher";
 
 /** 給客人看的那一面（配對頁、預約完成頁）：只有名字、電話、LINE 連結，金鑰絕對不能跟著出去 */
 export type ColleagueContact = { name: string; phone: string; lineUrl: string };
@@ -28,12 +29,85 @@ export function colleagueIntakeUrl(key: string): string {
 }
 
 /**
- * 同事的**客人**收到的那條連結 —— 店頭官網的「好案配對找房」（2026-10-06 他說「業務新增客人產生出的這條
- * 配對連結要改接回店官網的物件，不要再接到我個人的好案配對，業務的好案配對要跟我的個人網站分開」）。
- *
- * 純連結：不帶識別碼、不帶條件（店官網是靜態站，不認任何參數；#match 只是讓瀏覽器捲到好案配對那一段）。
- * 客人在店官網自己篩、看詳情，看到喜歡的直接跟同事說 —— 店官網沒有預約功能（他在那個視窗拿掉了）。
+ * 店官網「好案配對找房」吃的篩選參數 —— 2026-10-06 兩個視窗談定的契約。全部選填、都是純值、沒有個資；
+ * 客人到了店官網還可以自己改。坪數、樓層、其他需求、土地類別店官網沒有這幾個篩選，就不送。
  */
-export function branchMatchUrl(): string {
-  return `${BRANCH_SITE.url}/#match`;
+export type BranchFilters = {
+  /** 梧棲區｜沙鹿區｜清水區｜龍井區（店官網只有這四區），多個用逗號隔開 */
+  district?: string[];
+  /** 太平洋官網的物件型態字（電梯大廈、華廈、公寓、透天厝、別墅、樓中樓、套房、土地），多個用逗號隔開 */
+  attribut?: string[];
+  /** 1｜2｜3｜4（4 = 4 房以上），多個用逗號隔開 */
+  room?: number[];
+  /** 總價上限，萬 */
+  priceMax?: number;
+  /** 屋齡區間，年，兩端都含 */
+  ageMin?: number;
+  ageMax?: number;
+};
+
+/** 店官網只認海線四區；其他區（大甲、大肚…）傳了也沒用，先濾掉 */
+const BRANCH_DISTRICTS = ["梧棲區", "沙鹿區", "清水區", "龍井區"];
+
+/**
+ * 我們的六種類型 → 太平洋官網的物件型態字（店官網的「類型」就是官網的字，見 pacific-parse.ts 的 PACIFIC_TYPE_MAP 反過來）。
+ * 一對多：我們把別墅、樓中樓併進透天厝、電梯大樓，所以要把它們都送過去，不然客人會少看到一半。
+ */
+const BRANCH_ATTRIBUT: Record<string, string[]> = {
+  電梯大樓: ["電梯大廈", "樓中樓"],
+  華廈: ["華廈"],
+  公寓: ["公寓"],
+  透天厝: ["透天厝", "別墅"],
+  套房: ["套房"],
+  土地: ["土地"],
+};
+
+/** 客人在我們這邊存的購屋條件 → 店官網的篩選參數（對不上的欄位就不送） */
+export function branchFiltersFromPreference(input: unknown): BranchFilters {
+  const p = normalizePreference(input);
+  const f: BranchFilters = {};
+  const district = p.districts.filter((d) => BRANCH_DISTRICTS.includes(d));
+  if (district.length) f.district = district;
+  const attribut = [...new Set(p.types.flatMap((t) => BRANCH_ATTRIBUT[t] ?? []))];
+  if (attribut.length) f.attribut = attribut;
+  if (p.roomsList.length) f.room = p.roomsList;
+  if (p.budgetMax > 0) f.priceMax = p.budgetMax;
+  if (p.ageMin > 0) f.ageMin = p.ageMin;
+  if (p.ageMax > 0) f.ageMax = p.ageMax;
+  return f;
+}
+
+/**
+ * 同事的**客人**收到的那條連結 —— 店頭官網的「好案配對找房」預約模式（2026-10-06 他在店官網那個視窗定的：
+ * 「客人連結要打開已經依業務填的條件篩好的好案配對、可以勾物件一起預約、預約要送回業務的代客建檔讓他收到通知」）。
+ *
+ * 契約（兩個視窗談定）：?<條件>&book=<URL-encode 的專屬連結>#match。
+ * 店官網看到 book= 才開預約模式（物件卡多一個勾選框、下面「前往預約看屋」）；按了就跳到那條專屬連結並加上
+ * &items=S編號,S編號（只有 S 開頭、最多 10 間、不重複）。店官網本身不收姓名電話、不打我們任何 API。
+ * 沒有 book= 的一般訪客看到的店官網完全不變。
+ *
+ * selfLink = 這位客人在我們這邊的專屬連結（/match?k=…&go=1），呼叫端給 —— 這個函式不碰 SITE_URL。
+ */
+export function branchMatchUrl(selfLink: string, filters: BranchFilters = {}): string {
+  const qs = new URLSearchParams();
+  if (filters.district?.length) qs.set("district", filters.district.join(","));
+  if (filters.attribut?.length) qs.set("attribut", filters.attribut.join(","));
+  if (filters.room?.length) qs.set("room", filters.room.join(","));
+  if (filters.priceMax) qs.set("priceMax", String(filters.priceMax));
+  if (filters.ageMin) qs.set("ageMin", String(filters.ageMin));
+  if (filters.ageMax) qs.set("ageMax", String(filters.ageMax));
+  qs.set("book", selfLink);
+  return `${BRANCH_SITE.url}/?${qs.toString()}#match`;
+}
+
+/**
+ * 店官網跳回來的 ?items=S1,S2（或 LINE 卡片的 ?book=單一編號）→ 物件編號清單。
+ * 去重、去空、只留像編號的字串，最多 10 間（一筆預約的上限，跟 /api/match/viewing 一樣）。
+ */
+export function parseItemIds(raw: string | null | undefined, max = 10): string[] {
+  const ids = String(raw ?? "")
+    .split(/[,，\s]+/)
+    .map((s) => s.trim())
+    .filter((s) => /^[A-Za-z0-9_-]{1,64}$/.test(s));
+  return [...new Set(ids)].slice(0, max);
 }

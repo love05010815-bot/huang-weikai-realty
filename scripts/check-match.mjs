@@ -21,7 +21,7 @@ process.env.APPOINTMENT_BASE_URL = "https://weikaihouse.com";
 // pacific-parse.ts 用相對路徑 import 隔壁的 houseol-parse（沒副檔名），要靠上面的 hook 解，所以得在 register 之後動態載
 const { houseolIdFromPic, pacificFloor, pacificToListingUpsert, pacificUsageType } = await import("../src/lib/match/pacific-parse.ts");
 // colleague-link.ts 有 import "@/config/owner"（別名），一樣要在 register 之後動態載
-const { branchMatchUrl, colleagueIntakeUrl, lineUrlFromInput } = await import("../src/lib/match/colleague-link.ts");
+const { branchFiltersFromPreference, branchMatchUrl, colleagueIntakeUrl, lineUrlFromInput, parseItemIds } = await import("../src/lib/match/colleague-link.ts");
 import {
   AGE_OPTIONS,
   AGE_RANGES,
@@ -929,8 +929,35 @@ test("同事的 LINE：ID 轉成加好友網址、line.me 連結照收、不像�
   assert.equal(lineUrlFromInput(""), "");
   assert.equal(lineUrlFromInput(null), "");
   assert.ok(colleagueIntakeUrl("k".repeat(32)).endsWith("/intake?key=" + "k".repeat(32)));
-  // 同事的客人連結 = 店官網的好案配對，純連結、不帶任何參數（2026-10-06）
-  assert.equal(branchMatchUrl(), "https://pacifi-realtor-wuchi.vercel.app/#match");
+});
+
+test("同事的客人連結：店官網預約模式，條件對成店官網的參數、專屬連結整條編碼；items= 去重最多 10 間", () => {
+  const self = "https://weikaihouse.com/match?k=abc.123.sig&go=1";
+  // 條件 → 參數：區域只留海線四區、類型反查成官網的字（透天厝含別墅）、房數多值、總價、屋齡兩端
+  const f = branchFiltersFromPreference({ city: "台中市", districts: ["沙鹿區", "大甲區", "梧棲區"], types: ["透天厝", "電梯大樓"], roomsList: [3, 4], budgetMax: 1500, ageMin: 3, ageMax: 10 });
+  assert.deepEqual(f, { district: ["沙鹿區", "梧棲區"], attribut: ["透天厝", "別墅", "電梯大廈", "樓中樓"], room: [3, 4], priceMax: 1500, ageMin: 3, ageMax: 10 });
+  assert.deepEqual(branchFiltersFromPreference({}), {});
+  assert.deepEqual(branchFiltersFromPreference(null), {});
+  const u = branchMatchUrl(self, f);
+  const p = new URL(u);
+  assert.equal(p.origin, "https://pacifi-realtor-wuchi.vercel.app");
+  assert.equal(p.hash, "#match");
+  assert.equal(p.searchParams.get("district"), "沙鹿區,梧棲區");
+  assert.equal(p.searchParams.get("attribut"), "透天厝,別墅,電梯大廈,樓中樓");
+  assert.equal(p.searchParams.get("room"), "3,4");
+  assert.equal(p.searchParams.get("priceMax"), "1500");
+  assert.equal(p.searchParams.get("ageMin"), "3");
+  assert.equal(p.searchParams.get("ageMax"), "10");
+  // 專屬連結要能原樣解回來（& 和 ? 都要編碼，不然 go=1 會變成店官網自己的參數）
+  assert.equal(p.searchParams.get("book"), self);
+  assert.ok(!u.includes("&go=1"));
+  // 沒條件就只有 book=
+  assert.deepEqual([...new URL(branchMatchUrl(self)).searchParams.keys()], ["book"]);
+  // items=：去重、去空、只留像編號的、最多 10 間
+  assert.deepEqual(parseItemIds("S2876998,S3487964,,S2876998, R123"), ["S2876998", "S3487964", "R123"]);
+  assert.deepEqual(parseItemIds("S1,<script>,S2"), ["S1", "S2"]);
+  assert.deepEqual(parseItemIds(null), []);
+  assert.equal(parseItemIds(Array.from({ length: 15 }, (_, i) => "S" + i).join(",")).length, 10);
 });
 
 if (process.exitCode) {
