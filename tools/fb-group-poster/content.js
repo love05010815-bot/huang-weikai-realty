@@ -245,6 +245,22 @@
       if (r.done) finishScreen(r.reason);
     }
 
+    /**
+     * 這個社團根本發不了（頁面打不開／找不到發文框／發文視窗沒出現）：
+     * 自動模式幾秒後自動跳過換下一個（他 2026-10-06 說「找不到發文框的，自動跳過先進行下個」）；半自動照舊停著等他按。
+     * 只用在「發不了」這幾種；身分不對、文案沒填好、FB 拒絕那些還是停下來，因為那些需要他看一眼。
+     */
+    async function autoSkip(reason) {
+      if (!job.autoPost) return controls(false);
+      log("自動模式：" + reason + "，5 秒後自動跳過換下一個。", "fbq-strong");
+      if ((await countdown(5)) === "stop") return onStop();
+      if (advancing) return;
+      advancing = true;
+      buttons([{ label: "換下一個社團中…", onClick: () => {} }]);
+      const r = await send("fbq:skip", { message: reason + "，自動跳過" });
+      if (r.done) finishScreen(r.reason);
+    }
+
     controls(false);
 
     // 登入檢查
@@ -260,7 +276,7 @@
     if (FBQ.anyRe(FBQ.words(L, "notAvailable")).test(bodyText)) {
       log("這個社團頁面打不開（網址錯誤、社團不存在或你沒有權限）。可以按「跳過這個」。", "fbq-bad");
       await report("failed", "社團頁面無法顯示");
-      controls(false);
+      await autoSkip("社團頁面打不開");
       return;
     }
 
@@ -291,7 +307,7 @@
         log(joinable ? "找不到發文框：你（或粉專）還沒加入這個社團。" : "找不到發文框：社團可能不開放發文，或 Facebook 改版了。", "fbq-bad");
         log("可以按「跳過這個」換下一個。", "");
         await report("failed", joinable ? "尚未加入社團" : "找不到發文框");
-        controls(false);
+        await autoSkip(joinable ? "你（或粉專）還沒加入這個社團" : "找不到發文框");
         return;
       }
       // 命中的可能是 placeholder 的 span，點它的可點祖先比較穩
@@ -320,7 +336,7 @@
       if (!dialog) {
         log("發文視窗沒有跳出來，可能是 Facebook 改版。可以按「跳過這個」。", "fbq-bad");
         await report("failed", "發文視窗未出現");
-        controls(false);
+        await autoSkip("發文視窗沒有跳出來");
         return;
       }
       await sleep(1000);
