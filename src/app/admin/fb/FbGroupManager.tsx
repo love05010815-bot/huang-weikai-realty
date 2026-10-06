@@ -115,6 +115,10 @@ function idFromGroupUrl(url: string): string {
 function needsNameFix(g: Group): boolean {
   return g.name.trim() === idFromGroupUrl(g.url);
 }
+/** 這個社團已經發出去（或送審中）。發佈頁「勾選未發佈的」反過來挑：沒發過、跳過（含到每日上限被跳過的）、失敗的都算未發佈。 */
+function isPosted(g: Group): boolean {
+  return !!g.lastResult && (g.lastResult.status === "posted" || g.lastResult.status === "pending");
+}
 
 /**
  * 縮圖：長邊超過 max 就用 canvas 縮，回新的 dataURL。
@@ -843,6 +847,9 @@ export default function FbGroupManager({
                 </span>
               </h2>
               <div>
+                <button type="button" className={styles.btnSm} onClick={() => setChecked(new Set(visibleGroups.filter((g) => g.enabled && !isPosted(g)).map((g) => g.id)))}>
+                  勾選未發佈的（{visibleGroups.filter((g) => g.enabled && !isPosted(g)).length}）
+                </button>
                 <button type="button" className={styles.btnSm} onClick={() => setChecked(new Set(visibleGroups.filter((g) => g.enabled).map((g) => g.id)))}>
                   全選啟用中
                 </button>
