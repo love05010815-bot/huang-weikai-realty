@@ -19,6 +19,8 @@ import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
 import SiteFooter from "@/app/_ui/SiteFooter";
 import { contactForOwner, type ColleagueContact } from "@/lib/match/colleagues";
+import { buildMatchMeta } from "@/lib/match/meta";
+import type { MatchMetaPayload } from "@/lib/match/meta";
 import { runMatchSearch } from "@/lib/match/search";
 import { getBuyer, type Buyer } from "@/lib/match/store";
 import { verifyBuyerToken } from "@/lib/match/token";
@@ -26,8 +28,8 @@ import styles from "../home.module.css";
 import matchStyles from "./match.module.css";
 import MatchApp, { type MatchInitial } from "./MatchApp";
 
-const TITLE = `自動配對找房｜台中海線房仲${OWNER.name}｜沙鹿梧棲清水龍井`;
-const DESCRIPTION = `告訴${OWNER.alias}您的購屋條件（區域、預算、房數、坪數、類型），系統從目前在售的台中海線物件自動配對，看中意可直接預約看屋，並在 LINE 收到確認與新物件通知。`;
+const TITLE = `好案配對找房｜台中海線房仲${OWNER.name}｜沙鹿梧棲清水龍井`;
+const DESCRIPTION = `依區域、預算、房數、坪數、類型、屋齡篩選台中海線七家店目前在售的物件，看中意可直接預約看屋，並在 LINE 收到確認與新物件通知。`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -44,7 +46,7 @@ export const dynamic = "force-dynamic";
  * 專屬連結那條路：驗識別碼 → 讀他存的條件 → 配對 → 把結果當 initial 交給 MatchApp。
  * 任何一步出錯都退回一般流程（initial = null），不讓客戶看到錯誤畫面。
  */
-async function PrefetchedMatch({ k, buyer, colleague }: { k: string; buyer: Buyer; colleague: ColleagueContact | null }) {
+async function PrefetchedMatch({ k, buyer, colleague, meta }: { k: string; buyer: Buyer; colleague: ColleagueContact | null; meta: MatchMetaPayload }) {
   let initial: MatchInitial | null = null;
   try {
     initial = {
@@ -58,7 +60,7 @@ async function PrefetchedMatch({ k, buyer, colleague }: { k: string; buyer: Buye
   } catch (e) {
     console.error("[match] 專屬連結預先配對失敗（退回一般流程）:", e);
   }
-  return <MatchApp initial={initial} colleague={colleague} />;
+  return <MatchApp initial={initial} colleague={colleague} meta={meta} />;
 }
 
 /** 配對還在算時的畫面。重點是講清楚「條件已經設好了」—— 不然客戶看到等待就以為要重填 */
@@ -92,6 +94,8 @@ export default async function MatchPage({ searchParams }: { searchParams: Promis
     }
   }
   const prefetch = sp.go === "1" && k && buyer ? { k, buyer } : null;
+  // 工具列的選項（縣市行政區、類型、房數、屋齡…）在這裡算好帶下去，客人第一眼就有完整的工具列（2026-10-06 店頭官網那套介面）
+  const meta = await buildMatchMeta();
   return (
     <div className={styles.page}>
       <header className={styles.header}>
@@ -117,20 +121,20 @@ export default async function MatchPage({ searchParams }: { searchParams: Promis
       <main>
         <section className={styles.section}>
           <div className={`${styles.container} ${styles.center}`}>
-            <span className={styles.eyebrow}>MATCH</span>
-            <h1 className={styles.sectionTitle}>自動配對找房</h1>
+            <span className={styles.eyebrow}>PROPERTY MATCH</span>
+            <h1 className={styles.sectionTitle}>好案配對找房</h1>
             <p className={styles.sectionDesc}>
-              告訴我們您的購屋條件，系統會從目前在售的物件裡自動配對，看中意可以直接預約看屋。
+              整合太平洋房屋海線七家門市與店網的在售物件，依區域、類型、房數、總價、屋齡篩選；看中意可以直接預約看屋。
               {colleague ? `預約送出後，${colleague.name}會與您聯繫。` : "預約完成後在官方 LINE 收到確認，之後有符合條件的新物件也會第一時間通知您。"}
             </p>
           </div>
           <div className={styles.container}>
             {prefetch ? (
               <Suspense fallback={<MatchLoading />}>
-                <PrefetchedMatch k={prefetch.k} buyer={prefetch.buyer} colleague={colleague} />
+                <PrefetchedMatch k={prefetch.k} buyer={prefetch.buyer} colleague={colleague} meta={meta} />
               </Suspense>
             ) : (
-              <MatchApp colleague={colleague} />
+              <MatchApp colleague={colleague} meta={meta} />
             )}
           </div>
         </section>

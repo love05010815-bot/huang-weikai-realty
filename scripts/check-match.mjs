@@ -38,6 +38,7 @@ import { detectPriceChanges } from "../src/lib/match/diff.ts";
 import { parseBlocks, parseHouseolDetail, splitAddress, splitResponse, toListingUpsert } from "../src/lib/match/houseol-parse.ts";
 import { BUDGET_TIERS, EMPTY_FILTER, budgetCounts, distinctCounts, isFilterActive, matchesBudget, matchesFilter, toggleIn } from "../src/lib/match/buyer-filter.ts";
 import { lineText, lineViaLabel, normalizeLineVia } from "../src/lib/match/line-via.ts";
+import { cardMeta, fullAddress, keywordHit, PAGE_SIZE, parseIdList, priceText, storeShortName } from "../src/app/match/browse-state.ts";
 import { colleagueViewingPush, testPush } from "../src/lib/match/push-payload.ts";
 import { isBaseline, listingsToHide, pickDueSource, planHouseolWrites, sameSourceSnapshot } from "../src/lib/match/merge.ts";
 import { createBuyerToken, verifyBuyerToken } from "../src/lib/match/token.ts";
@@ -929,6 +930,40 @@ test("同事的 LINE：ID 轉成加好友網址、line.me 連結照收、不像�
   assert.equal(lineUrlFromInput(""), "");
   assert.equal(lineUrlFromInput(null), "");
   assert.ok(colleagueIntakeUrl("k".repeat(32)).endsWith("/intake?key=" + "k".repeat(32)));
+});
+
+test("客人頁的好案配對找房：門市短名、物件卡那一行、關鍵字、items= 編號清單", () => {
+  // 門市短名要跟店頭官網卡片上的一樣
+  assert.equal(storeShortName("梧棲新市鎮旗艦加盟店"), "梧棲新市鎮店");
+  assert.equal(storeShortName("台中沙鹿特三加盟店"), "沙鹿特三店");
+  assert.equal(storeShortName("台中沙鹿旗艦加盟店"), "沙鹿旗艦店");
+  assert.equal(storeShortName("清水中山旗艦加盟店"), "清水中山店");
+  assert.equal(storeShortName("台中沙鹿中山加盟店"), "沙鹿中山店");
+  assert.equal(storeShortName("台中沙鹿靜宜加盟店"), "沙鹿靜宜店");
+  assert.equal(storeShortName("沙鹿幸福領航加盟店"), "沙鹿領航店");
+  assert.equal(storeShortName(""), "");
+  // 物件卡那一行：住宅寫房廳衛與建坪，土地寫地坪、沒有房廳衛；屋齡 0 不寫、未滿一年是新成屋
+  assert.equal(cardMeta({ type: "華廈", rooms: 2, halls: 2, baths: 1, size: 32.78, landSize: 0, age: 6 }), "華廈 ・ 2房2廳1衛 ・ 32.78坪 ・ 屋齡6年");
+  assert.equal(cardMeta({ type: "土地", rooms: 0, halls: 0, baths: 0, size: 98.03, landSize: 98.03, age: 0 }), "土地 ・ 地坪98.03坪");
+  assert.equal(cardMeta({ type: "電梯大樓", rooms: 3, halls: 2, baths: 2, size: 45, landSize: 0, age: 0.5 }), "電梯大樓 ・ 3房2廳2衛 ・ 45坪 ・ 新成屋");
+  assert.equal(priceText(1688), "1,688 萬");
+  // 地址：路名前面補市區；本來就有市區的不重複；沒路名就只寫市區
+  assert.equal(fullAddress({ city: "台中市", district: "沙鹿區", address: "福至路" }), "台中市沙鹿區福至路");
+  assert.equal(fullAddress({ city: "台中市", district: "沙鹿區", address: "臺中市沙鹿區福至路" }), "臺中市沙鹿區福至路");
+  assert.equal(fullAddress({ city: "台中市", district: "清水區", address: "" }), "台中市清水區");
+  // 關鍵字：名稱、地址、行政區都找；多個字空白隔開要都有；空的全過
+  const l = { title: "青山公園邊間雙車美墅", address: "臺中市沙鹿區福至路", district: "沙鹿區" };
+  assert.ok(keywordHit(l, "美墅"));
+  assert.ok(keywordHit(l, "福至路"));
+  assert.ok(keywordHit(l, "沙鹿 雙車"));
+  assert.ok(!keywordHit(l, "梧棲"));
+  assert.ok(keywordHit(l, "  "));
+  // items=：去重、去空、只留像編號的、最多 10 間
+  assert.deepEqual(parseIdList("S2876998,S3487964,,S2876998, R123"), ["S2876998", "S3487964", "R123"]);
+  assert.deepEqual(parseIdList("S1,<script>,S2"), ["S1", "S2"]);
+  assert.deepEqual(parseIdList(null), []);
+  assert.equal(parseIdList(Array.from({ length: 15 }, (_, i) => "S" + i).join(",")).length, 10);
+  assert.equal(PAGE_SIZE, 9);
 });
 
 if (process.exitCode) {
