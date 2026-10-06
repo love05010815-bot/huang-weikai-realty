@@ -685,7 +685,7 @@ export const PROJECTS: Project[] = [
         **明年屋齡自己 +1 是正常的，不要回頭改這裡的年份。**
 
      ⚠️ 三個很容易打錯的建商（**案名有「德光」不代表建商是德光建設**，本檔已中兩次）：
-        ・**佳鏵建設（佳鏵大心）不是佳鋐建設**（本檔已有佳鋐樂邑／樂灣／新邑／晴灣／科藝）
+        ・**佳鏵建設（佳鏵大心、佳鏵樹璽）不是佳鋐建設**（本檔已有佳鋐樂邑／樂灣／新邑／晴灣／科藝）
         ・**德光會的建商是德邑建設**，不是德光建設
         ・**德光星綻的建商是凱俊建設**，不是德光建設（2026-08-27 新增）
         真的是德光建設的只有：德光聚、德光一築、德光二城、德光耀。
@@ -860,6 +860,11 @@ export const PROJECTS: Project[] = [
     status: "completed", completion: "約 2023～24", units: 122,
     street: "斗潭路", streets: "沙鹿區 斗潭路 341 巷",
     layout: "2 房約 27 坪、3 房約 37 坪", floors: "地上 10 層／地下 2 層", siteAreaPing: 1047,
+    sources: ["owner"],
+  },
+  {
+    id: "jiahua-shuxi", name: "佳鏵樹璽", builder: "佳鏵建設", area: "沙鹿車站",
+    status: "completed", completion: "約 2023",
     sources: ["owner"],
   },
 
