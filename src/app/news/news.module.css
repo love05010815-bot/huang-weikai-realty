@@ -367,6 +367,33 @@
   font-weight: 900;
 }
 
+/* 文章最上面那顆返回鍵（內頁開頭）。
+
+   刻意做成**看得見的按鈕**而不是純文字連結：底下那顆 `.backLink` 是讀完之後的收尾，
+   可以低調；這顆是客戶「點錯了想退出去」時要一眼找到的，低調就等於沒有。
+   不做 sticky —— 文章內頁已經有站頭導覽列，再黏一條會把手機畫面吃掉一截。 */
+.backTop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 18px;
+  padding: 11px 16px;
+  border: 1px solid var(--line-warm, #d3e2e9);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--primary-dark, #227f71);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.backTop:hover {
+  border-color: var(--primary, #2fa894);
+  background: var(--accent-soft, #fde7d6);
+}
+
+/* 文章最後那顆：讀完的收尾，維持文字連結的樣子。 */
 .backLink {
   display: inline-block;
   margin-top: 30px;

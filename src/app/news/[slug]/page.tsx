@@ -136,6 +136,18 @@ export default async function NewsPostPage({ params }: { params: Promise<Params>
         <section className={styles.section}>
           <div className={styles.container}>
             <article className={nw.article}>
+              {/* 🔴 回房產消息的入口要放在**文章最上面**。
+                  2026-10-06 之前只有文章最底下那一顆，而它在「這篇跟你的情況有關嗎？」
+                  CTA 區塊＋「其他文章」三張卡的下面 —— 一篇一千多字的文章，客戶要捲過
+                  三四個畫面才看得到，等於沒有。他直接開口要一顆返回鍵。
+                  ⚠️ 用 `<Link href="/news">` 不要用 `history.back()`：
+                  客戶多半是從 LINE／FB 點連結進來的，那種情況瀏覽器根本沒有「上一頁」，
+                  `history.back()` 會按了沒反應（這個專案最常見的那種靜默失效）。
+                  底下那顆留著 —— 讀完的人在文章結尾找它是自然的。 */}
+              <Link href="/news" className={nw.backTop}>
+                ← 回房產消息
+              </Link>
+
               <div className={nw.articleHead}>
                 <div className={nw.chipRow}>
                   <span className={`${nw.chip} ${post.category === "knowledge" ? nw.chipKnowledge : ""}`}>
