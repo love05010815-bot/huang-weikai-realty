@@ -233,9 +233,18 @@
       }
       log(outcome === "pending" ? "已送出，等社團管理員審核。" : "已發佈 ✓", "fbq-ok");
       await report(outcome, outcome === "pending" ? "自動發佈，等待審核" : "自動發佈");
-      const gap = Number(job.autoGapSec) || 0;
+      // 等多久：固定秒數，或在他設的範圍內每次隨機抽（他 10/07 要的「不固定的秒數間隔」）
+      let gap = Number(job.autoGapSec) || 0;
+      let gapNote = "";
+      if (job.autoGapMode === "random") {
+        let lo = Math.max(0, Number(job.autoGapMin) || 0);
+        let hi = Math.max(0, Number(job.autoGapMax) || 0);
+        if (lo > hi) [lo, hi] = [hi, lo];
+        gap = lo + Math.floor(Math.random() * (hi - lo + 1));
+        gapNote = "（這次在 " + lo + "～" + hi + " 秒裡抽到）";
+      }
       if (gap > 0) {
-        log("等 " + gap + " 秒再換下一個（連發太快容易被當垃圾訊息）。", "");
+        log("等 " + gap + " 秒再換下一個" + gapNote + "（連發太快容易被當垃圾訊息）。", "");
         if ((await countdown(gap)) === "stop") return onStop();
       }
       if (advancing) return;

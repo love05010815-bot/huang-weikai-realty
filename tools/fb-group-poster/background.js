@@ -144,6 +144,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         // 自動模式：content.js 填好後自己按「發佈」、等 autoGapSec 秒再換下一個（後台設定；同事版預設關）
         autoPost: !!p.autoPost,
         autoGapSec: Math.max(0, Number(p.autoGapSec) || 0),
+        // "random"＝每個社團之間在 autoGapMin～autoGapMax 秒之間隨機抽（content.js 抽），不固定
+        autoGapMode: p.autoGapMode === "random" ? "random" : "fixed",
+        autoGapMin: Math.max(0, Number(p.autoGapMin) || 0),
+        autoGapMax: Math.max(0, Number(p.autoGapMax) || 0),
         requirePageIdentity: p.requirePageIdentity !== false,
         ad: { text: String(p.ad && p.ad.text ? p.ad.text : ""), images: Array.isArray(p.ad && p.ad.images) ? p.ad.images.slice(0, 10) : [] },
         groups: p.groups.map((g) => ({ id: String(g.id || ""), name: String(g.name || ""), url: String(g.url || "") })),
@@ -190,6 +194,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           dailyLimit: job.dailyLimit,
           autoPost: !!job.autoPost,
           autoGapSec: Number(job.autoGapSec) || 0,
+          autoGapMode: job.autoGapMode === "random" ? "random" : "fixed",
+          autoGapMin: Number(job.autoGapMin) || 0,
+          autoGapMax: Number(job.autoGapMax) || 0,
         },
       };
     });

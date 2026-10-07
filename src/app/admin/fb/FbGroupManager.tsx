@@ -34,8 +34,22 @@ type ScanState = { status: "scanning" | "done"; found?: number; groups?: ScanGro
  */
 type Identity = { id: string; name: string; kind: "page" | "account"; note: string };
 /** tailText＝固定尾段，每則廣告自動接在文案後面（預設值在 config/fb-tail.ts） */
-/** autoPost：外掛填好後自己按「發佈」、自動換下一個（他 2026-10-06 要的）；autoGapSec：自動模式每個社團之間等幾秒 */
-type Settings = { pageName: string; locale: "zh-TW" | "en"; dailyLimit: number; tailText: string; autoPost: boolean; autoGapSec: number };
+/**
+ * autoPost：外掛填好後自己按「發佈」、自動換下一個（他 2026-10-06 要的）。
+ * 每個社團之間等多久：autoGapMode "fixed"＝固定 autoGapSec 秒；"random"＝每次在 autoGapMin～autoGapMax 秒之間隨機抽
+ * （他 10/07 要的「不固定的秒數間隔」，比較不像機器）。
+ */
+type Settings = {
+  pageName: string;
+  locale: "zh-TW" | "en";
+  dailyLimit: number;
+  tailText: string;
+  autoPost: boolean;
+  autoGapSec: number;
+  autoGapMode: "fixed" | "random";
+  autoGapMin: number;
+  autoGapMax: number;
+};
 type ResultRow = { groupId: string; groupName: string; status: string; message: string; at: string };
 type HistoryJob = { id: string; at: number; adTitle: string; identityName?: string; total: number; results: ResultRow[]; status: string };
 type Progress = {
@@ -51,7 +65,17 @@ type Progress = {
 };
 
 /** 預設設定；固定尾段的預設值由外面給（後台＝黃瑋凱的那段、同事版＝空白讓同事自己填） */
-const defaultSettings = (tail: string): Settings => ({ pageName: "", locale: "zh-TW", dailyLimit: 10, tailText: tail, autoPost: false, autoGapSec: 20 });
+const defaultSettings = (tail: string): Settings => ({
+  pageName: "",
+  locale: "zh-TW",
+  dailyLimit: 10,
+  tailText: tail,
+  autoPost: false,
+  autoGapSec: 20,
+  autoGapMode: "fixed",
+  autoGapMin: 20,
+  autoGapMax: 60,
+});
 
 export type ImportDraft = { title: string; text: string; missing: string[] };
 /** 「從愛屋帶入」打哪裡：後台走 /api/admin/fb/*（Google 登入）、同事版走 weikaihouse.com/api/fb-ext/*（授權碼） */
@@ -693,6 +717,9 @@ export default function FbGroupManager({
       dailyLimit: settings.dailyLimit,
       autoPost: !!settings.autoPost,
       autoGapSec: Math.max(0, Number(settings.autoGapSec) || 0),
+      autoGapMode: settings.autoGapMode === "random" ? "random" : "fixed",
+      autoGapMin: Math.max(0, Number(settings.autoGapMin) || 0),
+      autoGapMax: Math.max(0, Number(settings.autoGapMax) || 0),
       requirePageIdentity: true,
       ad: { text: finalText, images: pubAd.images.map((im) => im.dataUrl) },
       groups: picked.map((g) => ({ id: g.id, name: g.name, url: g.url })),
@@ -841,7 +868,11 @@ export default function FbGroupManager({
                   <p className={styles.hint}>
                     {settings.autoPost ? (
                       <>
-                        ⚡ <b>自動發佈已開</b>：外掛填好會自己按「發佈」、等 {settings.autoGapSec} 秒換下一個社團，發完到「發佈紀錄」檢查。
+                        ⚡ <b>自動發佈已開</b>：外掛填好會自己按「發佈」、
+                        {settings.autoGapMode === "random"
+                          ? `每次隨機等 ${Math.min(settings.autoGapMin, settings.autoGapMax)}～${Math.max(settings.autoGapMin, settings.autoGapMax)} 秒`
+                          : `等 ${settings.autoGapSec} 秒`}
+                        換下一個社團，發完到「發佈紀錄」檢查。
                         身分對不上、文案沒填完整、圖片沒上傳好、Facebook 說不能發——這幾種會停下來等你，不會硬發。那個 Facebook 視窗要留在前面，別縮小或切走。
                       </>
                     ) : (
@@ -1510,16 +1541,52 @@ export default function FbGroupManager({
                 <p className={styles.hint}>身分對不上、文案沒填完整、圖片沒上傳好、Facebook 拒絕——這幾種會停下來等你。每日上限照樣擋。</p>
               </div>
               <div>
-                <label className={styles.lbl}>自動模式：每個社團之間等幾秒</label>
-                <input
+                <label className={styles.lbl}>自動模式：每個社團之間怎麼等</label>
+                <select
                   className={styles.input}
-                  type="number"
-                  min={0}
                   disabled={!settings.autoPost}
-                  value={settings.autoGapSec}
-                  onChange={(e) => setSettings((s) => ({ ...s, autoGapSec: Math.max(0, Number(e.target.value) || 0) }))}
-                />
-                <p className={styles.hint}>連發太快容易被 Facebook 當垃圾訊息，建議 20 秒以上。</p>
+                  value={settings.autoGapMode}
+                  onChange={(e) => setSettings((s) => ({ ...s, autoGapMode: e.target.value === "random" ? "random" : "fixed" }))}
+                >
+                  <option value="fixed">固定秒數</option>
+                  <option value="random">自訂範圍、每次隨機（比較不像機器）</option>
+                </select>
+                {settings.autoGapMode === "random" ? (
+                  <div className={styles.impRow}>
+                    <span className={styles.hint}>最少</span>
+                    <input
+                      className={styles.input}
+                      type="number"
+                      min={0}
+                      disabled={!settings.autoPost}
+                      value={settings.autoGapMin}
+                      onChange={(e) => setSettings((s) => ({ ...s, autoGapMin: Math.max(0, Number(e.target.value) || 0) }))}
+                    />
+                    <span className={styles.hint}>到最多</span>
+                    <input
+                      className={styles.input}
+                      type="number"
+                      min={0}
+                      disabled={!settings.autoPost}
+                      value={settings.autoGapMax}
+                      onChange={(e) => setSettings((s) => ({ ...s, autoGapMax: Math.max(0, Number(e.target.value) || 0) }))}
+                    />
+                    <span className={styles.hint}>秒</span>
+                  </div>
+                ) : (
+                  <input
+                    className={styles.input}
+                    type="number"
+                    min={0}
+                    disabled={!settings.autoPost}
+                    value={settings.autoGapSec}
+                    onChange={(e) => setSettings((s) => ({ ...s, autoGapSec: Math.max(0, Number(e.target.value) || 0) }))}
+                  />
+                )}
+                <p className={styles.hint}>
+                  連發太快容易被 Facebook 當垃圾訊息，建議 20 秒以上。隨機的話，每個社團之間的秒數都不一樣，面板會顯示這次抽到幾秒。
+                  {settings.autoGapMode === "random" && settings.autoGapMin > settings.autoGapMax ? "（最少比最多大，發佈時會自動對調）" : ""}
+                </p>
               </div>
             </div>
             <p className={styles.okText}>設定會自動儲存。</p>
