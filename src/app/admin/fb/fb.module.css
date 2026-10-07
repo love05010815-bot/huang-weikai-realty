@@ -438,6 +438,13 @@
 .rowActive {
   background: var(--cmp-accent-bg, #eff6ff);
 }
+/* 進度列被勾成「下一次要發」 */
+.rowPick {
+  outline: 1px solid var(--cmp-accent, #1877f2);
+}
+.results li input[type="checkbox"] {
+  margin: 0;
+}
 .msg {
   color: var(--cmp-sub, #6b7280);
   font-size: 13px;

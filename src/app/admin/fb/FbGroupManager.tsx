@@ -648,6 +648,24 @@ export default function FbGroupManager({
   const finalText = pubAd ? withTail(pubAd.text, settings.tailText) : "";
   const checkedCount = visibleGroups.filter((g) => checked.has(g.id)).length;
 
+  // 進度區的每一列可以直接當「下一次要發哪些」的勾選（他 2026-10-07 要的：中斷停止後，下次能自己選從哪邊、哪幾個開始）。
+  // 勾的就是上面「3. 勾選社團」那個 checked，所以勾完按「開始發佈」就接著發，不用另外一條流程。
+  const pickFrom = (i: number) => {
+    if (!progress) return;
+    const ids = progress.groupIds.slice(i);
+    setChecked(new Set(ids));
+    showToast(`已勾 ${ids.length} 個（從「${progress.groupNames[ids[0]] || ids[0]}」到最後），按上面的「▶ 開始發佈」接著發`, "ok");
+  };
+  const pickUnfinished = () => {
+    if (!progress) return;
+    const ids = progress.groupIds.filter((id, i) => {
+      const r = progress.results[i];
+      return !r || (r.status !== "posted" && r.status !== "pending");
+    });
+    setChecked(new Set(ids));
+    showToast(ids.length ? `已勾 ${ids.length} 個還沒發成功的，按上面的「▶ 開始發佈」接著發` : "這一批都發出去了，沒有要補的", ids.length ? "ok" : "warn");
+  };
+
   async function launch() {
     if (!extVersion) return showToast("沒偵測到外掛：請先安裝「FB 社團廣告助手」，裝好後按 F5 重新整理這頁", "bad");
     if (!pubAd) return showToast("請先選一版廣告文案", "warn");
@@ -914,24 +932,47 @@ export default function FbGroupManager({
               <div className={styles.progressBar}>
                 <div className={styles.progressFill} style={{ width: `${progress.total ? Math.round((progress.results.filter((r) => r).length / progress.total) * 100) : 0}%` }} />
               </div>
+              {progress.status !== "running" && (
+                <div className={styles.actions} style={{ marginTop: 0 }}>
+                  <span className={styles.hint}>要接著發：勾下面的社團，或按某一列的「從這裡開始」，再按上面的「▶ 開始發佈」。</span>
+                  <button type="button" className={styles.btnSm} onClick={pickUnfinished}>
+                    勾還沒發成功的
+                  </button>
+                  <button type="button" className={styles.btnSm} onClick={() => setChecked(new Set())}>
+                    全部不勾
+                  </button>
+                </div>
+              )}
               <ul className={styles.results}>
                 {progress.groupIds.map((id, i) => {
                   const r = progress.results[i];
                   const name = progress.groupNames[id] || id;
-                  if (r) {
-                    return (
-                      <li key={id}>
-                        {badge(r.status)}
-                        <b>{name}</b>
-                        <span className={styles.msg}>{r.message}</span>
-                      </li>
-                    );
-                  }
-                  const st = progress.status === "running" && progress.index === i ? "filling" : progress.status === "running" ? "waiting" : "skipped";
+                  const st = r ? r.status : progress.status === "running" && progress.index === i ? "filling" : progress.status === "running" ? "waiting" : "skipped";
+                  const picked = checked.has(id);
                   return (
-                    <li key={id} className={st === "filling" ? styles.rowActive : ""}>
+                    <li key={id} className={`${st === "filling" ? styles.rowActive : ""} ${picked && !running ? styles.rowPick : ""}`}>
+                      <input
+                        type="checkbox"
+                        title="勾起來＝下一次「開始發佈」要發這個"
+                        disabled={running}
+                        checked={picked}
+                        onChange={(e) =>
+                          setChecked((c) => {
+                            const n = new Set(c);
+                            if (e.target.checked) n.add(id);
+                            else n.delete(id);
+                            return n;
+                          })
+                        }
+                      />
                       {badge(st)}
                       <b>{name}</b>
+                      <span className={styles.msg}>{r ? r.message : ""}</span>
+                      {!running && (
+                        <button type="button" className={styles.btnSm} title="勾這一個和它後面的全部" onClick={() => pickFrom(i)}>
+                          從這裡開始
+                        </button>
+                      )}
                     </li>
                   );
                 })}
