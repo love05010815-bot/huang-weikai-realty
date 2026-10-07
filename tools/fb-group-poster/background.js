@@ -8,11 +8,12 @@
  *      → 記結果、換下一個社團的網址（同一個分頁），到底了就結束。
  *   ④ 進度寫進 chrome.storage.local 的 fbq:progress，bridge.js 監聽變化、回報給後台畫面。
  *
- * 🔴 這支只開分頁、填表由 content.js 做；**永遠不替使用者按「發佈」**。
+ * 🔴 這支只開分頁、填表由 content.js 做。「發佈」預設由使用者自己按；「設定 → 自動按發佈」打開時，
+ *    content.js 會替他按、在分頁裡倒數幾秒再送 fbq:next（job.autoPost／autoGapSec／autoGapMode／autoGapMin／autoGapMax 隨任務帶著）。
  * 🔴 不抓 Facebook 任何資料、不送任何東西到別的地方。
  *
  * MV3 的 service worker 會被閒置回收，所以不在背景裡做「等 N 秒」這種長時間等待 ——
- * 社團之間的節奏由使用者自己按「下一個社團」控制（半自動）。每日上限則用日期計數擋。
+ * 社團之間的節奏由使用者自己按「下一個社團」（半自動）或 content.js 在分頁裡倒數（自動模式）控制。每日上限則用日期計數擋。
  */
 const JOB_KEY = "fbq:job"; // chrome.storage.session：關瀏覽器就沒了（含廣告內容）
 const PROGRESS_KEY = "fbq:progress"; // chrome.storage.local：後台畫面讀這個

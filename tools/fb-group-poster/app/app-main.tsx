@@ -6,6 +6,7 @@
  *   - defaultTail=""：同事的固定尾段自己填（他的電話／證號不在這份檔案裡）
  *   - licensed／licenseHint：授權碼沒過就不給發佈、抓社團、帶入
  *   - importApi：「從愛屋帶入」打 weikaihouse.com/api/fb-ext/*，帶授權碼而不是 Google 登入
+ *   - mode="extension"：「自動按發佈」沒設過時預設關（後台預設開）——同事要自己到設定打開，手冊有寫
  * 外掛頁 ↔ 背景程式的溝通照舊走 bridge.js（它在這一頁當一般 script 載入，chrome.runtime 都有）。
  */
 import { useCallback, useEffect, useState } from "react";
@@ -86,7 +87,7 @@ function App() {
         <h1>FB 社團廣告助手</h1>
         <p>
           寫一版廣告、勾好要發的 Facebook 社團，外掛用你登入的<b>粉專身分</b>逐一打開社團、填好文案和圖片。
-          <b>「發佈」永遠是你自己按</b>，按完再點面板的「下一個社團」。內容只存在這台電腦、不會上傳。
+          <b>預設填好就停下來，「發佈」由你自己按</b>；想讓它自己按、隔幾秒自動換下一個，到「⚙️ 設定」打開「自動按發佈」。內容只存在這台電腦、不會上傳。
         </p>
       </header>
 

@@ -62,8 +62,10 @@ fs.writeFileSync(path.join(outDir, "manifest.json"), JSON.stringify(m, null, 2) 
 // ③ 個資掃描：這些字一個都不准出現在同事拿到的檔案裡
 const FORBIDDEN = [/0909[-\s]?787[-\s]?865/, /@a8865/, /嚴意情/, /00887/, /wei\.kai\.dream/, /swujnuty0325/, /108472157721504/, /broker1019/, /vip\.rakuya\.com\.tw\/0909/];
 const hits = [];
+// esbuild 預設 charset=ascii，app.js 裡的中文會寫成 \uXXXX（「嚴意情」會變 嚴意情），掃之前先還原，不然中文那幾條形同沒掃
+const unescapeJs = (s) => s.replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
 for (const f of fs.readdirSync(outDir)) {
-  const text = fs.readFileSync(path.join(outDir, f), "utf8");
+  const text = unescapeJs(fs.readFileSync(path.join(outDir, f), "utf8"));
   for (const re of FORBIDDEN) if (re.test(text)) hits.push(`${f}: ${re}`);
 }
 if (hits.length) {
