@@ -8,8 +8,8 @@
  *      → 記結果、換下一個社團的網址（同一個分頁），到底了就結束。
  *   ④ 進度寫進 chrome.storage.local 的 fbq:progress，bridge.js 監聽變化、回報給後台畫面。
  *
- * 🔴 這支只開分頁、填表由 content.js 做。「發佈」預設由使用者自己按；「設定 → 自動按發佈」打開時，
- *    content.js 會替他按、在分頁裡倒數幾秒再送 fbq:next（job.autoPost／autoGapSec／autoGapMode／autoGapMin／autoGapMax 隨任務帶著）。
+ * 🔴 這支只開分頁、填表由 content.js 做。「設定 → 自動按發佈」預設開：content.js 填好會替他按「發佈」、
+ *    在分頁裡倒數幾秒再送 fbq:next（job.autoPost／autoGapSec／autoGapMode／autoGapMin／autoGapMax 隨任務帶著）；關掉就由使用者自己按。
  * 🔴 不抓 Facebook 任何資料、不送任何東西到別的地方。
  *
  * MV3 的 service worker 會被閒置回收，所以不在背景裡做「等 N 秒」這種長時間等待 ——
@@ -142,7 +142,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         pageName: identity.name,
         locale: p.locale === "en" ? "en" : "zh-TW",
         dailyLimit: Math.max(0, Number(p.dailyLimit) || 0),
-        // 自動模式：content.js 填好後自己按「發佈」、等 autoGapSec 秒再換下一個（後台設定；同事版預設關）
+        // 自動模式：content.js 填好後自己按「發佈」、等 autoGapSec 秒再換下一個（後台設定；他的後台與同事版 1.4.4 起都預設開）
         autoPost: !!p.autoPost,
         autoGapSec: Math.max(0, Number(p.autoGapSec) || 0),
         // "random"＝每個社團之間在 autoGapMin～autoGapMax 秒之間隨機抽（content.js 抽），不固定

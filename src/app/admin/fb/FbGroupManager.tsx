@@ -70,7 +70,7 @@ const defaultSettings = (tail: string): Settings => ({
   locale: "zh-TW",
   dailyLimit: 10,
   tailText: tail,
-  autoPost: false,
+  autoPost: true,
   autoGapSec: 20,
   autoGapMode: "fixed",
   autoGapMin: 20,
@@ -223,9 +223,8 @@ export default function FbGroupManager({
       const s = { ...defaultSettings(defaultTail), ...stored };
       // 後台：他 9/18 之前存的尾段裡有三條被截斷的死連結（樂屋／FB粉專／YouTube）→ 開頁時換成完整網址
       if (migrateTail) s.tailText = migrateTail(s.tailText);
-      // 自動發佈：他自己的後台預設開（2026-10-06 他要的「全部自動發布，發完再檢查」）；同事版預設關——手冊寫的是「發佈永遠自己按」。
-      // 只在他還沒存過這個設定時套預設，存過就照他存的。
-      if (typeof stored.autoPost !== "boolean") s.autoPost = mode === "admin";
+      // 自動發佈預設開：他的後台 2026-10-06 起（「全部自動發布，發完再檢查」）、同事版 1.4.4 起（10/07 他說「同事也預設開」）。
+      // 存過的照存的（上面展開 stored 就蓋掉預設了）；同事從 1.3.x 升上來沒存過這格，所以會直接變成開。
       setSettings(s);
       // 舊資料只有單一「粉專名稱」→ 自動升級成第一個發文身分，不用他重打
       let ids = await idbGet<Identity[]>("identities", []);

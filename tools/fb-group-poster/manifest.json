@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "FB 社團廣告助手",
-  "version": "1.4.3",
-  "description": "寫一版廣告、勾好社團，這支外掛用你登入的粉專身分，在你自己的 Chrome 裡逐一打開社團、填好文案與圖片。「發佈」預設由你自己按，也可以在設定裡讓它替你按、照你設的秒數換下一個。",
+  "version": "1.4.4",
+  "description": "寫一版廣告、勾好社團，這支外掛用你登入的粉專身分，在你自己的 Chrome 裡逐一打開社團、填好文案與圖片、替你按「發佈」、隔幾秒換下一個。想自己按，到設定關掉自動模式。",
   "permissions": ["storage", "tabs"],
   "host_permissions": ["https://www.facebook.com/*", "https://web.facebook.com/*"],
   "action": { "default_title": "FB 社團廣告助手：到後台的『社團廣告發佈』開始" },
