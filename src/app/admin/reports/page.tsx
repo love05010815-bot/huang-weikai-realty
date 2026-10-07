@@ -55,6 +55,11 @@ export default async function ReportsAdminPage({ searchParams }: { searchParams:
   }
 
   const hasReport = new Set(reports.map((r) => r.projectId));
+  // ⚠️ **還沒做報告書的排前面。** 原本是反過來（已有的排前面），結果報告書做到 20 筆時，
+  //    「① 選社區」沒打字的那張清單（只列前 20 筆）剛好整張都是已經做好的 ——
+  //    系統擁有者 2026-10-07 回報「下拉沒看到建案」。那張清單的用途是**挑一個還沒做的來做**；
+  //    已經做好的在頁面最下面那一區，每一列都有「編輯」（按了會自己捲回頂端），不必在這裡再佔一次位置。
+  //    第二順位是在售物件數 —— 我手上正在賣的社區，報告書最有用，排在沒在售的前面。
   const options: ReportProjectOption[] = PROJECTS.map((p) => ({
     id: p.id,
     name: p.name,
@@ -63,7 +68,7 @@ export default async function ReportsAdminPage({ searchParams }: { searchParams:
     mineCount: listingsByProject[p.id]?.length ?? 0,
   })).sort(
     (a, b) =>
-      Number(hasReport.has(b.id)) - Number(hasReport.has(a.id)) ||
+      Number(hasReport.has(a.id)) - Number(hasReport.has(b.id)) ||
       b.mineCount - a.mineCount ||
       a.name.localeCompare(b.name, "zh-Hant"),
   );

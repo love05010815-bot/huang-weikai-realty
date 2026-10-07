@@ -61,6 +61,14 @@ function shortStamp(d: Date | null): string {
   return `${p(tw.getUTCMonth() + 1)}/${p(tw.getUTCDate())} ${p(tw.getUTCHours())}:${p(tw.getUTCMinutes())}`;
 }
 
+/**
+ * 「① 選社區」那張清單最多列幾筆。787 個建案不可能全列出來，
+ * 但**一定要讓他知道被截斷了** —— 2026-10-07 他回報「下拉沒看到建案」，
+ * 原因是沒打字時清單剛好被已經做好的 20 筆佔滿，畫面上又沒有任何「還有 N 筆」的字。
+ * 排序已改成「還沒做的排前面」（在 page.tsx），這裡補上筆數提示。
+ */
+const LIST_LIMIT = 20;
+
 export default function ReportsManager({ reports, options, listingsByProject, focus, siteUrl }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -80,11 +88,12 @@ export default function ReportsManager({ reports, options, listingsByProject, fo
   const selectedProject = useMemo(() => PROJECTS.find((p) => p.id === selectedId) ?? null, [selectedId]);
   const existing = selectedId ? (byId.get(selectedId) ?? null) : null;
 
-  const matches = useMemo(() => {
+  // 符合的全部（算筆數用）與實際列出來的前 LIST_LIMIT 筆，分開算 —— 要讓他看得到「還有幾筆沒列」
+  const matched = useMemo(() => {
     const q = projQuery.trim();
-    const pool = q ? options.filter((o) => `${o.name}${o.builder}${o.areaLabel}`.includes(q)) : options;
-    return pool.slice(0, 20);
+    return q ? options.filter((o) => `${o.name}${o.builder}${o.areaLabel}`.includes(q)) : options;
   }, [options, projQuery]);
+  const matches = useMemo(() => matched.slice(0, LIST_LIMIT), [matched]);
 
   const published = reports.filter((r) => r.status === "published").length;
 
@@ -263,7 +272,7 @@ export default function ReportsManager({ reports, options, listingsByProject, fo
           </div>
         ) : (
           <>
-            <p style={help}>{`打關鍵字找建案（共 ${options.length} 個，案名、建商、區都能搜），按 Enter 選第一筆。已有報告書的排前面。`}</p>
+            <p style={help}>{`打關鍵字找建案（共 ${options.length} 個，案名、建商、區都能搜），按 Enter 選第一筆。還沒做報告書的排前面；已經做好的在最下面那一區按「編輯」。`}</p>
             <input
               className={styles.input}
               style={{ ...fieldStyle, width: "100%" }}
@@ -301,6 +310,9 @@ export default function ReportsManager({ reports, options, listingsByProject, fo
                   );
                 })}
               </ul>
+            )}
+            {matched.length > matches.length && (
+              <p style={{ ...help, marginTop: 8 }}>{`符合 ${matched.length} 個，上面只列前 ${LIST_LIMIT} 個 —— 再多打幾個字就找得到。`}</p>
             )}
           </>
         )}
