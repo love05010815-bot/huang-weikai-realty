@@ -31,13 +31,14 @@
  */
 import { createHash, randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
-import { NEWS_CONFIG, type NewsRegion } from "@/config/news";
+import { NEWS_CONFIG, isShortVideoUrl, type NewsRegion } from "@/config/news";
 import {
   classifyRegion,
   collectNews,
   countByRegion,
   enrichNews,
   fetchArticleByUrl,
+  fetchShortVideoByUrl,
   isExcludedHost,
   normalizeTitle,
   reclassifyWithContent,
@@ -528,7 +529,9 @@ async function saveAndQueue(item: FetchedNews, line: NewsLine): Promise<AddNewsO
 }
 
 export async function addNewsFromUrl(rawUrl: string, line: NewsLine): Promise<AddNewsOutcome> {
-  return saveAndQueue(await fetchArticleByUrl(rawUrl), line);
+  // 抖音／TikTok 的頁面是 JS 算出來的，一般的抓法只拿得到空殼，另走一條
+  const item = isShortVideoUrl(rawUrl) ? await fetchShortVideoByUrl(rawUrl) : await fetchArticleByUrl(rawUrl);
+  return saveAndQueue(item, line);
 }
 
 /**
@@ -541,7 +544,15 @@ export async function addNewsFromText(rawUrl: string, title: string, text: strin
   const cleanTitle = (title || "").trim();
   if (!cleanTitle) throw new Error("請填標題。");
   const content = (text || "").trim();
-  if (content.length < 50) throw new Error("內文太短（至少 50 字），確認有把新聞的內容複製到嗎？");
+  // 短影音的文案本來就短（說明欄常常只有兩三行），用新聞那個 50 字門檻會把他擋在外面
+  const minChars = isShortVideoUrl(url) ? 10 : 50;
+  if (content.length < minChars) {
+    throw new Error(
+      minChars === 10
+        ? "文案太短（至少 10 字），確認有把影片的文案複製到嗎？"
+        : "內文太短（至少 50 字），確認有把新聞的內容複製到嗎？",
+    );
+  }
 
   let source = "";
   try {

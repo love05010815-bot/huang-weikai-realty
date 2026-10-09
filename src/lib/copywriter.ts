@@ -5,7 +5,7 @@
  * 金鑰只在伺服器端讀 process.env，不寫 log、不回前端。
  * 規則（口吻、平台字數、紅線）在 src/config/copywriter.ts，這裡不放任何文案內容。
  */
-import { COPYWRITER, buildPrompt, systemPrompt, type CopySource } from "@/config/copywriter";
+import { COPYWRITER, buildPrompt, promptKind, systemPrompt, type CopySource } from "@/config/copywriter";
 import type { NewsLine } from "@/lib/news";
 
 export function isCopywriterConfigured(): boolean {
@@ -59,7 +59,7 @@ export async function generateCopy(line: NewsLine, src: CopySource): Promise<Cop
   const body: Record<string, unknown> = {
     model,
     messages: [
-      { role: "system", content: systemPrompt() },
+      { role: "system", content: systemPrompt(promptKind(line, src)) },
       { role: "user", content: buildPrompt(line, src) },
     ],
     max_completion_tokens: COPYWRITER.MAX_OUTPUT_TOKENS[line],

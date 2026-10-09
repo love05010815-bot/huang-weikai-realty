@@ -17,6 +17,7 @@
  *   → 硬上限逐一重查、字數下限拉高並改成硬要求、多一版「官網文章」（900～1500 字，給 /news 用）。
  */
 import { OWNER } from "@/config/owner";
+import { isShortVideoUrl } from "@/config/news";
 import type { NewsLine } from "@/lib/news";
 
 export const COPYWRITER = {
@@ -177,9 +178,13 @@ export type CopySource = {
 };
 
 /** 兩條線共用的身分與紅線。改口吻、改紅線在這。 */
-export function systemPrompt(): string {
+export function systemPrompt(kind: "news" | "remake" = "news"): string {
+  const intro =
+    kind === "remake"
+      ? `你是台中海線房仲「${OWNER.name}」的短影音編劇。你會拿到一支別人拍的短影音的文案，把它改寫成他自己可以直接開拍的腳本。`
+      : `你是台中海線房仲「${OWNER.name}」的社群內容編輯。你會拿到一則房地產新聞的全文，把它改寫成他可以直接發布的內容。`;
   return [
-    `你是台中海線房仲「${OWNER.name}」的社群內容編輯。你會拿到一則房地產新聞的全文，把它改寫成他可以直接發布的內容。`,
+    intro,
     "",
     "寫作規則：",
     "1. 只能用原文出現的事實、數字、地名、機構名；不可新增原文沒有的資料、不可推測、不可湊數字。",
@@ -272,8 +277,77 @@ export function videoPrompt(src: CopySource): string {
   ].join("\n");
 }
 
+/**
+ * 翻拍：來源是**別人拍的短影音**（抖音／TikTok），不是新聞稿。
+ *
+ * 2026-10-09 他給的原話照搬進來當規則：
+ *   「請幫我修改短影音爆款文案！內容相似度要 90% 以上！順序幫我優化重組！
+ *     邏輯架構要非常清楚。要熱門標題 10 個字內！也要有黃金三秒的鉤子！
+ *     請給我三種版本！emoji 符號要加！
+ *     完全不會被專業留言挑錯＋更容易爆的版本（已修法規風險）！」
+ *
+ * 跟 `videoPrompt()` 的三個差別：標題 10 字（新聞那條是 15）、
+ * 多一段「法規與專業度」、結尾多一段「可能被挑錯的點」自我檢查。
+ *
+ * 🔴 **「相似度 90%」在這裡的意思跟新聞那條一樣，是「事實與論點不要跑掉」，
+ *    不是「句子照抄」。** 新聞稿是公開事實，照抄句子頂多難看；別人的短影音腳本
+ *    是人家寫的東西，逐句照抄＝搬運，原作者會檢舉、平台也會判重複內容壓流量。
+ *    所以規則寫成「講一樣的事、自己的講法」，而且要他自己的海線觀點進去 ——
+ *    那本來就是他比對方強的地方。這條不要為了「更像原片」拿掉。
+ */
+export function remakePrompt(src: CopySource): string {
+  const [lo, hi] = COPYWRITER.SCRIPT_CHARS;
+  return [
+    "任務：下面是我在短影音平台上看到的一支影片的文案。請以它的**題目與切入角度**為底，幫我改寫成我自己的短影音爆款文案，給我三種版本（A、B、C），三版的切角要不一樣。",
+    "",
+    "每一版照這個格式（標題那行的字不要改，後台靠它辨識）：",
+    "",
+    "## 版本 A",
+    "🔥 標題：（10 字內，像熱門影片的標題）",
+    "⚡ 黃金三秒鉤子：（開頭第一句，10 到 20 字，簡潔、吸睛、讓人不滑走）",
+    "🎬 口播文稿：",
+    "```",
+    "【鉤子】……",
+    "【重點一】……",
+    "【重點二】……",
+    "【結論】……（最後一句是自然的互動邀請）",
+    "```",
+    "",
+    "硬規則：",
+    "- **內容相似度 90% 以上**：講的事實、數字、論點與結論要跟原片一致，不要偏題、不要自己補原片沒有的資料",
+    "- 🔴 **但句子要用你自己的講法重寫**：原片是別人寫的腳本，不是公開新聞稿。逐句照抄、或只把詞換成同義詞，等於搬運別人的腳本 —— 原作者可以檢舉，平台也會判重複內容壓流量。要「講一樣的事、用不一樣的話」。",
+    "- **順序優化重組**：不要照原片的順序走。把最有衝擊力的放最前面，其餘依「聽的人會先問什麼」排。",
+    "- **邏輯架構非常清楚**：鉤子 → 重點 → 重點 → 結論，一段只講一件事，段落照【】標出來",
+    `- 口播文稿 ${lo} 到 ${hi} 字（一般語速一分鐘約 ${COPYWRITER.SPEECH_CHARS_PER_MINUTE} 字，要在 1 分鐘內講完），只算 \`\`\` 裡面的字`,
+    "- 口播文稿一定要放在 ``` 圍起來的區塊裡（後台靠它數字數、估秒數）",
+    "- 每一版都要加 emoji；用台灣口語、適合對著鏡頭講",
+    "",
+    "🛡️ 法規與專業度（這一條最重要：要讓同業看了也挑不出錯）：",
+    "- 政策、成數、利率、稅制、法規只講原片有的；原片沒講清楚的**寧可不講**，不要自己補、不要推估",
+    "- 凡是有例外的規則，一定要把例外講出來（例如「上限 7 成」要補「不代表每個人都貸得到 7 成」）",
+    "- 數字要帶時間點與出處機構（例如「央行 X 月理監事會」），不要只丟一個數字",
+    "- 不可出現「保證」「穩賺」「必漲」「零風險」「最後機會」「全台第一」這類字眼",
+    "- 不要講成「建議你現在買」或「現在不買就來不及」—— 那是投資建議，也是最容易被留言洗的點",
+    "- 不要幫我加頭銜或業績，不要出現電話與門牌",
+    "",
+    "三版都寫完之後，最後補一段：",
+    "",
+    "## ⚠️ 可能被挑錯的點",
+    "列出這個題目最容易被專業同業留言糾正的 2 到 3 個地方，每一點寫「同業會怎麼說」以及「我在文稿裡怎麼處理掉的」。",
+    "",
+    sourceBlock(src),
+  ].join("\n");
+}
+
+/** 這一題是「翻拍別人的短影音」還是「改寫新聞」—— 身分與任務都靠它分流。 */
+export function promptKind(line: NewsLine, src: CopySource): "news" | "remake" {
+  return line === "video" && isShortVideoUrl(src.url) ? "remake" : "news";
+}
+
 export function buildPrompt(line: NewsLine, src: CopySource): string {
-  return line === "video" ? videoPrompt(src) : articlePrompt(src);
+  if (line === "article") return articlePrompt(src);
+  // 短影音這條線再分兩種來源：新聞稿走 videoPrompt，別人的短影音走 remakePrompt
+  return promptKind(line, src) === "remake" ? remakePrompt(src) : videoPrompt(src);
 }
 
 /**
@@ -286,7 +360,7 @@ export function buildPrompt(line: NewsLine, src: CopySource): string {
  * 網頁版沒有 system 這個角色，所以把身分規則跟任務合成同一段，貼一次就夠。
  */
 export function manualPrompt(line: NewsLine, src: CopySource): string {
-  return `${systemPrompt()}\n\n${buildPrompt(line, src)}`;
+  return `${systemPrompt(promptKind(line, src))}\n\n${buildPrompt(line, src)}`;
 }
 
 /** 手動貼回來的文案，在 `news_draft.model` 欄位記成這個值（那一欄是 VARCHAR(64)）。 */

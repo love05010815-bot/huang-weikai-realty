@@ -148,6 +148,42 @@ const plain = "買氣都冷成這樣了，為什麼有些房價還是不降？�
 ok(T.draftAvailableSections(plain).length === 0, "沒有 ## 的整篇文案 → 空陣列（下拉只剩整篇全部）", T.draftAvailableSections(plain).length, 0);
 ok(T.analyzeDraft("article", plain).platforms.every((p) => !p.found), "同一篇：七個平台都 found=false", "全 false", "全 false");
 
+console.log("=== I 翻拍別人的短影音（2026-10-09）===");
+const N = await import("../src/config/news.ts");
+for (const u of ["https://www.douyin.com/video/7123", "https://v.douyin.com/abc/", "https://www.tiktok.com/@x/video/99", "https://vt.tiktok.com/ZS1/"]) {
+  ok(N.isShortVideoUrl(u), `認得出短影音：${u.slice(8, 34)}`, N.isShortVideoUrl(u), "true");
+}
+for (const u of ["https://money.udn.com/money/story/1", "https://tiktok.com.evil.example/x", "不是網址"]) {
+  ok(!N.isShortVideoUrl(u), `不誤判：${u.slice(0, 34)}`, N.isShortVideoUrl(u), "false");
+}
+const vsrc = { ...src, url: "https://www.douyin.com/video/7123", source: "抖音" };
+const rp = C.buildPrompt("video", vsrc);
+ok(rp === C.remakePrompt(vsrc), "短影音來源 → 走 remakePrompt", "對", "對");
+ok(C.buildPrompt("video", src) === C.videoPrompt(src), "新聞來源 → 還是走 videoPrompt（沒被我改壞）", "對", "對");
+ok(C.buildPrompt("article", vsrc) === C.articlePrompt(vsrc), "知識文章那條不受影響", "對", "對");
+// 他 2026-10-09 給的原話，一條一條對
+ok(rp.includes("10 字內") && !rp.includes("15 字內"), "熱門標題 10 字（不是新聞那條的 15）", "對", "對");
+ok(rp.includes("相似度 90% 以上"), "相似度 90%", rp.includes("相似度 90% 以上"), "true");
+ok(rp.includes("順序優化重組") && rp.includes("邏輯架構非常清楚"), "順序重組＋邏輯清楚", "有", "有");
+ok(rp.includes("黃金三秒鉤子") && rp.includes("三種版本") && rp.includes("emoji"), "鉤子＋三版＋emoji", "有", "有");
+ok(rp.includes("## ⚠️ 可能被挑錯的點"), "有「可能被挑錯的點」自我檢查段", "有", "有");
+ok(/保證|穩賺|必漲/.test(rp) && rp.includes("投資建議"), "法規紅線寫進去了（已修法規風險）", "有", "有");
+// 🔴 這兩條是重點：相似度 90% 不能被讀成「照抄句子」
+ok(rp.includes("用你自己的講法重寫"), "明講句子要自己寫", rp.includes("用你自己的講法重寫"), "true");
+ok(rp.includes("逐句照抄"), "明講逐句照抄＝搬運別人的腳本", rp.includes("逐句照抄"), "true");
+// 格式要跟舊的一致，不然 analyzeDraft 數不到字數與秒數
+ok(rp.includes("## 版本 A") && rp.includes("```"), "格式跟舊版一致（後台才數得到字）", "對", "對");
+const fake = ["## 版本 A", "🔥 標題：海線房價撐不住", "```", "字".repeat(200), "```"].join("\n");
+const fs2 = T.analyzeDraft("video", fake);
+ok(fs2.scripts.length === 1 && fs2.scripts[0].seconds === 50, "翻拍的產出照樣算得出秒數", `${fs2.scripts.length}/${fs2.scripts[0]?.seconds}`, "1/50");
+ok(C.manualPrompt("video", vsrc).includes(C.remakePrompt(vsrc)), "複製指令帶的是翻拍那套", "對", "對");
+ok(rp.includes(vsrc.text), "原片文案有帶進去", rp.includes(vsrc.text), "true");
+// 身分那段也要跟著換：翻拍時不要再說「你會拿到一則房地產新聞的全文」
+ok(C.promptKind("video", vsrc) === "remake" && C.promptKind("video", src) === "news" && C.promptKind("article", vsrc) === "news", "promptKind 分流正確", "對", "對");
+ok(C.systemPrompt("remake").includes("短影音編劇") && !C.systemPrompt("remake").includes("房地產新聞的全文"), "翻拍的身分段講的是影片不是新聞", "對", "對");
+ok(C.systemPrompt() === C.systemPrompt("news"), "預設還是新聞那版（沒改壞舊的呼叫）", "對", "對");
+ok(C.manualPrompt("video", vsrc).startsWith(C.systemPrompt("remake")), "翻拍的整段指令開頭是翻拍身分", "對", "對");
+
 if (process.argv.includes("--live")) {
   console.log("=== I 真的叫一次 OpenAI（短影音）===");
   const L = await import("../src/lib/copywriter.ts");

@@ -164,6 +164,20 @@ export const NEWS_CONFIG = {
   blockedHosts: ["591.com.tw"],
 
   /**
+   * 短影音平台。貼這種連結進來時走 `fetchShortVideoByUrl()`，不是一般新聞那條路：
+   * 這些頁面是 JS 算出來的，直接抓 HTML 只拿得到空殼。
+   *
+   * ⚠️ **連結只拿得到「標題／說明欄那段字」，拿不到口播內容。**
+   *    影片裡講的話在聲音軌裡，任何讀網頁的方法都讀不到 —— 要口播稿就只能他自己貼。
+   *    畫面上的文字一定要照這樣講，不然他會以為系統壞了（這個專案的老毛病）。
+   *
+   * ⚠️ TikTok 的 robots.txt 對 `ClaudeBot`／`GPTBot` 這類 AI agent 是 `Disallow: /`，
+   *    所以**我（Claude）不去抓 tiktok.com**；後台走的是 TikTok 自己公開的 oEmbed
+   *    端點（本來就是給第三方嵌影片用的），不是爬網頁。抖音的 robots.txt 沒擋 /video/。
+   */
+  shortVideoHosts: ["douyin.com", "iesdouyin.com", "tiktok.com"],
+
+  /**
    * 直接訂閱的 RSS。`filter: true` 的是綜合財經頻道，要過房產相關性；
    * 房產專區（ETtoday 房產雲、經濟日報房市）本身就是房產，整區收。
    * 這五個 2026-09-14 實測都能讀。
@@ -188,3 +202,19 @@ export const NEWS_CONFIG = {
   /** 同一天自動抓最多試幾次（失敗才會重試；成功就不再跑）。 */
   maxAutoAttemptsPerDay: 3,
 } as const;
+
+/**
+ * 這條連結是不是抖音／TikTok 這類短影音。
+ *
+ * ⚠️ 放在 config 不放 `lib/news-fetch`，是因為**畫面端也要用**（待產文案要知道
+ * 這一題是不是翻拍、`buildPrompt()` 要據此換提示詞）。從 config 匯入是純函式、
+ * 沒有相依；從 `news-fetch` 匯入會把整支抓取程式拖進瀏覽器的 bundle。
+ */
+export function isShortVideoUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return NEWS_CONFIG.shortVideoHosts.some((h) => host === h || host.endsWith(`.${h}`));
+  } catch {
+    return false;
+  }
+}

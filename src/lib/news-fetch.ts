@@ -555,6 +555,75 @@ export function extractPublishedAt(html: string): string | null {
 export class BlockedHostError extends Error {}
 
 /**
+ * 貼一條抖音／TikTok 連結進來，把那支影片的**說明欄文案**抓成一筆 FetchedNews。
+ *
+ * 🔴 **只拿得到說明欄那段字，拿不到他在影片裡講的話。**
+ *    口播在聲音軌裡，讀網頁讀不到 —— 要拿口播稿當題材，只能他自己在 App 裡
+ *    複製文案（或看字幕打下來）再用「自己貼文案」那條路。這一點畫面上要講清楚，
+ *    不然他會以為是系統抓壞了。
+ *
+ * 兩個平台走不同路：
+ * - **TikTok** 用它自己公開的 oEmbed 端點（`/oembed?url=`）。那是 TikTok 給第三方
+ *   嵌影片用的官方介面，回 JSON（title 就是說明欄文案），不是去爬網頁。
+ *   ⚠️ tiktok.com 的 robots.txt 對 AI agent 是 `Disallow: /`，所以這條路只走官方端點。
+ * - **抖音** 沒有公開 oEmbed，讀頁面的 og:description。短網址（v.douyin.com）會先跟著轉址。
+ *   抖音常常回人機驗證頁，抓不到就照實說、請他自己貼，不要硬鑽。
+ */
+export async function fetchShortVideoByUrl(raw: string): Promise<FetchedNews> {
+  const input = (raw || "").trim();
+  let target: URL;
+  try {
+    target = new URL(input);
+  } catch {
+    throw new Error("這不是一個看得懂的網址。");
+  }
+  const host = target.hostname.toLowerCase();
+  const isTikTok = host === "tiktok.com" || host.endsWith(".tiktok.com");
+
+  const hint = "　→ 用下面的「自己貼影片文案」把文字貼進來，結果一模一樣。";
+  let title = "";
+  let url = input;
+  let author = "";
+
+  if (isTikTok) {
+    // 官方 oEmbed：公開、免金鑰，回 { title, author_name, ... }
+    const api = `https://www.tiktok.com/oembed?url=${encodeURIComponent(input)}`;
+    const res = await fetchText(api, 12_000);
+    if (res.status !== 200) throw new Error(`TikTok 回 HTTP ${res.status}，拿不到這支影片的文案。${hint}`);
+    try {
+      const json = JSON.parse(res.text) as { title?: string; author_name?: string };
+      title = (json.title || "").trim();
+      author = (json.author_name || "").trim();
+    } catch {
+      throw new Error(`TikTok 回的東西看不懂（可能影片已刪或設成私人）。${hint}`);
+    }
+    if (!title) throw new Error(`這支影片沒有說明欄文字，拿不到東西。${hint}`);
+  } else {
+    const res = await fetchText(input, 12_000);
+    if (res.status !== 200) throw new Error(`抖音回 HTTP ${res.status}，拿不到這支影片的文案。${hint}`);
+    url = res.url || input;
+    title = (metaContent(res.text, "og:description") || metaContent(res.text, "description") || extractTitle(res.text)).trim();
+    // 抖音擋程式時回的是驗證頁，標題會變成「驗證碼」「抖音」這種殼，不要當成功
+    if (!title || /驗證|验证|安全检查|請稍候|请稍候/.test(title) || title.length < 4) {
+      throw new Error(`抖音擋住了程式讀取（它常常這樣），拿不到文案。${hint}`);
+    }
+  }
+
+  const item: FetchedNews = {
+    title: trimTitleTail(title).slice(0, 180),
+    url,
+    source: isTikTok ? (author ? `TikTok @${author}` : "TikTok") : "抖音",
+    summary: "",
+    // 說明欄那段字就是我們拿得到的全部，同時當標題與內文用
+    content: title.slice(0, NEWS_CONFIG.maxContentChars),
+    publishedAt: null,
+    region: "national",
+  };
+  item.region = classifyRegion(item);
+  return item;
+}
+
+/**
  * 貼一條新聞連結進來，抓成一筆 FetchedNews。
  *
  * 跟排程抓取共用同一套擷取邏輯（extractMainText、classifyRegion），差別只在
