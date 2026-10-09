@@ -501,24 +501,40 @@ export default function FbGroupManager({
   const [scanIdentityPick, setScanIdentityPick] = useState<string>("");
   const scanIdentity = identities.find((i) => i.id === scanIdentityPick) || identities.find((i) => i.id === pubIdentityId) || null;
   /**
-   * 這筆掃到的社團該怎麼處理：
-   * "new" 還沒在清單裡；"update" 已經在清單裡，但這次掃到的可以順手更新它——名稱還是舊版 bug 存的代號（fixName），
-   * 或還沒標給這次掃描的身分（tagIdentity）；"locked" 已經在清單裡、也沒東西要改，不能重複加。
+   * 掃到的社團「已經標給別的身分」時怎麼辦。這一步最容易把兩個身分混在一起：FB 沒切成粉專就抓，
+   * 帳號的社團整批被加上粉專的標（他 2026-10-05、10-09 兩次回報「切身分還是出現另一個身分的社團」）。
+   *   "leave" 不動它們（預設：只標新抓到的跟沒標身分的）
+   *   "move"  改標給這次的身分（原本標錯時用）
+   *   "both"  兩個身分都標（同一個社團帳號跟粉專真的都加入了才用）
    */
-  type ScanAction = { kind: "new" | "update" | "locked"; fixName: boolean; tagIdentity: boolean };
+  const [scanSharedMode, setScanSharedMode] = useState<"leave" | "move" | "both">("leave");
+  /**
+   * 這筆掃到的社團該怎麼處理：
+   * "new" 還沒在清單裡；"update" 已經在清單裡，但這次掃到的可以順手更新它——名稱還是舊版 bug 存的代號（fixName）、
+   * 還沒標給這次掃描的身分（tagIdentity）、或要從別的身分改標過來（moveIdentity）；"locked" 已經在清單裡、也沒東西要改，不能重複加
+   * （sharedLeft＝它是因為「已標給別的身分、這次不動」才鎖住的，清單上標出來讓他知道）。
+   */
+  type ScanAction = { kind: "new" | "update" | "locked"; fixName: boolean; tagIdentity: boolean; moveIdentity: boolean; sharedLeft: boolean };
   function scanActionable(s: ScanGroup): ScanAction {
     const existing = groupByUrl.get(normalizeGroupUrl(s.url));
-    if (!existing) return { kind: "new", fixName: false, tagIdentity: false };
+    if (!existing) return { kind: "new", fixName: false, tagIdentity: false, moveIdentity: false, sharedLeft: false };
     const newName = s.name.trim();
     const fixName = needsNameFix(existing) && !!newName && newName !== idFromGroupUrl(existing.url);
-    const tagIdentity = !!scanIdentity && !(existing.identityIds || []).includes(scanIdentity.id);
-    return { kind: fixName || tagIdentity ? "update" : "locked", fixName, tagIdentity };
+    const cur = existing.identityIds || [];
+    const notMine = !!scanIdentity && !cur.includes(scanIdentity.id);
+    const shared = notMine && cur.length > 0; // 已經標給別的身分
+    const tagIdentity = notMine && (!shared || scanSharedMode === "both");
+    const moveIdentity = shared && scanSharedMode === "move";
+    const sharedLeft = shared && scanSharedMode === "leave";
+    return { kind: fixName || tagIdentity || moveIdentity ? "update" : "locked", fixName, tagIdentity, moveIdentity, sharedLeft };
   }
   function scanActionLabel(a: ScanAction): string {
-    return [a.fixName ? "補正名稱" : "", a.tagIdentity && scanIdentity ? `標給「${scanIdentity.name || "(未命名)"}」` : ""].filter(Boolean).join("＋");
+    const who = scanIdentity?.name || "(未命名)";
+    return [a.fixName ? "補正名稱" : "", a.tagIdentity ? `標給「${who}」` : "", a.moveIdentity ? `改標給「${who}」` : ""].filter(Boolean).join("＋");
   }
   const scanNew = scanGroups.filter((s) => scanActionable(s).kind === "new");
   const scanUpdatable = scanGroups.filter((s) => scanActionable(s).kind === "update");
+  const scanSharedLeft = scanGroups.filter((s) => scanActionable(s).sharedLeft).length;
   const scanShown = scanFilter.trim() ? scanGroups.filter((s) => s.name.toLowerCase().includes(scanFilter.trim().toLowerCase())) : scanGroups;
 
   // 抓回新的一批 → 預設幫他勾「還沒在清單裡」的，還有「已經在清單裡但可以順手更新」的（補名稱／標身分）
@@ -554,6 +570,7 @@ export default function FbGroupManager({
     let added = 0;
     let fixed = 0;
     let tagged = 0;
+    let moved = 0;
     let dup = 0;
     for (const s of picked) {
       const url = normalizeGroupUrl(s.url);
@@ -575,6 +592,10 @@ export default function FbGroupManager({
         if (a.tagIdentity && scanIdentity) {
           g = { ...g, identityIds: [...(g.identityIds || []), scanIdentity.id] };
           tagged++;
+        } else if (a.moveIdentity && scanIdentity) {
+          // 「改標給」：原本標錯身分——拿掉舊的、只留這次的
+          g = { ...g, identityIds: [scanIdentity.id] };
+          moved++;
         }
         next[idx] = g;
         continue;
@@ -598,8 +619,10 @@ export default function FbGroupManager({
     const parts = [`加入 ${added} 個`];
     if (fixed) parts.push(`補正 ${fixed} 個名稱`);
     if (tagged && scanIdentity) parts.push(`${tagged} 個標給「${scanIdentity.name || "(未命名)"}」`);
+    if (moved && scanIdentity) parts.push(`${moved} 個改標給「${scanIdentity.name || "(未命名)"}」`);
     if (dup) parts.push(`${dup} 個本來就在清單裡`);
-    showToast(parts.join("，"), added || fixed || tagged ? "ok" : "warn");
+    if (scanSharedLeft) parts.push(`${scanSharedLeft} 個已標給別的身分、沒動`);
+    showToast(parts.join("，"), added || fixed || tagged || moved ? "ok" : "warn");
   }
 
   function updateGroup(id: string, patch: Partial<Group>) {
@@ -620,14 +643,18 @@ export default function FbGroupManager({
   const [bulkTagPick, setBulkTagPick] = useState<string>("");
   const bulkTagIdentity = identities.find((i) => i.id === bulkTagPick) || identities.find((i) => i.id === pubIdentityId) || null;
   const untaggedGroups = groups.filter((g) => !g.identityIds || g.identityIds.length === 0);
-  function bulkTagUntagged() {
-    if (!bulkTagIdentity || !untaggedGroups.length) return;
-    const who = bulkTagIdentity.name || "(未命名)";
+  function tagUntaggedTo(it: Identity) {
+    if (!untaggedGroups.length) return;
+    const who = it.name || "(未命名)";
     const n = untaggedGroups.length;
     if (!confirm(`把沒標身分的 ${n} 個社團全部標給「${who}」？標了以後它們就只在這個身分底下出現（每個社團的「哪個身分」之後還是可以再改）。`)) return;
-    const id = bulkTagIdentity.id;
-    setGroups((prev) => prev.map((g) => (!g.identityIds || g.identityIds.length === 0 ? { ...g, identityIds: [id] } : g)));
+    setGroups((prev) => prev.map((g) => (!g.identityIds || g.identityIds.length === 0 ? { ...g, identityIds: [it.id] } : g)));
+    // 從發佈頁按的話，剛標過來的社團順手勾起來（他就是為了發它們才標的）
+    if (it.id === pubIdentityId) setChecked((c) => new Set([...c, ...untaggedGroups.filter((g) => g.enabled).map((g) => g.id)]));
     showToast(`已把 ${n} 個社團標給「${who}」`, "ok");
+  }
+  function bulkTagUntagged() {
+    if (bulkTagIdentity) tagUntaggedTo(bulkTagIdentity);
   }
   // 反過來：把某個身分從所有社團拿掉——標錯時用（例如 FB 沒切成粉專身分就抓，把帳號的社團整批標給了粉專），
   // 一次清掉再重抓，不用 33 個一個一個取消勾。
@@ -637,7 +664,7 @@ export default function FbGroupManager({
     const who = bulkTagIdentity.name || "(未命名)";
     const n = taggedWithBulk.length;
     const willBeBlank = taggedWithBulk.filter((g) => (g.identityIds || []).length === 1).length;
-    const warn = willBeBlank ? `\n\n其中 ${willBeBlank} 個拿掉後就沒標任何身分＝每個身分底下都會出現。要分開的話，先把它們標給別的身分再拿掉。` : "";
+    const warn = willBeBlank ? `\n\n其中 ${willBeBlank} 個拿掉後就沒標任何身分＝不會出現在任何身分的發佈頁，要再標給別的身分才會出現。` : "";
     if (!confirm(`把「${who}」從 ${n} 個社團拿掉？${warn}`)) return;
     const id = bulkTagIdentity.id;
     setGroups((prev) => prev.map((g) => ((g.identityIds || []).includes(id) ? { ...g, identityIds: (g.identityIds || []).filter((x) => x !== id) } : g)));
@@ -649,10 +676,14 @@ export default function FbGroupManager({
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const checkedInit = useRef(false);
   const pubIdentity = identities.find((i) => i.id === pubIdentityId) || null;
-  /** 沒標身分的社團＝每個身分都能發（相容舊資料）；標了就只在那些身分底下出現 */
-  const groupsForIdentity = (idId: string) =>
-    groups.filter((g) => !g.identityIds || g.identityIds.length === 0 || (!!idId && g.identityIds.includes(idId)));
+  /**
+   * 發佈頁列哪些社團：兩個以上身分時**只列標給這個身分的**（他 2026-10-09 說「切到不同身分時下方只出現該身分的社團，
+   * 不要出現另一個身分的」——之前「沒標身分的每個身分都出現」就是混在一起的來源），沒標身分的不列在任何身分底下，
+   * 下面另外提示有幾個、可一鍵標給目前身分。只有一個身分（或還沒建身分）時不用標，全部都列。
+   */
+  const groupsForIdentity = (idId: string) => (identities.length <= 1 ? groups : groups.filter((g) => !!idId && (g.identityIds || []).includes(idId)));
   const visibleGroups = groupsForIdentity(pubIdentityId);
+  const hiddenUntagged = identities.length > 1 ? untaggedGroups.length : 0;
   useEffect(() => {
     if (!loaded || checkedInit.current) return;
     checkedInit.current = true;
@@ -930,8 +961,17 @@ export default function FbGroupManager({
             ) : (
               <p className={styles.hint}>
                 {groups.length
-                  ? `「${pubIdentity?.name ?? ""}」底下還沒有社團。到「社團清單」把社團標給這個身分（沒標身分的社團每個身分都會出現）。`
+                  ? `「${pubIdentity?.name ?? ""}」底下還沒有社團。到「社團清單」把社團標給這個身分，或先在 Facebook 切成它、再「從 FB 抓我加入的社團」。`
                   : "還沒有社團，請到「社團清單」新增。"}
+              </p>
+            )}
+            {hiddenUntagged > 0 && pubIdentity && (
+              <p className={styles.warnText}>
+                另有 <b>{hiddenUntagged}</b> 個社團還沒標身分，所以沒列在這裡（有兩個以上身分時，沒標的不會出現在任何身分底下）。{" "}
+                <button type="button" className={styles.btnSm} onClick={() => tagUntaggedTo(pubIdentity)}>
+                  全部標給「{pubIdentity.name || "(未命名)"}」
+                </button>{" "}
+                只有一部分是它的，到「社團清單」逐一勾「哪個身分」。
               </p>
             )}
           </section>
@@ -1134,9 +1174,22 @@ export default function FbGroupManager({
                     ))}
                   </select>
                 </div>
+                <div className={styles.impRow}>
+                  <span className={styles.hint}>抓到的社團已經標給別的身分時：</span>
+                  <select
+                    className={styles.input}
+                    value={scanSharedMode}
+                    onChange={(e) => setScanSharedMode(e.target.value === "move" ? "move" : e.target.value === "both" ? "both" : "leave")}
+                  >
+                    <option value="leave">不動它們（預設：只標新抓到的和沒標身分的）</option>
+                    <option value="move">改標給「{scanIdentity?.name || "(未命名)"}」（原本標錯身分時用）</option>
+                    <option value="both">兩個身分都標（同一個社團帳號和粉專真的都加入了才用）</option>
+                  </select>
+                </div>
                 <p className={styles.hint}>
                   FB 的「你的社團」列的是<b>現在用的那個身分</b>加入的社團：帳號跟粉專的清單不一樣。要抓<b>粉專</b>的社團，先在 Facebook 右上角把個人檔案切換成那個粉專再按抓取；
-                  要抓<b>帳號</b>的，切回個人帳號再抓。標好以後，發佈頁切到哪個身分就只會列它的社團，不會整批都跑出來。
+                  要抓<b>帳號</b>的，切回個人帳號再抓。標好以後，發佈頁切到哪個身分就只會列它的社團；沒標身分的不會列在任何身分底下。
+                  忘了切就抓，帳號的社團會整批被標給粉專——所以「已經標給別的身分」的預設不動，不會混在一起。
                 </p>
               </>
             ) : scanIdentity ? (
@@ -1171,6 +1224,11 @@ export default function FbGroupManager({
                       、<b>{scanUpdatable.length}</b> 個已經在清單裡但可以順手更新（補正名稱／標給這個身分）
                     </>
                   )}
+                  {scanSharedLeft > 0 && (
+                    <>
+                      、<b>{scanSharedLeft}</b> 個已經標給別的身分（照上面選的「不動它們」，這次不會動）
+                    </>
+                  )}
                   {scan.stopped ? "（你按了停止，可能還沒捲完）" : ""}。
                   勾好按下面加入／更新；已經在清單裡也沒東西要改的會標「已有」，不會重複加。
                 </p>
@@ -1203,7 +1261,7 @@ export default function FbGroupManager({
                           }
                         />
                         <span className={styles.ciName}>{s.name}</span>
-                        {locked && <span className={styles.scanTag}>已有</span>}
+                        {locked && <span className={styles.scanTag}>{action.sharedLeft ? "已標給別的身分" : "已有"}</span>}
                         {action.kind === "update" && <span className={styles.scanTag}>{scanActionLabel(action)}</span>}
                       </label>
                     );
@@ -1250,7 +1308,7 @@ export default function FbGroupManager({
             </h2>
             <p className={styles.hint}>
               「啟用」關掉的社團不會出現在發佈頁的預設勾選。名稱與備註可直接改。
-              {identities.length > 1 && <> 「哪個身分」勾起來，這個社團就只在那些身分底下出現；<b>都不勾＝每個身分都會出現</b>。</>}
+              {identities.length > 1 && <> 「哪個身分」勾起來，這個社團就只在那些身分的發佈頁出現；<b>都不勾＝不會出現在任何身分底下</b>（發佈頁會提醒有幾個沒標）。</>}
             </p>
             {identities.length > 1 && (
               <div className={styles.impRow}>
