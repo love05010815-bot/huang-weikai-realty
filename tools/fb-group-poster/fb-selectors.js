@@ -12,11 +12,13 @@
       postButton: ["發佈", "張貼"],
       pendingApproval: ["等待管理員審核", "待審核", "等待審核", "正在審核"],
       blocked: ["暫時被封鎖", "暫時無法", "無法發佈", "違反社群守則", "請稍後再試"],
+      // 照片沒傳上去時 FB 跳的字（2026-10-09 他遇到的「抱歉，沒有上傳新的相片。請再試一次。」）
+      uploadFailed: ["沒有上傳新的相片", "無法上傳相片", "無法上傳你的檔案", "無法上傳影片", "相片上傳失敗", "上傳失敗"],
       discard: ["捨棄貼文", "捨棄", "離開"],
       switchProfile: ["選擇你要用來發佈的身分", "切換個人檔案", "選擇用來張貼的個人檔案", "以粉絲專頁身分"],
       notAvailable: ["此內容目前無法顯示", "這個頁面無法使用", "此內容不存在"],
       joinGroup: ["加入社團"],
-      close: ["關閉"],
+      close: ["關閉", "確定", "知道了"],
       // 「你的社團」頁上，這些標題以下是 FB 推薦你加入的、不是你已加入的 → 抓清單時在這裡切掉
       suggested: ["建議的社團", "推薦社團", "推薦的社團", "為你推薦", "你可能有興趣", "探索社團", "探索新社團"],
       // 抓清單時要略過的「不是社團名稱」的字（按鈕、統計）
@@ -28,11 +30,12 @@
       postButton: ["Post"],
       pendingApproval: ["pending approval", "pending review", "awaiting approval"],
       blocked: ["temporarily blocked", "couldn't post", "Community Standards", "restricted", "try again later"],
+      uploadFailed: ["no new photos were uploaded", "Couldn't upload photo", "Unable to upload", "couldn't be uploaded", "Upload failed"],
       discard: ["Discard post", "Discard", "Leave"],
       switchProfile: ["Select who to post as", "Switch profile", "Choose who to post as"],
       notAvailable: ["This content isn't available", "Page not found", "isn't available right now"],
       joinGroup: ["Join group", "Join Group"],
-      close: ["Close"],
+      close: ["Close", "OK", "Got it"],
       suggested: ["Suggested for you", "Suggested groups", "Groups you may like", "Discover groups", "Recommended for you"],
       notAName: ["Join", "Joined", "View group", "Visit group", "Invite", "More", "Manage", "Settings", "Share", "Cancel"],
     },

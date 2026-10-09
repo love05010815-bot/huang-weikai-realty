@@ -9,6 +9,8 @@
  *   - 自動（預設開；他 2026-10-06 要的「全部自動發布，發布完我再一一檢查」，10/07 說同事版也預設開）：填好、圖片傳完、「發佈」鈕可按 → 替他按 →
  *     看到視窗關掉才算發出去 → 等 job.autoGapSec 秒 → 自動換下一個。🔴 身分對不上、文案沒填完整、圖片沒傳好、
  *     找不到可按的發佈鈕、FB 說不能發 —— 一律退回半自動停在那裡等他，不硬發；每日上限照樣由背景程式擋。
+ *     照片一定要等 FB **真的收完**才按發佈（縮圖張數＝檔案張數再多等幾秒），不然 FB 會跳
+ *     「抱歉，沒有上傳新的相片」整則發不出去 —— 見 uploadImages 的說明。
  * 🔴 不抓 Facebook 任何資料、不送任何東西到別的地方。
  *
  * Chrome 對「放到背景超過 5 分鐘」的分頁會凍住計時器，填表看起來會像卡住 —— 別切走，讓它在前景跑完。
@@ -205,8 +207,8 @@
     }
 
     /** 自動模式：替他按「發佈」、確認發出去、等一下、換下一個。任何不確定都退回半自動停著等他。 */
-    async function autoPost(dialog) {
-      log("自動發佈：等「發佈」鈕可以按（圖片上傳中它會先鎖住）…", "");
+    async function autoPost(dialog, photos) {
+      log("自動發佈：等「發佈」鈕可以按（照片還在傳的時候 FB 會先鎖住）…", "");
       const btn = await waitPostButton(dialog, L, 90000);
       if (!btn) {
         log("⚠ 找不到可以按的「發佈」鈕（圖片可能還在上傳，或 Facebook 改版）。請你自己按。", "fbq-bad");
@@ -214,11 +216,37 @@
         controls(true);
         return;
       }
-      await sleep(800);
-      const baseline = (document.body.innerText || "").slice(0, 6000); // 按之前頁面上就有的字，之後不算數
-      btn.click();
-      log("已替你按下「發佈」，等 Facebook 回應…", "");
-      const outcome = await waitPostOutcome(dialog, L, 30000, baseline);
+      // FB 說照片沒傳上去時它自己寫「請再試一次」，所以最多按兩次；第二次之前要先確認照片還在，
+      // 不然會發出一則沒有照片的廣告（2026-10-09 他遇到「抱歉，沒有上傳新的相片」那次）。
+      let outcome = "";
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const press = findPostButton(dialog, L) || btn;
+        await sleep(800);
+        const baseline = pageProbe(); // 按之前頁面與彈出視窗上就有的字，之後不算數
+        press.click();
+        log(attempt === 1 ? "已替你按下「發佈」，等 Facebook 回應…" : "再按一次「發佈」…", "");
+        outcome = await waitPostOutcome(dialog, L, 30000, baseline);
+        if (outcome !== "uploadfail" || attempt === 2) break;
+        log("⚠ Facebook 說照片沒傳上去。關掉錯誤訊息，等 8 秒再試一次…", "fbq-bad");
+        closeAlert(dialog, L);
+        await sleep(8000);
+        const left = photos && photos.count ? photos.count() : 0;
+        if (photos && left < photos.want) {
+          log("照片只剩 " + left + "／" + photos.want + " 張，再按下去會變成沒有照片的貼文，不按了。", "fbq-bad");
+          outcome = "nophoto";
+          break;
+        }
+        if (!(await waitPostButton(dialog, L, 30000))) {
+          log("「發佈」鈕一直按不下去。", "fbq-bad");
+          outcome = "nophoto";
+          break;
+        }
+      }
+      if (outcome === "uploadfail" || outcome === "nophoto") {
+        log("⛔ 照片沒傳成功，這則沒發出去。這個社團標成失敗，等一下換下一個；之後在後台按「勾選未發佈的」補發。", "fbq-bad");
+        await report("failed", outcome === "nophoto" ? "照片沒傳上去（重試前照片已經被 Facebook 丟掉）" : "照片沒傳上去，Facebook 擋下這則（已重試一次）");
+        return await autoSkip("照片沒傳成功");
+      }
       if (outcome === "blocked") {
         log("⛔ Facebook 說不能發（暫時被封鎖／違反守則之類）。這個社團標成失敗，停在這裡讓你看。", "fbq-bad");
         await report("failed", "自動發佈：Facebook 拒絕");
@@ -404,11 +432,14 @@
 
       // 5. 上傳圖片
       let imagesOk = true;
+      let photos = null;
       if (job.ad.images && job.ad.images.length) {
-        log("上傳 " + job.ad.images.length + " 張圖片…");
+        log("上傳 " + job.ad.images.length + " 張圖片…（等 Facebook 真的收完，不是看到縮圖就算）");
         try {
-          await uploadImages(dialog, job.ad.images, L);
-          log("圖片已加入。", "");
+          photos = await uploadImages(dialog, job.ad.images, L);
+          imagesOk = photos.got >= photos.want;
+          if (imagesOk) log("照片 " + photos.got + "／" + photos.want + " 張都進去了。", "");
+          else log("⚠ 只看到 " + photos.got + "／" + photos.want + " 張照片進去，自己看一下視窗裡的照片對不對。", "fbq-bad");
         } catch (e) {
           imagesOk = false;
           log("圖片上傳沒成功（" + (e.message || e) + "）。你可以自己在視窗裡拖圖片進去。", "fbq-bad");
@@ -417,8 +448,8 @@
 
       // 6. 自動模式：替他按「發佈」；條件不齊就退回半自動
       if (job.autoPost) {
-        if (fillOk && imagesOk) return await autoPost(dialog);
-        log("⚠ 自動發佈先不做：" + (!fillOk ? "文案沒完整填進去" : "圖片沒上傳成功") + "。請你自己核對後按「發佈」。", "fbq-bad");
+        if (fillOk && imagesOk) return await autoPost(dialog, photos);
+        log("⚠ 自動發佈先不做：" + (!fillOk ? "文案沒完整填進去" : "照片沒傳完") + "。請你自己核對後按「發佈」。", "fbq-bad");
       }
 
       // 6'. 半自動：交給使用者按發佈
@@ -464,24 +495,65 @@
   }
 
   /**
+   * 看結果用的文字：**先放所有彈出視窗的字**，再接頁面本文。
+   * 社團頁本文常常很長，錯誤框的字在 DOM 最後面，直接切前 6000 字會把它切掉、永遠看不到
+   * 「抱歉，沒有上傳新的相片」這種訊息。
+   */
+  function pageProbe() {
+    const boxes = [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')].map((d) => d.innerText || "").join("\n");
+    return (boxes + "\n" + (document.body.innerText || "")).slice(0, 12000);
+  }
+
+  /**
+   * 只認「按下去之後才新出現」的字：社團頁側欄本來就可能有「待審核貼文」這種字，不能算。
+   * 一個詞一個詞比（不是整組 regex）：側欄有「待審核」，發出去後跳出「等待管理員審核」仍要算進審核。
+   */
+  function freshAny(words, base, now) {
+    return words.some((w) => {
+      const re = new RegExp(FBQ.escapeRe(w), "i");
+      return re.test(now) && !re.test(base || "");
+    });
+  }
+
+  /**
+   * 關掉 FB 跳出來的提示框（例如「無法上傳相片」）。
+   * 🔴 只比**看得見的文字**、而且跳過發文視窗本身：發文視窗右上角那顆 X 的 aria-label 也是「關閉」，
+   *    比到它就會把寫好的貼文整個關掉。「捨棄」那種按鈕一律不碰。
+   */
+  function closeAlert(dialog, L) {
+    const re = FBQ.exactRe(FBQ.words(L, "close"));
+    const skip = FBQ.anyRe(FBQ.words(L, "discard"));
+    const boxes = [...document.querySelectorAll('[role="alertdialog"], [role="dialog"]')].filter((d) => d !== dialog && !d.contains(dialog));
+    for (const box of boxes.reverse()) {
+      for (const el of box.querySelectorAll('[role="button"], button')) {
+        if (el.offsetParent === null) continue;
+        const t = textOf(el);
+        if (!t || skip.test(t)) continue;
+        if (re.test(t)) {
+          el.click();
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
    * 按下「發佈」之後看結果：視窗消失＝發出去了（頁面上同時出現「等待審核」字樣＝進審核）；
+   * 出現「沒有上傳新的相片」類字＝照片沒傳上去（uploadfail，呼叫端會重試一次）；
    * 出現「暫時被封鎖／違反守則」類字＝FB 拒絕；時間到視窗還在＝不確定（退回半自動讓他看）。
    */
   async function waitPostOutcome(dialog, L, timeoutMs, baseline) {
     const deadline = Date.now() + timeoutMs;
     const pendWords = FBQ.words(L, "pendingApproval");
     const blockWords = FBQ.words(L, "blocked");
-    // 只認「按了發佈之後才出現」的字——社團頁側欄本來就可能有「待審核貼文」這種字，不能算。
-    // 一個詞一個詞比（不是整組 regex）：側欄有「待審核」，發出去後跳出「等待管理員審核」仍要算進審核。
-    const freshAny = (words, body) =>
-      words.some((w) => {
-        const re = new RegExp(FBQ.escapeRe(w), "i");
-        return re.test(body) && !re.test(baseline || "");
-      });
+    const failWords = FBQ.words(L, "uploadFailed");
     while (Date.now() < deadline) {
-      const body = (document.body.innerText || "").slice(0, 6000);
-      if (freshAny(blockWords, body)) return "blocked";
-      if (!document.contains(dialog) || dialog.offsetParent === null) return freshAny(pendWords, body) ? "pending" : "posted";
+      const body = pageProbe();
+      // 上傳失敗要排在封鎖前面比：兩邊的字有機會同時出現，但「照片沒傳上去」是可以重試的，封鎖不是
+      if (freshAny(failWords, baseline, body)) return "uploadfail";
+      if (freshAny(blockWords, baseline, body)) return "blocked";
+      if (!document.contains(dialog) || dialog.offsetParent === null) return freshAny(pendWords, baseline, body) ? "pending" : "posted";
       await sleep(500);
     }
     return "unknown";
@@ -562,6 +634,17 @@
   }
 
   /* ───────── 圖片 ───────── */
+  /**
+   * 把圖片塞進發文視窗，**等 Facebook 真的收完**才回來。
+   *
+   * 🔴 為什麼要等得這麼囉嗦（2026-10-09 他遇到的狀況）：FB 的縮圖是本機預覽，檔案一選好就出現，
+   *    但照片還在背景往 FB 的伺服器傳。舊版只要「視窗裡的 img 變多」就當作傳好、再等 1.5 秒就按「發佈」，
+   *    FB 收尾時手上沒有傳完的照片，就跳「抱歉，沒有上傳新的相片。請再試一次」，整則發不出去。
+   *    所以改成：**新長出來的縮圖張數要跟檔案張數一樣**，再多等一段（張數越多等越久），
+   *    中間看到 FB 的上傳錯誤就直接當失敗。數不到就回報沒齊，自動模式不會硬按。
+   *
+   * 回傳 { want, got, count }：count() 可以之後再數一次（按發佈前再確認一遍照片還在）。
+   */
   async function uploadImages(dialog, dataUrls, L) {
     let input = dialog.querySelector('input[type="file"]');
     if (!input) {
@@ -582,17 +665,53 @@
     for (let i = 0; i < dataUrls.length; i++) files.push(await dataUrlToFile(dataUrls[i], "ad-" + (i + 1)));
     const dt = new DataTransfer();
     files.forEach((f) => dt.items.add(f));
-    // 縮圖數要在觸發 change **之前**數，不然縮圖同步長出來的話會一直等不到「變多」、白等 60 秒
-    const before = dialog.querySelectorAll("img").length;
+    // 哪些 img 是「這次新長出來的」要在觸發 change **之前**記下來。記元素本身而不是數量：
+    // 頭像、小圖示也是 img，光比數量會把它們算進來（縮圖同步長出來時還會一直等不到「變多」、白等）。
+    const beforeImgs = new Set(dialog.querySelectorAll("img"));
+    const count = () =>
+      [...dialog.querySelectorAll("img")].filter((im) => {
+        if (beforeImgs.has(im) || im.offsetParent === null) return false;
+        const r = im.getBoundingClientRect();
+        return r.width >= 40 && r.height >= 40; // 新長出來的小圖示不算
+      }).length;
+    const want = files.length;
+    // 「選檔案之前頁面上就有的字」不算失敗（跟判斷發文結果同一套：只認新出現的）
+    const failWords = FBQ.words(L, "uploadFailed");
+    const failBase = pageProbe();
+    const uploadFailed = () => freshAny(failWords, failBase, pageProbe());
+
     input.files = dt.files;
     input.dispatchEvent(new Event("change", { bubbles: true }));
-    // 等縮圖出現
-    const deadline = Date.now() + 60000;
+
+    // ① 等縮圖張數到齊（最多 2 分鐘：10 張大圖在慢一點的網路上真的要這麼久）
+    const deadline = Date.now() + 120000;
+    let seen = 0;
+    let lastChange = Date.now();
     while (Date.now() < deadline) {
-      if (dialog.querySelectorAll("img").length > before) break;
+      if (uploadFailed()) throw new Error("Facebook 說檔案上傳失敗");
+      const n = count();
+      if (n !== seen) {
+        seen = n;
+        lastChange = Date.now();
+      }
+      if (seen >= want) break;
+      // 張數卡住不動超過 20 秒就別再等：萬一 FB 改版把多張併成一張縮圖，等滿 2 分鐘也等不到，
+      // 不如早點回去讓自動模式退回半自動（面板會寫看到幾張），不要每個社團都卡兩分鐘
+      if (seen > 0 && Date.now() - lastChange > 20000) break;
       await sleep(500);
     }
-    await sleep(1500);
+    const got = count();
+    // ② 張數到齊只代表 FB 收下檔案，實際上傳還在跑：張數越多等越久（1 張 4 秒、10 張 13 秒，上限 15 秒）。
+    //    FB 上傳中通常也會把「發佈」鈕鎖住，autoPost 的 waitPostButton 再擋一次。
+    if (got >= want) {
+      const settle = Math.min(3000 + 1000 * want, 15000);
+      const until = Date.now() + settle;
+      while (Date.now() < until) {
+        if (uploadFailed()) throw new Error("Facebook 說檔案上傳失敗");
+        await sleep(500);
+      }
+    }
+    return { want, got, count };
   }
 
   /* ───────── 抓「我加入的社團」清單 ───────── */
