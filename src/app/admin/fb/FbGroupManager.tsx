@@ -501,13 +501,14 @@ export default function FbGroupManager({
   const [scanIdentityPick, setScanIdentityPick] = useState<string>("");
   const scanIdentity = identities.find((i) => i.id === scanIdentityPick) || identities.find((i) => i.id === pubIdentityId) || null;
   /**
-   * 掃到的社團「已經標給別的身分」時怎麼辦。這一步最容易把兩個身分混在一起：FB 沒切成粉專就抓，
-   * 帳號的社團整批被加上粉專的標（他 2026-10-05、10-09 兩次回報「切身分還是出現另一個身分的社團」）。
-   *   "leave" 不動它們（預設：只標新抓到的跟沒標身分的）
-   *   "move"  改標給這次的身分（原本標錯時用）
-   *   "both"  兩個身分都標（同一個社團帳號跟粉專真的都加入了才用）
+   * 掃到的社團「已經標給別的身分」時怎麼辦：
+   *   "both"  也標給這次的身分（預設）——他 2026-10-09 看到帳號「黃小凱」抓到 142 個、32 個跟另一個身分重複被反灰，
+   *           說「不同身分抓到的社團有重複，應該不能反灰，也要讓新的身分標註他也有這個社團」：FB 列在這個身分的
+   *           「你的社團」裡就是它真的有加入，兩個身分都標、切到哪個都看得到。
+   *   "leave" 不動它們（只標新抓到的跟沒標身分的）
+   *   "move"  改標給這次的身分、拿掉原本的（原本標錯時用，例如 FB 沒切成粉專就抓）
    */
-  const [scanSharedMode, setScanSharedMode] = useState<"leave" | "move" | "both">("leave");
+  const [scanSharedMode, setScanSharedMode] = useState<"leave" | "move" | "both">("both");
   /**
    * 這筆掃到的社團該怎麼處理：
    * "new" 還沒在清單裡；"update" 已經在清單裡，但這次掃到的可以順手更新它——名稱還是舊版 bug 存的代號（fixName）、
@@ -1181,15 +1182,15 @@ export default function FbGroupManager({
                     value={scanSharedMode}
                     onChange={(e) => setScanSharedMode(e.target.value === "move" ? "move" : e.target.value === "both" ? "both" : "leave")}
                   >
-                    <option value="leave">不動它們（預設：只標新抓到的和沒標身分的）</option>
-                    <option value="move">改標給「{scanIdentity?.name || "(未命名)"}」（原本標錯身分時用）</option>
-                    <option value="both">兩個身分都標（同一個社團帳號和粉專真的都加入了才用）</option>
+                    <option value="both">也標給「{scanIdentity?.name || "(未命名)"}」（同一個社團兩個身分都加入了；預設）</option>
+                    <option value="leave">不動它們（只標新抓到的和沒標身分的）</option>
+                    <option value="move">改標給「{scanIdentity?.name || "(未命名)"}」、拿掉原本的（原本標錯身分時用）</option>
                   </select>
                 </div>
                 <p className={styles.hint}>
                   FB 的「你的社團」列的是<b>現在用的那個身分</b>加入的社團：帳號跟粉專的清單不一樣。要抓<b>粉專</b>的社團，先在 Facebook 右上角把個人檔案切換成那個粉專再按抓取；
                   要抓<b>帳號</b>的，切回個人帳號再抓。標好以後，發佈頁切到哪個身分就只會列它的社團；沒標身分的不會列在任何身分底下。
-                  忘了切就抓，帳號的社團會整批被標給粉專——所以「已經標給別的身分」的預設不動，不會混在一起。
+                  同一個社團兩個身分都加入了的，重抓時兩個都會標，切到哪個身分都看得到它；忘了切身分就抓、標錯了，改選「改標給」或「不動它們」再抓一次。
                 </p>
               </>
             ) : scanIdentity ? (
