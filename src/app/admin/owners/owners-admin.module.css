@@ -879,3 +879,22 @@
   color: #f5c0c4;
   font-weight: 700;
 }
+
+/* 電話移到姓名旁（2026-10-12 他要的）：縮小一號、在姓名列裡自然排 */
+.nameRow .callBtn {
+  min-height: 32px;
+  padding: 4px 12px;
+  font-size: 13.5px;
+}
+
+@media (max-width: 899px) {
+  .nameRow .callBtn {
+    width: auto;
+    order: 0;
+    margin-top: 0;
+  }
+
+  .sideCol {
+    grid-template-columns: 1fr;
+  }
+}

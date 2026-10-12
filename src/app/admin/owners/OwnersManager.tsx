@@ -969,6 +969,12 @@ export default function OwnersManager({
           <div className={styles.cardMain}>
             <div className={styles.nameRow}>
               {o.name}
+              {/* 電話緊貼姓名（他 10/12 要的），按了直接撥 */}
+              {o.phone && (
+                <a className={styles.callBtn} href={`tel:${phoneDigits(o.phone)}`} onClick={(e) => e.stopPropagation()}>
+                  <Icon name="mobile" size={14} /> {o.phone}
+                </a>
+              )}
               {o.source && <Chip tone="neutral">{o.source}</Chip>}
               {o.tags.map((t) => (
                 <span key={t} className={styles.tag}>
@@ -1031,15 +1037,6 @@ export default function OwnersManager({
             )}
           </div>
           <div className={styles.sideCol} onClick={(e) => e.stopPropagation()}>
-            {o.phone ? (
-              <a className={styles.callBtn} href={`tel:${phoneDigits(o.phone)}`}>
-                <Icon name="mobile" size={15} /> {o.phone}
-              </a>
-            ) : (
-              <span className={styles.expandHint}>
-                <Icon name={open ? "close" : "eye"} size={16} />
-              </span>
-            )}
             {/* 下架：灰掉而不是消失——沒有可下架的房子時他也要看得到這顆鈕在哪 */}
             <button
               type="button"
