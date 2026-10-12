@@ -43,7 +43,7 @@ await build({
 if (!fs.existsSync(path.join(here, "app.css"))) throw new Error("esbuild 沒有產生 app.css（fb.module.css 沒被 import 到？）");
 
 // ② 組資料夾
-const FILES = ["manifest.json", "background.js", "bridge.js", "content.js", "fb-selectors.js", "panel.css", "license.js", "app.html", "app-guard.js", "app.css", "app.js", "README_同事版.md"];
+const FILES = ["manifest.json", "background.js", "bridge.js", "net-probe.js", "content.js", "fb-selectors.js", "panel.css", "license.js", "app.html", "app-guard.js", "app.css", "app.js", "README_同事版.md"];
 fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
 for (const f of FILES) {

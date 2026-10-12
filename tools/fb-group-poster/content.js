@@ -271,6 +271,7 @@
         }
         if (outcome !== "uploadfail" || attempt === 2) break;
         log("⚠ Facebook 說照片沒傳上去。關掉錯誤訊息，等 8 秒再試一次…", "fbq-bad");
+        log("🔎 " + netSummary(lastUploadT0), "");
         closeAlert(dialog, L);
         await sleep(8000);
         if (photos && photos.check && !photos.check()) {
@@ -306,7 +307,7 @@
       }
       if (outcome === "uploadfail" || outcome === "nophoto") {
         log("⛔ 照片沒傳成功，這則沒發出去。這個社團標成失敗，等一下換下一個；之後在後台按「勾選未發佈的」補發。", "fbq-bad");
-        await report("failed", outcome === "nophoto" ? "照片沒傳上去（重試前照片已經被 Facebook 丟掉）" : "照片沒傳上去，Facebook 擋下這則（已重試一次）");
+        await report("failed", (outcome === "nophoto" ? "照片沒傳上去（重試前照片已經被 Facebook 丟掉）" : "照片沒傳上去，Facebook 擋下這則（已重試一次）") + "；" + netSummary(lastUploadT0));
         return await autoSkip("照片沒傳成功");
       }
       if (outcome === "blocked") {
@@ -509,6 +510,7 @@
       // 5. 上傳圖片
       let imagesOk = true;
       let photos = null;
+      let imgNote = ""; // 照片沒傳完時，網路探針看到的原因（寫進發佈紀錄）
       if (job.ad.images && job.ad.images.length) {
         log("上傳 " + job.ad.images.length + " 張圖片…（等 Facebook 真的收完，不是看到縮圖就算）");
         try {
@@ -517,9 +519,12 @@
           if (photos.got >= photos.want) log("照片 " + photos.got + "／" + photos.want + " 張都進去了。", "");
           else if (photos.ok) log("看到 " + photos.got + " 格縮圖（Facebook 最多顯示 " + photos.shown + " 格），" + photos.want + " 張照片當作都進去了。", "");
           else log("⚠ 只看到 " + photos.got + "／" + photos.want + " 張照片進去，自己看一下視窗裡的照片對不對。", "fbq-bad");
+          log("🔎 " + netSummary(lastUploadT0), "");
         } catch (e) {
           imagesOk = false;
           log("圖片上傳沒成功（" + (e.message || e) + "）。你可以自己在視窗裡拖圖片進去。", "fbq-bad");
+          imgNote = netSummary(lastUploadT0);
+          log("🔎 " + imgNote, "fbq-bad");
         }
       }
 
@@ -532,7 +537,7 @@
       // 6'. 半自動：交給使用者按發佈
       log("內容已填好。請核對後按 Facebook 的「發佈」。", "fbq-ok");
       log("發佈完，回來按下面的「✅ 我按過發佈了，下一個社團」。", "fbq-strong");
-      await report("ready", "已填好，等你按發佈");
+      await report("ready", "已填好，等你按發佈" + (imgNote ? "（照片沒傳完：" + imgNote + "）" : ""));
       controls(true);
       try {
         window.focus();
@@ -790,6 +795,50 @@
     return shown();
   }
 
+  /* ───────── 網路探針（net-probe.js 從頁面 world 丟過來的上傳結果）───────── */
+  // 🔴 2026-10-12 他一天撞到好幾次「沒有上傳新的相片」，哪幾張失敗每次不一樣，畫面上查不出原因。
+  //    net-probe.js 把上傳請求的狀態碼、耗時、FB 回的錯誤碼記下來送到這裡；上傳失敗時印在面板、寫進發佈紀錄，
+  //    成功時也印一行（看得出探針有沒有接上、上傳花了多久）。
+  const netLog = [];
+  let probeSeen = false;
+  let lastUploadT0 = 0; // 這個社團開始塞照片的時間，摘要只看這之後的請求
+  window.addEventListener("message", (e) => {
+    if (e.source !== window || !e.data || e.data.source !== "fbq-net" || !e.data.rec) return;
+    if (e.data.rec.kind === "hello") {
+      probeSeen = true;
+      return;
+    }
+    netLog.push(e.data.rec);
+    if (netLog.length > 80) netLog.shift();
+  });
+  try {
+    window.postMessage({ source: "fbq-net-ping" }, location.origin);
+  } catch {}
+  /** 這次上傳的請求摘要（給人看的一行字）；探針沒接上、沒看到請求也要講清楚 */
+  function netSummary(sinceTs) {
+    if (!probeSeen) return "網路探針沒接上（外掛剛更新的話，到 chrome://extensions 按 ↻，這個社團重新載入就有）";
+    const recs = netLog.filter((r) => (r.t0 || 0) >= (sinceTs || 0) && ((r.files && r.files.length) || /upload/i.test(r.url || "")));
+    if (!recs.length) return "網路探針在這段時間沒看到上傳請求";
+    const isOk = (r) => r.kind === "load" && r.status >= 200 && r.status < 300 && !(r.fb && r.fb.error);
+    const ok = recs.filter(isOk);
+    const bad = recs.filter((r) => !isOk(r));
+    const name = (r) => (r.files && r.files.length ? r.files.map((f) => f.name || Math.round(f.size / 1024) + "KB").join("+") : r.url);
+    const why = (r) => {
+      if (r.kind === "error") return "網路中斷或被擋";
+      if (r.kind === "abort") return "被 Facebook 自己取消";
+      if (r.kind === "timeout") return "逾時";
+      const fb = r.fb || {};
+      if (fb.error) return "HTTP " + r.status + "、FB 錯誤 " + fb.error + (fb.summary ? "「" + fb.summary + (fb.desc ? "：" + fb.desc : "") + "」" : "");
+      if (fb.raw) return "HTTP " + r.status + "、回應看不懂：" + fb.raw.slice(0, 60);
+      return "HTTP " + r.status;
+    };
+    const where = (r) => "分頁在" + (r.vis === "hidden" ? "背景" : "前景");
+    let s = "上傳請求 " + recs.length + " 個：" + ok.length + " 個成功";
+    if (bad.length) s += "；失敗 " + bad.length + " 個 → " + bad.map((r) => name(r) + "（" + why(r) + "，耗時 " + Math.round((r.ms || 0) / 1000) + " 秒，" + where(r) + "）").join("；");
+    else s += "（最慢 " + Math.round(Math.max(...recs.map((r) => r.ms || 0)) / 1000) + " 秒，" + where(recs[recs.length - 1]) + "）";
+    return s;
+  }
+
   /* ───────── 圖片 ───────── */
   /**
    * 把圖片塞進發文視窗，**等 Facebook 真的收完**才回來。
@@ -803,6 +852,7 @@
    * 回傳 { want, got, count }：count() 可以之後再數一次（按發佈前再確認一遍照片還在）。
    */
   async function uploadImages(dialog, dataUrls, L) {
+    lastUploadT0 = Date.now();
     let input = dialog.querySelector('input[type="file"]');
     if (!input) {
       const btn = await firstVisible(
