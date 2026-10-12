@@ -243,11 +243,16 @@
       // FB 說照片沒傳上去時它自己寫「請再試一次」，所以最多按兩次；第二次之前要先確認照片還在，
       // 不然會發出一則沒有照片的廣告（2026-10-09 他遇到「抱歉，沒有上傳新的相片」那次）。
       let outcome = "";
+      let base = null; // 按之前頁面與彈出視窗上就有的字、動態牆上已有的貼文，之後不算數
       const snippet = postSnippet(job.ad.text); // 發出去後動態牆上會多一篇含這幾個字的貼文（分頁在背景時視窗常關不掉，靠這個）
       for (let attempt = 1; attempt <= 2; attempt++) {
         const press = findPostButton(dialog, L) || btn;
         await sleep(800);
-        const base = snapshotBeforePost(dialog); // 按之前頁面與彈出視窗上就有的字、動態牆上已有的貼文，之後不算數
+        base = snapshotBeforePost(dialog);
+        if (findQuestionsDialog(L)) {
+          outcome = "questions"; // 「入社審核」疊在發文視窗上面：發佈先別按
+          break;
+        }
         press.click();
         log(attempt === 1 ? "已替你按下「發佈」，等 Facebook 回應…" : "再按一次「發佈」…", "");
         outcome = await waitPostOutcome(dialog, L, 30000, base, snippet);
@@ -279,6 +284,26 @@
           break;
         }
       }
+      let note = ""; // 附在發佈紀錄後面的提醒
+      if (outcome === "questions") {
+        // 🔴 「入社審核」：社團要他先回答管理員的問題。外掛不替他答、不按「提交」（他 2026-10-12 說「遇到要回答社團問題的先跳過」）。
+        //    關掉那個視窗後看牆上：貼文已經在牆上或進審核（FB 有時先收下貼文再問問題）就照實記成已發佈／審核中，
+        //    免得之後「勾選未發佈的」補發變成重複；牆上沒有就標跳過，他自己回答完問題再補發。
+        log("⚠ 這個社團跳出「入社審核」，要先回答管理員的問題才能發文。外掛不替你回答，先關掉它。", "fbq-bad");
+        const qbox = findQuestionsDialog(L);
+        if (qbox) closeBox(qbox, L);
+        await sleep(2500);
+        const pend = freshAny(FBQ.words(L, "pendingApproval"), base.text, pageProbe());
+        const onFeed = feedHasPost(dialog, base.articles, snippet);
+        if (pend || onFeed) {
+          outcome = pend ? "pending" : "posted";
+          note = "；這個社團要你回答入社問題，外掛沒答，請自己去回答";
+          log(pend ? "貼文已經送出、在等審核。" : "貼文已經在牆上了。", "");
+        } else {
+          log("貼文沒送出。這個社團標成跳過：你自己去回答入社問題後，再按「勾選未發佈的」補發。", "fbq-bad");
+          return await autoSkip("這個社團要先回答入社問題（貼文沒送出）");
+        }
+      }
       if (outcome === "uploadfail" || outcome === "nophoto") {
         log("⛔ 照片沒傳成功，這則沒發出去。這個社團標成失敗，等一下換下一個；之後在後台按「勾選未發佈的」補發。", "fbq-bad");
         await report("failed", outcome === "nophoto" ? "照片沒傳上去（重試前照片已經被 Facebook 丟掉）" : "照片沒傳上去，Facebook 擋下這則（已重試一次）");
@@ -298,7 +323,7 @@
       }
       const unconfirmed = outcome === "posted-unconfirmed";
       if (unconfirmed) outcome = "posted";
-      const doneMsg = outcome === "pending" ? "自動發佈，等待審核" : unconfirmed ? "自動發佈（分頁在背景、沒看到畫面確認，請事後檢查）" : "自動發佈";
+      const doneMsg = (outcome === "pending" ? "自動發佈，等待審核" : unconfirmed ? "自動發佈（分頁在背景、沒看到畫面確認，請事後檢查）" : "自動發佈") + note;
       log(outcome === "pending" ? "已送出，等社團管理員審核。" : unconfirmed ? "當作已發佈（背景未確認）" : "已發佈 ✓", "fbq-ok");
       await report(outcome, doneMsg);
       // 等多久：固定秒數，或在他設的範圍內每次隨機抽（他 10/07 要的「不固定的秒數間隔」）
@@ -394,8 +419,9 @@
       clickable.click();
 
       // 2. 等發文視窗（先等真正的 modal；等不到才用「就地展開」的退路，免得太早抓到收合狀態的輸入框）
+      //    🔴 先認「入社審核」那種視窗：它裡面也有要你填答案的欄位，不先認出來就會把廣告填進答案欄
       let dialog = await firstVisible(
-        [() => [...document.querySelectorAll('div[role="dialog"]')].reverse().find((d) => d.querySelector('div[role="textbox"]'))],
+        [() => findQuestionsDialog(L), () => [...document.querySelectorAll('div[role="dialog"]')].reverse().find((d) => d.querySelector('div[role="textbox"]'))],
         12000,
       );
       if (!dialog) {
@@ -417,6 +443,16 @@
         return;
       }
       await sleep(1000);
+      // 發文視窗出來的同時（或之後一秒）FB 疊上「入社審核」→ 這個社團要先回答管理員的問題，外掛不替他答，直接跳過
+      const qbox = findQuestionsDialog(L);
+      if (qbox) {
+        log("⚠ 這個社團跳出「入社審核」，要先回答管理員的問題才能發文。外掛不替你回答，先關掉它。", "fbq-bad");
+        closeBox(qbox, L);
+        log("你自己去回答入社問題後，再按「勾選未發佈的」補發這個社團。", "");
+        await report("failed", "要先回答入社問題");
+        await autoSkip("這個社團要先回答入社問題");
+        return;
+      }
 
       // 3. 確認發文身分
       // 🔴 他有兩三個粉專／帳號輪流發，用錯身分發出去收不回來 —— 認不出來就**停在這裡問**，
@@ -579,6 +615,37 @@
     return false;
   }
 
+  /**
+   * 🔴 「入社審核」視窗（2026-10-12 同事遇到的）：有些社團要先回答管理員的問題才算正式能發文，
+   *    FB 會跳一個「入社審核／你快要能夠發佈貼文和留言了。回答這些問題，協助管理員瞭解你」的視窗，裡面是幾格要你填答案的欄位。
+   *    外掛**不替他回答、不按「提交」**（那是管理員要認識本人的問題），他說「遇到要回答社團問題的先跳過」。
+   *    只在彈出視窗裡找這些字（不看頁面本文：動態牆上別人的貼文也可能寫「入社審核」），而且這個視窗裡也可能有輸入框，
+   *    找發文框時要先把它認出來，不然廣告會被填進答案欄。
+   */
+  function findQuestionsDialog(L) {
+    const re = FBQ.anyRe(FBQ.words(L, "membershipQuestions"));
+    const boxes = [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')].filter((d) => d.getClientRects().length > 0);
+    return boxes.reverse().find((d) => re.test(d.innerText || "")) || null;
+  }
+
+  /** 關掉**指定的**那個視窗：點它裡面的「關閉」（右上角的 X 通常只有 aria-label）；「捨棄／提交」那種一律不碰，找不到就按 Esc。 */
+  function closeBox(box, L) {
+    const re = FBQ.exactRe(FBQ.words(L, "close"));
+    const skip = FBQ.anyRe(FBQ.words(L, "discard"));
+    for (const el of box.querySelectorAll('[role="button"], button')) {
+      if (el.getClientRects().length === 0) continue;
+      const t = textOf(el);
+      const al = el.getAttribute("aria-label") || "";
+      if (skip.test(t) || skip.test(al)) continue;
+      if (re.test(al) || (t && re.test(t))) {
+        el.click();
+        return true;
+      }
+    }
+    document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    return false;
+  }
+
   /** 比對用的文字：去掉表情符號、控制字元（FB 把表情符號換成 <img>，textContent 裡沒有它們）、把空白壓成一格 */
   const normText = (s) =>
     String(s || "")
@@ -602,12 +669,21 @@
     };
   }
 
+  /** 動態牆上**新**多出一篇、內容含文案開頭那幾個字（按發佈前就在的貼文不算、發文視窗裡的也不算） */
+  function feedHasPost(dialog, baseArticles, snip) {
+    if (!snip) return false;
+    return [...document.querySelectorAll('[role="article"]')].some(
+      (a) => !baseArticles.has(a) && !(dialog && dialog.contains(a)) && normText(a.textContent).includes(snip),
+    );
+  }
+
   /**
    * 按下「發佈」之後看結果，三個訊號任一個都算：
    *   ① 發文視窗消失＝發出去了（同時出現「等待審核」字樣＝進審核）
    *   ② 🔵 動態牆上**新**多出一篇、內容含文案開頭那幾個字＝發出去了（連續 4 秒都在、也沒跳錯誤才算）——
    *      分頁在背景時 FB 關視窗的動畫不會跑、視窗一直留著，光看①會等到超時說「不確定」，他 2026-10-12 縮小視窗就遇到
    *   ③ 新出現「等待審核」字樣＝進審核（同樣不必等視窗關）
+   * ④ 跳出「入社審核」視窗＝這個社團要先回答管理員的問題（questions：呼叫端關掉它，看牆上有沒有這篇再決定記什麼）
    * 出現「沒有上傳新的相片」類字＝照片沒傳上去（uploadfail，呼叫端會重試一次）；
    * 出現「暫時被封鎖／違反守則」類字＝FB 拒絕；時間到什麼都沒看到＝不確定（退回半自動讓他看）。
    * base＝snapshotBeforePost() 的結果（舊呼叫端傳字串也吃）。
@@ -620,17 +696,15 @@
     const baseText = typeof base === "string" ? base : (base && base.text) || "";
     const baseArticles = (base && base.articles) || new Set();
     const snip = String(snippet || "").trim();
-    const postInFeed = () =>
-      !!snip &&
-      [...document.querySelectorAll('[role="article"]')].some(
-        (a) => !baseArticles.has(a) && !dialog.contains(a) && normText(a.textContent).includes(snip),
-      );
+    const postInFeed = () => feedHasPost(dialog, baseArticles, snip);
     let feedSeenAt = 0;
     while (Date.now() < deadline) {
       const body = pageProbe();
       // 上傳失敗要排在封鎖前面比：兩邊的字有機會同時出現，但「照片沒傳上去」是可以重試的，封鎖不是
       if (freshAny(failWords, baseText, body)) return "uploadfail";
       if (freshAny(blockWords, baseText, body)) return "blocked";
+      // ④「入社審核」：FB 有時是把發文視窗整個換成它（同一個元素），所以要排在「視窗消失」前面看
+      if (findQuestionsDialog(L)) return "questions";
       const gone = !document.contains(dialog) || dialog.offsetParent === null;
       const pend = freshAny(pendWords, baseText, body);
       if (gone) return pend ? "pending" : "posted";

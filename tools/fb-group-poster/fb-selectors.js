@@ -15,6 +15,8 @@
       // 照片沒傳上去時 FB 跳的字（2026-10-09 他遇到的「抱歉，沒有上傳新的相片。請再試一次。」）
       uploadFailed: ["沒有上傳新的相片", "無法上傳相片", "無法上傳你的檔案", "無法上傳影片", "相片上傳失敗", "上傳失敗"],
       discard: ["捨棄貼文", "捨棄", "離開"],
+      // 「入社審核」視窗：社團要你先回答管理員的問題（2026-10-12 同事遇到）。只放廣告文案裡不可能出現的整句。
+      membershipQuestions: ["入社審核", "回答這些問題", "協助管理員瞭解你", "你快要能夠發佈"],
       switchProfile: ["選擇你要用來發佈的身分", "切換個人檔案", "選擇用來張貼的個人檔案", "以粉絲專頁身分"],
       notAvailable: ["此內容目前無法顯示", "這個頁面無法使用", "此內容不存在"],
       joinGroup: ["加入社團"],
@@ -32,6 +34,7 @@
       blocked: ["temporarily blocked", "couldn't post", "Community Standards", "restricted", "try again later"],
       uploadFailed: ["no new photos were uploaded", "Couldn't upload photo", "Unable to upload", "couldn't be uploaded", "Upload failed"],
       discard: ["Discard post", "Discard", "Leave"],
+      membershipQuestions: ["Membership questions", "Answer these questions", "help admins get to know you", "almost able to post"],
       switchProfile: ["Select who to post as", "Switch profile", "Choose who to post as"],
       notAvailable: ["This content isn't available", "Page not found", "isn't available right now"],
       joinGroup: ["Join group", "Join Group"],
