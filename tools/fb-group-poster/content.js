@@ -254,9 +254,8 @@
         log("⚠ Facebook 說照片沒傳上去。關掉錯誤訊息，等 8 秒再試一次…", "fbq-bad");
         closeAlert(dialog, L);
         await sleep(8000);
-        const left = photos && photos.count ? photos.count() : 0;
-        if (photos && left < photos.want) {
-          log("照片只剩 " + left + "／" + photos.want + " 張，再按下去會變成沒有照片的貼文，不按了。", "fbq-bad");
+        if (photos && photos.check && !photos.check()) {
+          log("照片只剩 " + photos.count() + "／" + photos.want + " 張，再按下去會變成沒有照片的貼文，不按了。", "fbq-bad");
           outcome = "nophoto";
           break;
         }
@@ -461,8 +460,9 @@
         log("上傳 " + job.ad.images.length + " 張圖片…（等 Facebook 真的收完，不是看到縮圖就算）");
         try {
           photos = await uploadImages(dialog, job.ad.images, L);
-          imagesOk = photos.got >= photos.want;
-          if (imagesOk) log("照片 " + photos.got + "／" + photos.want + " 張都進去了。", "");
+          imagesOk = photos.ok;
+          if (photos.got >= photos.want) log("照片 " + photos.got + "／" + photos.want + " 張都進去了。", "");
+          else if (photos.ok) log("看到 " + photos.got + " 格縮圖（Facebook 最多顯示 " + photos.shown + " 格），" + photos.want + " 張照片當作都進去了。", "");
           else log("⚠ 只看到 " + photos.got + "／" + photos.want + " 張照片進去，自己看一下視窗裡的照片對不對。", "fbq-bad");
         } catch (e) {
           imagesOk = false;
@@ -688,13 +688,32 @@
     // 哪些 img 是「這次新長出來的」要在觸發 change **之前**記下來。記元素本身而不是數量：
     // 頭像、小圖示也是 img，光比數量會把它們算進來（縮圖同步長出來時還會一直等不到「變多」、白等）。
     const beforeImgs = new Set(dialog.querySelectorAll("img"));
-    const count = () =>
+    const beforeText = new Set(dialog.querySelectorAll("span, div"));
+    const tiles = () =>
       [...dialog.querySelectorAll("img")].filter((im) => {
         if (beforeImgs.has(im) || im.offsetParent === null) return false;
         const r = im.getBoundingClientRect();
         return r.width >= 40 && r.height >= 40; // 新長出來的小圖示不算
       }).length;
+    // 🔴 FB 的發文視窗最多只顯示 5 格縮圖，第 6 張起疊在最後一格的「+N」裡（2026-10-12 他 10 張照片只看到 5 格，
+    //    整批都退回半自動）：「+N」的 N 要加回來；萬一這版 FB 沒有「+N」字樣，看到 5 格也當作都進去了——
+    //    FB 是整批收檔，不會只收一半，收不到會跳「無法上傳你的檔案」，那條另外有在看。
+    const COLLAGE_MAX = 5;
+    const plusBadge = () => {
+      let n = 0;
+      for (const el of dialog.querySelectorAll("span, div")) {
+        if (el.childElementCount || beforeText.has(el) || el.offsetParent === null) continue;
+        const m = (el.textContent || "").trim().match(/^[+＋]\s*(\d{1,2})$/);
+        if (m) n = Math.max(n, Number(m[1]));
+      }
+      return n;
+    };
+    const count = () => {
+      const t = tiles();
+      return t ? t + plusBadge() : 0;
+    };
     const want = files.length;
+    const enough = (n) => n >= want || n >= Math.min(want, COLLAGE_MAX);
     // 「選檔案之前頁面上就有的字」不算失敗（跟判斷發文結果同一套：只認新出現的）
     const failWords = FBQ.words(L, "uploadFailed");
     const failBase = pageProbe();
@@ -714,8 +733,8 @@
         seen = n;
         lastChange = Date.now();
       }
-      if (seen >= want) break;
-      // 張數卡住不動超過 20 秒就別再等：萬一 FB 改版把多張併成一張縮圖，等滿 2 分鐘也等不到，
+      if (enough(seen)) break;
+      // 張數卡住不動超過 20 秒就別再等：萬一 FB 改版把縮圖的版型又改了，等滿 2 分鐘也等不到，
       // 不如早點回去讓自動模式退回半自動（面板會寫看到幾張），不要每個社團都卡兩分鐘
       if (seen > 0 && Date.now() - lastChange > 20000) break;
       await sleep(500);
@@ -723,7 +742,7 @@
     const got = count();
     // ② 張數到齊只代表 FB 收下檔案，實際上傳還在跑：張數越多等越久（1 張 4 秒、10 張 13 秒，上限 15 秒）。
     //    FB 上傳中通常也會把「發佈」鈕鎖住，autoPost 的 waitPostButton 再擋一次。
-    if (got >= want) {
+    if (enough(got)) {
       const settle = Math.min(3000 + 1000 * want, 15000);
       const until = Date.now() + settle;
       while (Date.now() < until) {
@@ -731,7 +750,8 @@
         await sleep(500);
       }
     }
-    return { want, got, count };
+    // check()：按發佈前／重試前再確認一次照片還在（跟這裡同一套算法）
+    return { want, got, ok: enough(got), shown: COLLAGE_MAX, check: () => enough(count()), count };
   }
 
   /* ───────── 抓「我加入的社團」清單 ───────── */
