@@ -67,8 +67,11 @@ export type PropertyRecord = {
   status: PropertyStatus;
   /** 委託或成交日期 YYYY-MM-DD */
   dealDate: string | null;
-  /** 開價／成交價，自由文字（1,280 萬）—— 不做運算、不統計，所以不用數字欄 */
+  /** 成交價（原本叫「價格」），自由文字（1,180 萬）—— 不做運算、不統計，所以不用數字欄 */
   price: string | null;
+  /** 開價／底價，自由文字；2026-10-12 他要的，放在表單地址上方 */
+  askingPrice: string | null;
+  floorPrice: string | null;
   note: string | null;
   /** 委託合約編號，自由文字 */
   contractNo: string | null;
@@ -121,6 +124,8 @@ export type PropertyInput = {
   status: string;
   dealDate: string;
   price: string;
+  askingPrice: string;
+  floorPrice: string;
   note: string;
   contractNo: string;
   contractStart: string;
@@ -208,6 +213,12 @@ export async function ensureOwnerTables(): Promise<void> {
   if (!have.has("contract_end")) {
     await db.$executeRawUnsafe(`ALTER TABLE owner_property ADD COLUMN contract_end CHAR(10) NULL AFTER contract_start`);
   }
+  if (!have.has("asking_price")) {
+    await db.$executeRawUnsafe(`ALTER TABLE owner_property ADD COLUMN asking_price VARCHAR(40) NULL AFTER price`);
+  }
+  if (!have.has("floor_price")) {
+    await db.$executeRawUnsafe(`ALTER TABLE owner_property ADD COLUMN floor_price VARCHAR(40) NULL AFTER asking_price`);
+  }
   if (!have.has("contract_reminded_for")) {
     await db.$executeRawUnsafe(`ALTER TABLE owner_property ADD COLUMN contract_reminded_for CHAR(10) NULL AFTER contract_end`);
   }
@@ -261,6 +272,8 @@ type PropertyRow = {
   status: string;
   deal_date: string | null;
   price: string | null;
+  asking_price: string | null;
+  floor_price: string | null;
   note: string | null;
   contract_no: string | null;
   contract_start: string | null;
@@ -313,6 +326,8 @@ function toPropertyRecord(r: PropertyRow): PropertyRecord {
     status: toPropertyStatus(r.status),
     dealDate: r.deal_date && DATE_RE.test(r.deal_date) ? r.deal_date : null,
     price: nn(r.price),
+    askingPrice: nn(r.asking_price),
+    floorPrice: nn(r.floor_price),
     note: nn(r.note),
     contractNo: nn(r.contract_no),
     contractStart: r.contract_start && DATE_RE.test(r.contract_start) ? r.contract_start : null,
@@ -348,7 +363,7 @@ export async function listOwnersWithDetails(): Promise<OwnerWithDetails[]> {
        FROM owner_client ORDER BY updated_at DESC`,
   );
   const propertyRows = await db.$queryRawUnsafe<PropertyRow[]>(
-    `SELECT id, owner_id, address, community, kind, layout, area, floor, status, deal_date, price, note,
+    `SELECT id, owner_id, address, community, kind, layout, area, floor, status, deal_date, price, asking_price, floor_price, note,
             contract_no, contract_start, contract_end, contract_reminded_for, created_at
        FROM owner_property ORDER BY deal_date DESC, created_at DESC`,
   );
@@ -447,7 +462,11 @@ export function validatePropertyInput(input: PropertyInput): Checked<PropertyInp
   if (!isBlankOrDate(dealDate)) return { ok: false, error: "日期格式不對（YYYY-MM-DD）" };
 
   const price = (input.price ?? "").trim();
-  if (price.length > 40) return { ok: false, error: "價格太長（最多 40 字）" };
+  if (price.length > 40) return { ok: false, error: "成交價太長（最多 40 字）" };
+  const askingPrice = (input.askingPrice ?? "").trim();
+  if (askingPrice.length > 40) return { ok: false, error: "開價太長（最多 40 字）" };
+  const floorPrice = (input.floorPrice ?? "").trim();
+  if (floorPrice.length > 40) return { ok: false, error: "底價太長（最多 40 字）" };
 
   const note = cut((input.note ?? "").trim(), 5000);
 
@@ -472,6 +491,8 @@ export function validatePropertyInput(input: PropertyInput): Checked<PropertyInp
       status: status as PropertyStatus,
       dealDate,
       price,
+      askingPrice,
+      floorPrice,
       note,
       contractNo,
       contractStart,
@@ -552,9 +573,9 @@ export async function createProperty(input: PropertyInput & { status: PropertySt
   await ensureOwnerTables();
   const id = randomUUID();
   await db.$executeRawUnsafe(
-    `INSERT INTO owner_property (id, owner_id, address, community, kind, layout, area, floor, status, deal_date, price, note,
-                                contract_no, contract_start, contract_end)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO owner_property (id, owner_id, address, community, kind, layout, area, floor, status, deal_date, price,
+                                asking_price, floor_price, note, contract_no, contract_start, contract_end)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     input.ownerId,
     input.address,
@@ -566,6 +587,8 @@ export async function createProperty(input: PropertyInput & { status: PropertySt
     input.status,
     input.dealDate || null,
     input.price || null,
+    input.askingPrice || null,
+    input.floorPrice || null,
     input.note || null,
     input.contractNo || null,
     input.contractStart || null,
@@ -582,7 +605,8 @@ export async function updateProperty(id: string, input: PropertyInput & { status
     // contract_reminded_for 的那行要排在 contract_end = ? 之前：MySQL 的 SET 由左到右、後面的看得到前面改過的值。
     // 迄日沒變就保留「已提醒」記號，迄日改了就清掉 → 新的到期日會再推一次提醒。
     `UPDATE owner_property
-        SET address = ?, community = ?, kind = ?, layout = ?, area = ?, floor = ?, status = ?, deal_date = ?, price = ?, note = ?,
+        SET address = ?, community = ?, kind = ?, layout = ?, area = ?, floor = ?, status = ?, deal_date = ?, price = ?,
+            asking_price = ?, floor_price = ?, note = ?,
             contract_no = ?, contract_start = ?,
             contract_reminded_for = CASE WHEN contract_end <=> ? THEN contract_reminded_for ELSE NULL END,
             contract_end = ?
@@ -596,6 +620,8 @@ export async function updateProperty(id: string, input: PropertyInput & { status
     input.status,
     input.dealDate || null,
     input.price || null,
+    input.askingPrice || null,
+    input.floorPrice || null,
     input.note || null,
     input.contractNo || null,
     input.contractStart || null,
@@ -663,6 +689,8 @@ export async function importOwners(rows: ImportRow[]): Promise<{ done: number; f
           status: row.property.status,
           dealDate: "",
           price: "",
+          askingPrice: "",
+          floorPrice: "",
           note: "",
           contractNo: "",
           contractStart: "",

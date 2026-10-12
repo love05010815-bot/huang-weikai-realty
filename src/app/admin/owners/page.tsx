@@ -67,6 +67,8 @@ export default async function OwnersAdminPage() {
         status: p.status,
         dealDate: p.dealDate,
         price: p.price,
+        askingPrice: p.askingPrice,
+        floorPrice: p.floorPrice,
         note: p.note,
         contractNo: p.contractNo,
         contractStart: p.contractStart,

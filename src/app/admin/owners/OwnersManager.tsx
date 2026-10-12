@@ -51,6 +51,8 @@ export type AdminProperty = {
   status: PropertyStatus;
   dealDate: string | null;
   price: string | null;
+  askingPrice: string | null;
+  floorPrice: string | null;
   note: string | null;
   contractNo: string | null;
   contractStart: string | null;
@@ -164,6 +166,8 @@ type PropertyDraft = {
   status: PropertyStatus;
   dealDate: string;
   price: string;
+  askingPrice: string;
+  floorPrice: string;
   note: string;
   contractNo: string;
   contractStart: string;
@@ -180,6 +184,8 @@ const EMPTY_PROPERTY: PropertyDraft = {
   status: "listing",
   dealDate: "",
   price: "",
+  askingPrice: "",
+  floorPrice: "",
   note: "",
   contractNo: "",
   contractStart: "",
@@ -197,6 +203,8 @@ function toPropertyDraft(p: AdminProperty): PropertyDraft {
     status: p.status,
     dealDate: p.dealDate ?? "",
     price: p.price ?? "",
+    askingPrice: p.askingPrice ?? "",
+    floorPrice: p.floorPrice ?? "",
     note: p.note ?? "",
     contractNo: p.contractNo ?? "",
     contractStart: p.contractStart ?? "",
@@ -577,6 +585,14 @@ export default function OwnersManager({
         <p className={styles.subCardTitle}>{isNew ? "加一間房子" : "編輯房子"}</p>
         <div className={styles.form}>
           <div className={styles.formGrid}>
+            <label>
+              <span>開價</span>
+              <input type="text" value={propDraft.askingPrice} onChange={(e) => setPropField("askingPrice", e.target.value)} placeholder="例：1,280 萬" />
+            </label>
+            <label>
+              <span>底價</span>
+              <input type="text" value={propDraft.floorPrice} onChange={(e) => setPropField("floorPrice", e.target.value)} placeholder="例：1,180 萬（只有你看得到）" />
+            </label>
             <label style={{ gridColumn: "1 / -1" }}>
               <span>
                 地址<em>必填</em>
@@ -625,8 +641,8 @@ export default function OwnersManager({
               <input type="text" value={propDraft.floor} onChange={(e) => setPropField("floor", e.target.value)} placeholder="5F / 12F" />
             </label>
             <label>
-              <span>價格</span>
-              <input type="text" value={propDraft.price} onChange={(e) => setPropField("price", e.target.value)} placeholder="開價 1,280 萬／成交 1,180 萬" />
+              <span>成交價</span>
+              <input type="text" value={propDraft.price} onChange={(e) => setPropField("price", e.target.value)} placeholder="成交後再填，例：1,180 萬" />
             </label>
             <label>
               <span>合約編號</span>
@@ -954,9 +970,19 @@ export default function OwnersManager({
                           {p.layout && <span>{p.layout}</span>}
                           {p.area && <span>{p.area}</span>}
                           {p.floor && <span>{p.floor}</span>}
+                          {p.askingPrice && (
+                            <span>
+                              開價 <b>{p.askingPrice}</b>
+                            </span>
+                          )}
+                          {p.floorPrice && (
+                            <span>
+                              底價 <b>{p.floorPrice}</b>
+                            </span>
+                          )}
                           {p.price && (
                             <span>
-                              <b>{p.price}</b>
+                              成交 <b>{p.price}</b>
                             </span>
                           )}
                           {p.dealDate && <span>{fmtDay(p.dealDate)}</span>}
