@@ -9,12 +9,19 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 
-/** 允許進後台的信箱（.env 用逗號分隔多組） */
+/**
+ * 允許進後台的信箱（.env 用逗號分隔多組）。
+ *
+ * 2026-10-12 他自己在 Vercel 改 ADMIN_EMAILS 時打成「a@gmail.com、a」（頓號＋多一截），
+ * 原本只認半形逗號，整串被當成一個「信箱」、他登入照樣被擋。
+ * 現在：逗號／全形逗號／頓號／分號／空白／換行都當分隔，而且只收含 @ 的那幾段——
+ * 手打進去的雜訊（空格、多打的一截）不會害整個白名單失效。
+ */
 export function adminEmails(): string[] {
   return (process.env.ADMIN_EMAILS || process.env.APPOINTMENT_ADMIN_EMAIL || "")
-    .split(",")
+    .split(/[,，、;；\s]+/)
     .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
+    .filter((s) => s.includes("@"));
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
