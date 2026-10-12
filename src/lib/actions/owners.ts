@@ -16,13 +16,16 @@ import {
   deleteContactLog,
   deleteOwner,
   deleteProperty,
+  delistProperty,
   importOwners,
   updateOwner,
   updateProperty,
   validateContactLogInput,
+  validateDelistInput,
   validateOwnerInput,
   validatePropertyInput,
   type ContactLogInput,
+  type DelistInput,
   type OwnerInput,
   type PropertyInput,
 } from "@/lib/owners";
@@ -83,6 +86,21 @@ export async function savePropertyAction(id: string | null, input: PropertyInput
   } catch (e) {
     return { ok: false, error: describeError(e) };
   }
+}
+
+/** 下架一間房：狀態改「已下架」並記原因／金額／日期。走獨立 action 而不是 save，表單欄位不會互相蓋到。 */
+export async function delistPropertyAction(input: DelistInput): Promise<Result> {
+  if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
+  const checked = validateDelistInput(input);
+  if (!checked.ok) return { ok: false, error: checked.error };
+  try {
+    const found = await delistProperty(checked.value);
+    if (!found) return { ok: false, error: "找不到這間房子，可能已被刪除" };
+  } catch (e) {
+    return { ok: false, error: describeError(e) };
+  }
+  revalidateAll();
+  return { ok: true };
 }
 
 export async function deletePropertyAction(id: string): Promise<Result> {

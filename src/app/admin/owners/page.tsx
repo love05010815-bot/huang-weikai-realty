@@ -73,6 +73,11 @@ export default async function OwnersAdminPage() {
         contractNo: p.contractNo,
         contractStart: p.contractStart,
         contractEnd: p.contractEnd,
+        contractType: p.contractType,
+        delistReason: p.delistReason,
+        delistAmount: p.delistAmount,
+        delistNote: p.delistNote,
+        delistedAt: p.delistedAt,
       })),
       contacts: o.contacts.map((c) => ({
         id: c.id,
@@ -95,6 +100,10 @@ export default async function OwnersAdminPage() {
     listing: owners.reduce((n, o) => n + o.properties.filter((p) => p.status === "listing").length, 0),
     contractSoon: owners.reduce((n, o) => n + o.properties.filter((p) => p.contractEnd && p.contractEnd <= contractSoonBy).length, 0),
     stale: owners.filter((o) => !o.lastContactAt || o.lastContactAt < staleBefore).length,
+    // 他要的三格：一般約／專約／土地，都只算「委託中」的——下架、成交的不算在手上的件數
+    general: owners.reduce((n, o) => n + o.properties.filter((p) => p.status === "listing" && p.contractType === "general").length, 0),
+    exclusive: owners.reduce((n, o) => n + o.properties.filter((p) => p.status === "listing" && p.contractType === "exclusive").length, 0),
+    land: owners.reduce((n, o) => n + o.properties.filter((p) => p.status === "listing" && p.kind === "土地").length, 0),
   };
 
   return (
@@ -129,6 +138,18 @@ export default async function OwnersAdminPage() {
             <li>
               <b>{stats.listing}</b>
               <span>委託中</span>
+            </li>
+            <li>
+              <b>{stats.general}</b>
+              <span>一般約（委託中）</span>
+            </li>
+            <li>
+              <b>{stats.exclusive}</b>
+              <span>專約（委託中）</span>
+            </li>
+            <li>
+              <b>{stats.land}</b>
+              <span>土地（委託中）</span>
             </li>
             <li>
               <b>{stats.contractSoon}</b>

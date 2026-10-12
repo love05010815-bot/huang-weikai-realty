@@ -28,7 +28,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
-import { PROPERTY_STATUSES, type PropertyStatus } from "@/config/owners";
+import { CONTRACT_TYPES, DELIST_REASONS, PROPERTY_STATUSES, type ContractType, type DelistReason, type PropertyStatus } from "@/config/owners";
 
 // ---------------------------------------------------------------- 型別
 
@@ -80,6 +80,13 @@ export type PropertyRecord = {
   contractEnd: string | null;
   /** 已經為哪一個迄日推過「到期前 7 天」提醒；迄日改了就重推 */
   contractRemindedFor: string | null;
+  /** 一般約／專約，沒選就是 null */
+  contractType: ContractType | null;
+  /** 下架：原因、成交金額（自行／同業成交才有）、備註、日期；status 同時會是 "delisted" */
+  delistReason: DelistReason | null;
+  delistAmount: string | null;
+  delistNote: string | null;
+  delistedAt: string | null;
   createdAt: Date | null;
 };
 
@@ -130,6 +137,17 @@ export type PropertyInput = {
   contractNo: string;
   contractStart: string;
   contractEnd: string;
+  /** "general" | "exclusive" | "" */
+  contractType: string;
+};
+
+export type DelistInput = {
+  propertyId: string;
+  reason: string;
+  amount: string;
+  note: string;
+  /** YYYY-MM-DD */
+  delistedAt: string;
 };
 
 export type ContactLogInput = {
@@ -222,6 +240,21 @@ export async function ensureOwnerTables(): Promise<void> {
   if (!have.has("contract_reminded_for")) {
     await db.$executeRawUnsafe(`ALTER TABLE owner_property ADD COLUMN contract_reminded_for CHAR(10) NULL AFTER contract_end`);
   }
+  if (!have.has("contract_type")) {
+    await db.$executeRawUnsafe(`ALTER TABLE owner_property ADD COLUMN contract_type VARCHAR(16) NULL AFTER contract_no`);
+  }
+  if (!have.has("delist_reason")) {
+    await db.$executeRawUnsafe(`ALTER TABLE owner_property ADD COLUMN delist_reason VARCHAR(16) NULL`);
+  }
+  if (!have.has("delist_amount")) {
+    await db.$executeRawUnsafe(`ALTER TABLE owner_property ADD COLUMN delist_amount VARCHAR(40) NULL`);
+  }
+  if (!have.has("delist_note")) {
+    await db.$executeRawUnsafe(`ALTER TABLE owner_property ADD COLUMN delist_note VARCHAR(255) NULL`);
+  }
+  if (!have.has("delisted_at")) {
+    await db.$executeRawUnsafe(`ALTER TABLE owner_property ADD COLUMN delisted_at CHAR(10) NULL`);
+  }
 
   ensured = true;
 }
@@ -279,6 +312,11 @@ type PropertyRow = {
   contract_start: string | null;
   contract_end: string | null;
   contract_reminded_for: string | null;
+  contract_type: string | null;
+  delist_reason: string | null;
+  delist_amount: string | null;
+  delist_note: string | null;
+  delisted_at: string | null;
   created_at: Date | null;
 };
 
@@ -333,6 +371,11 @@ function toPropertyRecord(r: PropertyRow): PropertyRecord {
     contractStart: r.contract_start && DATE_RE.test(r.contract_start) ? r.contract_start : null,
     contractEnd: r.contract_end && DATE_RE.test(r.contract_end) ? r.contract_end : null,
     contractRemindedFor: r.contract_reminded_for || null,
+    contractType: (CONTRACT_TYPES as readonly string[]).includes(r.contract_type ?? "") ? (r.contract_type as ContractType) : null,
+    delistReason: DELIST_REASONS.some((d) => d.key === r.delist_reason) ? (r.delist_reason as DelistReason) : null,
+    delistAmount: nn(r.delist_amount),
+    delistNote: nn(r.delist_note),
+    delistedAt: r.delisted_at && DATE_RE.test(r.delisted_at) ? r.delisted_at : null,
     createdAt: r.created_at,
   };
 }
@@ -364,7 +407,8 @@ export async function listOwnersWithDetails(): Promise<OwnerWithDetails[]> {
   );
   const propertyRows = await db.$queryRawUnsafe<PropertyRow[]>(
     `SELECT id, owner_id, address, community, kind, layout, area, floor, status, deal_date, price, asking_price, floor_price, note,
-            contract_no, contract_start, contract_end, contract_reminded_for, created_at
+            contract_no, contract_start, contract_end, contract_reminded_for, contract_type,
+            delist_reason, delist_amount, delist_note, delisted_at, created_at
        FROM owner_property ORDER BY deal_date DESC, created_at DESC`,
   );
   const contactRows = await db.$queryRawUnsafe<ContactRow[]>(
@@ -478,6 +522,9 @@ export function validatePropertyInput(input: PropertyInput): Checked<PropertyInp
   if (!isBlankOrDate(contractEnd)) return { ok: false, error: "合約迄日格式不對（YYYY-MM-DD）" };
   if (contractStart && contractEnd && contractEnd < contractStart) return { ok: false, error: "合約迄日不能早於起日" };
 
+  const contractType = (input.contractType ?? "").trim();
+  if (contractType && !(CONTRACT_TYPES as readonly string[]).includes(contractType)) return { ok: false, error: "合約類型只能選一般約或專約" };
+
   return {
     ok: true,
     value: {
@@ -497,8 +544,24 @@ export function validatePropertyInput(input: PropertyInput): Checked<PropertyInp
       contractNo,
       contractStart,
       contractEnd,
+      contractType,
     },
   };
+}
+
+export function validateDelistInput(input: DelistInput): Checked<DelistInput & { reason: DelistReason }> {
+  const propertyId = (input.propertyId ?? "").trim();
+  if (!propertyId) return { ok: false, error: "缺少房子 id" };
+  const reason = (input.reason ?? "").trim();
+  const def = DELIST_REASONS.find((d) => d.key === reason);
+  if (!def) return { ok: false, error: "請選下架原因" };
+  const amount = (input.amount ?? "").trim();
+  if (def.needsAmount && !amount) return { ok: false, error: `${def.label}請填金額` };
+  if (amount.length > 40) return { ok: false, error: "金額太長（最多 40 字）" };
+  const note = cut((input.note ?? "").trim(), 255);
+  const delistedAt = (input.delistedAt ?? "").trim();
+  if (!DATE_RE.test(delistedAt)) return { ok: false, error: "下架日期格式不對" };
+  return { ok: true, value: { propertyId, reason: def.key, amount: def.needsAmount ? amount : "", note, delistedAt } };
 }
 
 export function validateContactLogInput(input: ContactLogInput): Checked<ContactLogInput> {
@@ -574,8 +637,8 @@ export async function createProperty(input: PropertyInput & { status: PropertySt
   const id = randomUUID();
   await db.$executeRawUnsafe(
     `INSERT INTO owner_property (id, owner_id, address, community, kind, layout, area, floor, status, deal_date, price,
-                                asking_price, floor_price, note, contract_no, contract_start, contract_end)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                asking_price, floor_price, note, contract_no, contract_start, contract_end, contract_type)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     input.ownerId,
     input.address,
@@ -593,6 +656,7 @@ export async function createProperty(input: PropertyInput & { status: PropertySt
     input.contractNo || null,
     input.contractStart || null,
     input.contractEnd || null,
+    input.contractType || null,
   );
   // 房子有動，屋主也算有更新（清單是照屋主 updated_at 排的）
   await db.$executeRawUnsafe(`UPDATE owner_client SET updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?`, input.ownerId);
@@ -607,7 +671,7 @@ export async function updateProperty(id: string, input: PropertyInput & { status
     `UPDATE owner_property
         SET address = ?, community = ?, kind = ?, layout = ?, area = ?, floor = ?, status = ?, deal_date = ?, price = ?,
             asking_price = ?, floor_price = ?, note = ?,
-            contract_no = ?, contract_start = ?,
+            contract_no = ?, contract_type = ?, contract_start = ?,
             contract_reminded_for = CASE WHEN contract_end <=> ? THEN contract_reminded_for ELSE NULL END,
             contract_end = ?
       WHERE id = ? AND owner_id = ?`,
@@ -624,6 +688,7 @@ export async function updateProperty(id: string, input: PropertyInput & { status
     input.floorPrice || null,
     input.note || null,
     input.contractNo || null,
+    input.contractType || null,
     input.contractStart || null,
     input.contractEnd || null,
     input.contractEnd || null,
@@ -635,6 +700,31 @@ export async function updateProperty(id: string, input: PropertyInput & { status
 export async function deleteProperty(id: string): Promise<void> {
   await ensureOwnerTables();
   await db.$executeRawUnsafe(`DELETE FROM owner_property WHERE id = ?`, id);
+}
+
+/**
+ * 下架：狀態改 "delisted"、記原因／金額／備註／日期。不動開價、底價、合約欄位——
+ * 下架後他還會想回頭看當初開多少、簽的是哪張合約。回傳 false 代表找不到那間房。
+ */
+export async function delistProperty(input: DelistInput & { reason: DelistReason }): Promise<boolean> {
+  await ensureOwnerTables();
+  const n = await db.$executeRawUnsafe(
+    `UPDATE owner_property
+        SET status = 'delisted', delist_reason = ?, delist_amount = ?, delist_note = ?, delisted_at = ?
+      WHERE id = ?`,
+    input.reason,
+    input.amount || null,
+    input.note || null,
+    input.delistedAt,
+    input.propertyId,
+  );
+  if (n > 0) {
+    await db.$executeRawUnsafe(
+      `UPDATE owner_client SET updated_at = CURRENT_TIMESTAMP(3) WHERE id = (SELECT owner_id FROM owner_property WHERE id = ?)`,
+      input.propertyId,
+    );
+  }
+  return n > 0;
 }
 
 export async function addContactLog(input: ContactLogInput): Promise<string> {
@@ -695,6 +785,7 @@ export async function importOwners(rows: ImportRow[]): Promise<{ done: number; f
           contractNo: "",
           contractStart: "",
           contractEnd: "",
+          contractType: "",
         });
       }
       done++;

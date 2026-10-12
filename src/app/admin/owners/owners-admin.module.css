@@ -809,3 +809,62 @@
     width: 64px;
   }
 }
+
+/* ── 卡片右欄：電話＋下架（2026-10-12 他要「電話下方做一個下架按鈕」） ── */
+.sideCol {
+  display: grid;
+  gap: 6px;
+  justify-items: stretch;
+  flex: none;
+}
+
+.delistBtn {
+  justify-content: center;
+}
+
+.delistBtn:not(:disabled) {
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+/* ── 快速搜尋的日期範圍 ── */
+.dateRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #a69a97;
+}
+
+.dateRow select,
+.dateRow input[type="date"] {
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #f8f4f3;
+  font-size: 14px;
+  font-family: inherit;
+  min-height: 38px;
+}
+
+@media (max-width: 899px) {
+  .sideCol {
+    width: 100%;
+    order: 3;
+    margin-top: 8px;
+    grid-template-columns: 1fr auto;
+  }
+
+  .sideCol .callBtn {
+    margin-top: 0;
+    width: auto;
+  }
+
+  .dateRow input[type="date"] {
+    flex: 1 1 120px;
+    min-width: 0;
+  }
+}

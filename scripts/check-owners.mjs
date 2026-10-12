@@ -113,6 +113,20 @@ const T = await import("../src/lib/owners-text.ts");
   ok(!r3.ok, "迄日格式錯擋下", r3.ok, false);
   const r4 = O.validatePropertyInput({ ...base, contractNo: "", contractStart: "", contractEnd: "" });
   ok(r4.ok, "合約全空也可以", r4.ok, true);
+  const r5 = O.validatePropertyInput({ ...base, contractNo: "", contractStart: "", contractEnd: "", contractType: "exclusive" });
+  ok(r5.ok && r5.value.contractType === "exclusive", "合約類型專約通過", r5.ok, true);
+  const r6 = O.validatePropertyInput({ ...base, contractNo: "", contractStart: "", contractEnd: "", contractType: "vip" });
+  ok(!r6.ok, "不認得的合約類型擋下", r6.ok, false);
+}
+{
+  const d1 = O.validateDelistInput({ propertyId: "p", reason: "self_sold", amount: "", note: "", delistedAt: "2026-10-12" });
+  ok(!d1.ok, "自行成交沒填金額擋下", d1.ok, false);
+  const d2 = O.validateDelistInput({ propertyId: "p", reason: "self_sold", amount: "1,200 萬", note: "", delistedAt: "2026-10-12" });
+  ok(d2.ok && d2.value.amount === "1,200 萬", "自行成交有金額通過", d2.ok, true);
+  const d3 = O.validateDelistInput({ propertyId: "p", reason: "owner_keep", amount: "999", note: "改自住", delistedAt: "2026-10-12" });
+  ok(d3.ok && d3.value.amount === "" && d3.value.note === "改自住", "屋主不賣：金額清掉、備註留著", d3.ok && d3.value, "amount 空");
+  const d4 = O.validateDelistInput({ propertyId: "p", reason: "nope", amount: "", note: "", delistedAt: "2026-10-12" });
+  ok(!d4.ok, "不認得的原因擋下", d4.ok, false);
 }
 {
   ok(T.addDays("2026-10-12", 7) === "2026-10-19", "addDays +7", T.addDays("2026-10-12", 7), "2026-10-19");

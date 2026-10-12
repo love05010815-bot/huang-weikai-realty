@@ -19,12 +19,20 @@ import { Icon } from "@/app/admin/_ui/icons";
 import {
   CONTRACT_REMIND_DAYS,
   CONTRACT_SOON_DAYS,
+  CONTRACT_TYPES,
+  CONTRACT_TYPE_LABEL,
+  DATE_FILTER_FIELDS,
+  DELIST_REASONS,
+  DELIST_REASON_LABEL,
   OWNER_CONTACT_METHODS,
   OWNER_SOURCES,
   PROPERTY_KINDS,
   PROPERTY_STATUSES,
   PROPERTY_STATUS_LABEL,
   STALE_CONTACT_DAYS,
+  type ContractType,
+  type DateFilterField,
+  type DelistReason,
   type PropertyStatus,
 } from "@/config/owners";
 import {
@@ -32,6 +40,7 @@ import {
   deleteContactLogAction,
   deleteOwnerAction,
   deletePropertyAction,
+  delistPropertyAction,
   importOwnersAction,
   saveOwnerAction,
   savePropertyAction,
@@ -57,6 +66,11 @@ export type AdminProperty = {
   contractNo: string | null;
   contractStart: string | null;
   contractEnd: string | null;
+  contractType: ContractType | null;
+  delistReason: DelistReason | null;
+  delistAmount: string | null;
+  delistNote: string | null;
+  delistedAt: string | null;
 };
 
 export type AdminContactLog = {
@@ -90,6 +104,7 @@ const STATUS_TONE: Record<PropertyStatus, ChipTone> = {
   rented: "info",
   self_use: "neutral",
   expired: "danger",
+  delisted: "neutral",
   other: "neutral",
 };
 
@@ -172,6 +187,7 @@ type PropertyDraft = {
   contractNo: string;
   contractStart: string;
   contractEnd: string;
+  contractType: string;
 };
 
 const EMPTY_PROPERTY: PropertyDraft = {
@@ -190,7 +206,10 @@ const EMPTY_PROPERTY: PropertyDraft = {
   contractNo: "",
   contractStart: "",
   contractEnd: "",
+  contractType: "",
 };
+
+type DelistDraft = { propertyId: string; reason: DelistReason; amount: string; note: string };
 
 function toPropertyDraft(p: AdminProperty): PropertyDraft {
   return {
@@ -209,7 +228,16 @@ function toPropertyDraft(p: AdminProperty): PropertyDraft {
     contractNo: p.contractNo ?? "",
     contractStart: p.contractStart ?? "",
     contractEnd: p.contractEnd ?? "",
+    contractType: p.contractType ?? "",
   };
+}
+
+/** 快速搜尋的日期範圍：這位屋主在指定的日期欄位上，有沒有任何一個值落在 [from, to] 內 */
+function ownerMatchesDateRange(o: AdminOwner, field: DateFilterField, from: string, to: string): boolean {
+  const inRange = (d: string | null) => !!d && (!from || d >= from) && (!to || d <= to);
+  if (field === "createdAt") return inRange(o.createdAt ? o.createdAt.slice(0, 10) : null);
+  if (field === "lastContactAt") return inRange(o.lastContactAt);
+  return o.properties.some((p) => inRange(p[field]));
 }
 
 /** 合約到期標籤：迄日在 soonBy 以內（含已過期）才顯示 */
@@ -261,6 +289,15 @@ export default function OwnersManager({
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
 
+  // 下架面板：哪一張卡片打開、選了哪間房／原因／金額
+  const [delistFor, setDelistFor] = useState<string | null>(null);
+  const [delistDraft, setDelistDraft] = useState<DelistDraft>({ propertyId: "", reason: "self_sold", amount: "", note: "" });
+
+  // 快速搜尋的日期範圍
+  const [dateField, setDateField] = useState<DateFilterField>("contractEnd");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
   const [busy, setBusy] = useState(false);
   const [topMsg, setTopMsg] = useState<Msg | null>(null);
   const [cardMsg, setCardMsg] = useState<{ ownerId: string; msg: Msg } | null>(null);
@@ -278,6 +315,8 @@ export default function OwnersManager({
     else if (filter === "rented") list = list.filter((o) => o.properties.some((p) => p.status === "rented"));
     else if (filter === "stale") list = list.filter((o) => !o.lastContactAt || o.lastContactAt < staleBefore);
     else if (filter === "birthday") list = list.filter((o) => o.birthday && o.birthday.slice(5, 7) === thisMonth);
+
+    if (dateFrom || dateTo) list = list.filter((o) => ownerMatchesDateRange(o, dateField, dateFrom, dateTo));
 
     const q = query.trim();
     if (q) {
@@ -304,7 +343,7 @@ export default function OwnersManager({
       });
     }
     return list;
-  }, [owners, filter, query, staleBefore, thisMonth, contractSoonBy]);
+  }, [owners, filter, query, staleBefore, thisMonth, contractSoonBy, dateField, dateFrom, dateTo]);
 
   // ---------------------------------------------------------------- 共用
 
@@ -423,6 +462,94 @@ export default function OwnersManager({
     setPropEditing(null);
     say(ownerId, { kind: "ok", text: propertyId === "new" ? "已加一間房子" : "房子資料已更新" });
     router.refresh();
+  }
+
+  // ---------------------------------------------------------------- 下架
+
+  function startDelist(o: AdminOwner) {
+    const listing = o.properties.filter((p) => p.status === "listing");
+    setDelistFor(o.id);
+    setDelistDraft({ propertyId: listing[0]?.id ?? o.properties[0]?.id ?? "", reason: "self_sold", amount: "", note: "" });
+    setCardMsg(null);
+  }
+
+  async function submitDelist(ownerId: string) {
+    setBusy(true);
+    const r = await delistPropertyAction({ ...delistDraft, delistedAt: today });
+    setBusy(false);
+    if (!r.ok) {
+      say(ownerId, { kind: "err", text: r.error ?? "下架失敗" });
+      return;
+    }
+    setDelistFor(null);
+    say(ownerId, { kind: "ok", text: `已下架（${DELIST_REASON_LABEL[delistDraft.reason]}${delistDraft.amount ? `，${delistDraft.amount}` : ""}）` });
+    router.refresh();
+  }
+
+  function renderDelistPanel(o: AdminOwner) {
+    const def = DELIST_REASONS.find((d) => d.key === delistDraft.reason);
+    const candidates = o.properties.filter((p) => p.status !== "delisted");
+    return (
+      <div className={styles.subCard} style={{ marginTop: 12 }}>
+        <p className={styles.subCardTitle}>下架這間房子</p>
+        <div className={styles.form}>
+          <div className={styles.formGrid}>
+            <label style={{ gridColumn: "1 / -1" }}>
+              <span>哪一間</span>
+              <select value={delistDraft.propertyId} onChange={(e) => setDelistDraft((d) => ({ ...d, propertyId: e.target.value }))}>
+                {candidates.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {PROPERTY_STATUS_LABEL[p.status]}｜{p.community ? `${p.community}｜` : ""}
+                    {p.address}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>原因</span>
+              <select value={delistDraft.reason} onChange={(e) => setDelistDraft((d) => ({ ...d, reason: e.target.value as DelistReason }))}>
+                {DELIST_REASONS.map((d) => (
+                  <option key={d.key} value={d.key}>
+                    {d.label}
+                    {d.needsAmount ? "（填金額）" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {def?.needsAmount && (
+              <label>
+                <span>
+                  成交金額<em>必填</em>
+                </span>
+                <input
+                  type="text"
+                  value={delistDraft.amount}
+                  onChange={(e) => setDelistDraft((d) => ({ ...d, amount: e.target.value }))}
+                  placeholder="例：1,200 萬"
+                />
+              </label>
+            )}
+            <label style={{ gridColumn: "1 / -1" }}>
+              <span>備註</span>
+              <input
+                type="text"
+                value={delistDraft.note}
+                onChange={(e) => setDelistDraft((d) => ({ ...d, note: e.target.value }))}
+                placeholder={def?.key === "other" ? "寫一下是什麼原因" : "可留空"}
+              />
+            </label>
+          </div>
+          <div className={styles.formBtns}>
+            <button type="button" className={styles.primaryBtn} disabled={busy || !delistDraft.propertyId} onClick={() => submitDelist(o.id)}>
+              {busy ? "處理中…" : "確定下架"}
+            </button>
+            <button type="button" className={styles.plainBtn} disabled={busy} onClick={() => setDelistFor(null)}>
+              取消
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   async function removeProperty(ownerId: string, id: string) {
@@ -647,6 +774,17 @@ export default function OwnersManager({
             <label>
               <span>合約編號</span>
               <input type="text" value={propDraft.contractNo} onChange={(e) => setPropField("contractNo", e.target.value)} placeholder="委託契約書編號" />
+            </label>
+            <label>
+              <span>合約類型</span>
+              <select value={propDraft.contractType} onChange={(e) => setPropField("contractType", e.target.value)}>
+                <option value="">未選</option>
+                {CONTRACT_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {CONTRACT_TYPE_LABEL[t]}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
               <span>合約起日</span>
@@ -876,16 +1014,30 @@ export default function OwnersManager({
               </div>
             )}
           </div>
-          {o.phone ? (
-            <a className={styles.callBtn} href={`tel:${phoneDigits(o.phone)}`} onClick={(e) => e.stopPropagation()}>
-              <Icon name="mobile" size={15} /> {o.phone}
-            </a>
-          ) : (
-            <span className={styles.expandHint}>
-              <Icon name={open ? "close" : "eye"} size={16} />
-            </span>
-          )}
+          <div className={styles.sideCol} onClick={(e) => e.stopPropagation()}>
+            {o.phone ? (
+              <a className={styles.callBtn} href={`tel:${phoneDigits(o.phone)}`}>
+                <Icon name="mobile" size={15} /> {o.phone}
+              </a>
+            ) : (
+              <span className={styles.expandHint}>
+                <Icon name={open ? "close" : "eye"} size={16} />
+              </span>
+            )}
+            {/* 下架：灰掉而不是消失——沒有可下架的房子時他也要看得到這顆鈕在哪 */}
+            <button
+              type="button"
+              className={`${styles.iconBtn} ${styles.delistBtn}`}
+              disabled={busy || o.properties.every((p) => p.status === "delisted") || delistFor === o.id}
+              title={o.properties.length === 0 ? "還沒登記房子" : o.properties.every((p) => p.status === "delisted") ? "房子都已下架" : "下架一間房子"}
+              onClick={() => startDelist(o)}
+            >
+              <Icon name="ban" size={13} /> 下架
+            </button>
+          </div>
         </div>
+
+        {delistFor === o.id && renderDelistPanel(o)}
 
         {msg && <p className={`${styles.msg} ${styles.cardMsg} ${msg.kind === "ok" ? styles.msgOk : styles.msgErr}`}>{msg.text}</p>}
 
@@ -954,9 +1106,20 @@ export default function OwnersManager({
                       <li key={p.id} className={styles.prop}>
                         <div className={styles.propTop}>
                           <Chip tone={STATUS_TONE[p.status]}>{PROPERTY_STATUS_LABEL[p.status]}</Chip>
+                          {p.contractType && <Chip tone="info">{CONTRACT_TYPE_LABEL[p.contractType]}</Chip>}
                           <span>{p.address}</span>
-                          <ContractBadge end={p.contractEnd} today={today} soonBy={contractSoonBy} />
+                          {p.status !== "delisted" && <ContractBadge end={p.contractEnd} today={today} soonBy={contractSoonBy} />}
                         </div>
+                        {p.status === "delisted" && p.delistReason && (
+                          <div className={styles.propMeta}>
+                            <span>
+                              下架：{DELIST_REASON_LABEL[p.delistReason]}
+                              {p.delistAmount ? `，${p.delistAmount}` : ""}
+                              {p.delistNote ? `（${p.delistNote}）` : ""}
+                              {p.delistedAt ? `　${fmtDay(p.delistedAt)}` : ""}
+                            </span>
+                          </div>
+                        )}
                         {(p.contractNo || p.contractStart || p.contractEnd) && (
                           <div className={styles.propMeta}>
                             <span>
@@ -1087,6 +1250,30 @@ export default function OwnersManager({
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
+        <div className={styles.dateRow}>
+          <select value={dateField} onChange={(e) => setDateField(e.target.value as DateFilterField)} aria-label="日期範圍套用在">
+            {DATE_FILTER_FIELDS.map((f) => (
+              <option key={f.key} value={f.key}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} aria-label="從" />
+          <span>～</span>
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} aria-label="到" />
+          {(dateFrom || dateTo) && (
+            <button
+              type="button"
+              className={styles.textBtn}
+              onClick={() => {
+                setDateFrom("");
+                setDateTo("");
+              }}
+            >
+              清除
+            </button>
+          )}
+        </div>
         <div className={styles.toolbarBtns}>
           <div className={styles.pills}>
             {FILTERS.map((f) => (
@@ -1127,7 +1314,7 @@ export default function OwnersManager({
 
       {owners.length > 0 && (
         <p className={styles.count}>
-          {query.trim() || filter !== "all" ? `符合的 ${filtered.length} 位（共 ${owners.length} 位）` : `共 ${owners.length} 位屋主`}
+          {query.trim() || filter !== "all" || dateFrom || dateTo ? `符合的 ${filtered.length} 位（共 ${owners.length} 位）` : `共 ${owners.length} 位屋主`}
         </p>
       )}
 
