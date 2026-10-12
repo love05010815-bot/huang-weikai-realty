@@ -800,6 +800,9 @@ export default function OwnersManager({
       return (
         <li key={o.id} className={`${styles.card} ${styles.cardOpen}`}>
           <p className={styles.subCardTitle}>編輯屋主</p>
+          <p className={styles.count} style={{ marginBottom: 12 }}>
+            這裡只有屋主本人的資料。房子的地址、合約編號、合約起訖日是在卡片展開後的「房子」區按「加一間房子」登記，一位屋主可以掛好幾間。
+          </p>
           {renderOwnerForm(false)}
           {msg && <p className={`${styles.msg} ${styles.cardMsg} ${msg.kind === "ok" ? styles.msgOk : styles.msgErr}`}>{msg.text}</p>}
         </li>
@@ -828,6 +831,22 @@ export default function OwnersManager({
                 <span className={styles.stale}>還沒有聯絡紀錄</span>
               )}
             </div>
+            {o.properties.length === 0 && !open && (
+              <div className={styles.propPreview}>
+                <button
+                  type="button"
+                  className={styles.smallBtn}
+                  disabled={busy}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setExpandedId(o.id);
+                    startAddProperty(o.id);
+                  }}
+                >
+                  <Icon name="add" size={13} /> 加一間房子（地址、合約編號、起訖日）
+                </button>
+              </div>
+            )}
             {o.properties.length > 0 && (
               <div className={styles.propPreview}>
                 {o.properties.slice(0, open ? 0 : 2).map((p) => (
@@ -1073,6 +1092,9 @@ export default function OwnersManager({
       {ownerEditing === "new" && (
         <div className={styles.formCard}>
           <p className={styles.subCardTitle}>新增屋主</p>
+          <p className={styles.count} style={{ marginBottom: 12 }}>
+            先建屋主本人，按「建檔」之後會直接打開「加一間房子」，房子的地址、合約編號、起訖日在那裡填。
+          </p>
           {renderOwnerForm(true)}
         </div>
       )}
