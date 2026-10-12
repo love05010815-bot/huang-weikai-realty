@@ -13,7 +13,8 @@
  *     「抱歉，沒有上傳新的相片」整則發不出去 —— 見 uploadImages 的說明。
  * 🔴 不抓 Facebook 任何資料、不送任何東西到別的地方。
  *
- * Chrome 對「放到背景超過 5 分鐘」的分頁會凍住計時器，填表看起來會像卡住 —— 別切走，讓它在前景跑完。
+ * 計時全部走背景程式（sleep() → fbq:sleep）：Chrome 對看不到的分頁會把頁面計時器放慢，service worker 不會，
+ * 所以分頁切走、縮小、被蓋住都照跑（他 2026-10-12 要的「不用一直開著視窗」）；只有關掉分頁、電腦睡著才會停。
  */
 (() => {
   "use strict";
@@ -21,7 +22,6 @@
   window.__fbqRan = true;
   const FBQ = self.FBQ;
 
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const send = (type, extra) =>
     new Promise((resolve) => {
       try {
@@ -33,6 +33,22 @@
         resolve({ ok: false, error: String(e && e.message ? e.message : e) });
       }
     });
+  /**
+   * 睡 ms 毫秒。🔴 不用頁面的 setTimeout：Chrome 對看不到的分頁（切走、縮小、被蓋住、鎖螢幕）會把計時器放慢，
+   * 5 分鐘後一分鐘才動一下，整個流程看起來像卡住。他 2026-10-12 要「不用一直開著視窗也能自動發」，
+   * 改請背景程式（service worker，不看分頁可見不可見）計時再回話——訊息往返不受那個放慢影響。
+   * 每段最多 20 秒：MV3 的 service worker 閒置 30 秒會被回收，分段送讓它一直有事做。背景沒回話就退回 setTimeout。
+   */
+  async function sleep(ms) {
+    let left = Math.max(0, Number(ms) || 0);
+    while (left > 0) {
+      const chunk = Math.min(left, 20000);
+      const t0 = Date.now();
+      const r = await send("fbq:sleep", { ms: chunk });
+      if (!r || !r.ok) await new Promise((res) => setTimeout(res, chunk));
+      left -= Math.max(chunk, Date.now() - t0);
+    }
+  }
 
   /* ───────── 面板 ───────── */
   let panel, listEl, btnRow, headEl;
@@ -169,6 +185,14 @@
     log("社團：" + (g.name || g.url), "fbq-strong");
 
     const report = (status, message) => send("fbq:report", { status, message });
+
+    // 這個社團剛才已經回報「發出去了」、分頁卻重新載入（倒數中按了 F5、Chrome 卸載再載入…）→ 絕不能再發一次，直接換下一個
+    if (job.doneStatus) {
+      log("這個社團剛才已經發出去了（分頁重新載入過），不會再發一次，直接換下一個。", "fbq-ok");
+      const r = await send("fbq:next", { status: job.doneStatus, message: job.doneStatus === "pending" ? "自動發佈，等待審核" : "自動發佈" });
+      if (r.done) finishScreen(r.reason);
+      return;
+    }
 
     // 換下一個 / 跳過 / 停止（先掛上，讓使用者隨時能停）
     const controls = (canNext) =>
@@ -559,27 +583,23 @@
     return "unknown";
   }
 
-  /** 自動模式換下一個社團前先等一下：面板倒數，可以立刻換或停止 */
-  function countdown(sec) {
-    return new Promise((resolve) => {
-      let left = Math.max(0, Math.round(sec));
-      let timer = null;
-      const finish = (v) => {
-        clearInterval(timer);
-        resolve(v);
-      };
-      const draw = () =>
-        buttons([
-          { label: "立刻換下一個（" + left + " 秒後自動換）", primary: true, onClick: () => finish("next") },
-          { label: "停止全部", danger: true, onClick: () => finish("stop") },
-        ]);
-      draw();
-      timer = setInterval(() => {
-        left -= 1;
-        if (left <= 0) finish("next");
-        else draw();
-      }, 1000);
-    });
+  /** 自動模式換下一個社團前先等一下：面板倒數，可以立刻換或停止。用 sleep()（走背景計時），分頁在背景也照樣數。 */
+  async function countdown(sec) {
+    let left = Math.max(0, Math.round(sec));
+    let choice = "";
+    const draw = () =>
+      buttons([
+        { label: "立刻換下一個（" + left + " 秒後自動換）", primary: true, onClick: () => (choice = "next") },
+        { label: "停止全部", danger: true, onClick: () => (choice = "stop") },
+      ]);
+    draw();
+    while (left > 0 && !choice) {
+      await sleep(1000);
+      if (choice) break;
+      left -= 1;
+      if (left > 0) draw();
+    }
+    return choice || "next";
   }
 
   /* ───────── 發文身分 ───────── */

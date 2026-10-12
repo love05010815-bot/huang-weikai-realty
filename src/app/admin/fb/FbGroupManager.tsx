@@ -904,7 +904,7 @@ export default function FbGroupManager({
                           ? `每次隨機等 ${Math.min(settings.autoGapMin, settings.autoGapMax)}～${Math.max(settings.autoGapMin, settings.autoGapMax)} 秒`
                           : `等 ${settings.autoGapSec} 秒`}
                         換下一個社團，發完到「發佈紀錄」檢查。
-                        身分對不上、文案沒填完整、圖片沒上傳好、Facebook 說不能發——這幾種會停下來等你，不會硬發。那個 Facebook 視窗要留在前面，別縮小或切走。
+                        身分對不上、文案沒填完整、圖片沒上傳好、Facebook 說不能發——這幾種會停下來等你，不會硬發。那個 Facebook 分頁可以切走或縮小去做別的事（換社團時也不會再把它搶到最前面），但別關掉它、電腦別睡著。
                       </>
                     ) : (
                       <>外掛填好會停下來等你自己按「發佈」。想讓它自己按，到「設定」打開「自動按發佈」。</>

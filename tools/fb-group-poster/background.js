@@ -14,6 +14,8 @@
  *
  * MV3 的 service worker 會被閒置回收，所以不在背景裡做「等 N 秒」這種長時間等待 ——
  * 社團之間的節奏由使用者自己按「下一個社團」（半自動）或 content.js 在分頁裡倒數（自動模式）控制。每日上限則用日期計數擋。
+ * 🔵 但 content.js 的每一次「睡幾毫秒」都是送 fbq:sleep 來這裡計時（最多 25 秒一段）：分頁看不到時 Chrome 會把
+ *    頁面的 setTimeout 放慢，service worker 不會，所以他可以把 FB 分頁切走、縮小、蓋住照發（2026-10-12 他要的）。
  */
 const JOB_KEY = "fbq:job"; // chrome.storage.session：關瀏覽器就沒了（含廣告內容）
 const PROGRESS_KEY = "fbq:progress"; // chrome.storage.local：後台畫面讀這個
@@ -100,13 +102,20 @@ async function openGroup(job) {
   const g = job.groups[job.index];
   if (job.tabId != null) {
     try {
-      await chrome.tabs.update(job.tabId, { url: g.url, active: true });
+      // 不帶 active:true：換社團時不把分頁搶到最前面，他可以在別的分頁做事
+      // （content.js 的計時走 fbq:sleep，分頁在背景照跑——他 2026-10-12 要的「不用一直開著視窗」）
+      await chrome.tabs.update(job.tabId, { url: g.url, autoDiscardable: false });
       return;
     } catch {
       /* 分頁被關了，改開新的 */
     }
   }
+  // 第一個社團照舊開在前面讓他看到開始跑。autoDiscardable:false＝Chrome 省記憶體時不准把這個分頁卸載
+  // （卸載再載入會重做這個社團；fbq:current 另有 doneStatus 擋重複發，雙保險）
   const tab = await chrome.tabs.create({ url: g.url, active: true });
+  try {
+    await chrome.tabs.update(tab.id, { autoDiscardable: false });
+  } catch {}
   job.tabId = tab.id;
   await saveJob(job);
 }
@@ -119,6 +128,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .catch((e) => sendResponse({ ok: false, error: String(e && e.message ? e.message : e) }));
     return true;
   };
+
+  // 社團頁 content.js 的「等幾秒」全部走這裡：分頁看不到時（切走、縮小、被蓋住、鎖螢幕）Chrome 會把頁面的
+  // setTimeout 放慢到一分鐘一次，service worker 不會。每次最多 25 秒（content.js 分成 20 秒一段送，
+  // MV3 的 service worker 閒置 30 秒才會被回收，分段送讓它一直有事做）。
+  if (msg.type === "fbq:sleep") {
+    const ms = Math.min(Math.max(0, Number(msg.ms) || 0), 25000);
+    setTimeout(() => sendResponse({ ok: true }), ms);
+    return true;
+  }
 
   // 後台 → 開工
   if (msg.type === "fbq:launch") {
@@ -180,9 +198,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (!job) return { ok: true, job: null };
       if (sender.tab && job.tabId != null && sender.tab.id !== job.tabId) return { ok: true, job: null }; // 別的 FB 分頁不理它
       const daily = await getDaily(job.identity ? job.identity.name : job.pageName);
+      // 這個社團已經回報「發出去了」但還沒換下一個（自動模式倒數中分頁被重新載入）→ 告訴 content.js 別再發一次
+      const results = (await chrome.storage.local.get(PROGRESS_KEY))[PROGRESS_KEY]?.results || [];
+      const prev = results[job.index];
+      const doneStatus = prev && (prev.status === "posted" || prev.status === "pending") ? prev.status : "";
       return {
         ok: true,
         job: {
+          doneStatus,
           identity: job.identity || { name: job.pageName, kind: "page" },
           pageName: job.pageName,
           locale: job.locale,
@@ -277,6 +300,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       const locale = msg.locale === "en" ? "en" : "zh-TW";
       await chrome.storage.local.set({ [SCAN_KEY]: { status: "scanning", found: 0, groups: [], at: Date.now() } });
       const tab = await chrome.tabs.create({ url: JOINED_URL, active: true });
+      try {
+        await chrome.tabs.update(tab.id, { autoDiscardable: false });
+      } catch {}
       await chrome.storage.session.set({ [SCANJOB_KEY]: { tabId: tab.id, locale, startedAt: Date.now() } });
       return { ok: true };
     });
