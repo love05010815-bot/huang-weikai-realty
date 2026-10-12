@@ -868,3 +868,14 @@
     min-width: 0;
   }
 }
+
+/* 卡片正面房子那行的開價／底價（他要印在地址旁） */
+.pricePreview {
+  color: #a69a97;
+  white-space: nowrap;
+}
+
+.pricePreview b {
+  color: #f5c0c4;
+  font-weight: 700;
+}

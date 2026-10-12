@@ -1007,7 +1007,23 @@ export default function OwnersManager({
                   <div key={p.id}>
                     <Chip tone={STATUS_TONE[p.status]}>{PROPERTY_STATUS_LABEL[p.status]}</Chip>
                     <span>{p.community ? `${p.community}｜` : ""}{p.address}</span>
-                    <ContractBadge end={p.contractEnd} today={today} soonBy={contractSoonBy} />
+                    {/* 他要開價／底價直接印在卡片正面地址旁 */}
+                    {(p.askingPrice || p.floorPrice) && (
+                      <span className={styles.pricePreview}>
+                        {p.askingPrice && (
+                          <>
+                            開價 <b>{p.askingPrice}</b>
+                          </>
+                        )}
+                        {p.askingPrice && p.floorPrice && "｜"}
+                        {p.floorPrice && (
+                          <>
+                            底價 <b>{p.floorPrice}</b>
+                          </>
+                        )}
+                      </span>
+                    )}
+                    {p.status !== "delisted" && <ContractBadge end={p.contractEnd} today={today} soonBy={contractSoonBy} />}
                   </div>
                 ))}
                 {!open && o.properties.length > 2 && <div style={{ color: "#a69a97" }}>…還有 {o.properties.length - 2} 間，點開看</div>}
