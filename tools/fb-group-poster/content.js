@@ -243,13 +243,19 @@
       // FB 說照片沒傳上去時它自己寫「請再試一次」，所以最多按兩次；第二次之前要先確認照片還在，
       // 不然會發出一則沒有照片的廣告（2026-10-09 他遇到「抱歉，沒有上傳新的相片」那次）。
       let outcome = "";
+      const snippet = postSnippet(job.ad.text); // 發出去後動態牆上會多一篇含這幾個字的貼文（分頁在背景時視窗常關不掉，靠這個）
       for (let attempt = 1; attempt <= 2; attempt++) {
         const press = findPostButton(dialog, L) || btn;
         await sleep(800);
-        const baseline = pageProbe(); // 按之前頁面與彈出視窗上就有的字，之後不算數
+        const base = snapshotBeforePost(dialog); // 按之前頁面與彈出視窗上就有的字、動態牆上已有的貼文，之後不算數
         press.click();
         log(attempt === 1 ? "已替你按下「發佈」，等 Facebook 回應…" : "再按一次「發佈」…", "");
-        outcome = await waitPostOutcome(dialog, L, 30000, baseline);
+        outcome = await waitPostOutcome(dialog, L, 30000, base, snippet);
+        if (outcome === "unknown" && document.visibilityState === "hidden") {
+          // 分頁在背景：FB 的畫面更新會慢，再多等一陣子（動態牆那篇或審核訊息出現就算）
+          log("分頁在背景，Facebook 的畫面更新會慢一點，再等最多 60 秒看結果…", "");
+          outcome = await waitPostOutcome(dialog, L, 60000, base, snippet);
+        }
         if (outcome !== "uploadfail" || attempt === 2) break;
         log("⚠ Facebook 說照片沒傳上去。關掉錯誤訊息，等 8 秒再試一次…", "fbq-bad");
         closeAlert(dialog, L);
@@ -562,22 +568,68 @@
     return false;
   }
 
+  /** 比對用的文字：去掉表情符號、控制字元（FB 把表情符號換成 <img>，textContent 裡沒有它們）、把空白壓成一格 */
+  const normText = (s) =>
+    String(s || "")
+      .replace(/[\p{S}\p{C}\p{M}]/gu, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  /** 文案開頭那幾個字（第一行有內容的、去掉表情符號後取前 20 字）：發出去後動態牆上會多一篇含這幾個字的貼文 */
+  function postSnippet(text) {
+    const line =
+      String(text || "")
+        .split("\n")
+        .map((s) => normText(s))
+        .find((s) => s.length >= 4) || "";
+    return line.slice(0, 20);
+  }
+  /** 按「發佈」之前先記下：頁面與彈出視窗上已有的字、動態牆上已有的貼文（同一篇文案昨天發過的那篇不能算這次的） */
+  function snapshotBeforePost(dialog) {
+    return {
+      text: pageProbe(),
+      articles: new Set([...document.querySelectorAll('[role="article"]')].filter((a) => !dialog.contains(a))),
+    };
+  }
+
   /**
-   * 按下「發佈」之後看結果：視窗消失＝發出去了（頁面上同時出現「等待審核」字樣＝進審核）；
+   * 按下「發佈」之後看結果，三個訊號任一個都算：
+   *   ① 發文視窗消失＝發出去了（同時出現「等待審核」字樣＝進審核）
+   *   ② 🔵 動態牆上**新**多出一篇、內容含文案開頭那幾個字＝發出去了（連續 4 秒都在、也沒跳錯誤才算）——
+   *      分頁在背景時 FB 關視窗的動畫不會跑、視窗一直留著，光看①會等到超時說「不確定」，他 2026-10-12 縮小視窗就遇到
+   *   ③ 新出現「等待審核」字樣＝進審核（同樣不必等視窗關）
    * 出現「沒有上傳新的相片」類字＝照片沒傳上去（uploadfail，呼叫端會重試一次）；
-   * 出現「暫時被封鎖／違反守則」類字＝FB 拒絕；時間到視窗還在＝不確定（退回半自動讓他看）。
+   * 出現「暫時被封鎖／違反守則」類字＝FB 拒絕；時間到什麼都沒看到＝不確定（退回半自動讓他看）。
+   * base＝snapshotBeforePost() 的結果（舊呼叫端傳字串也吃）。
    */
-  async function waitPostOutcome(dialog, L, timeoutMs, baseline) {
+  async function waitPostOutcome(dialog, L, timeoutMs, base, snippet) {
     const deadline = Date.now() + timeoutMs;
     const pendWords = FBQ.words(L, "pendingApproval");
     const blockWords = FBQ.words(L, "blocked");
     const failWords = FBQ.words(L, "uploadFailed");
+    const baseText = typeof base === "string" ? base : (base && base.text) || "";
+    const baseArticles = (base && base.articles) || new Set();
+    const snip = String(snippet || "").trim();
+    const postInFeed = () =>
+      !!snip &&
+      [...document.querySelectorAll('[role="article"]')].some(
+        (a) => !baseArticles.has(a) && !dialog.contains(a) && normText(a.textContent).includes(snip),
+      );
+    let feedSeenAt = 0;
     while (Date.now() < deadline) {
       const body = pageProbe();
       // 上傳失敗要排在封鎖前面比：兩邊的字有機會同時出現，但「照片沒傳上去」是可以重試的，封鎖不是
-      if (freshAny(failWords, baseline, body)) return "uploadfail";
-      if (freshAny(blockWords, baseline, body)) return "blocked";
-      if (!document.contains(dialog) || dialog.offsetParent === null) return freshAny(pendWords, baseline, body) ? "pending" : "posted";
+      if (freshAny(failWords, baseText, body)) return "uploadfail";
+      if (freshAny(blockWords, baseText, body)) return "blocked";
+      const gone = !document.contains(dialog) || dialog.offsetParent === null;
+      const pend = freshAny(pendWords, baseText, body);
+      if (gone) return pend ? "pending" : "posted";
+      if (pend) return "pending";
+      if (postInFeed()) {
+        if (!feedSeenAt) feedSeenAt = Date.now();
+        else if (Date.now() - feedSeenAt >= 4000) return "posted";
+      } else {
+        feedSeenAt = 0;
+      }
       await sleep(500);
     }
     return "unknown";
