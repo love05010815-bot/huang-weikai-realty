@@ -253,8 +253,16 @@
         outcome = await waitPostOutcome(dialog, L, 30000, base, snippet);
         if (outcome === "unknown" && document.visibilityState === "hidden") {
           // 分頁在背景：FB 的畫面更新會慢，再多等一陣子（動態牆那篇或審核訊息出現就算）
-          log("分頁在背景，Facebook 的畫面更新會慢一點，再等最多 60 秒看結果…", "");
-          outcome = await waitPostOutcome(dialog, L, 60000, base, snippet);
+          log("分頁在背景，Facebook 的畫面更新會慢一點，再等最多 45 秒看結果…", "");
+          outcome = await waitPostOutcome(dialog, L, 45000, base, snippet);
+          if (outcome === "unknown" && document.visibilityState === "hidden") {
+            // 🔴 分頁在背景時 FB 根本不更新畫面：關視窗的動畫不跑、動態牆也不插新貼文（他 2026-10-12 兩次截圖，
+            //    貼文都已經在牆上「剛剛」，外掛卻等到超時）。貼文在按下去那一刻就送出了，這 75 秒裡也沒看到任何錯誤，
+            //    所以當作發出去了、繼續下一個；紀錄標「背景未確認」請他事後抽查。分頁在前景時照舊停下來問他。
+            log("分頁在背景時 Facebook 不更新畫面，外掛看不到確認。貼文在按下去那一刻就送出了、也沒看到錯誤，當作發出去、繼續下一個；紀錄會標「背景未確認」，發完請到發佈紀錄抽查。", "fbq-strong");
+            log("（視窗" + (document.contains(dialog) ? "還在" : "已關") + "、發文框" + (dialog.querySelector('[role="textbox"]') ? "還在" : "沒了") + "、發佈鈕" + (findPostButton(dialog, L) ? "還在" : "沒了") + "）", "");
+            outcome = "posted-unconfirmed";
+          }
         }
         if (outcome !== "uploadfail" || attempt === 2) break;
         log("⚠ Facebook 說照片沒傳上去。關掉錯誤訊息，等 8 秒再試一次…", "fbq-bad");
@@ -288,8 +296,11 @@
         controls(true);
         return;
       }
-      log(outcome === "pending" ? "已送出，等社團管理員審核。" : "已發佈 ✓", "fbq-ok");
-      await report(outcome, outcome === "pending" ? "自動發佈，等待審核" : "自動發佈");
+      const unconfirmed = outcome === "posted-unconfirmed";
+      if (unconfirmed) outcome = "posted";
+      const doneMsg = outcome === "pending" ? "自動發佈，等待審核" : unconfirmed ? "自動發佈（分頁在背景、沒看到畫面確認，請事後檢查）" : "自動發佈";
+      log(outcome === "pending" ? "已送出，等社團管理員審核。" : unconfirmed ? "當作已發佈（背景未確認）" : "已發佈 ✓", "fbq-ok");
+      await report(outcome, doneMsg);
       // 等多久：固定秒數，或在他設的範圍內每次隨機抽（他 10/07 要的「不固定的秒數間隔」）
       let gap = Number(job.autoGapSec) || 0;
       let gapNote = "";
@@ -307,7 +318,7 @@
       if (advancing) return;
       advancing = true;
       buttons([{ label: "換下一個社團中…", onClick: () => {} }]);
-      const r = await send("fbq:next", { status: outcome, message: outcome === "pending" ? "自動發佈，等待審核" : "自動發佈" });
+      const r = await send("fbq:next", { status: outcome, message: doneMsg });
       if (r.done) finishScreen(r.reason);
     }
 
