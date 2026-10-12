@@ -34,3 +34,52 @@ export function parseTags(raw: string): string[] {
 export function phoneDigits(raw: string | null | undefined): string {
   return (raw ?? "").replace(/\D+/g, "");
 }
+
+/** "YYYY-MM-DD" 往後推 n 天（可為負），一樣用字串算，不繞去本地時區 */
+export function addDays(day: string, days: number): string {
+  const d = new Date(`${day}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** 兩個 "YYYY-MM-DD" 差幾天（to - from），同一天是 0 */
+export function daysBetween(from: string, to: string): number {
+  const a = Date.UTC(+from.slice(0, 4), +from.slice(5, 7) - 1, +from.slice(8, 10));
+  const b = Date.UTC(+to.slice(0, 4), +to.slice(5, 7) - 1, +to.slice(8, 10));
+  return Math.round((b - a) / 86_400_000);
+}
+
+/** 合約到期提醒的一句話：「剩 N 天」「今天到期」「已過期 N 天」 */
+export function contractDueLabel(today: string, contractEnd: string): string {
+  const n = daysBetween(today, contractEnd);
+  if (n > 0) return `剩 ${n} 天`;
+  if (n === 0) return "今天到期";
+  return `已過期 ${-n} 天`;
+}
+
+export type ContractReminderItem = {
+  ownerName: string;
+  ownerPhone: string | null;
+  address: string;
+  community: string | null;
+  contractNo: string | null;
+  contractStart: string | null;
+  contractEnd: string;
+};
+
+/**
+ * 推給專員的 LINE 文字。幾筆合在一則裡，不要一筆一則——官方帳號每月免費額度只有 200 則。
+ * 連結帶 openExternalBrowser=1：他都從 LINE 點，沒這個參數會卡在 LINE 內建瀏覽器的 Google 登入。
+ */
+export function buildContractReminderText(today: string, items: ContractReminderItem[], siteUrl: string): string {
+  const fmt = (d: string | null) => (d ? d.replaceAll("-", "/") : "？");
+  const lines: string[] = [`📄 委託合約到期提醒（${items.length} 件）`, ""];
+  for (const it of items) {
+    lines.push(`▍${it.ownerName}${it.ownerPhone ? `｜${it.ownerPhone}` : ""}`);
+    lines.push(`${it.community ? `${it.community}｜` : ""}${it.address}`);
+    lines.push(`合約${it.contractNo ? ` ${it.contractNo}` : ""}：${fmt(it.contractStart)} ～ ${fmt(it.contractEnd)}（${contractDueLabel(today, it.contractEnd)}）`);
+    lines.push("");
+  }
+  lines.push(`查看屋主建檔：${siteUrl.replace(/\/$/, "")}/admin/owners?openExternalBrowser=1`);
+  return lines.join("\n");
+}

@@ -101,5 +101,41 @@ console.log("D. 欄位驗證");
   ok(!/[\uD800-\uDBFF]$/.test(O.cut("abc" + half, 10)), "cut 不留半個 emoji", O.cut("abc" + half, 10), "abc");
 }
 
+console.log("E. 合約欄位與到期提醒");
+const T = await import("../src/lib/owners-text.ts");
+{
+  const base = { ownerId: "x", address: "假路 1 號", community: "", kind: "", layout: "", area: "", floor: "", status: "listing", dealDate: "", price: "", note: "" };
+  const r1 = O.validatePropertyInput({ ...base, contractNo: "A-001", contractStart: "2026-01-01", contractEnd: "2026-12-31" });
+  ok(r1.ok && r1.value.contractNo === "A-001" && r1.value.contractEnd === "2026-12-31", "合約欄位通過", r1.ok, true);
+  const r2 = O.validatePropertyInput({ ...base, contractNo: "", contractStart: "2026-12-31", contractEnd: "2026-01-01" });
+  ok(!r2.ok, "迄日早於起日擋下", r2.ok, false);
+  const r3 = O.validatePropertyInput({ ...base, contractNo: "", contractStart: "", contractEnd: "2026/1/1" });
+  ok(!r3.ok, "迄日格式錯擋下", r3.ok, false);
+  const r4 = O.validatePropertyInput({ ...base, contractNo: "", contractStart: "", contractEnd: "" });
+  ok(r4.ok, "合約全空也可以", r4.ok, true);
+}
+{
+  ok(T.addDays("2026-10-12", 7) === "2026-10-19", "addDays +7", T.addDays("2026-10-12", 7), "2026-10-19");
+  ok(T.addDays("2026-12-28", 7) === "2027-01-04", "addDays 跨年", T.addDays("2026-12-28", 7), "2027-01-04");
+  ok(T.daysBetween("2026-10-12", "2026-10-19") === 7, "daysBetween 7", T.daysBetween("2026-10-12", "2026-10-19"), 7);
+  ok(T.contractDueLabel("2026-10-12", "2026-10-19") === "剩 7 天", "剩 7 天", T.contractDueLabel("2026-10-12", "2026-10-19"), "剩 7 天");
+  ok(T.contractDueLabel("2026-10-12", "2026-10-12") === "今天到期", "今天到期", T.contractDueLabel("2026-10-12", "2026-10-12"), "今天到期");
+  ok(T.contractDueLabel("2026-10-12", "2026-10-10") === "已過期 2 天", "已過期", T.contractDueLabel("2026-10-12", "2026-10-10"), "已過期 2 天");
+  const text = T.buildContractReminderText(
+    "2026-10-12",
+    [
+      { ownerName: "測試甲", ownerPhone: "0900-000-001", address: "假區假路 1 號", community: "假社區", contractNo: "A-001", contractStart: "2026-01-01", contractEnd: "2026-10-19" },
+      { ownerName: "測試乙", ownerPhone: null, address: "假區假路 2 號", community: null, contractNo: null, contractStart: null, contractEnd: "2026-10-12" },
+    ],
+    "https://weikaihouse.com/",
+  );
+  ok(text.startsWith("📄 委託合約到期提醒（2 件）"), "訊息標題含件數", text.split("\n")[0], "📄 委託合約到期提醒（2 件）");
+  ok(text.includes("測試甲｜0900-000-001") && text.includes("假社區｜假區假路 1 號"), "第一件：姓名電話社區地址", text.includes("測試甲｜0900-000-001"), true);
+  ok(text.includes("合約 A-001：2026/01/01 ～ 2026/10/19（剩 7 天）"), "第一件：合約行", text.includes("合約 A-001"), true);
+  ok(text.includes("合約：？ ～ 2026/10/12（今天到期）"), "第二件：沒編號沒起日", text.includes("合約：？"), true);
+  ok(text.endsWith("https://weikaihouse.com/admin/owners?openExternalBrowser=1"), "結尾連結帶 openExternalBrowser", text.slice(-40), "…?openExternalBrowser=1");
+  ok(text.length < 5000, "訊息長度在 LINE 上限內", text.length, "<5000");
+}
+
 console.log(pass ? "\n全部通過 ✅" : "\n有紅的 ❌");
 process.exit(pass ? 0 : 1);

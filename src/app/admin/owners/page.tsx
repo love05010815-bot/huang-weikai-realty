@@ -14,7 +14,7 @@ import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
 import { getAdminCheckArgs, isCurrentUserAdmin } from "@/lib/admin-check";
 import { listOwnersWithDetails } from "@/lib/owners";
 import { taipeiDay } from "@/lib/site-visits";
-import { STALE_CONTACT_DAYS } from "@/config/owners";
+import { CONTRACT_SOON_DAYS, STALE_CONTACT_DAYS } from "@/config/owners";
 import OwnersManager, { type AdminOwner } from "./OwnersManager";
 import styles from "./owners-admin.module.css";
 
@@ -68,6 +68,9 @@ export default async function OwnersAdminPage() {
         dealDate: p.dealDate,
         price: p.price,
         note: p.note,
+        contractNo: p.contractNo,
+        contractStart: p.contractStart,
+        contractEnd: p.contractEnd,
       })),
       contacts: o.contacts.map((c) => ({
         id: c.id,
@@ -82,11 +85,13 @@ export default async function OwnersAdminPage() {
 
   const today = taipeiDay();
   const staleBefore = minusDays(today, STALE_CONTACT_DAYS);
+  const contractSoonBy = minusDays(today, -CONTRACT_SOON_DAYS);
 
   const stats = {
     owners: owners.length,
     properties: owners.reduce((n, o) => n + o.properties.length, 0),
     listing: owners.reduce((n, o) => n + o.properties.filter((p) => p.status === "listing").length, 0),
+    contractSoon: owners.reduce((n, o) => n + o.properties.filter((p) => p.contractEnd && p.contractEnd <= contractSoonBy).length, 0),
     stale: owners.filter((o) => !o.lastContactAt || o.lastContactAt < staleBefore).length,
   };
 
@@ -124,12 +129,16 @@ export default async function OwnersAdminPage() {
               <span>委託中</span>
             </li>
             <li>
+              <b>{stats.contractSoon}</b>
+              <span>合約 {CONTRACT_SOON_DAYS} 天內到期</span>
+            </li>
+            <li>
               <b>{stats.stale}</b>
               <span>超過 {STALE_CONTACT_DAYS} 天沒聯絡</span>
             </li>
           </ul>
 
-          <OwnersManager owners={owners} today={today} staleBefore={staleBefore} />
+          <OwnersManager owners={owners} today={today} staleBefore={staleBefore} contractSoonBy={contractSoonBy} />
         </>
       )}
     </main>

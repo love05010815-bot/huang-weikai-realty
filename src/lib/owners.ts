@@ -70,6 +70,13 @@ export type PropertyRecord = {
   /** 開價／成交價，自由文字（1,280 萬）—— 不做運算、不統計，所以不用數字欄 */
   price: string | null;
   note: string | null;
+  /** 委託合約編號，自由文字 */
+  contractNo: string | null;
+  /** 委託合約起日／迄日 YYYY-MM-DD */
+  contractStart: string | null;
+  contractEnd: string | null;
+  /** 已經為哪一個迄日推過「到期前 7 天」提醒；迄日改了就重推 */
+  contractRemindedFor: string | null;
   createdAt: Date | null;
 };
 
@@ -115,6 +122,9 @@ export type PropertyInput = {
   dealDate: string;
   price: string;
   note: string;
+  contractNo: string;
+  contractStart: string;
+  contractEnd: string;
 };
 
 export type ContactLogInput = {
@@ -185,6 +195,23 @@ export async function ensureOwnerTables(): Promise<void> {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
+  // 2026-10-12 他要的「合約編號＋起訖日＋到期前 7 天通知」。CREATE TABLE IF NOT EXISTS 不會替既有的表
+  // 補欄位，先查再 ALTER（跟 dev_lead_contact.contacted_time 同一招）。
+  const cols = await db.$queryRawUnsafe<{ Field: string }[]>(`SHOW COLUMNS FROM owner_property`);
+  const have = new Set(cols.map((c) => c.Field));
+  if (!have.has("contract_no")) {
+    await db.$executeRawUnsafe(`ALTER TABLE owner_property ADD COLUMN contract_no VARCHAR(40) NULL AFTER note`);
+  }
+  if (!have.has("contract_start")) {
+    await db.$executeRawUnsafe(`ALTER TABLE owner_property ADD COLUMN contract_start CHAR(10) NULL AFTER contract_no`);
+  }
+  if (!have.has("contract_end")) {
+    await db.$executeRawUnsafe(`ALTER TABLE owner_property ADD COLUMN contract_end CHAR(10) NULL AFTER contract_start`);
+  }
+  if (!have.has("contract_reminded_for")) {
+    await db.$executeRawUnsafe(`ALTER TABLE owner_property ADD COLUMN contract_reminded_for CHAR(10) NULL AFTER contract_end`);
+  }
+
   ensured = true;
 }
 
@@ -235,6 +262,10 @@ type PropertyRow = {
   deal_date: string | null;
   price: string | null;
   note: string | null;
+  contract_no: string | null;
+  contract_start: string | null;
+  contract_end: string | null;
+  contract_reminded_for: string | null;
   created_at: Date | null;
 };
 
@@ -283,6 +314,10 @@ function toPropertyRecord(r: PropertyRow): PropertyRecord {
     dealDate: r.deal_date && DATE_RE.test(r.deal_date) ? r.deal_date : null,
     price: nn(r.price),
     note: nn(r.note),
+    contractNo: nn(r.contract_no),
+    contractStart: r.contract_start && DATE_RE.test(r.contract_start) ? r.contract_start : null,
+    contractEnd: r.contract_end && DATE_RE.test(r.contract_end) ? r.contract_end : null,
+    contractRemindedFor: r.contract_reminded_for || null,
     createdAt: r.created_at,
   };
 }
@@ -313,7 +348,8 @@ export async function listOwnersWithDetails(): Promise<OwnerWithDetails[]> {
        FROM owner_client ORDER BY updated_at DESC`,
   );
   const propertyRows = await db.$queryRawUnsafe<PropertyRow[]>(
-    `SELECT id, owner_id, address, community, kind, layout, area, floor, status, deal_date, price, note, created_at
+    `SELECT id, owner_id, address, community, kind, layout, area, floor, status, deal_date, price, note,
+            contract_no, contract_start, contract_end, contract_reminded_for, created_at
        FROM owner_property ORDER BY deal_date DESC, created_at DESC`,
   );
   const contactRows = await db.$queryRawUnsafe<ContactRow[]>(
@@ -415,9 +451,32 @@ export function validatePropertyInput(input: PropertyInput): Checked<PropertyInp
 
   const note = cut((input.note ?? "").trim(), 5000);
 
+  const contractNo = (input.contractNo ?? "").trim();
+  if (contractNo.length > 40) return { ok: false, error: "合約編號太長（最多 40 字）" };
+  const contractStart = (input.contractStart ?? "").trim();
+  if (!isBlankOrDate(contractStart)) return { ok: false, error: "合約起日格式不對（YYYY-MM-DD）" };
+  const contractEnd = (input.contractEnd ?? "").trim();
+  if (!isBlankOrDate(contractEnd)) return { ok: false, error: "合約迄日格式不對（YYYY-MM-DD）" };
+  if (contractStart && contractEnd && contractEnd < contractStart) return { ok: false, error: "合約迄日不能早於起日" };
+
   return {
     ok: true,
-    value: { ownerId, address, community, kind, layout, area, floor, status: status as PropertyStatus, dealDate, price, note },
+    value: {
+      ownerId,
+      address,
+      community,
+      kind,
+      layout,
+      area,
+      floor,
+      status: status as PropertyStatus,
+      dealDate,
+      price,
+      note,
+      contractNo,
+      contractStart,
+      contractEnd,
+    },
   };
 }
 
@@ -493,8 +552,9 @@ export async function createProperty(input: PropertyInput & { status: PropertySt
   await ensureOwnerTables();
   const id = randomUUID();
   await db.$executeRawUnsafe(
-    `INSERT INTO owner_property (id, owner_id, address, community, kind, layout, area, floor, status, deal_date, price, note)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO owner_property (id, owner_id, address, community, kind, layout, area, floor, status, deal_date, price, note,
+                                contract_no, contract_start, contract_end)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     input.ownerId,
     input.address,
@@ -507,6 +567,9 @@ export async function createProperty(input: PropertyInput & { status: PropertySt
     input.dealDate || null,
     input.price || null,
     input.note || null,
+    input.contractNo || null,
+    input.contractStart || null,
+    input.contractEnd || null,
   );
   // 房子有動，屋主也算有更新（清單是照屋主 updated_at 排的）
   await db.$executeRawUnsafe(`UPDATE owner_client SET updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?`, input.ownerId);
@@ -516,8 +579,13 @@ export async function createProperty(input: PropertyInput & { status: PropertySt
 export async function updateProperty(id: string, input: PropertyInput & { status: PropertyStatus }): Promise<void> {
   await ensureOwnerTables();
   await db.$executeRawUnsafe(
+    // contract_reminded_for 的那行要排在 contract_end = ? 之前：MySQL 的 SET 由左到右、後面的看得到前面改過的值。
+    // 迄日沒變就保留「已提醒」記號，迄日改了就清掉 → 新的到期日會再推一次提醒。
     `UPDATE owner_property
-        SET address = ?, community = ?, kind = ?, layout = ?, area = ?, floor = ?, status = ?, deal_date = ?, price = ?, note = ?
+        SET address = ?, community = ?, kind = ?, layout = ?, area = ?, floor = ?, status = ?, deal_date = ?, price = ?, note = ?,
+            contract_no = ?, contract_start = ?,
+            contract_reminded_for = CASE WHEN contract_end <=> ? THEN contract_reminded_for ELSE NULL END,
+            contract_end = ?
       WHERE id = ? AND owner_id = ?`,
     input.address,
     input.community || null,
@@ -529,6 +597,10 @@ export async function updateProperty(id: string, input: PropertyInput & { status
     input.dealDate || null,
     input.price || null,
     input.note || null,
+    input.contractNo || null,
+    input.contractStart || null,
+    input.contractEnd || null,
+    input.contractEnd || null,
     id,
     input.ownerId,
   );
@@ -592,6 +664,9 @@ export async function importOwners(rows: ImportRow[]): Promise<{ done: number; f
           dealDate: "",
           price: "",
           note: "",
+          contractNo: "",
+          contractStart: "",
+          contractEnd: "",
         });
       }
       done++;
@@ -600,4 +675,72 @@ export async function importOwners(rows: ImportRow[]): Promise<{ done: number; f
     }
   }
   return { done, failedAt: null, error: null };
+}
+
+// ---------------------------------------------------------------- 合約到期提醒
+
+export type ContractDueRow = {
+  propertyId: string;
+  ownerId: string;
+  ownerName: string;
+  ownerPhone: string | null;
+  address: string;
+  community: string | null;
+  contractNo: string | null;
+  contractStart: string | null;
+  contractEnd: string;
+  contractRemindedFor: string | null;
+};
+
+/**
+ * 迄日落在 [today, today+days] 的房子，連屋主一起撈。
+ * 不在 SQL 裡過濾「提醒過沒」—— 呼叫端自己比 contractRemindedFor，dry-run 才看得到全貌。
+ */
+export async function listContractsDue(today: string, until: string): Promise<ContractDueRow[]> {
+  await ensureOwnerTables();
+  const rows = await db.$queryRawUnsafe<
+    {
+      id: string;
+      owner_id: string;
+      owner_name: string;
+      owner_phone: string | null;
+      address: string;
+      community: string | null;
+      contract_no: string | null;
+      contract_start: string | null;
+      contract_end: string;
+      contract_reminded_for: string | null;
+    }[]
+  >(
+    `SELECT p.id, p.owner_id, o.name AS owner_name, o.phone AS owner_phone, p.address, p.community,
+            p.contract_no, p.contract_start, p.contract_end, p.contract_reminded_for
+       FROM owner_property p
+       JOIN owner_client o ON o.id = p.owner_id
+      WHERE p.contract_end IS NOT NULL AND p.contract_end >= ? AND p.contract_end <= ?
+      ORDER BY p.contract_end ASC, o.name ASC`,
+    today,
+    until,
+  );
+  return rows.map((r) => ({
+    propertyId: r.id,
+    ownerId: r.owner_id,
+    ownerName: r.owner_name,
+    ownerPhone: nn(r.owner_phone),
+    address: r.address,
+    community: nn(r.community),
+    contractNo: nn(r.contract_no),
+    contractStart: r.contract_start && DATE_RE.test(r.contract_start) ? r.contract_start : null,
+    contractEnd: r.contract_end,
+    contractRemindedFor: r.contract_reminded_for || null,
+  }));
+}
+
+/** 推完才標記，而且標的是「為哪個迄日推的」——迄日之後被改掉，updateProperty 會把它清掉再推 */
+export async function markContractReminded(propertyIds: string[]): Promise<void> {
+  if (propertyIds.length === 0) return;
+  await ensureOwnerTables();
+  await db.$executeRawUnsafe(
+    `UPDATE owner_property SET contract_reminded_for = contract_end WHERE id IN (${propertyIds.map(() => "?").join(",")})`,
+    ...propertyIds,
+  );
 }

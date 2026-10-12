@@ -36,3 +36,9 @@ export const OWNER_CONTACT_METHODS = ["電話", "LINE", "親訪", "店頭", "簡
 
 /** 聯絡紀錄要「多久沒聯絡」才算冷掉（清單上提醒用） */
 export const STALE_CONTACT_DAYS = 90;
+
+/** 委託合約到期前幾天推 LINE 給專員（他說的：到期前 7 天通知） */
+export const CONTRACT_REMIND_DAYS = 7;
+
+/** 清單上「合約快到期」篩選與統計看的天數（比通知寬，讓他提早看到） */
+export const CONTRACT_SOON_DAYS = 30;

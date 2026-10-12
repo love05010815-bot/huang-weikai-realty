@@ -17,6 +17,8 @@ import { useRouter } from "next/navigation";
 import { CHIP, type ChipTone } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
 import {
+  CONTRACT_REMIND_DAYS,
+  CONTRACT_SOON_DAYS,
   OWNER_CONTACT_METHODS,
   OWNER_SOURCES,
   PROPERTY_KINDS,
@@ -35,7 +37,7 @@ import {
   savePropertyAction,
 } from "@/lib/actions/owners";
 import { parseImportText } from "@/lib/owners-import";
-import { phoneDigits } from "@/lib/owners-text";
+import { contractDueLabel, daysBetween, phoneDigits } from "@/lib/owners-text";
 import styles from "./owners-admin.module.css";
 
 export type AdminProperty = {
@@ -50,6 +52,9 @@ export type AdminProperty = {
   dealDate: string | null;
   price: string | null;
   note: string | null;
+  contractNo: string | null;
+  contractStart: string | null;
+  contractEnd: string | null;
 };
 
 export type AdminContactLog = {
@@ -99,11 +104,12 @@ function fmtDay(d: string | null): string {
   return d ? d.replaceAll("-", "/") : "";
 }
 
-type Filter = "all" | "listing" | "sold" | "rented" | "stale" | "birthday";
+type Filter = "all" | "listing" | "contract" | "sold" | "rented" | "stale" | "birthday";
 
 const FILTERS: { key: Filter; label: string }[] = [
   { key: "all", label: "全部" },
   { key: "listing", label: "委託中" },
+  { key: "contract", label: `合約 ${CONTRACT_SOON_DAYS} 天內到期` },
   { key: "sold", label: "已售出" },
   { key: "rented", label: "已出租" },
   { key: "stale", label: `${STALE_CONTACT_DAYS} 天沒聯絡` },
@@ -159,6 +165,9 @@ type PropertyDraft = {
   dealDate: string;
   price: string;
   note: string;
+  contractNo: string;
+  contractStart: string;
+  contractEnd: string;
 };
 
 const EMPTY_PROPERTY: PropertyDraft = {
@@ -172,6 +181,9 @@ const EMPTY_PROPERTY: PropertyDraft = {
   dealDate: "",
   price: "",
   note: "",
+  contractNo: "",
+  contractStart: "",
+  contractEnd: "",
 };
 
 function toPropertyDraft(p: AdminProperty): PropertyDraft {
@@ -186,7 +198,19 @@ function toPropertyDraft(p: AdminProperty): PropertyDraft {
     dealDate: p.dealDate ?? "",
     price: p.price ?? "",
     note: p.note ?? "",
+    contractNo: p.contractNo ?? "",
+    contractStart: p.contractStart ?? "",
+    contractEnd: p.contractEnd ?? "",
   };
+}
+
+/** 合約到期標籤：迄日在 soonBy 以內（含已過期）才顯示 */
+function ContractBadge({ end, today, soonBy }: { end: string | null; today: string; soonBy: string }) {
+  if (!end || end > soonBy) return null;
+  const label = contractDueLabel(today, end);
+  if (end < today) return <Chip tone="danger">合約{label}</Chip>;
+  if (daysBetween(today, end) <= CONTRACT_REMIND_DAYS) return <Chip tone="danger">合約{label}</Chip>;
+  return <Chip tone="warn">合約{label}</Chip>;
 }
 
 type ContactDraft = { contactedAt: string; method: string; content: string };
@@ -204,12 +228,15 @@ export default function OwnersManager({
   owners,
   today,
   staleBefore,
+  contractSoonBy,
 }: {
   owners: AdminOwner[];
   /** 台北時間今天，YYYY-MM-DD */
   today: string;
   /** 最近聯絡日早於這天就算「久未聯絡」 */
   staleBefore: string;
+  /** 合約迄日在這天以內（含已過期）算「快到期」（today + CONTRACT_SOON_DAYS） */
+  contractSoonBy: string;
 }) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
@@ -238,6 +265,7 @@ export default function OwnersManager({
   const filtered = useMemo(() => {
     let list = owners;
     if (filter === "listing") list = list.filter((o) => o.properties.some((p) => p.status === "listing"));
+    else if (filter === "contract") list = list.filter((o) => o.properties.some((p) => p.contractEnd && p.contractEnd <= contractSoonBy));
     else if (filter === "sold") list = list.filter((o) => o.properties.some((p) => p.status === "sold"));
     else if (filter === "rented") list = list.filter((o) => o.properties.some((p) => p.status === "rented"));
     else if (filter === "stale") list = list.filter((o) => !o.lastContactAt || o.lastContactAt < staleBefore);
@@ -260,7 +288,7 @@ export default function OwnersManager({
           o.source,
           o.tags.join(" "),
           o.note ?? "",
-          ...o.properties.flatMap((p) => [p.address, p.community ?? "", p.note ?? ""]),
+          ...o.properties.flatMap((p) => [p.address, p.community ?? "", p.note ?? "", p.contractNo ?? ""]),
         ]
           .join(" ")
           .toLowerCase();
@@ -268,7 +296,7 @@ export default function OwnersManager({
       });
     }
     return list;
-  }, [owners, filter, query, staleBefore, thisMonth]);
+  }, [owners, filter, query, staleBefore, thisMonth, contractSoonBy]);
 
   // ---------------------------------------------------------------- 共用
 
@@ -600,6 +628,19 @@ export default function OwnersManager({
               <span>價格</span>
               <input type="text" value={propDraft.price} onChange={(e) => setPropField("price", e.target.value)} placeholder="開價 1,280 萬／成交 1,180 萬" />
             </label>
+            <label>
+              <span>合約編號</span>
+              <input type="text" value={propDraft.contractNo} onChange={(e) => setPropField("contractNo", e.target.value)} placeholder="委託契約書編號" />
+            </label>
+            <label>
+              <span>合約起日</span>
+              <input type="date" value={propDraft.contractStart} onChange={(e) => setPropField("contractStart", e.target.value)} />
+            </label>
+            <label>
+              <span>合約迄日</span>
+              <input type="date" value={propDraft.contractEnd} onChange={(e) => setPropField("contractEnd", e.target.value)} />
+              <small style={{ color: "#a69a97", fontSize: 11.5 }}>到期前 {CONTRACT_REMIND_DAYS} 天會推 LINE 提醒你</small>
+            </label>
             <label style={{ gridColumn: "1 / -1" }}>
               <span>備註</span>
               <textarea rows={2} value={propDraft.note} onChange={(e) => setPropField("note", e.target.value)} placeholder="屋況、鑰匙在哪、貸款銀行、買方是誰…" />
@@ -793,6 +834,7 @@ export default function OwnersManager({
                   <div key={p.id}>
                     <Chip tone={STATUS_TONE[p.status]}>{PROPERTY_STATUS_LABEL[p.status]}</Chip>
                     <span>{p.community ? `${p.community}｜` : ""}{p.address}</span>
+                    <ContractBadge end={p.contractEnd} today={today} soonBy={contractSoonBy} />
                   </div>
                 ))}
                 {!open && o.properties.length > 2 && <div style={{ color: "#a69a97" }}>…還有 {o.properties.length - 2} 間，點開看</div>}
@@ -878,7 +920,15 @@ export default function OwnersManager({
                         <div className={styles.propTop}>
                           <Chip tone={STATUS_TONE[p.status]}>{PROPERTY_STATUS_LABEL[p.status]}</Chip>
                           <span>{p.address}</span>
+                          <ContractBadge end={p.contractEnd} today={today} soonBy={contractSoonBy} />
                         </div>
+                        {(p.contractNo || p.contractStart || p.contractEnd) && (
+                          <div className={styles.propMeta}>
+                            <span>
+                              合約{p.contractNo ? ` ${p.contractNo}` : ""}：{fmtDay(p.contractStart) || "？"} ～ {fmtDay(p.contractEnd) || "？"}
+                            </span>
+                          </div>
+                        )}
                         <div className={styles.propMeta}>
                           {p.community && <span>{p.community}</span>}
                           {p.kind && <span>{p.kind}</span>}
