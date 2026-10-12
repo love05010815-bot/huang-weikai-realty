@@ -199,6 +199,8 @@
 }
 
 .card {
+  /* grid item 預設 min-width:auto，「最新回饋」那行 nowrap 會把整張卡撐出畫面（手機量到 419px > 375px） */
+  min-width: 0;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.03);
@@ -436,6 +438,12 @@
   display: grid;
   gap: 6px;
   font-size: 13px;
+  /* grid item 預設 min-width:auto，textarea 的固有寬（cols=20）會把格子撐出卡片外（手機最明顯） */
+  min-width: 0;
+}
+
+.form label > * {
+  min-width: 0;
 }
 
 .form label > span {
@@ -459,6 +467,8 @@
 .form select,
 .form textarea {
   width: 100%;
+  /* 預設是 content-box，100% 再加左右 padding 與邊框就會衝出卡片 26px（/admin/owners 量過同一個坑） */
+  box-sizing: border-box;
   padding: 9px 12px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
@@ -527,4 +537,195 @@
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.15);
   padding: 12px 14px;
+}
+
+/* ── 手機（<900px，跟 AdminShell 的抽屜斷點一致） ──
+   他在外面跑開發、站在屋主門口就要能查紀錄、補一筆接洽，所以：
+   按鈕要夠大能用拇指按、輸入框字級 16px 以上（iPhone 低於 16px 會自動放大畫面）、
+   操作完的訊息要浮在手邊而不是躲在頁面最上面。 */
+@media (max-width: 899px) {
+  .page {
+    padding: 16px 12px 88px;
+  }
+
+  .title {
+    font-size: 20px;
+  }
+
+  .sub {
+    font-size: 13px;
+  }
+
+  .stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .stats li {
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+
+  .stats b {
+    font-size: 22px;
+  }
+
+  .stats span {
+    font-size: 11.5px;
+  }
+
+  /* 工具列：篩選 pill 一排、搜尋框一整行、新增鈕一整行 */
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pills {
+    gap: 8px;
+  }
+
+  .pill {
+    padding: 8px 14px;
+    font-size: 13.5px;
+  }
+
+  .search {
+    flex: 1 1 100%;
+    max-width: none;
+    min-height: 44px;
+    box-sizing: border-box;
+    padding: 10px 14px;
+    font-size: 16px;
+  }
+
+  .toolbar > .primaryBtn {
+    width: 100%;
+    min-height: 46px;
+    font-size: 15px;
+  }
+
+  /* 卡片：三顆操作鈕自己一排、平分寬度、44px 高 */
+  .card {
+    padding: 14px;
+  }
+
+  .cardMain {
+    flex: 1 1 100%;
+  }
+
+  .cardBtns {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .cardBtns .iconBtn {
+    flex: 1 1 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 42px;
+    padding: 8px 6px;
+    font-size: 13.5px;
+  }
+
+  .metaRow {
+    gap: 8px 12px;
+  }
+
+  /* 手機一行塞不下幾個字，改成最多兩行再截 */
+  .feedbackPreview {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .metaRow a {
+    /* 電話是 tel: 連結，給它足夠的點擊高度 */
+    display: inline-block;
+    padding: 2px 0;
+  }
+
+  /* 時間線：日期那欄不再佔左邊 76px（屋主回饋只剩一半寬可讀），
+     改成第一行「日期 時間 ……… 刪除」、第二行結果＋回饋吃滿整寬 */
+  .timelineItem {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    gap: 6px 8px;
+  }
+
+  .timelineDate {
+    order: 0;
+    flex: 1 1 auto;
+    width: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 8px;
+  }
+
+  .timelineDel {
+    order: 1;
+  }
+
+  .timelineBody {
+    order: 2;
+    flex: 1 1 100%;
+  }
+
+  .timelineDel {
+    min-height: 32px;
+    padding: 4px 8px;
+    font-size: 12.5px;
+  }
+
+  /* 表單：單欄、欄位 16px 不觸發 iPhone 放大、按鈕拇指能按 */
+  .formGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .form input[type="text"],
+  .form input[type="url"],
+  .form input[type="tel"],
+  .form input[type="date"],
+  .form input[type="time"],
+  .form select,
+  .form textarea {
+    font-size: 16px;
+    padding: 11px 12px;
+    min-height: 46px;
+  }
+
+  .formBtns {
+    gap: 10px;
+  }
+
+  .formBtns .primaryBtn,
+  .formBtns .plainBtn {
+    flex: 1 1 0;
+    min-height: 46px;
+    font-size: 15px;
+  }
+
+  .formCard,
+  .addContactCard {
+    padding: 12px;
+  }
+
+  /* 存檔／新增紀錄的結果浮在畫面底部：表單在頁面很下面時，頂端那一行訊息等於沒訊息 */
+  .msg {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 16px;
+    z-index: 40;
+    margin: 0;
+    padding: 12px 14px;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(6px);
+  }
 }
