@@ -41,6 +41,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
+  // 登入失敗（帳號不在白名單等）改導到中文說明頁；內建的英文 Access Denied 他看不懂。
+  // 這是獨立的自訂路由（src/app/login-error），不是 NextAuth 自己的路徑，不會轉址迴圈。
+  pages: { error: "/login-error" },
   // ⚠️ 不要設 pages.signIn。那個欄位是用來指向「自訂登入頁」的；
   //    填 NextAuth 自己的內建路由 /api/auth/signin 會讓它一直轉址到自己，
   //    瀏覽器直接噴 ERR_TOO_MANY_REDIRECTS。留空就是用內建登入頁。
