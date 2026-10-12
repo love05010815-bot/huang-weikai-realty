@@ -33,6 +33,7 @@
     "check:lvr": "node --experimental-strip-types scripts/check-lvr.mjs",
     "check:area": "node --experimental-strip-types scripts/check-area-units.mjs",
     "check:favorites": "node --experimental-strip-types scripts/check-favorites.mjs",
+    "check:owners": "node --experimental-strip-types scripts/check-owners.mjs",
     "backfill:lvr": "node --experimental-strip-types --env-file=.env.local scripts/backfill-lvr.mjs"
   },
   "dependencies": {

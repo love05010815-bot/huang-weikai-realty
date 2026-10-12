@@ -34,6 +34,8 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { href: "/admin/listings", label: "精選好案", icon: "building" },
       // 談屋主專任委託的過程紀錄：地址／591／樂屋案件一筆，去談一次加一筆追蹤紀錄。表 dev_lead / dev_lead_contact。
       { href: "/admin/leads", label: "開發物件追蹤", icon: "target" },
+      // 接過的房子、屋主的聯絡資料統整在一處，手機也查得到。屋主一筆、底下掛房子與聯絡紀錄。表 owner_client / owner_property / owner_contact_log。
+      { href: "/admin/owners", label: "屋主建檔", icon: "users" },
       // 買方在 /match 留條件、預約看屋；物件從愛屋店網自動同步。表 match_listing / match_buyer / match_viewing。
       { href: "/admin/match", label: "買方配對", icon: "handshake" },
       // 跟「精選好案」是兩套資料：這裡管的是 /map 上掛在各建案底下的物件
