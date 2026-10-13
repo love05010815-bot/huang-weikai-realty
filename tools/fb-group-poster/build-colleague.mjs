@@ -12,6 +12,7 @@
  */
 import { build } from "esbuild";
 import { execFileSync } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -53,8 +54,24 @@ for (const f of FILES) {
 }
 // 同事版口味
 fs.writeFileSync(path.join(outDir, "flavor.js"), "// 同事版（build-colleague.mjs 產生）：工具列圖示開外掛自己的 app.html，貼授權碼才能用\nself.FBQ_FLAVOR = { colleague: true };\n");
-// manifest：拿掉後台那條 content script、標題改成同事版的
-const m = JSON.parse(JSON.stringify(manifest));
+// manifest：拿掉後台那條 content script、標題改成同事版的、塞固定的 key
+// 🔴 固定外掛編號（2026-10-13 他說「跟 591 一樣：同事不用覆蓋、直接下載檔案就能用、不影響電腦的綁定」）：
+//    Chrome 給未封裝外掛的編號本來是看資料夾路徑算的，manifest 有 "key"（公鑰）就改成看 key 算 → 同事把新版解到任何資料夾
+//    「載入未封裝項目」都是同一個外掛，chrome.storage（授權碼、安裝編號）與 IndexedDB（設定、社團、文案）原封不動。
+//    公鑰在 colleague-key.json（進 repo 沒關係），私鑰在 D:\Agent-os\secrets\（不進 repo，只有以後上 Web Store 保同編號才用）。
+//    只塞進同事包、不放 repo 的 manifest：他自己那份是直接從 repo 資料夾載入的，加了 key 會換編號、要移除重載一次。
+const ck = JSON.parse(fs.readFileSync(path.join(here, "colleague-key.json"), "utf8"));
+const idOf = (b64) =>
+  crypto
+    .createHash("sha256")
+    .update(Buffer.from(b64, "base64"))
+    .digest("hex")
+    .slice(0, 32)
+    .replace(/[0-9a-f]/g, (c) => String.fromCharCode(97 + parseInt(c, 16)));
+if (!ck.key || idOf(ck.key) !== ck.extensionId) throw new Error("colleague-key.json 的 key 跟 extensionId 對不上（別手改那個檔）");
+if (manifest.key) throw new Error("repo 的 manifest.json 不該有 key（他自己那份會換編號）：拿掉它，key 只放 colleague-key.json");
+const { manifest_version, name, version: ver, ...rest } = manifest;
+const m = { manifest_version, name, version: ver, key: ck.key, ...JSON.parse(JSON.stringify(rest)) };
 m.content_scripts = (m.content_scripts || []).filter((cs) => !(cs.matches || []).some((u) => /weikaihouse|vercel\.app|localhost/.test(u)));
 m.action = { default_title: "FB 社團廣告助手：點我打開" };
 fs.writeFileSync(path.join(outDir, "manifest.json"), JSON.stringify(m, null, 2) + "\n");
@@ -85,7 +102,7 @@ const handbookSrc = path.join(here, "手冊_同事版.html");
 if (fs.existsSync(handbookSrc)) fs.writeFileSync(handbookOut, fs.readFileSync(handbookSrc, "utf8").replaceAll("{{VERSION}}", version));
 
 const size = (p) => `${(fs.statSync(p).size / 1024).toFixed(0)} KB`;
-console.log(`✅ 同事版 v${version}`);
+console.log(`✅ 同事版 v${version}（外掛編號固定 ${ck.extensionId}）`);
 console.log(`   資料夾  ${outDir}`);
 console.log(`   zip     ${zipPath}（${size(zipPath)}）`);
 if (fs.existsSync(handbookOut)) console.log(`   手冊    ${handbookOut}`);

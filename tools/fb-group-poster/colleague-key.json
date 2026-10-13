@@ -1,0 +1,5 @@
+{
+  "note": "同事版外掛的固定公鑰（2026-10-13 產，私鑰在 D:/Agent-os/secrets/fb-group-poster-key.pem、不進 repo）。build-colleague.mjs 打包時塞進同事包的 manifest，外掛編號就固定、同事換資料夾載入新版不會變成另一個外掛。repo 這份 manifest 不放 key：他自己那份是直接從 repo 資料夾載入的，換編號要移除重載，沒必要。",
+  "extensionId": "mbpciiijjbjkaogedbcedilfhpkjcdap",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAieG5RMG4bThmg7VeSIig0Ezp5m0Jg5p0rdjWJOH0mZ+U/1z6jFEomUYPq0ub+s2X5f7o+3aYP9SUjI3YO+k82pt5eq1qcr+K/GctcyXiFcefz0wiwAMuGbQJntCvlz678M1u6mBII1ipJEdPNMCvjrzqcrcFws1NNwpRXrfankw6vIUCGUqMBK591n4xCBUWoeRCZsVbVtqxr0olbESsW2GwGZi7ptuaHRTrGkZ3DPjOOnUcmpIefoau+zPnlUA7iOQEMtE72FRAz9+0xyHMQTt2vd0VXLMu1Xuo4sAupYt1qTHGWbnMs0t+4Tb868kwHuc7YD9yidbKG59hdQToawIDAQAB"
+}
