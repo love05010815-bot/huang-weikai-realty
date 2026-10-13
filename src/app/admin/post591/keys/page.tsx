@@ -79,7 +79,7 @@ export default async function LicenseKeysPage() {
           新增時預設到期日 <b>{defaultExpires}</b>（可以改成任何日期；台灣時間當天結束）。
           <b>到期了不用換檔案</b>：改那一列的到期日、按「存」，同事重新打開外掛頁就恢復。要收回：按「停用」。
           {" "}
-          <Link href="/admin/post591">← 回廣告刊登助手</Link>
+          <Link href="/admin/post591">← 回591廣告刊登助手</Link>
         </p>
       </header>
       <KeysManager rows={rows} installs={installs} loadError={loadError} defaultExpires={defaultExpires} defaultMax={LICENSE_DEFAULT_MAX_INSTALLS} />
