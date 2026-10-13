@@ -729,3 +729,332 @@
     backdrop-filter: blur(6px);
   }
 }
+
+/* ══ 2026-10-13 重做：丟進來／區域／日期列／連結大按鈕 ══ */
+
+/* ── 丟進來 ── */
+.quickCard {
+  border: 1px solid rgba(242, 102, 102, 0.35);
+  border-radius: 14px;
+  background: rgba(242, 102, 102, 0.06);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.quickCard .sectionTitle {
+  margin: 0;
+  color: #f5c0c4;
+}
+
+.quickInput {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 72px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #f8f4f3;
+  font-size: 15px;
+  font-family: inherit;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.quickInput:focus {
+  outline: 2px solid #f26666;
+  outline-offset: 1px;
+  border-color: #f26666;
+}
+
+.quickRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.quickArea {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #d0c6c4;
+}
+
+.quickArea select {
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #f8f4f3;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.quickHint {
+  flex: 1 1 200px;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12.5px;
+  color: #a69a97;
+}
+
+.quickHint:empty {
+  display: none;
+}
+
+.quickHint span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* ── 區域 pill 列 ── */
+.areaBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.areaPill small {
+  margin-left: 4px;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* ── 區域分組標題 ── */
+.group {
+  margin-bottom: 22px;
+}
+
+.groupTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 900;
+  color: #f8f4f3;
+}
+
+.groupTitle small {
+  font-size: 12px;
+  font-weight: 700;
+  color: #a69a97;
+}
+
+.groupLink {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: #f5c0c4;
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.groupLink:hover {
+  text-decoration: underline;
+}
+
+/* ── 卡片正面 ── */
+.cardHead {
+  display: grid;
+  gap: 8px;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.noAddress {
+  color: #a69a97;
+  font-weight: 600;
+}
+
+.linkBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: start;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid rgba(242, 102, 102, 0.6);
+  border-radius: 10px;
+  background: rgba(242, 102, 102, 0.14);
+  color: #f8f4f3;
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.linkBtn:hover {
+  background: rgba(242, 102, 102, 0.26);
+}
+
+.linkHost {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f5c0c4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+
+.dates {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dates > div {
+  display: grid;
+  gap: 2px;
+  /* 手機是 flex-basis calc(50% - 4px) 兩欄：content-box 會把 padding 算在外面、擠成一欄 */
+  box-sizing: border-box;
+  min-width: 84px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.dates dt {
+  font-size: 11px;
+  font-weight: 700;
+  color: #a69a97;
+  letter-spacing: 0.04em;
+}
+
+.dates dd {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+  color: #d0c6c4;
+}
+
+.dates dd b {
+  font-size: 15px;
+  font-weight: 900;
+  color: #f8f4f3;
+}
+
+.dates dd small {
+  font-size: 11.5px;
+  color: #a69a97;
+}
+
+.notYet {
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.cardBtns {
+  margin-top: 10px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.cardBtns + .cardBtns {
+  margin-top: 6px;
+}
+
+.cardBtns .iconBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+}
+
+.accent {
+  color: #f8f4f3 !important;
+  border-color: rgba(242, 102, 102, 0.6) !important;
+  background: rgba(242, 102, 102, 0.16) !important;
+}
+
+.accent:hover:not(:disabled) {
+  background: rgba(242, 102, 102, 0.28) !important;
+}
+
+.checkRow {
+  display: flex !important;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkRow input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #f26666;
+}
+
+@media (max-width: 899px) {
+  .quickCard {
+    padding: 12px;
+  }
+
+  .quickInput {
+    font-size: 16px;
+  }
+
+  .quickRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* 直排之後 flex-basis 200px 會變成「高 200px」，提示區中間空一大塊 */
+  .quickHint {
+    flex: none;
+  }
+
+  .quickArea select {
+    flex: 1;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .quickRow > .primaryBtn {
+    width: 100%;
+    min-height: 46px;
+    font-size: 15px;
+  }
+
+  .areaBar {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .linkBtn {
+    justify-self: stretch;
+    justify-content: center;
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  .dates > div {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
+
+  .cardBtns .iconBtn {
+    flex: 1 1 calc(50% - 4px);
+    min-height: 44px;
+  }
+}

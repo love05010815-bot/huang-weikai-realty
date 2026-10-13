@@ -14,6 +14,7 @@ import {
   createLead,
   deleteContact,
   deleteLead,
+  setLeadOwnerFound,
   updateLead,
   validateContactInput,
   validateLeadInput,
@@ -51,6 +52,18 @@ export async function saveLeadAction(id: string | null, input: LeadInput): Promi
 
   revalidateAll();
   return { ok: true, id };
+}
+
+export async function setOwnerFoundAction(id: string, found: boolean): Promise<Result> {
+  if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
+  if (!id?.trim()) return { ok: false, error: "缺少物件 id" };
+  try {
+    await setLeadOwnerFound(id.trim(), Boolean(found));
+  } catch (e) {
+    return { ok: false, error: describeError(e) };
+  }
+  revalidateAll();
+  return { ok: true };
 }
 
 export async function deleteLeadAction(id: string): Promise<Result> {

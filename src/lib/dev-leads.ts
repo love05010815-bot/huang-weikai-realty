@@ -28,7 +28,8 @@
  */
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
-import { CONTACT_RESULT_OPTIONS, type LeadStatus } from "@/config/dev-leads";
+import { CONTACT_RESULT_OPTIONS, LEAD_AREAS, type LeadStatus } from "@/config/dev-leads";
+import { detectArea } from "@/lib/dev-leads-text";
 
 // ---------------------------------------------------------------- 型別
 
@@ -49,7 +50,12 @@ export type ContactRecord = {
 
 export type LeadRecord = {
   id: string;
+  /** 只丟連結、還沒填地址的物件是空字串 */
   address: string;
+  /** LEAD_AREAS 之一；沒分區是空字串（資料庫 NULL） */
+  area: string;
+  /** 他手動勾的「找到屋主了」 */
+  ownerFound: boolean;
   source: string;
   sourceUrl: string | null;
   ownerName: string | null;
@@ -64,12 +70,16 @@ export type LeadWithContacts = LeadRecord & {
   /** 新到舊 */
   contacts: ContactRecord[];
   status: LeadStatus;
+  /** 最早一筆紀錄的日期＝第一次聯繫；沒紀錄就是 null */
+  firstContactAt: string | null;
   lastContactAt: string | null;
   nextFollowUpAt: string | null;
 };
 
 export type LeadInput = {
   address: string;
+  area: string;
+  ownerFound: boolean;
   source: string;
   sourceUrl: string;
   ownerName: string;
@@ -133,6 +143,16 @@ export async function ensureDevLeadTables(): Promise<void> {
     await db.$executeRawUnsafe(`ALTER TABLE dev_lead_contact ADD COLUMN contacted_time CHAR(5) NULL AFTER contacted_at`);
   }
 
+  // 2026-10-13 補的：區域（依區分組、?area= 搜尋）與「找到屋主了」旗標。都是加欄位、不動既有資料。
+  const hasArea = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM dev_lead LIKE 'area'`);
+  if (hasArea.length === 0) {
+    await db.$executeRawUnsafe(`ALTER TABLE dev_lead ADD COLUMN area VARCHAR(20) NULL AFTER address`);
+  }
+  const hasOwnerFound = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM dev_lead LIKE 'owner_found'`);
+  if (hasOwnerFound.length === 0) {
+    await db.$executeRawUnsafe(`ALTER TABLE dev_lead ADD COLUMN owner_found TINYINT(1) NOT NULL DEFAULT 0 AFTER owner_phone`);
+  }
+
   /*
    * 同一天連續加兩筆紀錄（例如補登過去幾筆歷史接洽）時，`ORDER BY contacted_at DESC,
    * created_at DESC` 靠 created_at 分先後 —— 秒級精度撞在一起就會排序不穩，
@@ -152,6 +172,8 @@ export async function ensureDevLeadTables(): Promise<void> {
 type LeadRow = {
   id: string;
   address: string;
+  area: string | null;
+  owner_found: number | boolean | null;
   source: string | null;
   source_url: string | null;
   owner_name: string | null;
@@ -176,7 +198,10 @@ type ContactRow = {
 function toLeadRecord(r: LeadRow): LeadRecord {
   return {
     id: r.id,
-    address: r.address,
+    address: r.address?.trim() ?? "",
+    // 2026-10-13 之前建的沒有區域：讀的時候從地址認，認不出來才是「未分區」（存檔時才會真的寫進去）
+    area: r.area && (LEAD_AREAS as readonly string[]).includes(r.area) ? r.area : (detectArea(r.address ?? "") ?? ""),
+    ownerFound: Boolean(Number(r.owner_found ?? 0)),
     source: r.source ?? "",
     sourceUrl: r.source_url?.trim() ? r.source_url.trim() : null,
     ownerName: r.owner_name?.trim() ? r.owner_name.trim() : null,
@@ -219,7 +244,7 @@ export async function listLeadsWithContacts(): Promise<LeadWithContacts[]> {
   await ensureDevLeadTables();
 
   const leadRows = await db.$queryRawUnsafe<LeadRow[]>(
-    `SELECT id, address, source, source_url, owner_name, owner_phone, note, created_at, updated_at
+    `SELECT id, address, area, owner_found, source, source_url, owner_name, owner_phone, note, created_at, updated_at
        FROM dev_lead ORDER BY created_at DESC`,
   );
   const contactRows = await db.$queryRawUnsafe<ContactRow[]>(
@@ -239,10 +264,12 @@ export async function listLeadsWithContacts(): Promise<LeadWithContacts[]> {
     const lead = toLeadRecord(row);
     const contacts = byLead.get(lead.id) ?? [];
     const latest = contacts[0] ?? null;
+    const earliest = contacts.length > 0 ? contacts[contacts.length - 1] : null;
     return {
       ...lead,
       contacts,
       status: latest?.resultStatus ?? "new",
+      firstContactAt: earliest?.contactedAt ?? null,
       lastContactAt: latest?.contactedAt ?? null,
       nextFollowUpAt: latest?.nextFollowUpAt ?? null,
     };
@@ -257,17 +284,23 @@ function isBlankOrDate(s: string): boolean {
 
 export function validateLeadInput(input: LeadInput): { ok: true; value: LeadInput } | { ok: false; error: string } {
   const address = input.address?.trim() ?? "";
-  if (!address) return { ok: false, error: "地址不能空白" };
   if (address.length > 255) return { ok: false, error: "地址太長（最多 255 字）" };
-
-  const source = (input.source ?? "").trim();
-  if (source.length > 16) return { ok: false, error: "來源太長" };
 
   const sourceUrl = (input.sourceUrl ?? "").trim();
   if (sourceUrl && !/^https?:\/\//i.test(sourceUrl)) {
-    return { ok: false, error: "來源連結要以 http:// 或 https:// 開頭" };
+    return { ok: false, error: "連結要以 http:// 或 https:// 開頭" };
   }
-  if (sourceUrl.length > 500) return { ok: false, error: "來源連結太長（最多 500 字）" };
+  if (sourceUrl.length > 500) return { ok: false, error: "連結太長（最多 500 字）" };
+  // 他丟進來的是「一條連結」或「一個地址」，兩個至少要有一個；只有連結的話地址之後點開再補
+  if (!address && !sourceUrl) return { ok: false, error: "貼一條連結或打一個地址" };
+
+  const area = (input.area ?? "").trim();
+  if (area && !(LEAD_AREAS as readonly string[]).includes(area)) return { ok: false, error: "區域不在選項裡" };
+
+  const ownerFound = Boolean(input.ownerFound);
+
+  const source = (input.source ?? "").trim();
+  if (source.length > 16) return { ok: false, error: "來源太長" };
 
   const ownerName = (input.ownerName ?? "").trim();
   if (ownerName.length > 80) return { ok: false, error: "屋主姓名太長（最多 80 字）" };
@@ -278,7 +311,7 @@ export function validateLeadInput(input: LeadInput): { ok: true; value: LeadInpu
   const note = (input.note ?? "").trim();
   if (note.length > 2000) return { ok: false, error: "物件描述太長（最多 2000 字）" };
 
-  return { ok: true, value: { address, source, sourceUrl, ownerName, ownerPhone, note } };
+  return { ok: true, value: { address, area, ownerFound, source, sourceUrl, ownerName, ownerPhone, note } };
 }
 
 export function validateContactInput(
@@ -319,10 +352,12 @@ export async function createLead(input: LeadInput): Promise<string> {
   await ensureDevLeadTables();
   const id = randomUUID();
   await db.$executeRawUnsafe(
-    `INSERT INTO dev_lead (id, address, source, source_url, owner_name, owner_phone, note)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO dev_lead (id, address, area, owner_found, source, source_url, owner_name, owner_phone, note)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     input.address,
+    input.area || null,
+    input.ownerFound ? 1 : 0,
     input.source || "",
     input.sourceUrl || null,
     input.ownerName || null,
@@ -335,9 +370,11 @@ export async function createLead(input: LeadInput): Promise<string> {
 export async function updateLead(id: string, input: LeadInput): Promise<void> {
   await ensureDevLeadTables();
   await db.$executeRawUnsafe(
-    `UPDATE dev_lead SET address = ?, source = ?, source_url = ?, owner_name = ?, owner_phone = ?, note = ?
+    `UPDATE dev_lead SET address = ?, area = ?, owner_found = ?, source = ?, source_url = ?, owner_name = ?, owner_phone = ?, note = ?
       WHERE id = ?`,
     input.address,
+    input.area || null,
+    input.ownerFound ? 1 : 0,
     input.source || "",
     input.sourceUrl || null,
     input.ownerName || null,
@@ -345,6 +382,12 @@ export async function updateLead(id: string, input: LeadInput): Promise<void> {
     input.note || null,
     id,
   );
+}
+
+/** 卡片上一鍵切「找到屋主了／還沒找到」，不用開編輯表單 */
+export async function setLeadOwnerFound(id: string, found: boolean): Promise<void> {
+  await ensureDevLeadTables();
+  await db.$executeRawUnsafe(`UPDATE dev_lead SET owner_found = ? WHERE id = ?`, found ? 1 : 0, id);
 }
 
 /**

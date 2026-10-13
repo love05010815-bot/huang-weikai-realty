@@ -1,11 +1,13 @@
 /**
  * /admin/leads —— 開發物件追蹤後台
  *
- * 一筆「物件」＝一個地址或 591／樂屋案件，屋主還沒簽給你。每接洽一次記一筆
- * 追蹤紀錄：什麼時候去的、屋主怎麼回、下次什麼時候再約。
+ * 他從各處（591、樂屋、FB、路上看到的地址）把連結或地址丟進來，一筆一張卡；
+ * 卡片上一眼看到：丟進來的日期、第一次聯繫的日期、找到屋主沒、進度到哪，
+ * 連結直接一顆大按鈕點開。依區域分組，網址帶 ?area=清水區 就是那一區的清單。
  *
  * 純內部工具，沒有對外頁面吃這份資料，資料庫連不上也不要丟 500 白畫面。
  */
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { adminEmails } from "@/auth";
 import { CIS } from "@/app/admin/_components/cis";
@@ -38,6 +40,9 @@ export default async function LeadsAdminPage() {
   if (!email) redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent("/admin/leads")}`);
   if (!(await isCurrentUserAdmin())) return <AdminGateNotice kind="not_allowed" email={email} />;
 
+  const today = taipeiDay();
+  const dueSoonBy = addDays(today, FOLLOW_UP_SOON_DAYS);
+
   let leads: AdminLead[] = [];
   let loadError: string | null = null;
   try {
@@ -45,13 +50,18 @@ export default async function LeadsAdminPage() {
     leads = rows.map((l) => ({
       id: l.id,
       address: l.address,
+      area: l.area,
+      ownerFound: l.ownerFound,
       source: l.source,
       sourceUrl: l.sourceUrl,
       ownerName: l.ownerName,
       ownerPhone: l.ownerPhone,
       note: l.note,
       createdAt: iso(l.createdAt),
+      // 「丟進來的日期」用台北時間的日曆日，跟 contacted_at 同一種字串，畫面上才能並排比
+      createdDay: l.createdAt ? taipeiDay(l.createdAt) : null,
       status: l.status,
+      firstContactAt: l.firstContactAt,
       lastContactAt: l.lastContactAt,
       nextFollowUpAt: l.nextFollowUpAt,
       contacts: l.contacts.map((c) => ({
@@ -68,15 +78,12 @@ export default async function LeadsAdminPage() {
     loadError = e instanceof Error ? e.message : String(e);
   }
 
-  const today = taipeiDay();
-  const dueSoonBy = addDays(today, FOLLOW_UP_SOON_DAYS);
-
   const stats = {
     total: leads.length,
     untouched: leads.filter((l) => l.status === "new").length,
     dueSoon: leads.filter((l) => l.nextFollowUpAt && l.nextFollowUpAt <= dueSoonBy).length,
+    ownerFound: leads.filter((l) => l.ownerFound).length,
     signedUs: leads.filter((l) => l.status === "signed_us").length,
-    lost: leads.filter((l) => l.status === "signed_other" || l.status === "rejected").length,
   };
 
   return (
@@ -87,8 +94,7 @@ export default async function LeadsAdminPage() {
             <Icon name="target" /> 開發物件追蹤
           </h1>
           <p className={styles.sub} style={{ color: CIS.textMute }}>
-            有地址或 591／樂屋案件想去談屋主，先在這裡建一筆。每接洽一次加一筆紀錄，
-            下次什麼時候再約、屋主怎麼回，都留得住。
+            看到的連結或地址直接丟進來，自動分區。每張卡看得到丟進來的日期、第一次聯繫、找到屋主沒、進度到哪。
           </p>
         </div>
       </header>
@@ -108,23 +114,26 @@ export default async function LeadsAdminPage() {
             </li>
             <li>
               <b>{stats.untouched}</b>
-              <span>待開發</span>
+              <span>還沒聯繫</span>
             </li>
             <li>
               <b>{stats.dueSoon}</b>
               <span>{FOLLOW_UP_SOON_DAYS} 天內待追蹤</span>
             </li>
             <li>
+              <b>{stats.ownerFound}</b>
+              <span>找到屋主</span>
+            </li>
+            <li>
               <b>{stats.signedUs}</b>
               <span>已簽約（我方）</span>
             </li>
-            <li>
-              <b>{stats.lost}</b>
-              <span>已流失</span>
-            </li>
           </ul>
 
-          <LeadsManager leads={leads} today={today} dueSoonBy={dueSoonBy} />
+          {/* useSearchParams（?area=）要包 Suspense，不然 build 會嫌 */}
+          <Suspense fallback={null}>
+            <LeadsManager leads={leads} today={today} dueSoonBy={dueSoonBy} />
+          </Suspense>
         </>
       )}
     </main>
