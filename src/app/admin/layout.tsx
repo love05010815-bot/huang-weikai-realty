@@ -16,11 +16,11 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: `${OWNER.name}｜後台`,
-  // 2026-10-13 他要「加入主畫面」的圖示用凱心成家商標：白底方形（iOS 不吃透明）、
-  // 桌面上的名字用 apple-mobile-web-app-title。刻意不設 appleWebApp.capable——standalone 模式
-  // 在 iPhone 上是獨立的 cookie 空間，他會被迫再登入一次，而且 Google OAuth 在裡面會卡。
+  // 2026-10-13 他要「加入主畫面」的圖示用凱心成家商標：白底方形（iOS 不吃透明）。
+  // ⚠️ **只換圖示，不換桌面名稱**（他同日拍板）——所以這裡不設 appleWebApp.title，
+  //    iOS 會沿用上面的 title，跟以前一樣。也刻意不設 appleWebApp.capable：standalone 模式
+  //    在 iPhone 上是獨立的 cookie 空間，他會被迫再登入一次，而且 Google OAuth 在裡面會卡。
   icons: { apple: "/kaixing-touch-icon.png", icon: "/kaixing-touch-icon.png" },
-  appleWebApp: { title: "凱心成家" },
   // 後台不給搜尋引擎收錄。
   robots: { index: false, follow: false },
 };
