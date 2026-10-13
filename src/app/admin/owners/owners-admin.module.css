@@ -898,3 +898,172 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── 分頁：屋主資料／統計數據（2026-10-13 他要分成兩頁） ── */
+.tabBar {
+  max-width: 980px;
+  margin: 0 auto 14px;
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tabBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #a69a97;
+  padding: 10px 14px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tabBtn:hover {
+  color: #f8f4f3;
+}
+
+.tabOn {
+  color: #f8f4f3;
+  border-bottom-color: #f26666;
+}
+
+/* ── 統計數據分頁 ── */
+.statSection {
+  margin: 0 0 22px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.yearSelect {
+  box-sizing: border-box;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #f8f4f3;
+  font-size: 13.5px;
+  font-family: inherit;
+  min-height: 36px;
+}
+
+.barList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: 64px 1fr 36px auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.barRowZero {
+  opacity: 0.55;
+}
+
+.barLabel {
+  color: #d0c6c4;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  height: 18px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  display: flex;
+  min-width: 0;
+  transition: width 0.2s ease;
+}
+
+.barSeg {
+  display: block;
+  height: 100%;
+}
+
+.barSeg[data-seg="exclusive"],
+.legend i[data-seg="exclusive"] {
+  background: #f26666;
+}
+
+.barSeg[data-seg="general"],
+.legend i[data-seg="general"] {
+  background: #ee828a;
+  opacity: 0.75;
+}
+
+.barSeg[data-seg="untyped"],
+.legend i[data-seg="untyped"] {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.barNum {
+  text-align: right;
+  font-size: 15px;
+  font-weight: 900;
+  color: #f8f4f3;
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdown {
+  font-size: 12px;
+  color: #a69a97;
+  white-space: nowrap;
+}
+
+.legend {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: #a69a97;
+}
+
+.legend i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  vertical-align: -2px;
+  margin-right: 4px;
+}
+
+@media (max-width: 899px) {
+  .tabBar {
+    margin-left: -4px;
+    margin-right: -4px;
+  }
+
+  .tabBtn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* 手機：拆分文字換到下一行，條狀圖吃滿 */
+  .barRow {
+    grid-template-columns: 48px 1fr 32px;
+  }
+
+  .breakdown {
+    grid-column: 2 / -1;
+    white-space: normal;
+    margin-top: -2px;
+  }
+}

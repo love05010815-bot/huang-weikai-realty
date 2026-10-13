@@ -151,5 +151,34 @@ const T = await import("../src/lib/owners-text.ts");
   ok(text.length < 5000, "訊息長度在 LINE 上限內", text.length, "<5000");
 }
 
+console.log("F. 統計：委託日與年／月計數");
+const S = await import("../src/lib/owners-stats.ts");
+{
+  ok(S.pickCommissionDay({ contractStart: "2026-09-03", dealDate: "2026-10-01", createdAt: "2026-10-12T00:00:00.000Z" }).day === "2026-09-03", "委託日優先用合約起日", S.pickCommissionDay({ contractStart: "2026-09-03", dealDate: "2026-10-01", createdAt: "x" }), "2026-09-03");
+  ok(S.pickCommissionDay({ contractStart: null, dealDate: "2026-10-01", createdAt: "2026-10-12T00:00:00.000Z" }).daySource === "dealDate", "沒合約起日 → 委託／成交日", null, "dealDate");
+  const c = S.pickCommissionDay({ contractStart: null, dealDate: null, createdAt: "2026-10-12T05:00:00.000Z" });
+  ok(c.day === "2026-10-12" && c.daySource === "createdAt", "都沒有 → 建檔日（只取日期）", c, "2026-10-12/createdAt");
+  ok(S.pickCommissionDay({ contractStart: null, dealDate: null, createdAt: null }).day === null, "三個都沒有 → null", null, null);
+}
+{
+  const rows = [
+    { day: "2026-09-03", daySource: "contractStart", contractType: "exclusive", kind: "透天", status: "listing" },
+    { day: "2026-09-22", daySource: "contractStart", contractType: "general", kind: "大樓", status: "listing" },
+    { day: "2026-10-01", daySource: "contractStart", contractType: "general", kind: "土地", status: "delisted" },
+    { day: "2025-12-15", daySource: "contractStart", contractType: null, kind: "", status: "sold" },
+    { day: null, daySource: null, contractType: "general", kind: "", status: "listing" },
+  ];
+  const y = S.countByYear(rows);
+  ok(y.map((c) => c.key).join(",") === "2026,2025", "年度新到舊", y.map((c) => c.key), "2026,2025");
+  ok(y[0].total === 3 && y[0].exclusive === 1 && y[0].general === 2 && y[0].land === 1, "2026：3 件、專約 1、一般 2、土地 1", y[0], "3/1/2/1");
+  ok(y[1].total === 1 && y[1].untyped === 1, "2025：1 件、未選類型 1", y[1], "1/untyped 1");
+  const m = S.countByMonth(rows, "2026");
+  ok(m.length === 12 && m[8].total === 2 && m[9].total === 1 && m[0].total === 0, "2026 每月 12 格：9 月 2、10 月 1、1 月 0", m.map((c) => c.total), "[0,0,0,0,0,0,0,0,2,1,0,0]");
+  ok(m[8].key === "2026-09", "月 key 格式 YYYY-MM", m[8].key, "2026-09");
+  ok(S.yearsWithData(rows, "2026-10-13").join(",") === "2026,2025", "有資料的年份新到舊", S.yearsWithData(rows, "2026-10-13"), "2026,2025");
+  ok(S.yearsWithData([], "2026-10-13").join(",") === "2026", "沒資料回今年", S.yearsWithData([], "2026-10-13"), "2026");
+  ok(S.countByMonth(rows, "2026").reduce((n, c) => n + c.total, 0) === y[0].total, "每月加總＝該年總數", null, true);
+}
+
 console.log(pass ? "\n全部通過 ✅" : "\n有紅的 ❌");
 process.exit(pass ? 0 : 1);

@@ -6,6 +6,7 @@
  *
  * 純內部工具，沒有對外頁面吃這份資料，資料庫連不上也不要丟 500 白畫面。
  */
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { adminEmails } from "@/auth";
 import { CIS } from "@/app/admin/_components/cis";
@@ -15,7 +16,10 @@ import { getAdminCheckArgs, isCurrentUserAdmin } from "@/lib/admin-check";
 import { listOwnersWithDetails } from "@/lib/owners";
 import { taipeiDay } from "@/lib/site-visits";
 import { CONTRACT_SOON_DAYS, STALE_CONTACT_DAYS } from "@/config/owners";
+import { pickCommissionDay, type StatRow } from "@/lib/owners-stats";
 import OwnersManager, { type AdminOwner } from "./OwnersManager";
+import OwnersStats, { type StatCard } from "./OwnersStats";
+import OwnersTabs from "./OwnersTabs";
 import styles from "./owners-admin.module.css";
 
 export const dynamic = "force-dynamic";
@@ -106,6 +110,27 @@ export default async function OwnersAdminPage() {
     land: owners.reduce((n, o) => n + o.properties.filter((p) => p.status === "listing" && p.kind === "土地").length, 0),
   };
 
+  const cards: StatCard[] = [
+    { value: stats.owners, label: "位屋主" },
+    { value: stats.properties, label: "間房子" },
+    { value: stats.listing, label: "委託中" },
+    { value: stats.general, label: "一般約（委託中）" },
+    { value: stats.exclusive, label: "專約（委託中）" },
+    { value: stats.land, label: "土地（委託中）" },
+    { value: stats.contractSoon, label: `合約 ${CONTRACT_SOON_DAYS} 天內到期` },
+    { value: stats.stale, label: `超過 ${STALE_CONTACT_DAYS} 天沒聯絡` },
+  ];
+
+  // 年／月委託數量用的精簡資料：只有日期與分類，不帶姓名地址（傳到客戶端的東西愈少愈好）
+  const statRows: StatRow[] = owners.flatMap((o) =>
+    o.properties.map((p) => ({
+      ...pickCommissionDay({ contractStart: p.contractStart, dealDate: p.dealDate, createdAt: o.createdAt }),
+      contractType: p.contractType,
+      kind: p.kind,
+      status: p.status,
+    })),
+  );
+
   return (
     <main className={styles.page} style={{ background: CIS.bg, color: CIS.text, fontFamily: CIS.font }}>
       <header className={styles.head}>
@@ -125,44 +150,13 @@ export default async function OwnersAdminPage() {
           先確認 <code>DATABASE_URL</code> 有沒有設，以及 TiDB 是不是在睡。
         </p>
       ) : (
-        <>
-          <ul className={styles.stats}>
-            <li>
-              <b>{stats.owners}</b>
-              <span>位屋主</span>
-            </li>
-            <li>
-              <b>{stats.properties}</b>
-              <span>間房子</span>
-            </li>
-            <li>
-              <b>{stats.listing}</b>
-              <span>委託中</span>
-            </li>
-            <li>
-              <b>{stats.general}</b>
-              <span>一般約（委託中）</span>
-            </li>
-            <li>
-              <b>{stats.exclusive}</b>
-              <span>專約（委託中）</span>
-            </li>
-            <li>
-              <b>{stats.land}</b>
-              <span>土地（委託中）</span>
-            </li>
-            <li>
-              <b>{stats.contractSoon}</b>
-              <span>合約 {CONTRACT_SOON_DAYS} 天內到期</span>
-            </li>
-            <li>
-              <b>{stats.stale}</b>
-              <span>超過 {STALE_CONTACT_DAYS} 天沒聯絡</span>
-            </li>
-          </ul>
-
-          <OwnersManager owners={owners} today={today} staleBefore={staleBefore} contractSoonBy={contractSoonBy} />
-        </>
+        // OwnersTabs 用 useSearchParams（?tab=stats），要包 Suspense 不然 build 會嫌
+        <Suspense fallback={null}>
+          <OwnersTabs
+            list={<OwnersManager owners={owners} today={today} staleBefore={staleBefore} contractSoonBy={contractSoonBy} />}
+            stats={<OwnersStats cards={cards} rows={statRows} today={today} />}
+          />
+        </Suspense>
       )}
     </main>
   );
