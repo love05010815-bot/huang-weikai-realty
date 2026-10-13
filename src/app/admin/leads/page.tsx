@@ -8,6 +8,7 @@
  * 純內部工具，沒有對外頁面吃這份資料，資料庫連不上也不要丟 500 白畫面。
  */
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { adminEmails } from "@/auth";
 import { CIS } from "@/app/admin/_components/cis";
@@ -21,6 +22,18 @@ import LeadsManager, { type AdminLead } from "./LeadsManager";
 import styles from "./leads-admin.module.css";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * 2026-10-13 他要把這頁存到手機桌面、圖示用凱心成家商標、**名稱叫「開發追蹤」**。
+ * 圖示由 admin/layout.tsx 統一給（kaixing-touch-icon.png），這裡只改名稱：
+ * iOS 看 apple-mobile-web-app-title、Android Chrome 看 <title>，兩個都設成同一個字。
+ * 只有這一頁改名——其他後台頁他同日拍板維持原本的桌面名稱（見 layout.tsx），不要往上搬。
+ * 一樣不設 appleWebApp.capable（standalone 會被迫重登、Google OAuth 會卡）。
+ */
+export const metadata: Metadata = {
+  title: "開發追蹤",
+  appleWebApp: { title: "開發追蹤" },
+};
 
 /** "YYYY-MM-DD" 往後推 n 天，一樣用字串算，不繞去 DATE／時區 */
 function addDays(day: string, days: number): string {
