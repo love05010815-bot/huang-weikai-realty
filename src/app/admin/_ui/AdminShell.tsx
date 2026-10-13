@@ -100,9 +100,14 @@ export default function AdminShell({
 
         {ADMIN_NAV.map((group) => (
           <nav className={styles.group} key={group.title} aria-label={group.title}>
-            <div className={styles.groupTitle} style={{ color: CIS.textMute }}>
-              {group.title}
-            </div>
+            {/* 組名跟唯一那一項同字的組（LINE 機器人、留言收件匣）不畫組名，畫出來是重複的，
+                只留 .group 的上方間距把它跟前一組隔開；aria-label 照常給。
+                「買方」「開發物件」雖然也只有一項，但組名跟項目不同字、是他指定的分類，照畫。 */}
+            {group.items.length > 1 || group.items[0]?.label !== group.title ? (
+              <div className={styles.groupTitle} style={{ color: CIS.textMute }}>
+                {group.title}
+              </div>
+            ) : null}
             {group.items.map((item) => (
               <NavLink key={item.href} item={item} active={!item.external && isNavItemActive(pathname, item.href)} />
             ))}
