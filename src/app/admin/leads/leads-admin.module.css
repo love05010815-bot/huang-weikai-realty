@@ -101,40 +101,55 @@
   color: #fb7185;
 }
 
-/* ── 工具列：篩選 pill + 搜尋 + 新增 ── */
-.toolbar {
+/* ── 篩選列：區域下拉＋狀態下拉＋日曆鈕＋搜尋（2026-10-13 他說 pill 一大堆太亂，改下拉） ── */
+.filterRow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-.pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.pill {
+.filterSelect {
+  flex: 0 1 auto;
+  min-height: 38px;
+  padding: 6px 30px 6px 12px;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.03);
-  color: #d0c6c4;
   border-radius: 999px;
-  padding: 6px 13px;
-  font-size: 12.5px;
-  font-weight: 600;
+  background: rgba(0, 0, 0, 0.25);
+  color: #f8f4f3;
+  font-size: 13.5px;
+  font-weight: 700;
+  font-family: inherit;
+}
+
+.filterSelect:focus {
+  outline: 2px solid #f26666;
+  outline-offset: 1px;
+}
+
+.calBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #d0c6c4;
+  font-size: 13.5px;
+  font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
 }
 
-.pill:hover {
+.calBtn:hover {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.pillOn {
+.calBtnOn {
   border-color: #f26666;
   background: rgba(242, 102, 102, 0.16);
   color: #f8f4f3;
@@ -143,7 +158,9 @@
 .search {
   flex: 1 1 200px;
   min-width: 160px;
-  max-width: 280px;
+  max-width: 320px;
+  min-height: 38px;
+  box-sizing: border-box;
   padding: 8px 12px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
@@ -574,34 +591,24 @@
     font-size: 11.5px;
   }
 
-  /* 工具列：篩選 pill 一排、搜尋框一整行、新增鈕一整行 */
-  .toolbar {
-    flex-direction: column;
-    align-items: stretch;
+  /* 篩選列：兩個下拉並排、日曆鈕靠右、搜尋框一整行 */
+  .filterSelect {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px;
+    font-size: 16px;
   }
 
-  .pills {
-    gap: 8px;
-  }
-
-  .pill {
-    padding: 8px 14px;
-    font-size: 13.5px;
+  .calBtn {
+    min-height: 44px;
   }
 
   .search {
     flex: 1 1 100%;
     max-width: none;
     min-height: 44px;
-    box-sizing: border-box;
     padding: 10px 14px;
     font-size: 16px;
-  }
-
-  .toolbar > .primaryBtn {
-    width: 100%;
-    min-height: 46px;
-    font-size: 15px;
   }
 
   /* 卡片：三顆操作鈕自己一排、平分寬度、44px 高 */
@@ -816,18 +823,148 @@
   max-width: 100%;
 }
 
-/* ── 區域 pill 列 ── */
-.areaBar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+/* ── 日期篩選 chip ── */
+.dateChipRow {
   margin-bottom: 10px;
 }
 
-.areaPill small {
-  margin-left: 4px;
+.dateChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px 5px 12px;
+  border: 1px solid rgba(242, 102, 102, 0.5);
+  border-radius: 999px;
+  background: rgba(242, 102, 102, 0.14);
+  color: #f8f4f3;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dateChip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8f4f3;
+  cursor: pointer;
+}
+
+/* ── 小月曆（預設收著，按「日曆」才出現） ── */
+.calendar {
+  max-width: 360px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.calHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.calHead b {
+  flex: 1;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.calNav,
+.calToday {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #d0c6c4;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.calGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.calWeek {
+  text-align: center;
   font-size: 11px;
-  opacity: 0.7;
+  font-weight: 700;
+  color: #a69a97;
+  padding: 2px 0 4px;
+}
+
+.calDay {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #6f6563;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: default;
+  padding: 0;
+}
+
+.calDayHas {
+  color: #f8f4f3;
+  font-weight: 800;
+  border-color: rgba(242, 102, 102, 0.45);
+  background: rgba(242, 102, 102, 0.1);
+  cursor: pointer;
+}
+
+.calDayHas:hover {
+  background: rgba(242, 102, 102, 0.22);
+}
+
+.calDayOn {
+  background: #e00000 !important;
+  border-color: #e00000 !important;
+  color: #fff;
+}
+
+.calDayToday {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.calDay small {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1;
+  color: #f5c0c4;
+}
+
+.calDayOn small {
+  color: #fff;
+}
+
+.calHint {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  color: #a69a97;
 }
 
 /* ── 區域分組標題 ── */
@@ -1036,9 +1173,16 @@
     font-size: 15px;
   }
 
-  .areaBar {
-    gap: 8px;
-    margin-bottom: 12px;
+  .calendar {
+    max-width: none;
+  }
+
+  .calDay {
+    font-size: 15px;
+  }
+
+  .calDay small {
+    font-size: 10.5px;
   }
 
   .linkBtn {

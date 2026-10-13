@@ -106,10 +106,29 @@ function daysAgo(d: string, today: string): string {
   return `${n} 天前`;
 }
 
+/** "YYYY-MM" 往前／後推 n 個月，用字串算、不碰時區 */
+function shiftMonth(ym: string, n: number): string {
+  const y = +ym.slice(0, 4);
+  const m = +ym.slice(5, 7) - 1 + n;
+  const d = new Date(Date.UTC(y, m, 1));
+  return d.toISOString().slice(0, 7);
+}
+
+/** 月曆格子：前面補到星期日對齊的空格（null），然後 1..月底，每格是 "YYYY-MM-DD" */
+function monthCells(ym: string): (string | null)[] {
+  const y = +ym.slice(0, 4);
+  const m = +ym.slice(5, 7) - 1;
+  const first = new Date(Date.UTC(y, m, 1));
+  const daysInMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  const cells: (string | null)[] = Array.from({ length: first.getUTCDay() }, () => null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(`${ym}-${String(d).padStart(2, "0")}`);
+  return cells;
+}
+
 type Filter = "all" | "new" | "due" | "owner_unknown" | "owner_found" | "signed_us" | "lost";
 
 const FILTERS: { key: Filter; label: string }[] = [
-  { key: "all", label: "全部" },
+  { key: "all", label: "全部狀態" },
   { key: "new", label: "還沒聯繫" },
   { key: "due", label: "待追蹤" },
   { key: "owner_unknown", label: "還沒找到屋主" },
@@ -190,6 +209,10 @@ export default function LeadsManager({
 
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
+  // 小月曆：預設收著；點某一天就只看那天丟進來的物件
+  const [calOpen, setCalOpen] = useState(false);
+  const [calMonth, setCalMonth] = useState(() => today.slice(0, 7)); // YYYY-MM
+  const [dayFilter, setDayFilter] = useState<string | null>(null);
   const [quickText, setQuickText] = useState("");
   const [quickArea, setQuickArea] = useState<string | null>(null); // null＝跟著自動判定走
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -232,10 +255,18 @@ export default function LeadsManager({
     return list;
   }, [areaCounts, areaFilter]);
 
+  // 每一天丟進來幾筆（月曆上的數字）
+  const countByDay = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of leads) if (l.createdDay) m.set(l.createdDay, (m.get(l.createdDay) ?? 0) + 1);
+    return m;
+  }, [leads]);
+
   const filtered = useMemo(() => {
     let list = leads;
     if (areaFilter === AREA_NONE) list = list.filter((l) => !l.area);
     else if (areaFilter) list = list.filter((l) => l.area === areaFilter);
+    if (dayFilter) list = list.filter((l) => l.createdDay === dayFilter);
 
     if (filter === "new") list = list.filter((l) => l.status === "new");
     else if (filter === "due") list = list.filter((l) => l.nextFollowUpAt && l.nextFollowUpAt <= dueSoonBy);
@@ -261,7 +292,7 @@ export default function LeadsManager({
       if (aC !== bC) return aC > bC ? -1 : 1;
       return 0;
     });
-  }, [leads, areaFilter, filter, query, dueSoonBy]);
+  }, [leads, areaFilter, dayFilter, filter, query, dueSoonBy]);
 
   // 沒選區域時依區分組顯示（他要「依照區域做區分」）；選了某一區就是一條清單
   const groups = useMemo(() => {
@@ -826,48 +857,93 @@ export default function LeadsManager({
         </div>
       </section>
 
-      {/* ── 區域 ── */}
-      <div className={styles.areaBar}>
+      {/* ── 篩選：兩個下拉＋搜尋＋小月曆（他說按鈕一大堆太亂，改下拉） ── */}
+      <div className={styles.filterRow}>
+        <select className={styles.filterSelect} value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)} aria-label="區域">
+          <option value="">全部區域（{leads.length}）</option>
+          {areaPills.map((a) => (
+            <option key={a.key} value={a.key}>
+              {a.label}（{a.count}）
+            </option>
+          ))}
+        </select>
+        <select className={styles.filterSelect} value={filter} onChange={(e) => setFilter(e.target.value as Filter)} aria-label="狀態">
+          {FILTERS.map((f) => (
+            <option key={f.key} value={f.key}>
+              {f.label}
+            </option>
+          ))}
+        </select>
         <button
           type="button"
-          className={`${styles.pill} ${styles.areaPill} ${areaFilter === "" ? styles.pillOn : ""}`}
-          onClick={() => setAreaFilter("")}
+          className={`${styles.calBtn} ${calOpen || dayFilter ? styles.calBtnOn : ""}`}
+          onClick={() => setCalOpen((v) => !v)}
+          aria-expanded={calOpen}
         >
-          全部區域 <small>{leads.length}</small>
+          <Icon name="calendar" size={15} /> 日曆
         </button>
-        {areaPills.map((a) => (
-          <button
-            key={a.key}
-            type="button"
-            className={`${styles.pill} ${styles.areaPill} ${areaFilter === a.key ? styles.pillOn : ""}`}
-            onClick={() => setAreaFilter(a.key)}
-          >
-            {a.label} <small>{a.count}</small>
-          </button>
-        ))}
+        <input
+          className={styles.search}
+          type="text"
+          placeholder="搜尋地址／屋主／電話／連結"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
       </div>
 
-      <div className={styles.toolbar}>
-        <div className={styles.pills}>
-          {FILTERS.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              className={`${styles.pill} ${filter === f.key ? styles.pillOn : ""}`}
-              onClick={() => setFilter(f.key)}
-            >
-              {f.label}
+      {dayFilter && (
+        <div className={styles.dateChipRow}>
+          <span className={styles.dateChip}>
+            只看 {fmtDay(dayFilter)} 丟進來的（{countByDay.get(dayFilter) ?? 0}）
+            <button type="button" onClick={() => setDayFilter(null)} aria-label="取消日期篩選">
+              <Icon name="close" size={13} />
             </button>
-          ))}
-          <input
-            className={styles.search}
-            type="text"
-            placeholder="搜尋地址／區域／屋主／電話／連結"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
+          </span>
         </div>
-      </div>
+      )}
+
+      {calOpen && (
+        <div className={styles.calendar}>
+          <div className={styles.calHead}>
+            <button type="button" className={styles.calNav} onClick={() => setCalMonth(shiftMonth(calMonth, -1))} aria-label="上個月">
+              <Icon name="chevronLeft" size={16} />
+            </button>
+            <b>{calMonth.replace("-", " 年 ")} 月</b>
+            <button type="button" className={styles.calNav} onClick={() => setCalMonth(shiftMonth(calMonth, 1))} aria-label="下個月">
+              <Icon name="chevronRight" size={16} />
+            </button>
+            {calMonth !== today.slice(0, 7) && (
+              <button type="button" className={styles.calToday} onClick={() => setCalMonth(today.slice(0, 7))}>
+                回本月
+              </button>
+            )}
+          </div>
+          <div className={styles.calGrid}>
+            {["日", "一", "二", "三", "四", "五", "六"].map((w) => (
+              <span key={w} className={styles.calWeek}>
+                {w}
+              </span>
+            ))}
+            {monthCells(calMonth).map((day, i) =>
+              day ? (
+                <button
+                  key={day}
+                  type="button"
+                  className={`${styles.calDay} ${countByDay.has(day) ? styles.calDayHas : ""} ${dayFilter === day ? styles.calDayOn : ""} ${day === today ? styles.calDayToday : ""}`}
+                  disabled={!countByDay.has(day)}
+                  onClick={() => setDayFilter(dayFilter === day ? null : day)}
+                >
+                  <span>{Number(day.slice(8))}</span>
+                  {countByDay.has(day) && <small>{countByDay.get(day)}</small>}
+                </button>
+              ) : (
+                <span key={`e${i}`} />
+              ),
+            )}
+          </div>
+          <p className={styles.calHint}>有數字的日子代表那天丟了幾筆，點一下只看那天的。</p>
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <p className={styles.empty}>
