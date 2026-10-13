@@ -39,7 +39,7 @@ export default async function BuyerDetailPage({ params }: { params: Promise<{ id
     return shell(
       <div className={styles.wrap}>
         <a className={styles.back} href="/admin/match?tab=buyers">
-          ← 買方配對
+          ← 買方資料建檔
         </a>
         <p className={styles.muted}>找不到這位買方，可能已經被刪掉了。</p>
       </div>,
@@ -50,7 +50,7 @@ export default async function BuyerDetailPage({ params }: { params: Promise<{ id
     return shell(
       <div className={styles.wrap}>
         <a className={styles.back} href="/admin/match?tab=buyers">
-          ← 買方配對
+          ← 買方資料建檔
         </a>
         <p className={styles.muted}>這位是同事的客人，後台看不到（名單各管各的）。</p>
       </div>,

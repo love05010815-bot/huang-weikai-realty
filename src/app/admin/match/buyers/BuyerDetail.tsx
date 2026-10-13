@@ -73,7 +73,7 @@ export default function BuyerDetail({ buyer, brief, meta }: { buyer: DetailBuyer
   return (
     <div className={styles.wrap}>
       <Link className={styles.back} href="/admin/match?tab=buyers">
-        ← 買方配對
+        ← 買方資料建檔
       </Link>
 
       {flash && <p className={styles.msg}>{flash}</p>}

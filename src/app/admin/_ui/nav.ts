@@ -37,7 +37,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       // 接過的房子、屋主的聯絡資料統整在一處，手機也查得到。屋主一筆、底下掛房子與聯絡紀錄。表 owner_client / owner_property / owner_contact_log。
       { href: "/admin/owners", label: "屋主建檔", icon: "users" },
       // 買方在 /match 留條件、預約看屋；物件從愛屋店網自動同步。表 match_listing / match_buyer / match_viewing。
-      { href: "/admin/match", label: "買方配對", icon: "handshake" },
+      { href: "/admin/match", label: "買方資料建檔", icon: "handshake" },
       // 跟「精選好案」是兩套資料：這裡管的是 /map 上掛在各建案底下的物件
       { href: "/admin/map-listings", label: "建案地圖物件", icon: "map" },
       // 一個建案一份：複製指令 → 他自己的 ChatGPT → 貼回 JSON → 發佈到 /map/report/<id>，/map 詳情多一顆入口。表 project_report。

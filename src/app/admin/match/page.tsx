@@ -101,7 +101,7 @@ export default async function MatchAdminPage() {
   return (
     <main style={{ background: CIS.bg, color: CIS.text, fontFamily: CIS.font, minHeight: "100vh", padding: "24px 20px 60px" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>買方配對</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>買方資料建檔</h1>
         <p style={{ color: CIS.textMute, fontSize: 13, margin: "0 0 18px" }}>
           買方在 /match 留條件、預約看屋；物件每 {MATCH.syncIntervalMin} 分鐘從愛屋店網（storeid {MATCH.houseolStoreId}）自動同步。
         </p>

@@ -28,7 +28,7 @@ export default async function NewBuyerPage() {
     <main style={{ background: CIS.bg, color: CIS.text, fontFamily: CIS.font, minHeight: "100vh", padding: "20px 16px 40px" }}>
       <div className={styles.wrap}>
         <a className={styles.back} href="/admin/match?tab=buyers">
-          ← 買方配對
+          ← 買方資料建檔
         </a>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>新增買方</h1>
         <p style={{ color: CIS.textMute, fontSize: 13, margin: "0 0 16px", lineHeight: 1.6 }}>

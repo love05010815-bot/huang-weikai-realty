@@ -60,7 +60,7 @@ export type IntakeSaveResult =
 
 type Fail = { ok: false; error: string };
 
-const INVALID = "連結已失效，請到後台「買方配對 → 買方」重新拿一次快速建檔連結";
+const INVALID = "連結已失效，請到後台「買方資料建檔 → 買方」重新拿一次快速建檔連結";
 const NOT_FOUND = "找不到這位買方，可能已經被刪掉了";
 const OWNER_ONLY = "這個功能只有本人的連結才有";
 const describeError = (e: unknown): string => (e instanceof Error ? e.message : String(e));

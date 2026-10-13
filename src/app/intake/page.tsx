@@ -75,7 +75,7 @@ export default async function IntakePage({ searchParams }: { searchParams: Promi
         <div className={styles.invalid}>
           <strong>這個連結無效</strong>
           <br />
-          可能是後台重新產生過快速建檔連結。到後台「買方配對 → 買方」重新拿一次，再加到手機桌面。
+          可能是後台重新產生過快速建檔連結。到後台「買方資料建檔 → 買方」重新拿一次，再加到手機桌面。
         </div>
       </div>
     );
