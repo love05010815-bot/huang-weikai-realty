@@ -226,7 +226,7 @@
     function finishScreen(reason) {
       setTitle("FB 社團廣告助手（全部完成）");
       log(reason === "daily-limit" ? "已達今天的每日上限，剩下的社團今天不發。" : "這一批社團都處理完了 🎉", "fbq-ok");
-      log("回後台的『社團廣告發佈』看整批結果。", "");
+      log("回「FB社團廣告助手」頁看整批結果。", "");
       buttons([{ label: "關閉面板", onClick: () => panel.remove() }]);
     }
 
