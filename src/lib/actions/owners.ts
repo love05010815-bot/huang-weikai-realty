@@ -18,6 +18,7 @@ import {
   deleteProperty,
   delistProperty,
   importOwners,
+  listOwnerIdentities,
   updateOwner,
   updateProperty,
   validateContactLogInput,
@@ -30,6 +31,7 @@ import {
   type PropertyInput,
 } from "@/lib/owners";
 import { parseImportText } from "@/lib/owners-import";
+import { findDuplicateOwners, type DuplicateHit } from "@/lib/owners-text";
 
 type Result = { ok: boolean; error?: string };
 
@@ -41,11 +43,34 @@ function describeError(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-export async function saveOwnerAction(id: string | null, input: OwnerInput): Promise<Result & { id?: string }> {
+export type SaveOwnerResult = Result & {
+  id?: string;
+  /** 伺服器查到同名／同電話的既有屋主，而且呼叫端沒說 allowDuplicate → 沒存，把名單回去讓畫面問他 */
+  duplicates?: DuplicateHit[];
+};
+
+/**
+ * 同名警示（2026-10-13 他要的）：畫面上打名字時已經用它手上的清單即時提示，
+ * 這裡**再查一次資料庫**——他在手機建了、電腦那邊沒重整，手上的清單是舊的，只靠畫面會漏。
+ * 查到而且沒帶 allowDuplicate 就不存、回 duplicates；畫面把存檔鈕換成「仍要新增」再送一次（帶 true）。
+ * 真的會有兩位陳小姐，所以是警示不是擋死。
+ */
+export async function saveOwnerAction(
+  id: string | null,
+  input: OwnerInput,
+  opts: { allowDuplicate?: boolean } = {},
+): Promise<SaveOwnerResult> {
   if (!(await isCurrentUserAdmin())) return { ok: false, error: "權限不足" };
   const checked = validateOwnerInput(input);
   if (!checked.ok) return { ok: false, error: checked.error };
   try {
+    if (!opts.allowDuplicate) {
+      const dupes = findDuplicateOwners(await listOwnerIdentities(), checked.value.name, checked.value.phone, id);
+      if (dupes.length > 0) {
+        const names = dupes.map((d) => `${d.name}${d.phone ? `（${d.phone}）` : ""}`).join("、");
+        return { ok: false, error: `已有同名或同電話的屋主：${names}。確定不是同一個人再按一次「仍要新增」。`, duplicates: dupes };
+      }
+    }
     if (id) {
       await updateOwner(id, checked.value);
       revalidateAll();

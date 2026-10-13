@@ -1067,3 +1067,49 @@
     margin-top: -2px;
   }
 }
+
+/* ── 同名屋主警示（2026-10-13） ── */
+.dupWarn {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.dupWarn b {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+}
+
+.dupWarn ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #f8f4f3;
+}
+
+.dupWarn > span {
+  color: #d0c6c4;
+  font-size: 12.5px;
+}
+
+.dupReason {
+  color: #a69a97;
+  margin-left: 4px;
+}
+
+.importWarn td {
+  color: #fbbf24;
+}
+
+/* 民國年手打欄：拆不出日期時框變紅，字不清掉 */
+.form input.inputBad {
+  border-color: #fb7185;
+  outline: 2px solid rgba(251, 113, 133, 0.35);
+}

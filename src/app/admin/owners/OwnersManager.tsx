@@ -12,7 +12,7 @@
  * 操作結果的訊息印在**那一張卡片裡**，不是整頁最上面一行（長清單時整頁一行等於沒訊息）。
  * 只有「新增屋主」「整批匯入」這兩個不屬於任何卡片的動作，訊息才放在最上面。
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CHIP, type ChipTone } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
@@ -46,7 +46,7 @@ import {
   savePropertyAction,
 } from "@/lib/actions/owners";
 import { parseImportText } from "@/lib/owners-import";
-import { contractDueLabel, daysBetween, phoneDigits } from "@/lib/owners-text";
+import { contractDueLabel, daysBetween, findDuplicateOwners, parseDateInput, phoneDigits, toRoc } from "@/lib/owners-text";
 import styles from "./owners-admin.module.css";
 
 export type AdminProperty = {
@@ -119,6 +119,56 @@ function Chip({ tone, children }: { tone: ChipTone; children: React.ReactNode })
 
 function fmtDay(d: string | null): string {
   return d ? d.replaceAll("-", "/") : "";
+}
+
+/**
+ * 民國年日期欄（2026-10-13 他要生日與合約日期改民國）。
+ * 外面拿到的永遠是 ISO "YYYY-MM-DD"（資料庫照舊存西元）；框裡顯示、他打的都是民國，
+ * 打西元也收（parseDateInput 會認）。打到一半不合法只標紅、不清掉他打的字。
+ */
+function RocDateInput({
+  value,
+  onChange,
+  placeholder = "民國 115/03/31",
+}: {
+  value: string;
+  onChange: (iso: string) => void;
+  placeholder?: string;
+}) {
+  const [text, setText] = useState(() => toRoc(value));
+  const [bad, setBad] = useState(false);
+  // 外面換了值（例如按「編輯」帶入另一筆）才重設；自己打字造成的值變化不要蓋掉正在打的字
+  useEffect(() => {
+    if (parseDateInput(text) !== value) {
+      setText(toRoc(value));
+      setBad(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={text}
+      placeholder={placeholder}
+      className={bad ? styles.inputBad : undefined}
+      onChange={(e) => {
+        const t = e.target.value;
+        setText(t);
+        const iso = parseDateInput(t);
+        if (iso === null) {
+          setBad(t.trim() !== "");
+        } else {
+          setBad(false);
+          onChange(iso);
+        }
+      }}
+      onBlur={() => {
+        const iso = parseDateInput(text);
+        if (iso) setText(toRoc(iso));
+      }}
+    />
+  );
 }
 
 type Filter = "all" | "listing" | "contract" | "sold" | "rented" | "stale" | "birthday";
@@ -281,6 +331,8 @@ export default function OwnersManager({
 
   const [ownerEditing, setOwnerEditing] = useState<string | "new" | null>(null);
   const [ownerDraft, setOwnerDraft] = useState<OwnerDraft>(EMPTY_OWNER);
+  /** 同名警示：第一次按存檔只是「我看到了」，第二次才真的存（伺服器那邊也要帶 allowDuplicate） */
+  const [dupAck, setDupAck] = useState(false);
   const [propEditing, setPropEditing] = useState<PropertyEditing>(null);
   const [propDraft, setPropDraft] = useState<PropertyDraft>(EMPTY_PROPERTY);
   const [contactDraft, setContactDraft] = useState<ContactDraft>(() => emptyContactDraft(today));
@@ -349,6 +401,13 @@ export default function OwnersManager({
 
   function setOwnerField<K extends keyof OwnerDraft>(key: K, value: OwnerDraft[K]) {
     setOwnerDraft((d) => ({ ...d, [key]: value }));
+    // 名字或電話又改了，之前按過的「我看到了」作廢，重新比一次
+    if (key === "name" || key === "phone") setDupAck(false);
+  }
+
+  /** 畫面上即時比對（用手上的清單）；編輯時把自己排除 */
+  function liveDuplicates() {
+    return findDuplicateOwners(owners, ownerDraft.name, ownerDraft.phone, ownerEditing === "new" ? null : ownerEditing);
   }
   function setPropField<K extends keyof PropertyDraft>(key: K, value: PropertyDraft[K]) {
     setPropDraft((d) => ({ ...d, [key]: value }));
@@ -385,6 +444,7 @@ export default function OwnersManager({
   function startAddOwner() {
     setOwnerEditing("new");
     setOwnerDraft(EMPTY_OWNER);
+    setDupAck(false);
     setImportOpen(false);
     setTopMsg(null);
   }
@@ -392,19 +452,28 @@ export default function OwnersManager({
   function startEditOwner(o: AdminOwner) {
     setOwnerEditing(o.id);
     setOwnerDraft(toOwnerDraft(o));
+    setDupAck(false);
     setCardMsg(null);
   }
 
   async function saveOwner() {
     const wasNew = ownerEditing === "new";
     const targetId = wasNew ? null : ownerEditing;
+    // 手上清單就看得到同名：第一次按先停下來讓他看警示，再按一次才送
+    if (!dupAck && liveDuplicates().length > 0) {
+      setDupAck(true);
+      return;
+    }
     setBusy(true);
-    const r = await saveOwnerAction(targetId, ownerDraft);
+    const r = await saveOwnerAction(targetId, ownerDraft, { allowDuplicate: dupAck });
     setBusy(false);
     if (!r.ok) {
+      // 伺服器查到手上清單沒有的同名（別台裝置剛建的）：亮警示、下一次按就帶 allowDuplicate
+      if (r.duplicates && r.duplicates.length > 0) setDupAck(true);
       say(targetId, { kind: "err", text: r.error ?? "存檔失敗" });
       return;
     }
+    setDupAck(false);
     setOwnerEditing(null);
     if (wasNew && r.id) {
       say(null, { kind: "ok", text: `已建檔「${ownerDraft.name.trim()}」，下面可以直接加他的房子。` });
@@ -611,6 +680,22 @@ export default function OwnersManager({
 
   const importPreview = useMemo(() => (importOpen ? parseImportText(importText) : []), [importOpen, importText]);
   const importBad = importPreview.filter((r) => r.error).length;
+  /** 整批貼上的同名警示：跟現有屋主、或跟同一批前面幾行撞到。只標不擋（他看了預覽再決定）。 */
+  const importDupNote = useMemo(() => {
+    const notes = new Map<number, string>();
+    const seen: { id: string; name: string; phone: string | null; phone2: string | null }[] = [];
+    for (const r of importPreview) {
+      if (r.error) continue;
+      const hits = findDuplicateOwners(owners, r.owner.name, r.owner.phone);
+      const inBatch = findDuplicateOwners(seen, r.owner.name, r.owner.phone);
+      const parts: string[] = [];
+      if (hits.length) parts.push(`已有同${hits.some((h) => h.reason === "phone") ? "電話" : "名"}屋主 ${hits.map((h) => h.name).join("、")}`);
+      if (inBatch.length) parts.push(`跟第 ${inBatch.map((h) => h.id).join("、")} 行重複`);
+      if (parts.length) notes.set(r.line, parts.join("；"));
+      seen.push({ id: String(r.line), name: r.owner.name, phone: r.owner.phone, phone2: null });
+    }
+    return notes;
+  }, [importPreview, owners]);
 
   async function runImport() {
     setBusy(true);
@@ -630,6 +715,7 @@ export default function OwnersManager({
   // ---------------------------------------------------------------- 畫面片段
 
   function renderOwnerForm(isNew: boolean) {
+    const dupes = liveDuplicates();
     return (
       <div className={styles.form}>
         <div className={styles.formGrid}>
@@ -639,6 +725,30 @@ export default function OwnersManager({
             </span>
             <input type="text" value={ownerDraft.name} onChange={(e) => setOwnerField("name", e.target.value)} placeholder="例：王先生、陳小姐" />
           </label>
+          {dupes.length > 0 && (
+            <div className={styles.dupWarn} style={{ gridColumn: "1 / -1" }} role="alert">
+              <b>
+                <Icon name="warning" size={14} /> 已有 {dupes.length} 位{dupes.some((d) => d.reason === "phone") ? "同名或同電話" : "同名"}的屋主
+              </b>
+              <ul>
+                {dupes.map((d) => {
+                  const full = owners.find((o) => o.id === d.id);
+                  return (
+                    <li key={d.id}>
+                      {d.name}
+                      {d.phone ? `｜${d.phone}` : ""}
+                      {full ? `｜${full.properties.length} 間房子` : ""}
+                      {full?.properties[0] ? `｜${full.properties[0].address}` : ""}
+                      {d.reason === "phone" && <span className={styles.dupReason}>（電話相同）</span>}
+                    </li>
+                  );
+                })}
+              </ul>
+              <span>
+                如果是同一個人，請按「取消」、到他的卡片按「加一間房子」；確定是不同人再按「{isNew ? "仍要新增" : "仍要儲存"}」。
+              </span>
+            </div>
+          )}
           <label>
             <span>電話</span>
             <input type="tel" value={ownerDraft.phone} onChange={(e) => setOwnerField("phone", e.target.value)} placeholder="0912-345-678" />
@@ -664,7 +774,7 @@ export default function OwnersManager({
           </label>
           <label>
             <span>生日</span>
-            <input type="date" value={ownerDraft.birthday} onChange={(e) => setOwnerField("birthday", e.target.value)} />
+            <RocDateInput value={ownerDraft.birthday} onChange={(iso) => setOwnerField("birthday", iso)} placeholder="民國 71/07/18" />
           </label>
           <label style={{ gridColumn: "1 / -1" }}>
             <span>聯絡地址</span>
@@ -696,7 +806,7 @@ export default function OwnersManager({
         </div>
         <div className={styles.formBtns}>
           <button type="button" className={styles.primaryBtn} disabled={busy} onClick={saveOwner}>
-            {busy ? "存檔中…" : isNew ? "建檔" : "儲存"}
+            {busy ? "存檔中…" : dupes.length > 0 && dupAck ? (isNew ? "仍要新增" : "仍要儲存") : isNew ? "建檔" : "儲存"}
           </button>
           <button type="button" className={styles.plainBtn} disabled={busy} onClick={() => setOwnerEditing(null)}>
             取消
@@ -788,11 +898,11 @@ export default function OwnersManager({
             </label>
             <label>
               <span>合約起日</span>
-              <input type="date" value={propDraft.contractStart} onChange={(e) => setPropField("contractStart", e.target.value)} />
+              <RocDateInput value={propDraft.contractStart} onChange={(iso) => setPropField("contractStart", iso)} />
             </label>
             <label>
               <span>合約迄日</span>
-              <input type="date" value={propDraft.contractEnd} onChange={(e) => setPropField("contractEnd", e.target.value)} />
+              <RocDateInput value={propDraft.contractEnd} onChange={(iso) => setPropField("contractEnd", iso)} />
               <small style={{ color: "#a69a97", fontSize: 11.5 }}>到期前 {CONTRACT_REMIND_DAYS} 天會推 LINE 提醒你</small>
             </label>
             <label style={{ gridColumn: "1 / -1" }}>
@@ -889,6 +999,7 @@ export default function OwnersManager({
               <p className={styles.count}>
                 解析出 {importPreview.length} 筆
                 {importBad > 0 ? `，其中 ${importBad} 筆有問題（紅字），要全部修好才會匯入` : "，看一下對不對再按匯入"}
+                {importDupNote.size > 0 ? `；${importDupNote.size} 筆跟現有屋主或這批裡別行同名（黃字），匯入會變成兩筆，確定不是同一個人再按` : ""}
               </p>
               <div className={styles.importTable}>
                 <table>
@@ -912,13 +1023,13 @@ export default function OwnersManager({
                   </thead>
                   <tbody>
                     {importPreview.slice(0, 200).map((r) => (
-                      <tr key={r.line} className={r.error ? styles.importBad : undefined} title={r.raw}>
+                      <tr key={r.line} className={r.error ? styles.importBad : importDupNote.has(r.line) ? styles.importWarn : undefined} title={r.raw}>
                         <td>{r.line}</td>
                         <td>{r.owner.name || "—"}</td>
                         <td>{r.owner.phone || "—"}</td>
                         <td>{r.property?.address || "—"}</td>
                         <td>{r.property?.community || "—"}</td>
-                        <td>{r.error ?? r.owner.note ?? ""}</td>
+                        <td>{r.error ?? (importDupNote.has(r.line) ? `⚠ ${importDupNote.get(r.line)}${r.owner.note ? `；${r.owner.note}` : ""}` : (r.owner.note ?? ""))}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1084,7 +1195,7 @@ export default function OwnersManager({
               {o.birthday && (
                 <div>
                   <span>生日</span>
-                  {fmtDay(o.birthday)}
+                  民國 {toRoc(o.birthday)}
                 </div>
               )}
               {o.createdAt && (
@@ -1136,7 +1247,7 @@ export default function OwnersManager({
                         {(p.contractNo || p.contractStart || p.contractEnd) && (
                           <div className={styles.propMeta}>
                             <span>
-                              合約{p.contractNo ? ` ${p.contractNo}` : ""}：{fmtDay(p.contractStart) || "？"} ～ {fmtDay(p.contractEnd) || "？"}
+                              合約{p.contractNo ? ` ${p.contractNo}` : ""}：民國 {toRoc(p.contractStart) || "？"} ～ {toRoc(p.contractEnd) || "？"}
                             </span>
                           </div>
                         )}

@@ -72,7 +72,8 @@ export type ContractReminderItem = {
  * 連結帶 openExternalBrowser=1：他都從 LINE 點，沒這個參數會卡在 LINE 內建瀏覽器的 Google 登入。
  */
 export function buildContractReminderText(today: string, items: ContractReminderItem[], siteUrl: string): string {
-  const fmt = (d: string | null) => (d ? d.replaceAll("-", "/") : "？");
+  // 合約日期用民國（2026-10-13 他要的），跟後台畫面一致
+  const fmt = (d: string | null) => (d ? toRoc(d) : "？");
   const lines: string[] = [`📄 委託合約到期提醒（${items.length} 件）`, ""];
   for (const it of items) {
     lines.push(`▍${it.ownerName}${it.ownerPhone ? `｜${it.ownerPhone}` : ""}`);
@@ -82,4 +83,86 @@ export function buildContractReminderText(today: string, items: ContractReminder
   }
   lines.push(`查看屋主建檔：${siteUrl.replace(/\/$/, "")}/admin/owners?openExternalBrowser=1`);
   return lines.join("\n");
+}
+
+// ---------------------------------------------------------------- 民國年（2026-10-13 他要生日與合約日期改民國）
+
+/** "2026-03-31" → "115/03/31"；不是合法 ISO 日期就原樣回（不要讓畫面因為一筆壞資料掛掉） */
+export function toRoc(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return iso;
+  const y = Number(m[1]) - 1911;
+  if (y < 1) return iso;
+  return `${y}/${m[2]}/${m[3]}`;
+}
+
+/**
+ * 他手打的日期 → ISO "YYYY-MM-DD"。收：
+ *   民國「115/3/31」「115-03-31」「115.3.31」「1150331」「民國115年3月31日」
+ *   西元「2026/3/31」「2026-03-31」「20260331」「2026年3月31日」
+ * 三位數以下的年當民國、四位數當西元。拆不出來或日期不合法回 null。空字串回 ""。
+ */
+export function parseDateInput(raw: string): string | null {
+  const s = (raw ?? "").trim().replace(/^民國/, "").replace(/[年月]/g, "/").replace(/日$/, "");
+  if (!s) return "";
+  let y: number, m: number, d: number;
+  const sep = /^(\d{2,4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/.exec(s);
+  const compact = /^(\d{7}|\d{8})$/.exec(s);
+  if (sep) {
+    y = Number(sep[1]);
+    m = Number(sep[2]);
+    d = Number(sep[3]);
+  } else if (compact) {
+    const t = compact[1];
+    const yl = t.length - 4;
+    y = Number(t.slice(0, yl));
+    m = Number(t.slice(yl, yl + 2));
+    d = Number(t.slice(yl + 2));
+  } else {
+    return null;
+  }
+  if (y < 1000) y += 1911;
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+  const iso = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  // 2/30 這種要擋：用 UTC 組回去再比一次
+  const check = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(check.getTime()) || check.toISOString().slice(0, 10) !== iso) return null;
+  return iso;
+}
+
+// ---------------------------------------------------------------- 同名屋主警示（2026-10-13 他要的）
+
+/** 比對用：去頭尾、去掉所有空白（含全形）、英文轉小寫 */
+export function normalizeName(s: string | null | undefined): string {
+  return (s ?? "").replace(/[\s　]+/g, "").toLowerCase();
+}
+
+export type OwnerIdentity = { id: string; name: string; phone: string | null; phone2?: string | null };
+export type DuplicateHit = { id: string; name: string; phone: string | null; reason: "name" | "phone" };
+
+/**
+ * 在既有屋主裡找「同名」或「同電話」的。同名是他要的；同電話順便（更準）。
+ * excludeId：編輯自己時不要把自己算進去。只比對到有值的欄位——空電話不會跟空電話「相同」。
+ */
+export function findDuplicateOwners(
+  existing: OwnerIdentity[],
+  name: string,
+  phone: string,
+  excludeId: string | null = null,
+): DuplicateHit[] {
+  const n = normalizeName(name);
+  const p = phoneDigits(phone);
+  const out: DuplicateHit[] = [];
+  for (const o of existing) {
+    if (excludeId && o.id === excludeId) continue;
+    if (n && normalizeName(o.name) === n) {
+      out.push({ id: o.id, name: o.name, phone: o.phone, reason: "name" });
+      continue;
+    }
+    if (p.length >= 8 && (phoneDigits(o.phone) === p || phoneDigits(o.phone2) === p)) {
+      out.push({ id: o.id, name: o.name, phone: o.phone, reason: "phone" });
+    }
+  }
+  return out;
 }

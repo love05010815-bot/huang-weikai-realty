@@ -863,3 +863,14 @@ export async function markContractReminded(propertyIds: string[]): Promise<void>
     ...propertyIds,
   );
 }
+
+// ---------------------------------------------------------------- 同名警示（存檔時伺服器再查一次）
+
+/** 只撈比對需要的三欄，給 findDuplicateOwners 用。表很小，全撈比寫 LIKE 查詢穩。 */
+export async function listOwnerIdentities(): Promise<{ id: string; name: string; phone: string | null; phone2: string | null }[]> {
+  await ensureOwnerTables();
+  const rows = await db.$queryRawUnsafe<{ id: string; name: string; phone: string | null; phone2: string | null }[]>(
+    `SELECT id, name, phone, phone2 FROM owner_client`,
+  );
+  return rows.map((r) => ({ id: r.id, name: r.name, phone: nn(r.phone), phone2: nn(r.phone2) }));
+}

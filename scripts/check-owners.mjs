@@ -145,8 +145,8 @@ const T = await import("../src/lib/owners-text.ts");
   );
   ok(text.startsWith("📄 委託合約到期提醒（2 件）"), "訊息標題含件數", text.split("\n")[0], "📄 委託合約到期提醒（2 件）");
   ok(text.includes("測試甲｜0900-000-001") && text.includes("假社區｜假區假路 1 號"), "第一件：姓名電話社區地址", text.includes("測試甲｜0900-000-001"), true);
-  ok(text.includes("合約 A-001：2026/01/01 ～ 2026/10/19（剩 7 天）"), "第一件：合約行", text.includes("合約 A-001"), true);
-  ok(text.includes("合約：？ ～ 2026/10/12（今天到期）"), "第二件：沒編號沒起日", text.includes("合約：？"), true);
+  ok(text.includes("合約 A-001：115/01/01 ～ 115/10/19（剩 7 天）"), "第一件：合約行（民國年）", text.match(/合約 A-001[^\n]*/)?.[0], "115/01/01 ～ 115/10/19");
+  ok(text.includes("合約：？ ～ 115/10/12（今天到期）"), "第二件：沒編號沒起日（民國年）", text.match(/合約：[^\n]*/)?.[0], "？ ～ 115/10/12");
   ok(text.endsWith("https://weikaihouse.com/admin/owners?openExternalBrowser=1"), "結尾連結帶 openExternalBrowser", text.slice(-40), "…?openExternalBrowser=1");
   ok(text.length < 5000, "訊息長度在 LINE 上限內", text.length, "<5000");
 }
@@ -178,6 +178,45 @@ const S = await import("../src/lib/owners-stats.ts");
   ok(S.yearsWithData(rows, "2026-10-13").join(",") === "2026,2025", "有資料的年份新到舊", S.yearsWithData(rows, "2026-10-13"), "2026,2025");
   ok(S.yearsWithData([], "2026-10-13").join(",") === "2026", "沒資料回今年", S.yearsWithData([], "2026-10-13"), "2026");
   ok(S.countByMonth(rows, "2026").reduce((n, c) => n + c.total, 0) === y[0].total, "每月加總＝該年總數", null, true);
+}
+
+console.log("G. 民國年轉換");
+{
+  ok(T.toRoc("2026-03-31") === "115/03/31", "西元→民國", T.toRoc("2026-03-31"), "115/03/31");
+  ok(T.toRoc("1982-07-18") === "71/07/18", "生日 1982 → 71", T.toRoc("1982-07-18"), "71/07/18");
+  ok(T.toRoc("") === "" && T.toRoc(null) === "", "空值回空字串", [T.toRoc(""), T.toRoc(null)], "");
+  ok(T.toRoc("壞資料") === "壞資料", "不是日期原樣回", T.toRoc("壞資料"), "壞資料");
+  const cases = [
+    ["115/3/31", "2026-03-31"], ["115-03-31", "2026-03-31"], ["115.3.31", "2026-03-31"], ["1150331", "2026-03-31"],
+    ["民國115年3月31日", "2026-03-31"], ["71/7/18", "1982-07-18"], ["710718", null],
+    ["2026/3/31", "2026-03-31"], ["2026-03-31", "2026-03-31"], ["20260331", "2026-03-31"], ["2026年3月31日", "2026-03-31"],
+    ["115/2/30", null], ["115/13/1", null], ["abc", null], ["", ""],
+  ];
+  for (const [input, want] of cases) {
+    const got = T.parseDateInput(input);
+    ok(got === want, `parseDateInput(${JSON.stringify(input)})`, got, want);
+  }
+}
+
+console.log("H. 同名／同電話屋主警示");
+{
+  const existing = [
+    { id: "a", name: "王 小明", phone: "0912-000-111", phone2: null },
+    { id: "b", name: "陳小姐", phone: null, phone2: "04-2626-1234" },
+    { id: "c", name: "Lin", phone: "", phone2: "" },
+  ];
+  ok(T.normalizeName("王　小 明") === "王小明", "姓名去全形半形空白", T.normalizeName("王　小 明"), "王小明");
+  const d1 = T.findDuplicateOwners(existing, "王小明", "");
+  ok(d1.length === 1 && d1[0].id === "a" && d1[0].reason === "name", "同名（空白不同也算）", d1, "a/name");
+  const d2 = T.findDuplicateOwners(existing, "別人", "0912000111");
+  ok(d2.length === 1 && d2[0].id === "a" && d2[0].reason === "phone", "不同名但同電話", d2, "a/phone");
+  const d3 = T.findDuplicateOwners(existing, "別人", "0426261234");
+  ok(d3.length === 1 && d3[0].id === "b", "第二電話也比", d3, "b");
+  ok(T.findDuplicateOwners(existing, "lin", "").length === 1, "英文不分大小寫", null, 1);
+  ok(T.findDuplicateOwners(existing, "王小明", "", "a").length === 0, "編輯自己時排除自己", null, 0);
+  ok(T.findDuplicateOwners(existing, "沒有的人", "").length === 0, "沒撞到", null, 0);
+  ok(T.findDuplicateOwners(existing, "沒有的人", "123").length === 0, "電話太短不比（避免誤判）", null, 0);
+  ok(T.findDuplicateOwners(existing, "王小明", "0912000111").length === 1, "同名又同電話只回一筆", null, 1);
 }
 
 console.log(pass ? "\n全部通過 ✅" : "\n有紅的 ❌");
