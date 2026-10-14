@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CHIP, CIS, cisCard, type ChipTone } from "@/app/admin/_components/cis";
 import { MATCH, PACIFIC_STORES, VIEWING_STATUS } from "@/config/match";
-import { rotateIntakeKeyAction, setViewingStatusAction } from "@/lib/actions/match";
+import { deleteBuyerAction, rotateIntakeKeyAction, setViewingStatusAction } from "@/lib/actions/match";
 import { lineText, type LineVia } from "@/lib/match/line-via";
 import { SOURCE_LABEL, type Source } from "@/lib/match/merge";
 import type { SyncJob, SyncSummary } from "@/lib/match/sync";
@@ -202,6 +202,18 @@ export default function MatchAdmin({
     router.refresh();
   }
 
+  /** 清單上直接刪（2026-10-14 他要的）：跟買方詳情頁同一支 action，名下有預約的會被擋下來 */
+  async function removeBuyer(b: AdminBuyer) {
+    const who = b.name ?? b.displayName ?? b.phone ?? "這筆買方";
+    if (!window.confirm(`確定刪掉「${who}」？名下有預約的話不會刪。這個動作不能復原。`)) return;
+    setBusyId(b.id);
+    setMsg(null);
+    const r = await deleteBuyerAction(b.id);
+    setBusyId(null);
+    setMsg(r.ok ? `已刪掉「${who}」。` : (r.error ?? "刪除失敗"));
+    if (r.ok) router.refresh();
+  }
+
   const tabBtn = (key: Tab, label: string, count: number) => (
     <button
       type="button"
@@ -355,12 +367,13 @@ export default function MatchAdmin({
                 <th>姓名／電話</th>
                 <th>購屋條件</th>
                 <th>更新</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody>
               {buyers.length === 0 && (
                 <tr>
-                  <td colSpan={4} className={styles.empty}>
+                  <td colSpan={5} className={styles.empty}>
                     還沒有買方留條件。
                   </td>
                 </tr>
@@ -386,6 +399,21 @@ export default function MatchAdmin({
                     {b.note && <div style={{ color: CIS.textMute, fontSize: 12, marginTop: 2, whiteSpace: "pre-wrap" }}>📝 {b.note}</div>}
                   </td>
                   <td style={{ color: CIS.textMute, fontSize: 12, whiteSpace: "nowrap" }}>{fmt(b.updatedAt)}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <Link href={`/admin/match/buyers/${b.id}?edit=1`} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${CIS.cardBorder}`, color: CIS.text, fontSize: 12, textDecoration: "none" }}>
+                        編輯
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => removeBuyer(b)}
+                        disabled={busyId === b.id}
+                        style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${CIS.cardBorder}`, background: "transparent", color: "#ff8a80", fontSize: 12, cursor: "pointer" }}
+                      >
+                        {busyId === b.id ? "刪除中…" : "刪除"}
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

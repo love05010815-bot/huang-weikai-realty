@@ -53,9 +53,15 @@ export default function BuyerDetail({ buyer, brief, meta }: { buyer: DetailBuyer
     if (p.get("merged") === "1") {
       setFlash("這支電話原本就有資料（可能是客戶自己在網站留過條件），已經合併更新到同一筆。");
       p.delete("merged");
-      const rest = p.toString();
-      window.history.replaceState(null, "", rest ? `${window.location.pathname}?${rest}` : window.location.pathname);
     }
+    // 清單上按「編輯」進來的（?edit=1）：直接把表單展開，不用再按一次
+    if (p.get("edit") === "1") {
+      setEditing(true);
+      p.delete("edit");
+    }
+    const rest = p.toString();
+    const clean = rest ? `${window.location.pathname}?${rest}` : window.location.pathname;
+    if (clean !== window.location.pathname + window.location.search) window.history.replaceState(null, "", clean);
   }, []);
 
   async function remove() {
