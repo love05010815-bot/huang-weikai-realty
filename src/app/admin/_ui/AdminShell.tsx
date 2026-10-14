@@ -104,7 +104,7 @@ export default function AdminShell({
                 只留 .group 的上方間距把它跟前一組隔開；aria-label 照常給。
                 「買方」「開發物件」雖然也只有一項，但組名跟項目不同字、是他指定的分類，照畫。 */}
             {group.items.length > 1 || group.items[0]?.label !== group.title ? (
-              <div className={styles.groupTitle} style={{ color: CIS.textMute }}>
+              <div className={styles.groupTitle} style={{ color: CIS.blue }}>
                 {group.title}
               </div>
             ) : null}
