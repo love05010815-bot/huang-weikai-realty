@@ -36,6 +36,12 @@
  * （見 `learning_591_no_scraping`，違反每筆求償 3,000 元）—— 所以這裡**白名單**只放
  * houseol.com.tw，其餘網域一律回 `skipped`、連一個請求都不發，後台顯示「這個網域不自動檢查」。
  * 寫下來那天資料庫裡 90 筆全是愛屋、一筆 591 都沒有，但規則先立好，之後他貼 591 也不會出事。
+ *
+ * ## 🟦 2026-10-14 加第二個白名單：太平洋新系統的分享頁 prim.pacific.com.tw/s/<代碼>
+ *
+ * 愛屋改版，他說「之後會換到這裡」。分享頁本身是前端渲染、HTML 讀不到狀態，所以判定改打它的
+ * 公開 API：404「找不到此分享連結」＝ gone（客戶看到「分享已失效」）；200 但長相不對、或它自己標
+ * 「有物件已下架」＝ unknown。規則與實測回應都在 `lib/prim-share.ts`，這裡只負責分流。
  */
 
 /** 一筆連結檢查的結論 */
@@ -55,7 +61,9 @@ export type LinkCheck = {
   note: string;
 };
 
-/** 自動檢查的白名單。**只有愛屋**，理由見檔頭 */
+import { fetchPrimShare, primShareCode } from "@/lib/prim-share";
+
+/** 自動檢查的白名單之一：愛屋。另一個是太平洋分享頁（primShareCode 認得的才算），理由見檔頭 */
 const ALLOWED_HOST = /(^|\.)houseol\.com\.tw$/i;
 
 /** 愛屋「已下架」頁的招牌字。實測整頁可見文字的第一句就是它 */
@@ -89,7 +97,8 @@ export function classifyHouseolPage(html: string): LinkCheck {
 export function isCheckableLink(href: string): boolean {
   try {
     const u = new URL(href);
-    return (u.protocol === "https:" || u.protocol === "http:") && ALLOWED_HOST.test(u.hostname);
+    if (!(u.protocol === "https:" || u.protocol === "http:")) return false;
+    return ALLOWED_HOST.test(u.hostname) || primShareCode(href) !== null;
   } catch {
     return false;
   }
@@ -112,8 +121,12 @@ export async function checkLink(href: string, timeoutMs = 12000): Promise<LinkCh
   }
   if (!isCheckableLink(raw)) {
     // 🔴 591 就是走這條：不發請求、不抓頁面。理由見檔頭
-    return { state: "skipped", note: `${host} 不自動檢查（只自動檢查愛屋 houseol.com.tw）` };
+    return { state: "skipped", note: `${host} 不自動檢查（只自動檢查愛屋 houseol.com.tw 與太平洋分享頁 prim.pacific.com.tw）` };
   }
+
+  // 🟦 太平洋新系統的分享連結：頁面讀不到東西，打它的公開 API 判定（規則在 lib/prim-share.ts）
+  const primCode = primShareCode(raw);
+  if (primCode) return (await fetchPrimShare(primCode, { timeoutMs })).check;
 
   try {
     const res = await fetch(raw, {

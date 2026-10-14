@@ -728,15 +728,17 @@ export default function MapListingsManager({
                 <p className={`${msg.kind === "ok" ? styles.ok : styles.error} ${styles.formMsg}`}>{msg.text}</p>
               )}
 
-              {/* 貼一條愛屋連結，標題／地址／格局／特色一次帶進來，順便猜建案。
+              {/* 貼一條物件連結，標題／地址／格局／特色一次帶進來，順便猜建案。
+                  🟦 2026-10-14 起認太平洋新系統的分享連結（prim.pacific.com.tw/s/…）—— 愛屋改版，他說新增物件之後改貼這種；
+                  愛屋連結照舊能貼（舊物件還在那邊）。分流在 actions/map-listings.ts 的 readFromPacific。
                   2026-09-16 取代原本「搜尋愛屋庫存快照」那塊 —— 快照要自己跑書籤更新，
                   而且沒有特色也不會挑建案。 */}
               <div className={styles.invBlock}>
-                <span className={styles.fieldLabel}>🏠 貼愛屋連結，自動帶入</span>
+                <span className={styles.fieldLabel}>🏠 貼物件連結，自動帶入（太平洋分享連結或愛屋）</span>
                 <div className={styles.pasteRow}>
                   <input
                     type="text"
-                    placeholder="貼愛屋物件連結，或直接打案號（例：AA6362139）"
+                    placeholder="貼太平洋分享連結（prim.pacific.com.tw/s/…）、愛屋連結，或直接打 S 編號／案號"
                     value={houseolInput}
                     onChange={(e) => setHouseolInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -755,11 +757,11 @@ export default function MapListingsManager({
                   <div className={styles.readBox}>
                     <span className={styles.readLine}>
                       {`✅ ${readInfo.caseId}`}
-                      {readInfo.community ? `｜社區「${readInfo.community}」` : "｜型錄上沒有社區名"}
-                      {`｜地址用${readInfo.addressSource === "門牌" ? "資料庫的完整門牌" : "型錄上的路名（沒有門牌）"}`}
+                      {readInfo.community ? `｜社區「${readInfo.community}」` : "｜沒讀到社區名"}
+                      {`｜地址用${readInfo.addressSource === "門牌" ? "資料庫的完整門牌" : "連結上的路名（沒有門牌）"}`}
                     </span>
                     {readInfo.missing.length > 0 && (
-                      <span className={styles.readWarn}>{`⚠️ 型錄上沒讀到：${readInfo.missing.join("、")} —— 自己補一下`}</span>
+                      <span className={styles.readWarn}>{`⚠️ 沒讀到：${readInfo.missing.join("、")} —— 自己補一下`}</span>
                     )}
                     {readInfo.autoPicked ? (
                       <span className={styles.readLine}>{`🏢 建案已自動選好：${readInfo.autoPicked}`}</span>
@@ -788,7 +790,7 @@ export default function MapListingsManager({
                     {readInfo.photos.length > 0 && (
                       <div className={styles.pasteRow}>
                         <span className={styles.readLine}>
-                          {`📷 型錄上有 ${readInfo.photos.length} 張｜表單目前 ${draft.photos.length} 張`}
+                          {`📷 連結上有 ${readInfo.photos.length} 張｜表單目前 ${draft.photos.length} 張`}
                         </span>
                         <button
                           type="button"

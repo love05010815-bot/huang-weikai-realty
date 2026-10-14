@@ -26,7 +26,7 @@ const MAX_PHOTO_BYTES = 12_000_000;
 /** 抓一張型錄照片回 dataURL（瀏覽器直接抓會被 CORS 擋、畫進 canvas 還會污染，所以借伺服器過一手） */
 export async function proxyHouseolPhoto(rawUrl: unknown): Promise<PhotoReply> {
   const url = String(rawUrl ?? "");
-  if (!isHouseolPhotoUrl(url)) return { status: 400, body: { ok: false, error: "這不是愛屋的圖片網址" } };
+  if (!isHouseolPhotoUrl(url)) return { status: 400, body: { ok: false, error: "這不是愛屋或太平洋新系統的圖片網址" } };
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(10000), cache: "no-store" });
     if (!res.ok) return { status: 502, body: { ok: false, error: `愛屋回應 ${res.status}` } };

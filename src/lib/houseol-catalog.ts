@@ -86,14 +86,18 @@ export type CatalogListing = {
   catalogUrl: string;
 };
 
+/** 太平洋新系統的圖床（分享 API 的 cover_photo）：只准這個 host 底下的 /prim-public/ */
+const PRIM_BLOB_HOST = /^pacblob\.blob\.core\.windows\.net$/i;
+
 /**
- * 這個網址可不可以拿去抓圖。
+ * 這個網址可不可以拿去抓圖。愛屋的圖、或太平洋新系統圖床的公開區（2026-10-14 加）。
  * 🔴 **一定要擋**：網址是從瀏覽器端傳進來的，不擋就是開一個「叫伺服器去打任意網址」的洞。
  */
 export function isHouseolPhotoUrl(raw: string): boolean {
   try {
     const u = new URL(raw);
-    return (u.protocol === "https:" || u.protocol === "http:") && HOUSEOL_HOST.test(u.hostname);
+    if (!(u.protocol === "https:" || u.protocol === "http:")) return false;
+    return HOUSEOL_HOST.test(u.hostname) || (PRIM_BLOB_HOST.test(u.hostname) && u.pathname.startsWith("/prim-public/"));
   } catch {
     return false;
   }

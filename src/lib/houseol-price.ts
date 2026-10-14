@@ -10,6 +10,8 @@
  *
  * ## 只抓什麼、抓多少
  * - **只認 `es.houseol.com.tw` 的型錄頁**（`Ecatalog.aspx?...&No=<案號>`），別的網域一律回 null。
+ *   🟦 2026-10-14 起也認太平洋新系統的分享連結 `prim.pacific.com.tw/s/…`（愛屋改版，他說新增物件改貼這種）——
+ *   價格走它的公開 API（lib/prim-share.ts），同樣一小時快取；一條分享包好幾筆時不知道是哪一間 → null。
  *   591 那種條款明文禁止程式抓取的（見記憶 learning_591_no_scraping）**絕對不碰** ——
  *   物件資訊連到 591 的那幾戶，卡片就是沒有售價，要顯示就把連結換成愛屋型錄。
  * - 一戶一頁，靠 Next 的 data cache 一小時內只抓一次；精選好案只有十幾戶，
@@ -28,6 +30,8 @@
  * 🔴 這是「靜默失效」的高風險區：**本機抓得到不代表 Vercel 抓得到**（機房 IP 可能被擋）。
  *    部署後一定要 curl 線上 /listings 數「售價」印出來幾個，不能只看 build 過。
  */
+
+import { fetchPrimShare, primShareCode } from "@/lib/prim-share";
 
 const HOUSEOL_HOST = /(^|\.)houseol\.com\.tw$/i;
 
@@ -104,6 +108,13 @@ export async function fetchHouseolHtml(href: string): Promise<string | null> {
  * 不是愛屋型錄、逾時、非 200、解析不到、數字離譜 → 全部 null，**永遠不 throw**。
  */
 export async function fetchHouseolPrice(href: string): Promise<number | null> {
+  // 🟦 太平洋分享連結：價格在它的公開 API 裡。後台帶入那邊只收「單筆」的分享連結，
+  //    所以存進來的分享連結理論上都是一筆；真的包了好幾筆就回 null（不知道是哪一間，不猜）。
+  const code = primShareCode(href);
+  if (code) {
+    const got = await fetchPrimShare(code, { revalidate: 3600, timeoutMs: 6000 });
+    return got.ok && got.share.items.length === 1 ? got.share.items[0].price : null;
+  }
   const html = await fetchHouseolHtml(href);
   return html ? parseHouseolPrice(html) : null;
 }

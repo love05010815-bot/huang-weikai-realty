@@ -14,7 +14,7 @@
  *
  * ## 安全
  * ・先擋權限：這支可以被直接 POST，「畫面上沒有按鈕」不等於外面叫不到。
- * ・網址只准 houseol.com.tw：url 是瀏覽器端傳來的，不擋就是開一個
+ * ・網址只准 houseol.com.tw 與太平洋新系統的圖床（pacblob…/prim-public/）：url 是瀏覽器端傳來的，不擋就是開一個
  *   「叫伺服器去打任意網址」的洞（SSRF）。
  */
 import { randomUUID } from "node:crypto";
@@ -42,13 +42,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: "讀不到要帶入的網址" }, { status: 400 });
   }
   if (!isHouseolPhotoUrl(url)) {
-    return NextResponse.json({ ok: false, error: "這不是愛屋的圖片網址" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "這不是愛屋或太平洋新系統的圖片網址" }, { status: 400 });
   }
 
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
     if (!res.ok) {
-      return NextResponse.json({ ok: false, error: `愛屋回應 ${res.status}` }, { status: 502 });
+      return NextResponse.json({ ok: false, error: `圖片來源回應 ${res.status}` }, { status: 502 });
     }
     const type = res.headers.get("content-type") ?? "image/jpeg";
     if (!type.startsWith("image/")) {

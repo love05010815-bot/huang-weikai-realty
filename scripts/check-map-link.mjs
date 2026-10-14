@@ -46,6 +46,10 @@ eq("只有一半欄位 → unknown", classifyHouseolPage(`<html>物件編號</ht
 /* ── 白名單：591 一定要擋掉（禁止程式自動抓取，每筆求償 3,000）── */
 eq("愛屋店網 → 檢查", isCheckableLink("https://es.houseol.com.tw/Ecatalog.aspx?No=AA1"), true);
 eq("愛屋主站 → 檢查", isCheckableLink("https://www.houseol.com.tw/sell_item/H229-S1/"), true);
+/* 🟦 2026-10-14 第二個白名單：太平洋新系統的分享頁（判定規則在 check-prim-share.mjs） */
+eq("太平洋分享連結 → 檢查", isCheckableLink("https://prim.pacific.com.tw/s/LV5rC5XJ"), true);
+eq("🔴 prim.pacific.com.tw.evil.com → 不檢查", isCheckableLink("https://prim.pacific.com.tw.evil.com/s/LV5rC5XJ"), false);
+eq("太平洋官網物件頁 → 不自動檢查（它的下架頁長怎樣還沒驗過）", isCheckableLink("https://www.pacific.com.tw/Object/ObjectDetail/?saleID=S2862747"), false);
 eq("🔴 591 → 不檢查", isCheckableLink("https://sale.591.com.tw/home/house/detail/2/123.html"), false);
 eq("🔴 591 短網址 → 不檢查", isCheckableLink("https://591.com.tw/abc"), false);
 eq("FB → 不檢查", isCheckableLink("https://www.facebook.com/permalink/123"), false);
