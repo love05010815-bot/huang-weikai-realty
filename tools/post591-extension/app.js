@@ -233,7 +233,11 @@ let listing = null, derived = null, rows = [];
 
 /** 解析（貼文字、或從型錄頁抓回來的文字都走這裡）。sourceUrl＝從型錄頁網址抓來的：⑤ 直接帶那條網址（頁面上嵌的照片一起抓） */
 function runWith(raw, sourceUrl) {
-  listing = parseListing(raw);
+  applyListing(parseListing(raw), sourceUrl);
+}
+/** 一筆已經解析好的 Listing 進畫面（貼文字、抓型錄頁、太平洋連結三條路最後都走這裡） */
+function applyListing(d, sourceUrl) {
+  listing = d;
   derived = derive(listing);
   rows = buildRows(listing, derived);
   const c = rows.find((r) => r.label === "聯絡人");
@@ -277,6 +281,16 @@ const pastedUrl = () => {
   const t = $("raw").value.trim();
   return /^https?:\/\/\S+$/.test(t) && isHouseolPage(t) ? t : "";
 };
+/** 貼的是太平洋的分享連結（prim.pacific.com.tw/s/…）、官網物件頁（?saleID=S…）或直接打 S 編號（2026-10-14 起） */
+const pacificInput = () => {
+  const t = $("raw").value.trim();
+  if (!t || /\s/.test(t)) return "";
+  const ok =
+    /^https?:\/\/prim\.pacific\.com\.tw\/s\/[A-Za-z0-9]{6,32}\/?(\?.*)?$/i.test(t) ||
+    /^https?:\/\/(www\.)?pacific\.com\.tw\/.*saleid=s\d{5,}/i.test(t) ||
+    /^S\d{5,}$/i.test(t);
+  return ok ? t : "";
+};
 let fetching = "";
 let fetchTimer = null;
 const setFetchMsg = (text, cls) => {
@@ -309,6 +323,35 @@ async function fetchCatalog(force) {
     gotNumber
       ? "型錄抓回來了、已解析，門牌有帶到。下面核對一遍，再按上架。"
       : "型錄抓回來了、已解析。⚠️ 門牌沒帶到（這一頁只印到路名，完整門牌要登入愛屋的頁面才有）：③ 的門牌自己補，或改用 Ctrl+A 貼整頁。",
+    gotNumber ? "ok" : "bad",
+  );
+}
+
+/* 太平洋分享連結／官網物件頁／S 編號（2026-10-14）：請背景程式帶授權碼去 weikaihouse.com 拿一筆解析好的資料 ——
+   分享頁本身讀不到東西、官網單筆 API 要 token、完整門牌在資料庫，三樣都在伺服器那邊，這裡只收結果 */
+let fetchingPac = "";
+async function fetchPacific(force) {
+  const input = pacificInput();
+  if (!input) return;
+  if (!force && fetchingPac === input) return;
+  if (!requireLicense($("fetch-msg"))) return;
+  if (!hasChrome) {
+    setFetchMsg("這一頁要從 Chrome 外掛圖示打開，才能替你向太平洋官網拿資料（現在只是預覽）。", "bad");
+    return;
+  }
+  fetchingPac = input;
+  setFetchMsg("正在向太平洋官網拿這一戶的資料…", "");
+  const r = await msgBg("p591:pacific", { input });
+  if (pacificInput() !== input) return; // 等的時候他又改了內容
+  fetchingPac = "";
+  if (!r || !r.ok || !r.listing) {
+    setFetchMsg(`帶不進來：${(r && r.error) || NO_REPLY}`, "bad");
+    return;
+  }
+  applyListing(r.listing, "");
+  const gotNumber = /號/.test(listing.addr || "");
+  setFetchMsg(
+    `${r.fromOfficial ? "官網資料帶進來了" : "官網暫時讀不到，只帶到分享頁的欄位"}（${r.caseId || ""}，${listing.photos.length} 張照片）。${gotNumber ? "門牌有帶到。" : "⚠️ 門牌只到路名，③ 自己補。"}下面核對一遍，紅底的補完再上架。`,
     gotNumber ? "ok" : "bad",
   );
 }
@@ -567,9 +610,9 @@ $("ts-lines").addEventListener("input", (e) => {
 $("raw").addEventListener("input", () => {
   updateParse();
   clearTimeout(fetchTimer);
-  fetchTimer = setTimeout(() => fetchCatalog(false), 500); // 貼上是一次事件；用打的等他打完整條
+  fetchTimer = setTimeout(() => (pacificInput() ? fetchPacific(false) : fetchCatalog(false)), 500); // 貼上是一次事件；用打的等他打完整條
 });
-$("parse").onclick = () => (pastedUrl() ? fetchCatalog(true) : run());
+$("parse").onclick = () => (pastedUrl() ? fetchCatalog(true) : pacificInput() ? fetchPacific(true) : run());
 $("clear").onclick = () => {
   $("raw").value = "";
   $("parse").disabled = true;
@@ -577,6 +620,7 @@ $("clear").onclick = () => {
   $("result").hidden = true;
   listing = null;
   fetching = "";
+  fetchingPac = "";
   setFetchMsg("", "");
 };
 $("title").addEventListener("input", refreshTitle);

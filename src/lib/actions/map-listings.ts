@@ -15,8 +15,8 @@ import { PROJECTS } from "@/data/port-projects";
 import { buildPoints, fetchCatalog } from "@/lib/houseol-catalog";
 import { getHouseolAddressMap } from "@/lib/houseol-address";
 import { matchProjects, pickAuto, type ProjectSuggestion } from "@/lib/project-match";
-import { getListing, type MatchListing } from "@/lib/match/store";
-import { communityFromTitle, fetchPrimShare, primPoints, primShareCode, primShareUrl, stripCity, type PrimShareItem } from "@/lib/prim-share";
+import { loadPacificListing, toCatalog } from "@/lib/pacific-listing";
+import { isPacificInput } from "@/lib/prim-share";
 import {
   createMapListing,
   deleteMapListing,
@@ -148,127 +148,45 @@ function projectsForMatch() {
   }));
 }
 
-/** 太平洋官網的 S 編號（S2862747）—— 分享 API 的 obj_no、官網物件頁的 saleID、match_listing 的主鍵都是它 */
-const SALE_ID = /^S\d{5,}$/i;
-
-/** 他貼的是官網物件頁（www.pacific.com.tw/Object/ObjectDetail/?saleID=S…）或直接打 S 編號 → 編號；都不是 → null */
-function pacificSaleIdFrom(input: string): string | null {
-  const raw = input.trim();
-  if (SALE_ID.test(raw)) return raw.toUpperCase();
-  try {
-    const u = new URL(raw);
-    if (/(^|\.)pacific\.com\.tw$/i.test(u.hostname)) {
-      const id = (u.searchParams.get("saleID") ?? u.searchParams.get("saleId") ?? "").trim();
-      if (SALE_ID.test(id)) return id.toUpperCase();
-    }
-  } catch {
-    // 不是網址
-  }
-  return null;
-}
-
 /*
- * 🟦 太平洋新系統的路（2026-10-14）。他說「這個新增物件的地方因為愛屋改版了，之後會換到這裡」。
+ * 🟦 太平洋新系統的路（2026-10-14）。他說「這個新增物件的地方因為愛屋改版了，之後會換到這裡」，
+ * 同天再說「FB 社團／591 都換掉」—— 三個工具改成共用 lib/pacific-listing.ts 這一支載入器。
  *
  * 吃三種：分享連結 prim.pacific.com.tw/s/<代碼>（存進「物件資訊」的就是它）、
  * 官網物件頁 www.pacific.com.tw/Object/ObjectDetail/?saleID=S…、直接打 S 編號。
- * 分享 API 給標題／總價／坪／格局／完工日／封面；樓層／車位／座標／愛屋編號拿 S 編號去官網同步表
- * （match_listing，每 30 分鐘一次）補。愛屋編號對得到就能拿資料庫的完整門牌，跟愛屋那條一樣。
- *
- * 🔴 一條分享連結包好幾筆時**不帶**，把那幾筆的 S 編號列給他、要他指定 —— 掛錯客戶會在地圖上看到別間房子。
+ * 載入器做的事：分享 API（S 編號、完工日）→ 官網單筆 API（欄位最全、照片全部）→ 資料庫完整門牌。
+ * 這裡只是把它接成跟愛屋那條一模一樣的 HouseolReadResult —— 賣點、猜建案、缺欄位提醒全部共用。
+ * 🔴 一條分享連結包好幾筆時載入器會停下來把 S 編號列出來要他指定 —— 掛錯客戶會在地圖上看到別間房子。
  */
 async function readFromPacific(input: string): Promise<HouseolReadResult | null> {
-  const code = primShareCode(input);
-  const saleId = code ? null : pacificSaleIdFrom(input);
-  if (!code && !saleId) return null;
-
-  let item: PrimShareItem | null = null;
-  let linkHref = "";
-  if (code) {
-    const got = await fetchPrimShare(code);
-    if (!got.ok) return { ok: false, error: `這條分享連結讀不到：${got.check.note}` };
-    const items = got.share.items;
-    if (items.length === 0) return { ok: false, error: "這條分享連結裡沒有物件" };
-    if (items.length > 1) {
-      const list = items.map((it, i) => `${i + 1}. ${it.objNo}｜${it.title}`).join("\n");
-      return {
-        ok: false,
-        error: `這條分享連結包了 ${items.length} 筆物件，不知道要帶哪一筆：\n${list}\n請貼只有一筆的分享連結，或直接打上面那個 S 編號。`,
-      };
-    }
-    item = items[0];
-    linkHref = primShareUrl(code);
-  }
-
-  // 官網同步表：樓層／車位／座標／愛屋編號在這裡；只給 S 編號時連標題都只能從這裡拿
-  let m: MatchListing | null = null;
-  try {
-    m = await getListing(item?.objNo ?? saleId!);
-  } catch {
-    m = null;
-  }
-  if (!item && !m) {
-    return { ok: false, error: `${saleId} 在官網同步的物件裡找不到（同步每 30 分鐘一次；剛上架的等一下再試，或改貼分享連結）` };
-  }
-  const it: PrimShareItem = item ?? {
-    objNo: m!.id,
-    title: m!.title,
-    price: m!.price > 0 ? m!.price : null,
-    addressShort: `${m!.city}${m!.district}${m!.address}`,
-    ping: m!.size > 0 ? m!.size : null,
-    rooms: m!.rooms > 0 ? m!.rooms : null,
-    halls: m!.halls,
-    baths: m!.baths,
-    completeDate: null,
-    coverPhoto: m!.images[0] ?? null,
-    isRent: false,
-  };
-  if (!linkHref) linkHref = m!.sourceUrl;
-
-  const community = communityFromTitle(it.title);
-  // 地址：愛屋編號對得到資料庫的完整門牌就用它，否則分享頁／官網只到路名
-  let address = stripCity(it.addressShort);
-  let addressSource: "門牌" | "型錄" = "型錄";
-  if (m?.houseolId) {
-    try {
-      const full = (await getHouseolAddressMap()).get(m.houseolId);
-      if (full) {
-        address = full;
-        addressSource = "門牌";
-      }
-    } catch {
-      // 地址表讀不到就用路名，不要讓整個帶入失敗
-    }
-  }
-
-  const suggestions = matchProjects({ community, title: it.title, address }, projectsForMatch()).filter((s) => s.score >= 50);
-  const photos = [...new Set([it.coverPhoto, ...(m?.images ?? [])].filter((p): p is string => !!p))];
+  if (!isPacificInput(input)) return null;
+  const got = await loadPacificListing(input);
+  if (!got.ok) return { ok: false, error: got.error };
+  const l = toCatalog(got.data);
+  const address = l.address;
+  const addressSource: "門牌" | "型錄" = got.data.fullAddress ? "門牌" : "型錄";
+  const suggestions = matchProjects({ community: l.community, title: l.title, address }, projectsForMatch()).filter((s) => s.score >= 50);
 
   const missing: string[] = [];
-  if (!it.title) missing.push("標題");
-  if (!community) missing.push("社區名（所以猜不出建案）");
-  if (it.rooms === null) missing.push("格局");
-  if (it.ping === null) missing.push("坪數");
-  if (!m) missing.push("樓層與車位（官網同步表裡還沒有這一筆）");
+  if (!l.title) missing.push("標題");
+  if (!l.community) missing.push("社區名（所以猜不出建案）");
+  if (l.rooms === null) missing.push("格局");
+  if (l.ping === null) missing.push("坪數");
+  if (!got.data.fromOfficial) missing.push("樓層與車位（官網暫時讀不到，只有分享頁的欄位）");
 
   return {
     ok: true,
-    caseId: it.objNo,
-    title: it.title,
+    caseId: l.caseId,
+    title: l.title,
     address,
     addressSource,
-    pointsText: primPoints(it, {
-      kind: m?.type,
-      floor: m?.floor,
-      hasParking: m ? m.features.includes("車位") : null,
-      ageYears: m && m.age > 0 ? m.age : null,
-    }).join("\n"),
-    linkHref,
-    community,
-    photos,
+    pointsText: buildPoints(l).join("\n"),
+    linkHref: l.catalogUrl,
+    community: l.community,
+    photos: l.photos,
     // 官網的座標。跟愛屋那條一樣只當預填，沒配到建案時要他自己點開地圖確認
-    lat: m?.lat ?? null,
-    lng: m?.lng ?? null,
+    lat: l.lat,
+    lng: l.lng,
     suggestions,
     autoProjectId: pickAuto(suggestions),
     missing,

@@ -62,6 +62,36 @@ export function primApiUrl(code: string): string {
   return `${PRIM_API_BASE}/${encodeURIComponent(code)}`;
 }
 
+/** 太平洋官網的 S 編號（S2862747）：分享 API 的 obj_no、官網物件頁的 saleID、match_listing 的主鍵都是它 */
+export const PACIFIC_SALE_ID = /^S\d{5,}$/i;
+
+/** 他貼的是官網物件頁（www.pacific.com.tw/Object/ObjectDetail/?saleID=S…）或直接打 S 編號 → 編號；都不是 → null */
+export function pacificSaleIdFrom(input: string): string | null {
+  const raw = String(input ?? "").trim();
+  if (PACIFIC_SALE_ID.test(raw)) return raw.toUpperCase();
+  try {
+    const u = new URL(raw);
+    if (!/(^|\.)pacific\.com\.tw$/i.test(u.hostname)) return null;
+    // 官網的參數名是 saleID；大小寫不一定，自己掃一遍
+    for (const [k, v] of u.searchParams) {
+      if (k.toLowerCase() === "saleid" && PACIFIC_SALE_ID.test(v.trim())) return v.trim().toUpperCase();
+    }
+  } catch {
+    // 不是網址
+  }
+  return null;
+}
+
+/** 分享連結、官網物件頁、S 編號 —— 三種太平洋的輸入任一種 */
+export function isPacificInput(input: string): boolean {
+  return primShareCode(input) !== null || pacificSaleIdFrom(input) !== null;
+}
+
+/** 官網物件頁（直接打 S 編號時「物件資訊」按鈕連這裡） */
+export function pacificDetailUrl(saleId: string): string {
+  return `https://www.pacific.com.tw/Object/ObjectDetail/?saleID=${encodeURIComponent(saleId)}`;
+}
+
 export type PrimShareItem = {
   /** 太平洋官網 S 編號（＝ match_listing 主鍵） */
   objNo: string;

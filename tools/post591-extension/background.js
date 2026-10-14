@@ -6,6 +6,8 @@
  *   ③ 591 頁面的 content.js 來要資料就給它、填完就清掉
  *   ④ 幫 content.js 把愛屋圖檔主機（hq.houseol.com.tw）的照片抓回來 —— 591 頁面本身不能跨網域抓
  *   ⑤ 使用者貼了型錄頁連結時，把那一頁抓回來給頁面端撈嵌在頁面上的照片（型錄頁的網址本身沒有照片清單）
+ *   ⑦ 使用者貼了太平洋的分享連結／官網物件頁／S 編號（2026-10-14 起）：帶授權碼請 weikaihouse.com 拿一筆解析好的資料
+ *      （分享頁本身讀不到東西、官網單筆 API 要 token、完整門牌在資料庫 —— 都在伺服器那邊做）
  *   ⑥ 同事版的授權碼（2026-09-11 起）：app.html 來的上架要先過 license.js 的檢查（向 weikaihouse.com 驗、綁這台 Chrome）；
  *      後台 bridge.js 來的不用 —— 那是他自己，後台已經有 Google 登入白名單。
  *
@@ -119,6 +121,27 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
       }
       return { ok: true };
+    });
+  }
+  if (msg.type === "p591:pacific") {
+    return reply(async () => {
+      if (!fromAppPage(sender)) throw new Error("只給外掛自己的頁面用");
+      const lic = await license.check({});
+      if (!lic.ok) return { ok: false, error: self.P591License.message(lic), license: lic };
+      const st = await chrome.storage.local.get(["p591:licenseKey", "p591:installId"]);
+      const res = await fetch("https://weikaihouse.com/api/post591-ext/pacific", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: st["p591:licenseKey"] || "",
+          installId: st["p591:installId"] || "",
+          version: chrome.runtime.getManifest().version,
+          input: String(msg.input || "").slice(0, 500),
+        }),
+      });
+      const j = await res.json().catch(() => null);
+      if (!j || typeof j !== "object") throw new Error("伺服器回應 " + res.status);
+      return j;
     });
   }
   if (msg.type === "p591:scan") {

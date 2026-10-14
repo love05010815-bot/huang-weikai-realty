@@ -24,6 +24,7 @@
     "check:match": "node --experimental-strip-types scripts/check-match.mjs",
     "check:map-link": "node --experimental-strip-types scripts/check-map-link.mjs",
     "check:prim": "node --experimental-strip-types scripts/check-prim-share.mjs",
+    "check:pacific": "node --experimental-strip-types scripts/check-pacific-map.mjs",
     "check:threads": "node --experimental-strip-types scripts/check-threads.mjs",
     "check:fb-ad": "node --experimental-strip-types scripts/check-fb-ad.mjs",
     "build:fb-ext": "node tools/fb-group-poster/build-colleague.mjs",

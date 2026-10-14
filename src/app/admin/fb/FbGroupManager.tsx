@@ -340,7 +340,7 @@ export default function FbGroupManager({
   const [draftImages, setDraftImages] = useState<AdImage[]>([]);
   const editingAd = ads.find((a) => a.id === editingAdId) || null;
 
-  /* 從愛屋連結帶入這一戶的資料（案名／開價／路名／格局／坪數／樓別／屋齡／車位／環境特色）。
+  /* 從愛屋連結、或太平洋的分享連結／S 編號（2026-10-14 起）帶入這一戶的資料（案名／開價／路名／格局／坪數／樓別／屋齡／車位／環境特色）。
    * 真正去抓型錄的是 `/api/admin/fb/houseol`（伺服器端，網域擋在 lib 裡）。 */
   const [impInput, setImpInput] = useState("");
   const [impBusy, setImpBusy] = useState(false);
@@ -367,7 +367,7 @@ export default function FbGroupManager({
   }
   async function importFromHouseol() {
     const input = impInput.trim();
-    if (!input) return showToast("先貼愛屋的物件連結，或直接打案號（例：AA6352434）", "warn");
+    if (!input) return showToast("先貼太平洋分享連結（prim.pacific.com.tw/s/…）或愛屋連結，或直接打 S 編號／案號", "warn");
     if (!licensed) return showToast(`🔒 ${licenseHint}`, "bad");
     // 打字打到一半被蓋掉最嘔，先問過
     if ((draftText.trim() || draftTitle.trim()) && !confirm("帶入會蓋掉現在這篇的標題與內容，確定嗎？")) return;
@@ -1105,7 +1105,7 @@ export default function FbGroupManager({
           </section>
           <section className={styles.card}>
             <h2 className={styles.h2}>{editingAd ? "編輯文案" : "新文案"}</h2>
-            <label className={styles.lbl}>從愛屋帶入（貼物件連結或案號）</label>
+            <label className={styles.lbl}>從太平洋或愛屋帶入（貼分享連結、物件連結或編號）</label>
             <div className={styles.impRow}>
               <input
                 className={styles.input}
@@ -1117,7 +1117,7 @@ export default function FbGroupManager({
                     importFromHouseol();
                   }
                 }}
-                placeholder="https://www.houseol.com.tw/sell_item/… 或 AA6352434"
+                placeholder="prim.pacific.com.tw/s/… 分享連結、S 編號，或愛屋連結／案號"
                 spellCheck={false}
               />
               <button type="button" className={styles.btnSm} onClick={importFromHouseol} disabled={impBusy || !licensed}>
@@ -1128,7 +1128,7 @@ export default function FbGroupManager({
               會帶入<b>案名、開價、路名、格局、登記坪數、主＋附屬、樓別/樓高、屋齡、車位與車位型式、環境特色</b>，帶進來就是可以改的草稿。
               地址只到路名（型錄本來就沒有門牌號）。
             </p>
-            {impMissing.length > 0 && <p className={styles.warnText}>型錄上沒讀到：{impMissing.join("、")} —— 這幾項要自己補或刪掉那一行。</p>}
+            {impMissing.length > 0 && <p className={styles.warnText}>沒讀到：{impMissing.join("、")} —— 這幾項要自己補或刪掉那一行。</p>}
             {impPhotos.length > 0 && (
               <div className={styles.actions}>
                 <button type="button" className={styles.btnSm} onClick={importPhotos} disabled={picBusy || draftImages.length >= 10 || !licensed}>

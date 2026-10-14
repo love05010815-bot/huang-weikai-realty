@@ -34,6 +34,7 @@ import {
   type Row,
 } from "@/lib/post591-map";
 import { POST591_DEFAULTS } from "@/config/post591-template";
+import { isPacificInput } from "@/lib/prim-share";
 import { RAKUYA_TITLE_MAX, buildRakuya, rakuyaDesc } from "@/lib/rakuya-map";
 import styles from "./post591.module.css";
 
@@ -125,7 +126,10 @@ export default function Post591Manager() {
 
   /** 解析（貼文字、或從型錄頁抓回來的文字都走這裡）。sourceUrl＝從型錄頁網址抓來的，⑤ 直接帶那條網址（頁面上嵌的照片） */
   function runWith(raw: string, sourceUrl?: string): Listing {
-    const d = parseListing(raw);
+    return applyListing(parseListing(raw), sourceUrl);
+  }
+  /** 一筆已經解析好的 Listing 進畫面（貼文字解析、抓型錄頁、太平洋連結帶入三條路最後都走這裡） */
+  function applyListing(d: Listing, sourceUrl?: string): Listing {
     const o = derive(d);
     setListing(d);
     setRows(buildRows(d, o));
@@ -189,6 +193,56 @@ export default function Post591Manager() {
     return done;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pastedUrl, fetchNonce]);
+
+  /** ① 貼的是太平洋的分享連結／官網物件頁／S 編號（2026-10-14 他說「FB 社團／591 都換掉」）：
+   *  請伺服器去打分享 API ＋ 官網單筆 API ＋ 資料庫門牌（/api/admin/post591/pacific），回一筆 Listing 直接進畫面。
+   *  不經過外掛（那條是抓愛屋型錄頁、要帶愛屋 cookie 的），所以沒裝外掛也帶得進來；上架那一步才需要外掛。 */
+  const pastedPacific = useMemo(() => {
+    const t = text.trim();
+    return !/\s/.test(t) && isPacificInput(t) ? t : "";
+  }, [text]);
+  useEffect(() => {
+    if (!pastedPacific) return;
+    const input = pastedPacific;
+    fetchingRef.current = input;
+    setFetchMsg("正在向太平洋官網拿這一戶的資料…");
+    const ctl = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/post591/pacific", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ input }),
+          signal: ctl.signal,
+        });
+        const j = (await res.json().catch(() => null)) as {
+          ok?: boolean;
+          error?: string;
+          listing?: Listing;
+          fromOfficial?: boolean;
+          caseId?: string;
+        } | null;
+        if (!j?.ok || !j.listing) {
+          setFetchMsg(`帶不進來：${j?.error || `伺服器回應 ${res.status}`}`);
+          return;
+        }
+        // sourceUrl 不給：那是「型錄頁」專用（⑤ 會去掃那一頁的照片）；太平洋的照片已經在 listing.photos 裡
+        const d = applyListing(j.listing);
+        setFetchMsg(
+          `${j.fromOfficial ? "官網資料帶進來了" : "官網暫時讀不到，只帶到分享頁的欄位"}（${j.caseId || ""}，${d.photos.length} 張照片）。` +
+            (/號/.test(d.addr) ? "門牌有帶到。" : "⚠️ 門牌只到路名，③ 自己補。") +
+            "下面核對一遍，紅底的補完再上架。",
+        );
+      } catch (e) {
+        if (ctl.signal.aborted) return;
+        setFetchMsg(`連不上伺服器：${e instanceof Error ? e.message : String(e)}`);
+      } finally {
+        if (fetchingRef.current === input) fetchingRef.current = null;
+      }
+    })();
+    return () => ctl.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pastedPacific, fetchNonce]);
 
   async function copy(value: string, key: string) {
     try {
@@ -306,6 +360,8 @@ export default function Post591Manager() {
       <section className={styles.card}>
         <h2 className={styles.h2}>① 貼上資料</h2>
         <p className={styles.hint}>
+          太平洋：<b>直接貼分享連結</b>（prim.pacific.com.tw/s/…）、官網物件頁網址或 S 編號，伺服器會向官網拿齊欄位和照片，不用外掛也帶得進來。
+          <br />
           愛屋型錄：<b>直接貼型錄頁的網址</b>（一行就好），會自動抓回來解析，不用按解析；照片（型錄頁上的＋「更多照片」的）也自動帶、上架時自動上傳，<b>不用再貼任何連結</b>。
           門牌若沒帶到（有些頁只印到路名），③ 的門牌自己補；或照舊：型錄頁把地址旁的「<b>顯示</b>」點開 → Ctrl+A → Ctrl+C 貼進來。
           LINE 文字：照你平常的格式（「標題」／地址：／售價：／格局：／總建坪…／✨ 特色行）貼進來就好。
@@ -314,13 +370,13 @@ export default function Post591Manager() {
           className={styles.ta}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="貼型錄頁網址，或貼整頁文字…"
+          placeholder="貼太平洋分享連結／S 編號、愛屋型錄頁網址，或貼整頁文字…"
           spellCheck={false}
         />
         <div className={styles.runbar}>
-          {pastedUrl ? (
-            <button className={styles.run} onClick={() => setFetchNonce((n) => n + 1)} disabled={fetchingRef.current === pastedUrl}>
-              <Icon name="edit" size={18} aria-label="重新抓" /> 重新抓型錄
+          {pastedUrl || pastedPacific ? (
+            <button className={styles.run} onClick={() => setFetchNonce((n) => n + 1)} disabled={fetchingRef.current === (pastedUrl || pastedPacific)}>
+              <Icon name="edit" size={18} aria-label="重新抓" /> {pastedPacific ? "重新帶入" : "重新抓型錄"}
             </button>
           ) : (
             <button className={styles.run} onClick={run} disabled={!text.trim()}>
