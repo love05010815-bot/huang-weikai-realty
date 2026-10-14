@@ -133,6 +133,15 @@
   font-size: 13px;
   font-weight: 400;
 }
+/* 發佈紀錄每一列：文案開頭那幾個字，跟標題放一起但不要粗體搶走焦點，太長就省略號截斷 */
+.adSnippet {
+  color: var(--cmp-text, #1c1e21);
+  font-size: 13px;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .tiny {
   font-size: 12px;
   color: var(--cmp-mute, #9ca3af);

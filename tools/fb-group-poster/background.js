@@ -183,6 +183,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         today: daily.count,
         dailyLimit: job.dailyLimit,
         identityName: identity.name,
+        // 🔴 這批是哪篇文案：只存起來給後台的「發佈紀錄」顯示，content.js 填表不需要。存這裡（chrome.storage.local）
+        // 是因為後台那頁可能跑到一半被 Chrome 收掉分頁或他重新整理，頁面自己記的東西會不見，這裡不會
+        // （他 2026-10-14 問「為什麼這個沒顯示我發什麼文案」，兩筆長時間跑的紀錄標題與身分都是空的，就是這個原因）。
+        adTitle: String((p.ad && p.ad.title) || ""),
+        adSnippet: String((p.ad && p.ad.snippet) || ""),
         groupNames: Object.fromEntries(job.groups.map((g) => [g.id, g.name])),
         groupIds: job.groups.map((g) => g.id),
       });

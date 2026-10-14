@@ -51,7 +51,7 @@ type Settings = {
   autoGapMax: number;
 };
 type ResultRow = { groupId: string; groupName: string; status: string; message: string; at: string };
-type HistoryJob = { id: string; at: number; adTitle: string; identityName?: string; total: number; results: ResultRow[]; status: string };
+type HistoryJob = { id: string; at: number; adTitle: string; adSnippet?: string; identityName?: string; total: number; results: ResultRow[]; status: string };
 type Progress = {
   status: "running" | "done" | "stopped";
   total: number;
@@ -62,6 +62,13 @@ type Progress = {
   groupIds: string[];
   groupNames: Record<string, string>;
   finishedAt?: number;
+  // 🔴 這三個是背景程式存的（chrome.storage.local，一路活到整批結束），不是這一頁自己記的：
+  //    發佈頁跑好幾小時，Chrome 可能把這個分頁收掉、他也可能中途整理頁面，React 重新掛載一次，
+  //    單純存在這頁記憶體裡的東西（用過的 currentAdTitle 等 ref）就會不見，寫發佈紀錄時只抓得到空字串
+  //    （他 2026-10-14 的兩筆紀錄：標題、身分都是空的，就是撞到這個）。改成信任背景程式這邊，不管這頁重新掛載幾次都還在。
+  identityName?: string;
+  adTitle?: string;
+  adSnippet?: string;
 };
 
 /** 預設設定；固定尾段的預設值由外面給（後台＝黃瑋凱的那段、同事版＝空白讓同事自己填） */
@@ -115,6 +122,15 @@ const STATUS_LABEL: Record<string, [string, string]> = {
   waiting: ["等待中", "muted"],
 };
 const fmt = (ms: number | string) => (ms ? new Date(ms).toLocaleString("zh-TW", { hour12: false }) : "");
+/** 文案開頭那幾個字，給發佈紀錄分辨「這批到底是哪篇」用（同一份標題底下他常常改來改去）。跟 content.js 的 postSnippet() 同一個想法。 */
+function adSnippetOf(text: string): string {
+  const line = String(text || "")
+    .split("\n")
+    .map((s) => s.replace(/\s+/g, " ").trim())
+    .find((s) => s.length >= 2);
+  if (!line) return "";
+  return line.length > 40 ? line.slice(0, 40) + "…" : line;
+}
 
 function normalizeGroupUrl(raw: string): string {
   let url = String(raw || "").trim();
@@ -206,6 +222,7 @@ export default function FbGroupManager({
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wroteHistoryFor = useRef<number | null>(null);
   const currentAdTitle = useRef("");
+  const currentAdSnippet = useRef("");
   const currentIdentityName = useRef("");
 
   const showToast = useCallback((msg: string, type = "info") => {
@@ -291,13 +308,16 @@ export default function FbGroupManager({
     if (wroteHistoryFor.current === progress.finishedAt) return;
     wroteHistoryFor.current = progress.finishedAt;
     const results = progress.results || [];
+    // adTitle／adSnippet／identityName：背景程式存的優先，這頁自己的 ref 只當同一次沒重新整理過時的備援
+    // （見上面 Progress 型別那段註解）。
     setHistory((h) =>
       [
         {
           id: uid(),
           at: progress.finishedAt || Date.now(),
-          adTitle: currentAdTitle.current,
-          identityName: currentIdentityName.current,
+          adTitle: progress.adTitle || currentAdTitle.current,
+          adSnippet: progress.adSnippet || currentAdSnippet.current || undefined,
+          identityName: progress.identityName || currentIdentityName.current || undefined,
           total: progress.total,
           results,
           status: progress.status,
@@ -739,6 +759,7 @@ export default function FbGroupManager({
       return;
 
     currentAdTitle.current = pubAd.title;
+    currentAdSnippet.current = adSnippetOf(pubAd.text);
     currentIdentityName.current = pubIdentity.name;
     const payload = {
       v: 1,
@@ -752,7 +773,8 @@ export default function FbGroupManager({
       autoGapMin: Math.max(0, Number(settings.autoGapMin) || 0),
       autoGapMax: Math.max(0, Number(settings.autoGapMax) || 0),
       requirePageIdentity: true,
-      ad: { text: finalText, images: pubAd.images.map((im) => im.dataUrl) },
+      // title／snippet 只給背景程式存進「發佈進度」、讓發佈紀錄認得出這批是哪篇文案，不是外掛填表要用的東西
+      ad: { text: finalText, images: pubAd.images.map((im) => im.dataUrl), title: pubAd.title, snippet: currentAdSnippet.current },
       groups: picked.map((g) => ({ id: g.id, name: g.name, url: g.url })),
     };
     const ack = await askExt("launch", { type: "fbq:launch", payload });
@@ -1414,7 +1436,14 @@ export default function FbGroupManager({
                 <details key={j.id} className={`${styles.card} ${styles.job}`}>
                   <summary>
                     {badge(j.status === "done" ? "posted" : j.status)}
-                    <b>{j.adTitle}</b>
+                    {j.adTitle || j.adSnippet ? (
+                      <>
+                        <b>{j.adTitle}</b>
+                        {j.adSnippet && <span className={styles.adSnippet}>「{j.adSnippet}」</span>}
+                      </>
+                    ) : (
+                      <span className={styles.hintInline}>（沒記到文案是哪篇，較舊的紀錄）</span>
+                    )}
                     <span className={styles.hintInline}>
                       {fmt(j.at)} · {j.total} 個社團{j.identityName ? ` · 以 ${j.identityName} 發` : ""}
                     </span>
