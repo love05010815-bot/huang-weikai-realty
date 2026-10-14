@@ -44,7 +44,7 @@ const OTHER = "西屯區,房地(土地+建物),臺中市西屯區某路１號,10
 const deals = P.parseDeals(`${HEADER}\nenglish header\n${ROW}\n${OTHER}\n`, "sale");
 eq("西屯區被丟掉、只留四區", deals.length, 1);
 const d = deals[0];
-eq("id = 編號-移轉編號", d.id, "RPROMLPLQHLGFFB88DA-0017");
+eq("id 只用編號（移轉編號是檔內流水號、官方重發會變號，不能進主鍵）", d.id, "RPROMLPLQHLGFFB88DA");
 eq("交易日 ISO", d.dealDate, "2026-08-20");
 eq("門牌半形", d.address, "臺中市梧棲區大同街288號七樓之2");
 eq("完成年月", d.builtYm, "2025-06");
@@ -170,6 +170,9 @@ if (process.argv.includes("--live")) {
   const noDate = live.filter((x) => !x.dealDate).length;
   ok(live.length > 0, "四區至少有一筆", live.length, ">0");
   ok(noDate === 0, "每筆都有交易日", noDate, "0");
+  const ids = new Set(live.map((x) => x.id));
+  ok(ids.size === live.length, "id（官方編號）在同一檔內唯一", `${ids.size}/${live.length}`, "相等");
+  ok(live.every((x) => !x.id.includes("-")), "id 沒有接流水號", live.filter((x) => x.id.includes("-")).length, "0");
 }
 
 console.log(pass ? "\n全部通過 ✅" : "\n有失敗 ❌");

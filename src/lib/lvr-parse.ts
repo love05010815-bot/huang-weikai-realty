@@ -82,7 +82,12 @@ export type LvrKind = "sale" | "presale";
 
 /** 一筆成交，欄位名對應資料表 lvr_deal（見 lvr.ts） */
 export type LvrDeal = {
-  /** 主鍵：編號（買賣若有移轉編號則接上 `-移轉編號`） */
+  /**
+   * 主鍵：官方「編號」，**只有編號**。
+   * 「移轉編號」是那一份檔的流水號（本期 001…、前期 0001…、季度 00001…），內政部重發同一期的檔就會變號——
+   * 2026-10-10 重發 9/11–9/20 那期時 17 案的流水號全變了，當時主鍵有接流水號，所以同一案進了兩次（前台兩列一模一樣）。
+   * 三種檔的「編號」在檔內都驗過是唯一的（`check-lvr.mjs -- --live` 每次會再驗），不要再把流水號接回來。
+   */
   id: string;
   kind: LvrKind;
   district: string;
@@ -281,9 +286,8 @@ export function recordToDeal(rec: Record<string, string>, kind: LvrKind): LvrDea
   if (!serial) return null;
   const dealDate = rocDateToIso(rec["交易年月日"]);
   if (!dealDate) return null;
-  const transferNo = (rec["移轉編號"] || "").trim();
   return {
-    id: kind === "sale" && transferNo ? `${serial}-${transferNo}` : serial,
+    id: serial,
     kind,
     district,
     target: rec["交易標的"] || "",
