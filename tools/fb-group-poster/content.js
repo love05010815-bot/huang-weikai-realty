@@ -350,11 +350,12 @@
     }
 
     /**
-     * 商品買賣社團：按「商品拍賣」→ 表單裡填標題／價格／說明／照片 → 自動模式替他按發佈。
-     * 🔴 跟一般發文框不一樣的地方：表單長相沒親眼看過，每一格認不到就不填；缺任何一樣、或表單上認不出他選的發文身分
-     *    （Marketplace 式的刊登可能只能用個人身分，不是粉專——認不出就不發，怕用錯身分）就**跳過換下一個**，不停下來等他：
+     * 商品買賣社團：按「商品拍賣」→「選擇商品類型」選「出售商品」→ 第一步填標題／價格／狀況／（更多詳情→）說明／照片 →
+     * 「繼續」→ 第二步「分享到更多地方」（這個社團已勾、Marketplace 預設不勾）→ 自動模式替他按「發佈」。
+     * 2026-10-15 在他的社團（台中海線專攻房地產買賣）用他的 Chrome 一步一步實看過，欄位字與流程照那個寫。
+     * 🔴 跟一般發文框不一樣的地方：每一格認不到就不填；缺任何一樣就**跳過換下一個**，不停下來等他：
      *    這種社團一批裡可能好幾個，分頁又多半縮小在背景，停著整批就卡住。半自動模式照舊停下來讓他自己補。
-     *    面板會把視窗上的字印一段，第一次跑完他截圖給我就知道真的表單長什麼樣。
+     * 🔴 商品貼文是 Marketplace 那套：一律用他登入的個人帳號刊登，表單上沒有粉專身分可切，所以不做身分核對。
      */
     async function runSell(sellBtn) {
       postVia = "（商品拍賣）";
@@ -380,13 +381,15 @@
         return;
       }
       await sleep(1000);
-      // 有些版本先問「要賣什麼」（物品／車輛／房屋…）：選「物品」那種，再等真正的表單
+      // 先跳「上架新商品／選擇商品類型」→ 選「出售商品」。
+      // 🔴 不選「出售或出租房屋」：2026-10-15 在他的社團實看，那張只有出租欄位（出租類型、每月價格、可入住日期），賣房用了會變租屋廣告
       if (!hasField(dialog)) {
         const optRe = FBQ.anyRe(FBQ.words(L, "sellItemOption"));
-        const opt = [...dialog.querySelectorAll('[role="button"], [role="radio"], [role="menuitem"], a')].find((el) => isVisible(el) && optRe.test(textOf(el)) && textOf(el).length < 30);
+        const opt = [...dialog.querySelectorAll('[role="button"], [role="radio"], [role="menuitem"], a')].find((el) => isVisible(el) && optRe.test(textOf(el)) && textOf(el).length < 60);
         if (opt) {
-          log("先選「" + textOf(opt) + "」…", "");
+          log("選「出售商品」…", "");
           opt.click();
+          await sleep(1500);
           const again = await firstVisible([() => [...document.querySelectorAll('div[role="dialog"]')].reverse().find((d) => isVisible(d) && hasField(d))], 10000);
           if (again) dialog = again;
         }
@@ -397,22 +400,15 @@
         await autoSkip("商品拍賣表單認不出來");
         return;
       }
+      // 🔴 商品貼文是 Marketplace 那套，一律用他登入的個人帳號刊登，表單上沒有粉專身分可以切，所以這裡不做身分核對（他 10/15 知道）
+      log("商品貼文會用你登入的個人帳號刊登（Facebook 的商品功能沒有粉專身分）。", "");
       const missing = [];
-      // 身分：認不出他選的那個就不發（Marketplace 式的刊登常常只能用個人身分，不是粉專）
-      const idName = (job.identity && job.identity.name) || job.pageName || "";
-      const idKind = (job.identity && job.identity.kind) || "page";
-      if (idName) {
-        const idOk = await ensureIdentity(dialog, idName, L, idKind === "account");
-        log(idOk ? "發文身分：" + idName + " ✓" : "⚠ 表單上認不出發文身分「" + idName + "」，怕用錯身分，不發。", idOk ? "fbq-ok" : "fbq-bad");
-        if (!idOk) missing.push("表單上認不出發文身分「" + idName + "」");
-      }
-      // 標題／價格／說明
+      // 標題／價格／狀況／說明
       const text = job.ad.text || "";
       const title = titleFromText(text, 80);
       const price = parsePrice(text);
       const fTitle = fieldByLabel(dialog, FBQ.words(L, "sellTitle"));
       const fPrice = fieldByLabel(dialog, FBQ.words(L, "sellPrice"));
-      const fDesc = fieldByLabel(dialog, FBQ.words(L, "sellDesc"));
       if (!fTitle) missing.push("找不到標題欄");
       else if (!title) missing.push("文案第一行是空的，沒東西當標題");
       else if (await fillField(fTitle, title)) log("標題：" + title, "");
@@ -421,12 +417,24 @@
       else if (!fPrice) missing.push("找不到價格欄");
       else if (await fillField(fPrice, price)) log("價格：" + Number(price).toLocaleString("en-US"), "");
       else missing.push("價格沒填進去");
+      const cond = await pickCondition(dialog, L, text);
+      if (cond) log("狀況：" + cond, "");
+      else missing.push("「狀況」下拉選不到");
+      // 「說明」藏在「更多詳情」底下
       if (text.trim()) {
+        if (!fieldByLabel(dialog, FBQ.words(L, "sellDesc"))) {
+          const more = findButton(dialog, FBQ.words(L, "sellMoreDetails")) || [...dialog.querySelectorAll('[role="button"]')].find((el) => isVisible(el) && FBQ.anyRe(FBQ.words(L, "sellMoreDetails")).test(textOf(el)));
+          if (more) {
+            more.click();
+            await sleep(1200);
+          }
+        }
+        const fDesc = fieldByLabel(dialog, FBQ.words(L, "sellDesc"));
         if (!fDesc) missing.push("找不到說明欄");
         else if (await fillField(fDesc, text)) log("說明已填（文案全文）。", "");
         else missing.push("說明沒完整填進去");
       }
-      // 照片（跟發文框同一套：等 FB 真的收完）
+      // 照片（跟發文框同一套：等 FB 真的收完；商品至少要一張，不然「繼續」不會亮）
       let photos = null;
       if (job.ad.images && job.ad.images.length) {
         log("上傳 " + job.ad.images.length + " 張圖片…", "");
@@ -437,11 +445,17 @@
         } catch (e) {
           missing.push("照片沒傳成功（" + (e && e.message ? e.message : e) + "）");
         }
-      }
-      // 類別／狀況之類的格我不認得：發佈鈕一直不亮就是還缺
-      if (!missing.length && !(await waitPostButton(dialog, L, 20000))) {
-        const unknown = [...dialog.querySelectorAll('[role="combobox"], select')].filter(isVisible).length;
-        missing.push("「發佈」鈕一直按不下去，表單可能還缺類別、狀況這種外掛不認得的欄位" + (unknown ? "（視窗裡有 " + unknown + " 個下拉選單）" : ""));
+      } else missing.push("商品貼文至少要一張照片，這篇文案沒有照片");
+      // 第一步填齊 →「繼續」→ 第二步「分享到更多地方」（這個社團已經勾好、Marketplace 預設不勾）→ 那裡才有「發佈」
+      if (!missing.length) {
+        const cont = await waitButton(dialog, FBQ.words(L, "sellContinue"), 20000);
+        if (!cont) {
+          missing.push("「繼續」鈕一直按不下去，表單可能還缺外掛不認得的欄位（視窗上寫：" + (dialog.innerText || "").replace(/\s+/g, " ").slice(0, 80) + "…）");
+        } else {
+          cont.click();
+          log("按「繼續」，到「分享到更多地方」…", "");
+          await sleep(2500);
+        }
       }
       if (missing.length) {
         log("⚠ 商品拍賣表單沒填齊：" + missing.join("；") + "。", "fbq-bad");
@@ -456,7 +470,7 @@
         return;
       }
       if (job.autoPost) return await autoPost(dialog, photos);
-      log("商品拍賣表單已填好。請核對後按 Facebook 的「發佈」。", "fbq-ok");
+      log("商品拍賣表單已填好、也按過「繼續」了。請核對後按 Facebook 的「發佈」。", "fbq-ok");
       log("發佈完，回來按下面的「✅ 我按過發佈了，下一個社團」。", "fbq-strong");
       await report("ready", "商品拍賣表單已填好，等你按發佈");
       controls(true);
@@ -1025,6 +1039,61 @@
     else if (m[2] === "萬") n *= 1e4;
     if (!isFinite(n) || n <= 0 || n > 1e11) return "";
     return String(Math.round(n));
+  }
+  /** 視窗裡文字（或 aria-label）**整個**等於 words 之一、而且可以按的按鈕 */
+  function findButton(dialog, words) {
+    const re = FBQ.exactRe(words);
+    const cands = [...dialog.querySelectorAll('[role="button"], button')].filter((el) => {
+      if (!isVisible(el) || el.closest('[role="article"]')) return false;
+      return re.test(textOf(el)) || re.test(el.getAttribute("aria-label") || "");
+    });
+    return cands.length ? cands[cands.length - 1] : null;
+  }
+  async function waitButton(dialog, words, timeoutMs) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const b = findButton(dialog, words);
+      if (b && !isDisabled(b)) return b;
+      await sleep(500);
+    }
+    return null;
+  }
+  /**
+   * 「狀況」必填下拉（2026-10-15 實看：全新／二手 - 近全新／二手 - 良好／二手 - 普通）：
+   * 文案寫新成屋／預售就選「全新」，其他一律「二手 - 良好」——房子本來就沒有這種分法，挑一個不難看的。
+   */
+  async function pickCondition(dialog, L, text) {
+    const re = FBQ.anyRe(FBQ.words(L, "sellCondition"));
+    const cb = [...dialog.querySelectorAll('[role="combobox"]')].find((el) => isVisible(el) && re.test(textOf(el) + " " + textOf(el.parentElement && el.parentElement.parentElement)));
+    if (!cb) return "";
+    const wantNew = /新成屋|預售|新屋|新建|全新/.test(String(text || ""));
+    const prefer = FBQ.words(L, wantNew ? "sellConditionNew" : "sellConditionUsed");
+    cb.click();
+    await sleep(800);
+    const opts = () => [...document.querySelectorAll('[role="option"], [role="menuitem"], [role="menuitemradio"]')].filter(isVisible);
+    let list = opts();
+    if (!list.length) {
+      await sleep(1000);
+      list = opts();
+    }
+    const squash = (s) => String(s || "").replace(/\s+/g, "");
+    let pick = null;
+    for (const w of prefer) {
+      pick = list.find((o) => squash(textOf(o)) === squash(w));
+      if (pick) break;
+    }
+    if (!pick) for (const w of prefer) {
+      pick = list.find((o) => squash(textOf(o)).includes(squash(w)));
+      if (pick) break;
+    }
+    if (!pick) {
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      return "";
+    }
+    const label = textOf(pick);
+    pick.click();
+    await sleep(500);
+    return label;
   }
   /** 商品標題：文案第一個有內容的句子（去掉表情符號），最多 max 字 */
   function titleFromText(text, max) {

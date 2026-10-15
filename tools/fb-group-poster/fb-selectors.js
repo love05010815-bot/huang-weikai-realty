@@ -12,12 +12,21 @@
       postButton: ["發佈", "張貼", "刊登"],
       // 商品買賣社團（他 2026-10-15 說「遇到商品買賣的社團也請按下商品買賣貼文」）：沒有發文框，只有這顆鈕
       sellButton: ["商品拍賣", "拍賣商品", "刊登商品", "出售商品", "建立商品清單", "建立新商品清單"],
-      // 按下去有些版本先問要賣什麼（物品／車輛／房屋）：選「物品」那種
-      sellItemOption: ["物品出售", "出售物品", "拍賣物品", "單一物品"],
-      // 表單裡各格的標籤字（aria-label／placeholder／label）
+      // 按下去先跳「上架新商品／選擇商品類型」（2026-10-15 在他的社團實看）：出售商品／出售車輛／出售或出租房屋／促銷活動。
+      // 🔴 選「出售商品」——「出售或出租房屋」那張其實只有出租欄位（出租類型、每月價格、可入住日期），賣房不能用
+      sellItemOption: ["出售商品", "物品出售", "出售物品", "拍賣物品", "單一物品"],
+      // 表單裡各格的標籤字（FB 把標籤字放在欄位外層同一個小容器裡，沒有 aria-label／placeholder）
       sellTitle: ["標題", "商品名稱", "你要賣什麼", "要賣什麼"],
       sellPrice: ["價格", "售價"],
       sellDesc: ["說明", "描述"],
+      // 「狀況」是必填下拉（全新／二手 - 近全新／二手 - 良好／二手 - 普通）
+      sellCondition: ["狀況"],
+      sellConditionNew: ["全新"],
+      sellConditionUsed: ["二手 - 良好", "二手-良好", "良好"],
+      // 「說明」藏在「更多詳情」底下，要先點開
+      sellMoreDetails: ["更多詳情"],
+      // 第一步填完按「繼續」→ 第二步「分享到更多地方」（這個社團已勾、Marketplace 預設不勾）才有「發佈」
+      sellContinue: ["繼續", "下一步"],
       pendingApproval: ["等待管理員審核", "待審核", "等待審核", "正在審核"],
       blocked: ["暫時被封鎖", "暫時無法", "無法發佈", "違反社群守則", "請稍後再試"],
       // 照片沒傳上去時 FB 跳的字（2026-10-09 他遇到的「抱歉，沒有上傳新的相片。請再試一次。」）
@@ -43,6 +52,11 @@
       sellTitle: ["Title", "What are you selling"],
       sellPrice: ["Price"],
       sellDesc: ["Description"],
+      sellCondition: ["Condition"],
+      sellConditionNew: ["New"],
+      sellConditionUsed: ["Used - good", "Used - Good", "Good"],
+      sellMoreDetails: ["More details", "More Details"],
+      sellContinue: ["Next", "Continue"],
       pendingApproval: ["pending approval", "pending review", "awaiting approval"],
       blocked: ["temporarily blocked", "couldn't post", "Community Standards", "restricted", "try again later"],
       uploadFailed: ["no new photos were uploaded", "Couldn't upload photo", "Unable to upload", "couldn't be uploaded", "Upload failed"],
