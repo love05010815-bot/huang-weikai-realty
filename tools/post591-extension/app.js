@@ -281,14 +281,15 @@ const pastedUrl = () => {
   const t = $("raw").value.trim();
   return /^https?:\/\/\S+$/.test(t) && isHouseolPage(t) ? t : "";
 };
-/** 貼的是太平洋的分享連結（prim.pacific.com.tw/s/…）、官網物件頁（?saleID=S…）或直接打 S 編號（2026-10-14 起） */
+/** 貼的是太平洋的分享連結（prim.pacific.com.tw/s/…）、官網物件頁（?saleID=S…／P…）或直接打 S／P 編號（2026-10-14 起；
+ *  2026-10-15 補 P 開頭——別墅之類的物件編號是 P 開頭，原本只認 S，跟伺服器端 PACIFIC_SALE_ID 不一致） */
 const pacificInput = () => {
   const t = $("raw").value.trim();
   if (!t || /\s/.test(t)) return "";
   const ok =
     /^https?:\/\/prim\.pacific\.com\.tw\/s\/[A-Za-z0-9]{6,32}\/?(\?.*)?$/i.test(t) ||
-    /^https?:\/\/(www\.)?pacific\.com\.tw\/.*saleid=s\d{5,}/i.test(t) ||
-    /^S\d{5,}$/i.test(t);
+    /^https?:\/\/(www\.)?pacific\.com\.tw\/.*saleid=[sp]\d{5,}/i.test(t) ||
+    /^[SP]\d{5,}$/i.test(t);
   return ok ? t : "";
 };
 let fetching = "";
