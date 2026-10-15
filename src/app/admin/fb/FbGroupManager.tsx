@@ -338,6 +338,8 @@ export default function FbGroupManager({
   const [draftTitle, setDraftTitle] = useState("");
   const [draftText, setDraftText] = useState("");
   const [draftImages, setDraftImages] = useState<AdImage[]>([]);
+  /** 拖著調順序：被拖的那張 index；放開或拖出去都清掉 */
+  const [dragImgIndex, setDragImgIndex] = useState<number | null>(null);
   const editingAd = ads.find((a) => a.id === editingAdId) || null;
 
   /* 從愛屋連結、或太平洋的分享連結／S 編號（2026-10-14 起）帶入這一戶的資料（案名／開價／路名／格局／坪數／樓別／屋齡／車位／環境特色）。
@@ -435,6 +437,16 @@ export default function FbGroupManager({
       next.push({ name: f.name, dataUrl: await fileToResizedDataUrl(f) });
     }
     setDraftImages((prev) => [...prev, ...next]);
+  }
+  /** 拖著把第 from 張換到第 to 張的位置；發佈會照這個順序一張一張上傳 */
+  function moveImage(from: number, to: number) {
+    if (from === to) return;
+    setDraftImages((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
   }
   function saveAd() {
     if (!draftText.trim() && !draftImages.length) return showToast("請先輸入內容或加圖片", "warn");
@@ -1147,14 +1159,30 @@ export default function FbGroupManager({
               {[...draftText].length} 字
               {settings.tailText.trim() && <>　·　發佈時會自動接上<b>固定尾段</b>（電話／LINE／個人店鋪那一段），這裡不用再貼一次。</>}
             </div>
-            <label className={styles.lbl}>圖片（最多 10 張，依順序上傳）</label>
+            <label className={styles.lbl}>圖片（最多 10 張，依順序上傳；可拖曳調整順序）</label>
             <input type="file" accept="image/*" multiple onChange={(e) => { onPickImages(e.target.files); e.currentTarget.value = ""; }} />
             {draftImages.length > 0 && (
               <div className={styles.thumbs}>
                 {draftImages.map((im, i) => (
-                  <div key={i} className={styles.thumb}>
+                  <div
+                    key={i}
+                    className={`${styles.thumb} ${dragImgIndex === i ? styles.thumbDragging : ""}`}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = "move";
+                      setDragImgIndex(i);
+                    }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (dragImgIndex !== null) moveImage(dragImgIndex, i);
+                      setDragImgIndex(null);
+                    }}
+                    onDragEnd={() => setDragImgIndex(null)}
+                    title="拖曳可調整順序"
+                  >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={im.dataUrl} alt="" />
+                    <img src={im.dataUrl} alt="" draggable={false} />
                     <button type="button" onClick={() => setDraftImages((prev) => prev.filter((_, j) => j !== i))} title="移除">
                       ✕
                     </button>

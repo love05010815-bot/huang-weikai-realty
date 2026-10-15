@@ -233,6 +233,10 @@
 }
 .thumb {
   position: relative;
+  cursor: grab;
+}
+.thumbDragging {
+  opacity: 0.35;
 }
 .thumb button {
   position: absolute;
