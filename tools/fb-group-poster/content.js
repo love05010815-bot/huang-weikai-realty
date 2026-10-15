@@ -380,12 +380,21 @@
         await autoSkip("商品拍賣視窗沒有跳出來");
         return;
       }
-      await sleep(1000);
+      // 🔴 視窗元素先出現、內容 1～2 秒後才長出來（10/15 在他的社團實測：按下去 300ms 就有一個空的 dialog，1.8 秒才有
+      //    「選擇商品類型」；第一版只等 1 秒就說「認不出來」跳過）→ 等到視窗裡有欄位或有「出售商品」可以選為止，最多 12 秒
+      const optRe = FBQ.anyRe(FBQ.words(L, "sellItemOption"));
+      const findOpt = (d) => [...d.querySelectorAll('[role="button"], [role="radio"], [role="menuitem"], a')].find((el) => isVisible(el) && optRe.test(textOf(el)) && textOf(el).length < 60) || null;
+      const liveDialog = () => [...document.querySelectorAll('div[role="dialog"]')].reverse().find((d) => !before.has(d) && isVisible(d)) || dialog;
+      let ready = false;
+      for (let i = 0; i < 40 && !ready; i++) {
+        dialog = liveDialog();
+        if (hasField(dialog) || findOpt(dialog)) ready = true;
+        else await sleep(300);
+      }
       // 先跳「上架新商品／選擇商品類型」→ 選「出售商品」。
       // 🔴 不選「出售或出租房屋」：2026-10-15 在他的社團實看，那張只有出租欄位（出租類型、每月價格、可入住日期），賣房用了會變租屋廣告
       if (!hasField(dialog)) {
-        const optRe = FBQ.anyRe(FBQ.words(L, "sellItemOption"));
-        const opt = [...dialog.querySelectorAll('[role="button"], [role="radio"], [role="menuitem"], a')].find((el) => isVisible(el) && optRe.test(textOf(el)) && textOf(el).length < 60);
+        const opt = findOpt(dialog);
         if (opt) {
           log("選「出售商品」…", "");
           opt.click();
@@ -395,9 +404,10 @@
         }
       }
       if (!hasField(dialog)) {
-        log("商品拍賣的視窗裡找不到可以填的欄位（視窗上寫：" + (dialog.innerText || "").replace(/\s+/g, " ").slice(0, 80) + "…）。", "fbq-bad");
-        await report("failed", "商品拍賣表單認不出來");
-        await autoSkip("商品拍賣表單認不出來");
+        const seen = (dialog.innerText || "").replace(/\s+/g, " ").slice(0, 80);
+        log("商品拍賣的視窗裡找不到可以填的欄位（視窗上寫：" + (seen || "空白") + "…）。", "fbq-bad");
+        await report("failed", "商品拍賣表單認不出來（視窗上寫：" + (seen || "空白") + "）");
+        await autoSkip("商品拍賣表單認不出來（視窗上寫：" + (seen || "空白") + "）");
         return;
       }
       // 🔴 商品貼文是 Marketplace 那套，一律用他登入的個人帳號刊登，表單上沒有粉專身分可以切，所以這裡不做身分核對（他 10/15 知道）
