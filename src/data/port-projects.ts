@@ -2361,22 +2361,22 @@ export const PROJECTS: Project[] = [
   { id: "liangju-qishang", name: "良鉅柒尚", builder: "良鉅建設", area: "清水市區", status: "newly", completion: "約 2024", sources: ["owner"] },
   { id: "qingshui-mashangfa", name: "清水馬上發", builder: "馬上發國際企業", area: "清水市區", status: "completed", completion: "約 1995", sources: ["owner"] },
   { id: "aofeng-guangchang", name: "鰲豐廣場", builder: "禾盛建設", area: "清水市區", status: "completed", completion: "約 2018", sources: ["owner"] },
-  { id: "weifeng-yipin-2", name: "微風一品2", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2017", sources: ["owner"] },
-  { id: "changlin-qingshidai-2", name: "長霖青世代2", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "weifeng-yipin-2", name: "微風一品2", builder: "振昇建設", area: "清水市區", status: "completed", completion: "約 2017", sources: ["owner"] },
+  { id: "changlin-qingshidai-2", name: "長霖青世代2", builder: "長霖建設", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
   { id: "chengyi", name: "澄邑", builder: "德邑建設", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
-  { id: "hefeng-yijing-7", name: "和風逸境7", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2018", sources: ["owner"] },
+  { id: "hefeng-yijing-7", name: "和風逸境7", builder: "富筌建設", area: "清水市區", status: "completed", completion: "約 2018", sources: ["owner"] },
   /* ⚠️ 2026-09-17 他補建商「德光建設」時順手寫屋齡 6 年（＝約 2020），
      但 9/17 早上那批他給的是 5 年（＝現在存的約 2021）。**差一年、維持現有、沒有蓋掉**，已回問。
      🔵 同系列的「晴空墅」（無 2）是德邑建設 —— 德邑 vs 德光是兩家既有公司，不是打錯字。 */
   { id: "qingkong-shu-2", name: "晴空墅2", builder: "德光建設", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
   { id: "renli-shishang", name: "仁里時上", builder: "和旺建設", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
   { id: "fuli-dayuan", name: "富禮大院", builder: "新富銘建設", area: "清水市區", status: "completed", completion: "約 2015", sources: ["owner"] },
-  { id: "zhaoguo-zhuoyi", name: "兆國琢藝", builder: "待確認", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
+  { id: "zhaoguo-zhuoyi", name: "兆國琢藝", builder: "兆奕建設", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "hongshan-qingshuili", name: "鴻山清水禮", builder: "宇澤建設", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "jianyuan-yuzhishu", name: "建元御之墅", builder: "建元建設開發", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "langlang-tianqing", name: "朗朗天晴", builder: "俊邦建設", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
   { id: "senbaofu-9", name: "森堡富9", builder: "名璟建設", area: "清水市區", status: "newly", completion: "約 2024", sources: ["owner"] },
-  { id: "renli-wenhua", name: "仁里文華", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
+  { id: "renli-wenhua", name: "仁里文華", builder: "仁里建設", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
   { id: "junbang-zhiqing", name: "俊邦植青", builder: "俊揚建設", area: "清水市區", status: "newly", completion: "約 2024", sources: ["owner"] },
   { id: "daqi-tianxia-6", name: "大砌天下6", builder: "億兆豐建設", area: "清水市區", status: "completed", completion: "約 2018", sources: ["owner"] },
   { id: "shiguang-fika", name: "蒔光FIKA", builder: "大居建設", area: "清水市區", status: "completed", completion: "約 2023", sources: ["owner"] },
@@ -2384,9 +2384,9 @@ export const PROJECTS: Project[] = [
   { id: "getai-fuyi", name: "格太富邑", builder: "格太建設", area: "清水市區", status: "newly", completion: "約 2025", sources: ["owner"] },
   { id: "yuanzhen-gaojing", name: "沅臻高境", builder: "百騏建設", area: "清水市區", status: "presale", completion: "預售中", sources: ["owner"] },
   { id: "senbaofu-di-3", name: "森堡富第3", builder: "精展建設", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
-  { id: "daqi-tianxia-9", name: "大砌天下9", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2022", sources: ["owner"] },
-  { id: "daqi-tianxia-8", name: "大砌天下8", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
-  { id: "fuyu-zhongyang-gongyuan", name: "富宇中央公園", builder: "待確認", area: "清水市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "daqi-tianxia-9", name: "大砌天下9", builder: "億兆豐建設", area: "清水市區", status: "completed", completion: "約 2022", sources: ["owner"] },
+  { id: "daqi-tianxia-8", name: "大砌天下8", builder: "億兆豐建設", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
+  { id: "fuyu-zhongyang-gongyuan", name: "富宇中央公園", builder: "富宇建設", area: "清水市區", status: "completed", completion: "約 2022", sources: ["owner"] },
   { id: "dunpu-meixue", name: "敦璞美學", builder: "俊邦建設", area: "清水市區", status: "completed", completion: "約 2020", sources: ["owner"] },
   { id: "qingmeiju", name: "清美居", builder: "巽揚建設", area: "清水市區", status: "completed", completion: "約 2017", sources: ["owner"] },
   { id: "dunpu-meixue-2", name: "敦璞美學2", builder: "俊邦建設", area: "清水市區", status: "completed", completion: "約 2023", sources: ["owner"] },
@@ -2689,7 +2689,9 @@ export const PROJECTS: Project[] = [
         沒有重複建立、也沒有覆蓋。
      🔴 **「微風一品3」是新案，不是拿來補「微風一品2」的建商** —— 待確認名單上的是微風一品2，
         但他寫的屋齡 5 年（約 2021）跟微風一品2 的約 2017 差四年，**當成同一案去覆蓋會改到事實**。
-        **微風一品2 的建商仍然是待確認。** 若他其實是要補微風一品2，再改。 */
+        **微風一品2 的建商仍然是待確認。** 若他其實是要補微風一品2，再改。
+     ✅ **2026-10-15 他親自逐筆確認清水市區 8 案建商時，把微風一品2 也填成「振昇建設」**——
+        跟微風一品3 同建商、不是誤植，是他本人分開點頭的兩案剛好同一家公司蓋的。上面的警告就此解除。 */
   { id: "weifeng-yipin-3", name: "微風一品3", builder: "振昇建設", area: "清水市區", status: "completed", completion: "約 2021", sources: ["owner"] },
 
   /* ── 2026-10-01 龍井車站商圈補 4 案（兩組拆案）──
@@ -3545,12 +3547,12 @@ export const COORDS: Record<string, Coord> = {
         幾乎等距，是三塊之間的空隙。
         ⚠️ **這四案正好就是他寫「梧棲區」而不是「梧棲市區」的那四案**（9/18 御墅青安、9/19 其餘三案），
         當初存進梧棲市區時就標了「他寫梧棲區、先放梧棲市區、等座標來驗」—— 現在座標驗出來是不合。
-        **area 沒有動、等他決定**：梧棲區底下目前只有「梧棲市區」商圈與「梧棲」（重劃區）兩個值，
-        沒有像龍井那樣的收容區。三條路（都要他點頭，不准自己挑）：
-          ① 比照龍井開一個「梧棲區」收容區（沒有色塊，ZONE_BY_AREA 給 null）；
-          ② 把梧棲市區色塊往南拉到蓋住這四案；
-          ③ 就讓圖釘露在色塊外 —— 但他 8/28 拍板的「圖釘露在色塊外不是 bug」講的是**官方界線**，
-             梧棲市區這塊是他自己手繪的商圈，不適用那一條。
+     ✅ **2026-10-15 他拍板選③：讓圖釘露在色塊外。** 當時列的三條路是：
+          ① 比照龍井開一個「梧棲區」收容區；② 把梧棲市區色塊往南拉；③ 讓圖釘露在色塊外——
+        原本備註③不適用「官方界線外不是 bug」那條（那條是官方界線專用，這塊色塊是他自己手繪的），
+        但他這次就是明確選了③，等於他本人把那個待遇延伸套用到這塊手繪商圈。
+        **area 維持「梧棲市區」不動、不開收容區、不挪色塊、不用改任何程式**——這則註解留著當佐證。
+        ⚠️ 這個延伸只對「梧棲市區」這一塊成立，**不要自動套用到其他手繪商圈**（遇到類似狀況還是要先問）。
      🔵 座標本身先寫進來是安全的：COORDS 用 id 當 key、跟 area 無關，他之後改哪一區都不用重點。 */
   "yushu-qingan": { lat: 24.23891, lng: 120.53338, precision: "exact" }, // 御墅青安
   "yushu-dajing": { lat: 24.239, lng: 120.53464, precision: "exact" }, // 御墅大境
