@@ -24,7 +24,7 @@ import type { CatalogListing } from "@/lib/houseol-catalog";
 import type { Listing } from "@/lib/post591-parser";
 import { titleFeatures } from "@/lib/match/houseol-parse";
 import { pacificFloor } from "@/lib/match/pacific-parse";
-import { communityFromTitle, primAgeYears, stripCity, type PrimShareItem } from "@/lib/prim-share";
+import { communityFromTitle, PACIFIC_SALE_ID, primAgeYears, stripCity, type PrimShareItem } from "@/lib/prim-share";
 
 /** 官網 GetObjectDetail 回的欄位（只留我們用的；個資欄位進不來） */
 export type PacificDetail = {
@@ -122,7 +122,7 @@ export function sanitizeDetail(raw: unknown): PacificDetail | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
   const saleId = str(r.saleID).toUpperCase();
-  if (!/^S\d{5,}$/.test(saleId)) return null;
+  if (!PACIFIC_SALE_ID.test(saleId)) return null;
   const price = pos(r.sellTotalPrice);
   const hasStallRaw = num(r.hasStall);
   return {

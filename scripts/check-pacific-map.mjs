@@ -99,6 +99,7 @@ eq("sanitize：座標（x 是經度）", [d.lat, d.lng], [24.25, 120.5]);
 eq("sanitize：不是出租", d.isRent, false);
 eq("🔴 sanitize：個資一個都不在", JSON.stringify(d).includes("王小明") || JSON.stringify(d).includes("0912345678") || JSON.stringify(d).includes("李小華"), false);
 eq("sanitize：沒有 saleID → null", sanitizeDetail({ objectName: "x" }), null);
+eq("🔴 sanitize：P 編號（別墅／透天）不再被擋", sanitizeDetail({ ...RAW, saleID: "P0000309" })?.saleId, "P0000309");
 eq("sanitize：null → null", sanitizeDetail(null), null);
 eq("sanitize：hasStall 2 → false", sanitizeDetail({ ...RAW, hasStall: 2 }).hasStall, false);
 eq("sanitize：hasStall null → null（沒講）", sanitizeDetail({ ...RAW, hasStall: null }).hasStall, null);
@@ -189,6 +190,7 @@ eq("輸入：官網物件頁", pacificSaleIdFrom("https://www.pacific.com.tw/Obj
 eq("輸入：官網物件頁（小寫 saleid 也認）", pacificSaleIdFrom("https://www.pacific.com.tw/Object/ObjectDetail/?saleid=s1234567"), "S1234567");
 eq("輸入：直接打 S 編號", pacificSaleIdFrom(" s1234567 "), "S1234567");
 eq("輸入：愛屋案號不是", pacificSaleIdFrom("AA1234567"), null);
+eq("🔴 輸入：P 編號（別墅／透天）直接打", pacificSaleIdFrom("P0000309"), "P0000309");
 eq("🔴 輸入：pacific.com.tw.evil.com 不是", pacificSaleIdFrom("https://www.pacific.com.tw.evil.com/Object/ObjectDetail/?saleID=S1234567"), null);
 eq("輸入：愛屋連結不是太平洋", isPacificInput("https://es.houseol.com.tw/Ecatalog.aspx?No=AA1234567"), false);
 eq("輸入：空字串", isPacificInput(""), false);

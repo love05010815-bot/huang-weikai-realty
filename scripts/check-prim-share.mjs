@@ -12,6 +12,7 @@ register("./alias-hooks.mjs", import.meta.url);
 const {
   classifyPrimShare,
   communityFromTitle,
+  pacificSaleIdFrom,
   parsePrimShare,
   primAgeYears,
   primFactsFrom,
@@ -87,6 +88,18 @@ eq("解析：items 不是陣列 → null", parsePrimShare({ status: "success", d
 const withJunk = JSON.parse(JSON.stringify(LIVE));
 withJunk.data.items.push({ obj_no: "", obj_name: "沒有編號的那筆" });
 eq("解析：沒有 S 編號的那筆跳過", parsePrimShare(withJunk)?.items.length, 1);
+
+/* 🔴 2026-10-15 他回報「P0000309 讀不到」：別墅／透天是 P 開頭，分享 API 真的會回這種（山水豐晉沙鹿四房別墅） */
+const villa = parsePrimShare({
+  status: "success",
+  data: { items: [{ obj_no: "p0000309", obj_name: "山水豐晉沙鹿四房別墅", price: "21880000.00" }] },
+});
+eq("解析：P 編號不再被跳過", villa?.items.length, 1);
+eq("解析：P 編號轉大寫", villa?.items[0].objNo, "P0000309");
+eq("pacificSaleIdFrom：P0000309 直接打", pacificSaleIdFrom("P0000309"), "P0000309");
+eq("pacificSaleIdFrom：小寫 p0000309 也認", pacificSaleIdFrom("p0000309"), "P0000309");
+eq("pacificSaleIdFrom：官網網址帶 saleID=P0000309", pacificSaleIdFrom("https://www.pacific.com.tw/Object/ObjectDetail/?saleID=P0000309"), "P0000309");
+eq("pacificSaleIdFrom：沒見過的字首 X 不認（別亂猜）", pacificSaleIdFrom("X0000309"), null);
 
 /* 價格：元換萬，離譜的不要 */
 const priced = (p) => parsePrimShare({ status: "success", data: { items: [{ obj_no: "S1234567", price: p }] } })?.items[0].price;

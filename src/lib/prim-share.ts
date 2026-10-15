@@ -62,8 +62,12 @@ export function primApiUrl(code: string): string {
   return `${PRIM_API_BASE}/${encodeURIComponent(code)}`;
 }
 
-/** 太平洋官網的 S 編號（S2862747）：分享 API 的 obj_no、官網物件頁的 saleID、match_listing 的主鍵都是它 */
-export const PACIFIC_SALE_ID = /^S\d{5,}$/i;
+/**
+ * 太平洋官網的物件編號：分享 API 的 obj_no、官網物件頁的 saleID、match_listing 的主鍵都是它。
+ * 2026-10-14 實測過的是 S 開頭（S2862747）；2026-10-15 他回報「P0000309 讀不到」才發現別墅／透天這類是 P 開頭
+ * （P0000309＝山水豐晉沙鹿四房別墅）。目前只認過這兩種字母，之後再冒出別的字首要再補。
+ */
+export const PACIFIC_SALE_ID = /^[SP]\d{5,}$/i;
 
 /** 他貼的是官網物件頁（www.pacific.com.tw/Object/ObjectDetail/?saleID=S…）或直接打 S 編號 → 編號；都不是 → null */
 export function pacificSaleIdFrom(input: string): string | null {
@@ -148,8 +152,8 @@ export function parsePrimShare(body: unknown): PrimShare | null {
     const objNo = String(it.obj_no ?? "")
       .trim()
       .toUpperCase();
-    // S 編號長相 S2862747；沒有編號的那一筆對不回官網資料，直接跳過
-    if (!/^S\d{5,}$/.test(objNo)) continue;
+    // 編號長相 S2862747／P0000309；沒有編號的那一筆對不回官網資料，直接跳過
+    if (!PACIFIC_SALE_ID.test(objNo)) continue;
     const cover = String(it.cover_photo ?? "").trim();
     const complete = String(it.complete_date ?? "").trim();
     items.push({

@@ -13,10 +13,10 @@
  */
 import { getPacificAuth } from "@/lib/match/pacific-fetch";
 import { sanitizeDetail, type PacificDetail } from "@/lib/pacific-map";
+import { PACIFIC_SALE_ID } from "@/lib/prim-share";
 
 const SITE = "https://www.pacific.com.tw";
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36";
-const SALE_ID = /^S\d{5,}$/;
 
 let authCache: { value: string; at: number } | null = null;
 
@@ -58,7 +58,7 @@ export async function fetchPacificObject(saleIdRaw: string, timeoutMs = 10000): 
   const saleId = String(saleIdRaw ?? "")
     .trim()
     .toUpperCase();
-  if (!SALE_ID.test(saleId)) return { ok: false, error: `這不是太平洋官網的 S 編號：${saleIdRaw}` };
+  if (!PACIFIC_SALE_ID.test(saleId)) return { ok: false, error: `這不是太平洋官網的物件編號：${saleIdRaw}` };
 
   let detailRes: { status: number; body: unknown };
   try {
