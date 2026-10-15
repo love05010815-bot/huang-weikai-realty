@@ -8,8 +8,16 @@
       // ⚠️ 不要放單獨的「留言」「分享」——那是每則貼文底下的按鈕，萬一發文框沒找到會誤點、
       //    最糟會把廣告打進別人貼文的留言欄。這裡只放發文框自己的招呼語。
       composerTrigger: ["留個言", "寫些什麼", "撰寫貼文", "在這個社團發佈", "建立公開貼文", "發佈貼文", "分享你的想法", "在想什麼", "你在想什麼", "有什麼新鮮事", "說點什麼"],
-      photoButton: ["相片/影片", "相片／影片", "新增相片/影片", "相片或影片"],
-      postButton: ["發佈", "張貼"],
+      photoButton: ["相片/影片", "相片／影片", "新增相片/影片", "相片或影片", "新增相片"],
+      postButton: ["發佈", "張貼", "刊登"],
+      // 商品買賣社團（他 2026-10-15 說「遇到商品買賣的社團也請按下商品買賣貼文」）：沒有發文框，只有這顆鈕
+      sellButton: ["商品拍賣", "拍賣商品", "刊登商品", "出售商品", "建立商品清單", "建立新商品清單"],
+      // 按下去有些版本先問要賣什麼（物品／車輛／房屋）：選「物品」那種
+      sellItemOption: ["物品出售", "出售物品", "拍賣物品", "單一物品"],
+      // 表單裡各格的標籤字（aria-label／placeholder／label）
+      sellTitle: ["標題", "商品名稱", "你要賣什麼", "要賣什麼"],
+      sellPrice: ["價格", "售價"],
+      sellDesc: ["說明", "描述"],
       pendingApproval: ["等待管理員審核", "待審核", "等待審核", "正在審核"],
       blocked: ["暫時被封鎖", "暫時無法", "無法發佈", "違反社群守則", "請稍後再試"],
       // 照片沒傳上去時 FB 跳的字（2026-10-09 他遇到的「抱歉，沒有上傳新的相片。請再試一次。」）
@@ -28,8 +36,13 @@
     },
     en: {
       composerTrigger: ["Write something", "Create a public post", "Create post", "What's on your mind", "Start a post", "Write to group"],
-      photoButton: ["Photo/video", "Photo/Video", "Add photos/videos", "Photos/videos"],
-      postButton: ["Post"],
+      photoButton: ["Photo/video", "Photo/Video", "Add photos/videos", "Photos/videos", "Add photos", "Add Photos"],
+      postButton: ["Post", "Publish"],
+      sellButton: ["Sell something", "Sell Something", "Create new listing", "Create listing"],
+      sellItemOption: ["Item for sale", "Item for Sale"],
+      sellTitle: ["Title", "What are you selling"],
+      sellPrice: ["Price"],
+      sellDesc: ["Description"],
       pendingApproval: ["pending approval", "pending review", "awaiting approval"],
       blocked: ["temporarily blocked", "couldn't post", "Community Standards", "restricted", "try again later"],
       uploadFailed: ["no new photos were uploaded", "Couldn't upload photo", "Unable to upload", "couldn't be uploaded", "Upload failed"],
