@@ -209,23 +209,40 @@ export type PrimFetch = { ok: true; share: PrimShare; check: LinkCheck } | { ok:
  *   沒給就 no-store（連結檢查要看現在的狀態）。
  * - 失敗一律回 `ok:false` ＋ 一個 `unknown`／`gone` 的 check，**永遠不 throw**。
  */
+async function fetchPrimShareOnce(code: string, timeoutMs: number, revalidate?: number): Promise<PrimFetch> {
+  const res = await fetch(primApiUrl(code), {
+    headers: { "user-agent": UA, accept: "application/json" },
+    signal: AbortSignal.timeout(timeoutMs),
+    ...(revalidate ? { next: { revalidate } } : { cache: "no-store" as const }),
+  });
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch {
+    body = null;
+  }
+  const check = classifyPrimShare(res.status, body);
+  const share = res.status === 200 ? parsePrimShare(body) : null;
+  return share ? { ok: true, share, check } : { ok: false, check };
+}
+
 export async function fetchPrimShare(code: string, opts: { timeoutMs?: number; revalidate?: number } = {}): Promise<PrimFetch> {
   const timeoutMs = opts.timeoutMs ?? 10000;
   try {
-    const res = await fetch(primApiUrl(code), {
-      headers: { "user-agent": UA, accept: "application/json" },
-      signal: AbortSignal.timeout(timeoutMs),
-      ...(opts.revalidate ? { next: { revalidate: opts.revalidate } } : { cache: "no-store" as const }),
-    });
-    let body: unknown = null;
-    try {
-      body = await res.json();
-    } catch {
-      body = null;
+    const first = await fetchPrimShareOnce(code, timeoutMs, opts.revalidate);
+    /*
+     * 🔵 2026-10-15 實測踩到：分享 API 回 200、也解析成功，但 items 是空陣列——
+     *    幾秒後重打同一條卻有正常資料（`aSFNSC8y`／山水豐晉沙鹿四房別墅，物件編號 P0000309）。
+     *    是太平洋那邊的瞬斷，不是連結真的壞了。200＋空陣列這個狀態重試一次再回報，
+     *    比直接告訴他「沒有物件」更不會誤判——呼應這支檔案一貫的「不確定就別下死結論」。
+     */
+    if (first.ok && first.share.items.length === 0) {
+      await new Promise((r) => setTimeout(r, 800));
+      const second = await fetchPrimShareOnce(code, timeoutMs, opts.revalidate);
+      if (second.ok && second.share.items.length > 0) return second;
+      return first;
     }
-    const check = classifyPrimShare(res.status, body);
-    const share = res.status === 200 ? parsePrimShare(body) : null;
-    return share ? { ok: true, share, check } : { ok: false, check };
+    return first;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return {
