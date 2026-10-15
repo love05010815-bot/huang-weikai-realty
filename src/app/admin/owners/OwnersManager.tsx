@@ -13,7 +13,7 @@
  * 只有「新增屋主」「整批匯入」這兩個不屬於任何卡片的動作，訊息才放在最上面。
  */
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CHIP, type ChipTone } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
 import {
@@ -325,6 +325,7 @@ export default function OwnersManager({
   contractSoonBy: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -358,6 +359,26 @@ export default function OwnersManager({
   const [confirmDelContact, setConfirmDelContact] = useState<string | null>(null);
 
   const thisMonth = today.slice(5, 7);
+
+  /**
+   * LINE 合約到期提醒的連結帶 ?owner=<id>（2026-10-15 他要的：點進去要直接看到
+   * 「那位屋主」，不是整頁列表還要自己往下找）。展開那張卡，並清掉會把她擋在篩選外的
+   * 搜尋／篩選／日期區間，不然卡片存在但畫面上看不到，跟沒連進去一樣。
+   */
+  useEffect(() => {
+    const ownerId = searchParams.get("owner");
+    if (!ownerId || !owners.some((o) => o.id === ownerId)) return;
+    setExpandedId(ownerId);
+    setFilter("all");
+    setQuery("");
+    setDateFrom("");
+    setDateTo("");
+    const t = setTimeout(() => {
+      document.getElementById(`owner-${ownerId}`)?.scrollIntoView({ block: "start" });
+    }, 50);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, owners]);
 
   const filtered = useMemo(() => {
     let list = owners;
@@ -1063,7 +1084,7 @@ export default function OwnersManager({
 
     if (ownerEditing === o.id) {
       return (
-        <li key={o.id} className={`${styles.card} ${styles.cardOpen}`}>
+        <li key={o.id} id={`owner-${o.id}`} className={`${styles.card} ${styles.cardOpen}`}>
           <p className={styles.subCardTitle}>編輯屋主</p>
           <p className={styles.count} style={{ marginBottom: 12 }}>
             這裡只有屋主本人的資料。房子的地址、合約編號、合約起訖日是在卡片展開後的「房子」區按「加一間房子」登記，一位屋主可以掛好幾間。
@@ -1075,7 +1096,7 @@ export default function OwnersManager({
     }
 
     return (
-      <li key={o.id} className={`${styles.card} ${open ? styles.cardOpen : ""}`}>
+      <li key={o.id} id={`owner-${o.id}`} className={`${styles.card} ${open ? styles.cardOpen : ""}`}>
         <div className={styles.cardHead} onClick={() => toggleExpand(o.id)}>
           <div className={styles.cardMain}>
             <div className={styles.nameRow}>

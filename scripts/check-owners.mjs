@@ -138,8 +138,8 @@ const T = await import("../src/lib/owners-text.ts");
   const text = T.buildContractReminderText(
     "2026-10-12",
     [
-      { ownerName: "測試甲", ownerPhone: "0900-000-001", address: "假區假路 1 號", community: "假社區", contractNo: "A-001", contractStart: "2026-01-01", contractEnd: "2026-10-19" },
-      { ownerName: "測試乙", ownerPhone: null, address: "假區假路 2 號", community: null, contractNo: null, contractStart: null, contractEnd: "2026-10-12" },
+      { ownerId: "owner-甲", ownerName: "測試甲", ownerPhone: "0900-000-001", address: "假區假路 1 號", community: "假社區", contractNo: "A-001", contractStart: "2026-01-01", contractEnd: "2026-10-19" },
+      { ownerId: "owner-乙", ownerName: "測試乙", ownerPhone: null, address: "假區假路 2 號", community: null, contractNo: null, contractStart: null, contractEnd: "2026-10-12" },
     ],
     "https://weikaihouse.com/",
   );
@@ -147,7 +147,10 @@ const T = await import("../src/lib/owners-text.ts");
   ok(text.includes("測試甲｜0900-000-001") && text.includes("假社區｜假區假路 1 號"), "第一件：姓名電話社區地址", text.includes("測試甲｜0900-000-001"), true);
   ok(text.includes("合約 A-001：115/01/01 ～ 115/10/19（剩 7 天）"), "第一件：合約行（民國年）", text.match(/合約 A-001[^\n]*/)?.[0], "115/01/01 ～ 115/10/19");
   ok(text.includes("合約：？ ～ 115/10/12（今天到期）"), "第二件：沒編號沒起日（民國年）", text.match(/合約：[^\n]*/)?.[0], "？ ～ 115/10/12");
-  ok(text.endsWith("https://weikaihouse.com/admin/owners?openExternalBrowser=1"), "結尾連結帶 openExternalBrowser", text.slice(-40), "…?openExternalBrowser=1");
+  // 每一件自己帶連結、指到那位屋主（2026-10-15 他要的：點進去不要還要自己找）
+  ok(text.includes("https://weikaihouse.com/admin/owners?openExternalBrowser=1&owner=owner-%E7%94%B2"), "第一件連結帶那位屋主的 owner id", text.includes("owner=owner-%E7%94%B2"), true);
+  ok(text.includes("https://weikaihouse.com/admin/owners?openExternalBrowser=1&owner=owner-%E4%B9%99"), "第二件連結帶另一位屋主的 owner id", text.includes("owner=owner-%E4%B9%99"), true);
+  ok(!text.endsWith("openExternalBrowser=1"), "結尾不是沒指定對象的共用連結", text.slice(-30), "（帶 owner= 結尾）");
   ok(text.length < 5000, "訊息長度在 LINE 上限內", text.length, "<5000");
 }
 

@@ -58,6 +58,7 @@ export function contractDueLabel(today: string, contractEnd: string): string {
 }
 
 export type ContractReminderItem = {
+  ownerId: string;
   ownerName: string;
   ownerPhone: string | null;
   address: string;
@@ -69,20 +70,23 @@ export type ContractReminderItem = {
 
 /**
  * 推給專員的 LINE 文字。幾筆合在一則裡，不要一筆一則——官方帳號每月免費額度只有 200 則。
+ * 每一件自己帶一條連結、直接點進「那位屋主」（?owner=id 展開那張卡），
+ * 不要一條共用連結丟回整頁列表——他說點進去還要自己找到是哪個物件到期，等於白點。
  * 連結帶 openExternalBrowser=1：他都從 LINE 點，沒這個參數會卡在 LINE 內建瀏覽器的 Google 登入。
  */
 export function buildContractReminderText(today: string, items: ContractReminderItem[], siteUrl: string): string {
   // 合約日期用民國（2026-10-13 他要的），跟後台畫面一致
   const fmt = (d: string | null) => (d ? toRoc(d) : "？");
+  const base = `${siteUrl.replace(/\/$/, "")}/admin/owners?openExternalBrowser=1`;
   const lines: string[] = [`📄 委託合約到期提醒（${items.length} 件）`, ""];
   for (const it of items) {
     lines.push(`▍${it.ownerName}${it.ownerPhone ? `｜${it.ownerPhone}` : ""}`);
     lines.push(`${it.community ? `${it.community}｜` : ""}${it.address}`);
     lines.push(`合約${it.contractNo ? ` ${it.contractNo}` : ""}：${fmt(it.contractStart)} ～ ${fmt(it.contractEnd)}（${contractDueLabel(today, it.contractEnd)}）`);
+    lines.push(`查看屋主建檔：${base}&owner=${encodeURIComponent(it.ownerId)}`);
     lines.push("");
   }
-  lines.push(`查看屋主建檔：${siteUrl.replace(/\/$/, "")}/admin/owners?openExternalBrowser=1`);
-  return lines.join("\n");
+  return lines.join("\n").trimEnd();
 }
 
 // ---------------------------------------------------------------- 民國年（2026-10-13 他要生日與合約日期改民國）
