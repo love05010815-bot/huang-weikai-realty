@@ -703,7 +703,10 @@ export default async function HomePage() {
             現在：左邊他給的人像（圖上手寫「每一個家的故事都有開始／而我，陪你找到答案／房產找瑋凱 安心不踩雷」，
             那些字是畫在圖上的），右邊一句標題、一句說明、三步各一行、三顆按鈕（線上預約／加 LINE／打電話），
             最底下一行服務區域＋LINE ID。860px 以下人像在上置中、文字置中、按鈕滿寬直排。
-            圖檔 public/booking-portrait.jpg（900×1402，從他貼的圖轉的）；換圖直接換檔，直式都行。
+            圖檔 public/booking-portrait-2026-10.jpg（900×1401，2026-10-19 從他給的 PNG 原檔
+            「房產找瑋凱，安心不踩雷.png」1005×1565 壓的，原檔備份在 D:\Agent-os\_photos_original、不進 repo）。
+            ⚠️ 換圖要**換新檔名**（瀏覽器與 LINE 會照網址快取好幾天，同名換檔客戶看到的還是舊的），直式都行。
+            這張跟 2026-09-08 那版（booking-portrait.jpg，已刪）構圖、文字完全一樣，只是原檔解析度高、字比較清楚。
             三步的字要跟 /card/booking 的流程對得上：挑時間 → 留姓名電話 → 送出成立；不要寫「幾秒完成」這種承諾。 */}
         <section id="booking" className={`${styles.section} ${styles.contact} ${styles.band}`}>
           <SectionWave />
@@ -712,10 +715,10 @@ export default async function HomePage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 className={styles.bookingPhotoImg}
-                src="/booking-portrait.jpg"
+                src="/booking-portrait-2026-10.jpg"
                 alt={`${OWNER.name}——每一個家的故事都有開始，而我，陪你找到答案。房產找瑋凱，安心不踩雷`}
                 width={900}
-                height={1402}
+                height={1401}
                 loading="lazy"
               />
             </div>
