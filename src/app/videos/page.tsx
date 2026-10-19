@@ -14,16 +14,20 @@
  */
 import type { Metadata } from "next";
 import Link from "next/link";
-import { OWNER, SITE_URL } from "@/config/owner";
+import { OG_IMAGE, OWNER, SITE_URL } from "@/config/owner";
+import BreadcrumbJsonLd from "@/app/_ui/BreadcrumbJsonLd";
 import { getPublicVideos } from "@/lib/videos";
 import { getVideoViewCounts } from "@/lib/video-views";
 import styles from "@/app/home.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
+import SiteFooter from "@/app/_ui/SiteFooter";
 import vid from "./videos.module.css";
 import VideoLibrary from "./VideoLibrary";
 
 export const metadata: Metadata = {
+  // 2026-10-19 補 metadataBase：下面的分享預覽圖是相對路徑，沒有它會被接到 Vercel 的預設網域
+  metadataBase: new URL(SITE_URL),
   title: "影音專區｜台中海線房仲黃瑋凱｜房產知識、生活知識與房屋開箱",
   description:
     "台中海線房仲黃瑋凱自製影音。房產知識講買賣觀念、稅費與貸款；生活知識談居家維護與周邊生活機能；房屋開箱帶你實際走一遍屋內。沙鹿、梧棲、清水、龍井。",
@@ -33,6 +37,14 @@ export const metadata: Metadata = {
     description: "房產知識、生活知識與房屋開箱，看完再決定。",
     url: `${SITE_URL}/videos`,
     type: "website",
+    // 2026-10-19 分享預覽圖（LINE／FB 連結卡），圖在 owner.ts 的 OG_IMAGE
+    images: [OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "影音專區｜台中海線房仲黃瑋凱",
+    description: "房產知識、生活知識與房屋開箱，看完再決定。",
+    images: [OG_IMAGE.url],
   },
 };
 
@@ -52,6 +64,8 @@ export default async function VideosPage() {
 
   return (
     <div className={styles.page}>
+      {/* 麵包屑結構化資料（只給 Google 看，畫面不變）—— 2026-10-19 第一包 */}
+      <BreadcrumbJsonLd items={[{ name: "影音專區", href: "/videos" }]} />
       <header className={styles.header}>
         <div className={styles.navWrap}>
           <Link href="/" className={styles.brand}>
@@ -111,6 +125,8 @@ export default async function VideosPage() {
           </div>
         </section>
       </main>
+      {/* 2026-10-19 補頁尾（聯絡方式＋經紀業揭露），跟其他子頁一致 */}
+      <SiteFooter />
     </div>
   );
 }

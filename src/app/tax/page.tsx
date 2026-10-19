@@ -13,11 +13,13 @@
  */
 import Link from "next/link";
 import type { Metadata } from "next";
-import { OWNER, SITE_URL } from "@/config/owner";
+import { OG_IMAGE, OWNER, SITE_URL } from "@/config/owner";
+import BreadcrumbJsonLd from "@/app/_ui/BreadcrumbJsonLd";
 import TaxCalculator from "./TaxCalculator";
 import styles from "../home.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
+import SiteFooter from "@/app/_ui/SiteFooter";
 import tax from "./tax.module.css";
 
 const TITLE = `稅費、新青安 3.0 與租金補貼試算｜台中海線房仲${OWNER.name}｜買賣租屋前先算清楚`;
@@ -54,12 +56,22 @@ export const metadata: Metadata = {
     title: TITLE,
     description: DESCRIPTION,
     siteName: `${OWNER.name}｜台中海線房仲`,
+    // 2026-10-19 分享預覽圖（LINE／FB 連結卡），圖在 owner.ts 的 OG_IMAGE
+    images: [OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [OG_IMAGE.url],
   },
 };
 
 export default function TaxPage() {
   return (
     <div className={styles.page}>
+      {/* 麵包屑結構化資料（只給 Google 看，畫面不變）—— 2026-10-19 第一包 */}
+      <BreadcrumbJsonLd items={[{ name: "稅費試算", href: "/tax" }]} />
       <header className={styles.header}>
         <div className={styles.navWrap}>
           <Link href="/" className={styles.brand}>
@@ -177,6 +189,8 @@ export default function TaxPage() {
           </div>
         </section>
       </main>
+      {/* 2026-10-19 補頁尾（聯絡方式＋經紀業揭露），跟其他子頁一致 */}
+      <SiteFooter />
     </div>
   );
 }

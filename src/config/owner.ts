@@ -65,6 +65,21 @@ export const OWNER = {
 } as const;
 
 /**
+ * 分享預覽圖（LINE／FB／Threads 貼連結時那張 1200×630 的卡片圖）。
+ *
+ * 首頁、/map、/card/booking 三頁在 2026-09-09 就各自寫死同一個路徑；
+ * 2026-10-19 其餘 11 個子頁（/buy、/sell、/tax、/school、/lvr、/area、/about、/listings、/videos、/news、/match）
+ * 補預覽圖時改成讀這裡 —— 那三頁沒動，**換圖時四個地方要一起換**。
+ * ⚠️ 換圖一定要用新檔名：LINE／FB 照網址快取好幾天，同名蓋檔會繼續顯示舊圖。
+ */
+export const OG_IMAGE = {
+  url: "/og-home-2026-09.jpg",
+  width: 1200,
+  height: 630,
+  alt: `${OWNER.name}形象照（台中海線房仲）`,
+} as const;
+
+/**
  * 社群連結 —— **用不到的留空字串，那顆 icon 就整個不畫**（不會留下一個點了沒反應的死連結）。
  *
  * 讀這裡的有三個地方，改這一個檔三邊一起變：

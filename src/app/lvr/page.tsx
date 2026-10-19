@@ -17,7 +17,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { unstable_cache } from "next/cache";
-import { OWNER, SITE_URL } from "@/config/owner";
+import { OG_IMAGE, OWNER, SITE_URL } from "@/config/owner";
+import BreadcrumbJsonLd from "@/app/_ui/BreadcrumbJsonLd";
 import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
 import SiteFooter from "@/app/_ui/SiteFooter";
@@ -84,6 +85,14 @@ export const metadata: Metadata = {
     title: TITLE,
     description: DESCRIPTION,
     siteName: `${OWNER.name}｜台中海線房仲`,
+    // 2026-10-19 分享預覽圖（LINE／FB 連結卡），圖在 owner.ts 的 OG_IMAGE
+    images: [OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [OG_IMAGE.url],
   },
 };
 
@@ -209,6 +218,8 @@ export default async function LvrPage({ searchParams }: { searchParams: Promise<
 
   return (
     <div className={styles.page}>
+      {/* 麵包屑結構化資料（只給 Google 看，畫面不變）—— 2026-10-19 第一包。名稱用導覽列那四個字 */}
+      <BreadcrumbJsonLd items={[{ name: "實價登錄", href: "/lvr" }]} />
       <header className={styles.header}>
         <div className={styles.navWrap}>
           <Link href="/" className={styles.brand}>

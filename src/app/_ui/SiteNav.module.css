@@ -70,8 +70,15 @@
 /* ---------- 桌機那一條（1045px 以上） ---------- */
 
 /* 2026-08-31 從 home.module.css 的 .nav 原封不動搬過來，
-   讓六個公開頁共用同一份清單。搬家前後在 1045px 實測是同一組計算值。 */
+   讓六個公開頁共用同一份清單。搬家前後在 1045px 實測是同一組計算值。
+   2026-10-19 拆成兩層：.desktopNav 是外層的 <nav>（導覽地標），只負責在 1044px 以下整個消失；
+   排版（flex、gap）在裡面的 <ul>（.desktopList）。<nav> 在 .navWrap 裡是 block 的 flex item，
+   寬度就是 <ul> 的寬度，所以檔頭那些斷點數字不受影響（改完在 1045px 重量過一次）。 */
 .desktopNav {
+  display: block;
+}
+
+.desktopList {
   display: flex;
   /* 愛心那格是 20px 的圖示、文字那幾格是一行字，高度不同；置中才不會差 3px */
   align-items: center;

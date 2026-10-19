@@ -18,7 +18,8 @@
  */
 import type { Metadata } from "next";
 import Link from "next/link";
-import { OWNER, SITE_URL } from "@/config/owner";
+import { OG_IMAGE, OWNER, SITE_URL } from "@/config/owner";
+import BreadcrumbJsonLd from "@/app/_ui/BreadcrumbJsonLd";
 import { getPublicPosts } from "@/lib/posts";
 import styles from "@/app/home.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
@@ -56,6 +57,14 @@ export const metadata: Metadata = {
     title: TITLE,
     description: DESCRIPTION,
     siteName: `${OWNER.name}｜台中海線房仲`,
+    // 2026-10-19 分享預覽圖（LINE／FB 連結卡），圖在 owner.ts 的 OG_IMAGE。每篇文章頁有自己的封面，這裡是列表頁
+    images: [OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [OG_IMAGE.url],
   },
 };
 
@@ -71,6 +80,8 @@ export default async function NewsPage() {
 
   return (
     <div className={styles.page}>
+      {/* 麵包屑結構化資料（只給 Google 看，畫面不變）—— 2026-10-19 第一包 */}
+      <BreadcrumbJsonLd items={[{ name: "房產消息", href: "/news" }]} />
       <header className={styles.header}>
         <div className={styles.navWrap}>
           <Link href="/" className={styles.brand}>

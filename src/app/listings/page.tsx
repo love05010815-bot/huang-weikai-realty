@@ -9,12 +9,14 @@
  */
 import Link from "next/link";
 import type { Metadata } from "next";
-import { OWNER, SITE_URL } from "@/config/owner";
+import { OG_IMAGE, OWNER, SITE_URL } from "@/config/owner";
+import BreadcrumbJsonLd from "@/app/_ui/BreadcrumbJsonLd";
 import { getPublicListings, sortByPrice } from "@/lib/listings";
 import { formatWan } from "@/lib/houseol-price";
 import styles from "../home.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
+import SiteFooter from "@/app/_ui/SiteFooter";
 import lst from "./listings.module.css";
 import FeaturedTitle from "./FeaturedTitle";
 import PhotoCarousel from "./PhotoCarousel";
@@ -46,6 +48,14 @@ export const metadata: Metadata = {
     title: TITLE,
     description: DESCRIPTION,
     siteName: `${OWNER.name}｜台中海線房仲`,
+    // 2026-10-19 分享預覽圖（LINE／FB 連結卡），圖在 owner.ts 的 OG_IMAGE。單戶頁有自己的封面照，這裡是總覽頁
+    images: [OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [OG_IMAGE.url],
   },
 };
 
@@ -67,6 +77,8 @@ export default async function ListingsPage() {
   const listings = sortByPrice(await getPublicListings(), (item) => item.price);
   return (
     <div className={styles.page}>
+      {/* 麵包屑結構化資料（只給 Google 看，畫面不變）—— 2026-10-19 第一包。名稱用導覽列那四個字 */}
+      <BreadcrumbJsonLd items={[{ name: "精選好案", href: "/listings" }]} />
       <header className={styles.header}>
         <div className={styles.navWrap}>
           <Link href="/" className={styles.brand}>
@@ -214,6 +226,8 @@ export default async function ListingsPage() {
           </div>
         </section>
       </main>
+      {/* 2026-10-19 補頁尾：聯絡方式＋經紀業揭露。這頁最像廣告，之前反而是少數沒有揭露那行的頁 */}
+      <SiteFooter />
     </div>
   );
 }

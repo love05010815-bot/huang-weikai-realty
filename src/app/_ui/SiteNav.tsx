@@ -164,19 +164,25 @@ export default function SiteNav({ variant }: { variant: Variant }) {
 
   return (
     <>
-      {/* 桌機：1045px 以上。這一條原本寫在首頁 page.tsx，搬過來讓六頁共用 */}
-      <ul className={styles.desktopNav}>
-        {ITEMS.map((item) => (
-          <li key={item.label}>
-            <NavItemLink item={item} variant={variant} className={styles.desktopLink} />
+      {/* 桌機：1045px 以上。這一條原本寫在首頁 page.tsx，搬過來讓六頁共用。
+          2026-10-19 外面包一層 <nav>（導覽地標）：Google 與讀屏軟體靠它認出「這一排是選單」，
+          之前桌機整頁一個 <nav> 都沒有（手機面板那個只有打開時才存在）。
+          顯示／隱藏搬到 <nav>（.desktopNav），<ul> 只剩排版（.desktopList）；寬度算法沒變，
+          改完有照 SiteNav.module.css 檔頭的規矩在 1045px 重掃過。 */}
+      <nav className={styles.desktopNav} aria-label="主選單">
+        <ul className={styles.desktopList}>
+          {ITEMS.map((item) => (
+            <li key={item.label}>
+              <NavItemLink item={item} variant={variant} className={styles.desktopLink} />
+            </li>
+          ))}
+          {/* ❤️ 第九格：只有圖示（有收藏時多一顆數字，最寬「99+」約 49px）。
+              已照 SiteNav.module.css 檔頭的規矩重掃斷點：斷點不動、gap 20→14 吃掉它的寬度。 */}
+          <li>
+            <FavNavLink variant="desktop" />
           </li>
-        ))}
-        {/* ❤️ 第九格：只有圖示（有收藏時多一顆數字，最寬「99+」約 49px）。
-            已照 SiteNav.module.css 檔頭的規矩重掃斷點：斷點不動、gap 20→14 吃掉它的寬度。 */}
-        <li>
-          <FavNavLink variant="desktop" />
-        </li>
-      </ul>
+        </ul>
+      </nav>
 
       {/* 🚫 2026-09-03 試過把四顆社群 icon 塞進這條 header，**量過塞不下**：
           1280px 實測 brand 173.5＋導覽列 526＋社群組 157＋電話與預約鈕 258＋三個間距 48
