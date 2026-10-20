@@ -11,12 +11,19 @@
  * 官網 API 掛掉但有分享連結 → 用分享 API 的欄位湊（detailFromShare），空格多但頁面不會整個沒資料；
  * 兩邊都沒有 → null，頁面就只顯示後台填的標題、賣點、照片（跟 10/20 以前一樣），**不報錯、不 throw**。
  *
- * 快取：page.tsx 的 generateMetadata 與頁面本體都會呼叫，用 React cache() 讓同一次渲染只抓一次；
- * 跨請求靠頁面本身的 ISR（revalidate 300），等於一戶最多五分鐘打一次官網。
+ * 快取，三層：
+ *   ・React cache()：page.tsx 的 generateMetadata 與頁面本體同一次渲染只算一次
+ *   ・Next Data Cache（unstable_cache，一小時，key＝S 編號）：官網那兩支 API 的結果跨請求、跨部署都留著，
+ *     頁面 ISR 每五分鐘背景重生時只碰資料庫，不再等官網；**只快取成功的**（失敗就 throw、不進快取，下次再試）
+ *   ・頁面本身的 ISR（revalidate 300）
+ * 2026-10-20 他說「跳轉的秒數等太久了」：當時每次點進單戶頁都現算 2～4 秒 —— 官網 API 用 cache:"no-store"
+ * 把整頁變成動態渲染（x-vercel-cache 永遠 MISS），加上欄位、照片、售價三支串著打。這一版把 no-store 拿掉、
+ * 官網結果進 Data Cache、三支並行，page.tsx 另加 generateStaticParams 在建置時就把每戶先算好。
  *
  * 🔴 官網回應裡的經紀人個資在 lib/pacific-map.ts 的 sanitizeDetail() 就丟掉了，這裡拿到的已經沒有。
  */
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { houseolCaseId } from "@/lib/houseol-price";
 import { getListingByHouseolId } from "@/lib/match/store";
 import { detailFromShare, type PacificDetail } from "@/lib/pacific-map";
@@ -54,13 +61,29 @@ async function resolveSaleId(href: string): Promise<{ saleId: string; share: Pri
   return null;
 }
 
+/** 官網那兩支 API 的結果，Data Cache 一小時。失敗就 throw —— unstable_cache 不會把丟出去的錯誤存起來，下一次再試 */
+const fetchOfficialCached = unstable_cache(
+  async (saleId: string): Promise<{ detail: PacificDetail; photos: string[] }> => {
+    const obj = await fetchPacificObject(saleId, 7000);
+    if (!obj.ok) throw new Error(obj.error);
+    return { detail: obj.detail, photos: obj.photos };
+  },
+  ["listing-detail-official"],
+  { revalidate: 3600, tags: ["listing-detail"] },
+);
+
 export const loadListingDetail = cache(async (href: string | null | undefined): Promise<ListingDetail | null> => {
   if (!href) return null;
   try {
     const found = await resolveSaleId(href);
     if (!found) return null;
-    const obj = await fetchPacificObject(found.saleId, 7000);
-    if (obj.ok) return { saleId: found.saleId, detail: obj.detail, photos: obj.photos, share: found.share, fromOfficial: true };
+    let official: { detail: PacificDetail; photos: string[] } | null = null;
+    try {
+      official = await fetchOfficialCached(found.saleId);
+    } catch {
+      official = null;
+    }
+    if (official) return { saleId: found.saleId, detail: official.detail, photos: official.photos, share: found.share, fromOfficial: true };
     if (found.share) {
       return {
         saleId: found.saleId,

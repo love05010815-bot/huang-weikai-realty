@@ -17,10 +17,12 @@
  */
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { OWNER, SITE_URL } from "@/config/owner";
-import { getListingBySlug } from "@/lib/listings";
-import { formatWan } from "@/lib/houseol-price";
-import { loadListingDetail } from "@/lib/listing-detail";
+import type { Listing } from "@/config/listings";
+import { getListingBySlug, listAllListings, type ListingLookup } from "@/lib/listings";
+import { fetchHouseolPrice, formatWan } from "@/lib/houseol-price";
+import { loadListingDetail, type ListingDetail } from "@/lib/listing-detail";
 import { detailFeatures, keyStats } from "@/lib/listing-facts";
 import ListingView, { absolutePhoto } from "./ListingView";
 
@@ -29,19 +31,47 @@ export const revalidate = 300;
 
 type Params = { slug: string };
 
+/**
+ * 建置時就把每一戶先算好（2026-10-20 他說「跳轉的秒數等太久了」）：第一個點進來的客人也不用等現算。
+ * 之後在後台新增的戶，第一次被點時才算一次、之後走 ISR（dynamicParams 預設 true）。
+ * 資料庫連不上就回空陣列 —— 全部改成第一次被點才算，建置不會因此失敗。
+ */
+export async function generateStaticParams(): Promise<Params[]> {
+  try {
+    return (await listAllListings()).map((row) => ({ slug: row.slug }));
+  } catch {
+    return [];
+  }
+}
+
+type PageData = { found: ListingLookup; item: Listing | null; detail: ListingDetail | null };
+
+/**
+ * 這一頁要的資料，一次算好：generateMetadata 與頁面本體共用（React cache，同一次渲染只跑一次）。
+ * 售價（分享 API）與官網完整資料並行打，不再一個等一個 —— 2026-10-20 之前是串著打，冷的時候要 2～4 秒。
+ * 已下架的那頁不放物件內容，就不用去打售價與官網。
+ */
+const loadPage = cache(async (slug: string): Promise<PageData> => {
+  const found = await getListingBySlug(slug, { withPrice: false });
+  if (!found.listing) return { found, item: null, detail: null };
+  if (found.status === "sold") return { found, item: { ...found.listing, price: null }, detail: null };
+  const href = found.listing.link?.href;
+  const [price, detail] = await Promise.all([href ? fetchHouseolPrice(href) : Promise.resolve(null), loadListingDetail(href)]);
+  return { found, item: { ...found.listing, price }, detail };
+});
+
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { slug } = await params;
-  const found = await getListingBySlug(slug);
+  const { found, item, detail } = await loadPage(slug);
   const siteName = `${OWNER.name}｜台中海線房仲`;
 
-  if (!found.listing) {
+  if (!item) {
     return {
       title: `找不到這個物件｜${OWNER.name}`,
       robots: { index: false, follow: true },
     };
   }
 
-  const item = found.listing;
   const url = `${SITE_URL}/listings/${item.slug}`;
 
   // 已下架：頁面留著（傳出去的網址不能死），但不讓 Google 收錄，canonical 指回清單
@@ -61,8 +91,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const priceText = item.price != null ? `售價 ${formatWan(item.price)}` : "";
   const title = `${[item.area, item.title, priceText].filter(Boolean).join("｜")}｜${OWNER.name}`;
   // 2026-10-20 起有官網資料：描述先放坪數／格局／樓層／屋齡，再接官網特色（頁面上看得到的字）；
-  // 沒有官網資料才退回後台賣點（賣點已不在頁面上顯示，只當備援）。跟頁面本體同一次抓，React cache 去重。
-  const detail = await loadListingDetail(item.link?.href);
+  // 沒有官網資料才退回後台賣點（賣點已不在頁面上顯示，只當備援）。
   const specs = detail ? keyStats(detail.detail, detail.share).map((s) => `${s.label} ${s.value}`) : [];
   const blurb = detail ? detailFeatures(detail.detail) : [];
   const tail = (blurb.length > 0 ? blurb : item.points).slice(0, specs.length > 0 ? 2 : 3);
@@ -92,10 +121,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 
 export default async function ListingPage({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
-  const found = await getListingBySlug(slug);
-  if (!found.listing) notFound();
-  const sold = found.status === "sold";
-  // 已下架的那頁不放物件內容，就不用去打官網
-  const detail = sold ? null : await loadListingDetail(found.listing.link?.href);
-  return <ListingView item={found.listing} status={sold ? "sold" : "active"} detail={detail} />;
+  const { found, item, detail } = await loadPage(slug);
+  if (!item) notFound();
+  return <ListingView item={item} status={found.status === "sold" ? "sold" : "active"} detail={detail} />;
 }

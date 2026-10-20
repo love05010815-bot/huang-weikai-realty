@@ -25,7 +25,10 @@ const PER_PAGE = 10;
 
 /** 到官網列表頁讀 API 要帶的 Authorization 值 */
 export async function getPacificAuth(): Promise<string> {
-  const res = await fetch(`${SITE}/Object/ObjectList`, { headers: { "User-Agent": UA }, cache: "no-store" });
+  // ⚠️ 不寫 cache:"no-store"：Next 15 起 fetch 預設就不快取（每次呼叫都真的打官網），
+  //    明寫 no-store 會把呼叫它的頁面整個變成動態渲染 —— 單戶頁 /listings/<slug> 透過 lib/pacific-object.ts
+  //    用到這把 token，2026-10-20 曾因此失去 ISR 快取、每次點進去都現算 2～4 秒。同步排程是 route handler，行為不變。
+  const res = await fetch(`${SITE}/Object/ObjectList`, { headers: { "User-Agent": UA } });
   if (!res.ok) throw new Error(`官網列表頁回應 ${res.status}`);
   const html = await res.text();
   const auth = html.match(/id="baseAuthorization"[^>]*href="([^"]+)"/)?.[1];

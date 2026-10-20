@@ -19,12 +19,22 @@ const SITE = "https://www.pacific.com.tw";
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36";
 
 let authCache: { value: string; at: number } | null = null;
+/** 同一瞬間兩個請求（欄位＋照片並行）都發現沒 token 時，只去官網抓一次 */
+let authInflight: Promise<string> | null = null;
 
 async function auth(force = false): Promise<string> {
   if (!force && authCache && Date.now() - authCache.at < 3600_000) return authCache.value;
-  const value = await getPacificAuth();
-  authCache = { value, at: Date.now() };
-  return value;
+  if (!authInflight) {
+    authInflight = getPacificAuth()
+      .then((value) => {
+        authCache = { value, at: Date.now() };
+        return value;
+      })
+      .finally(() => {
+        authInflight = null;
+      });
+  }
+  return authInflight;
 }
 
 async function getJson(path: string, timeoutMs: number): Promise<{ status: number; body: unknown }> {
@@ -37,7 +47,10 @@ async function getJson(path: string, timeoutMs: number): Promise<{ status: numbe
         Referer: `${SITE}/Object/ObjectDetail/`,
       },
       signal: AbortSignal.timeout(timeoutMs),
-      cache: "no-store",
+      // ⚠️ 刻意不寫 cache:"no-store"。Next 15 起 fetch 預設本來就不快取（每次呼叫都真的打官網），
+      //    但明寫 no-store 會把「呼叫它的頁面」整個變成動態渲染 —— 單戶頁 /listings/<slug> 2026-10-20
+      //    就是這樣失去 ISR 快取、每次點進去都現算 2～4 秒（x-vercel-cache 永遠 MISS）。
+      //    後台工具與同步排程是 server action／route handler，預設一樣不快取，行為不變。
     });
   let res = await call(await auth());
   // 那把 token 哪天換了：重抓一次再試一次，不要直接報錯
@@ -60,30 +73,29 @@ export async function fetchPacificObject(saleIdRaw: string, timeoutMs = 10000): 
     .toUpperCase();
   if (!PACIFIC_SALE_ID.test(saleId)) return { ok: false, error: `這不是太平洋官網的物件編號：${saleIdRaw}` };
 
-  let detailRes: { status: number; body: unknown };
-  try {
-    detailRes = await getJson(`GetObjectDetail/${encodeURIComponent(saleId)}`, timeoutMs);
-  } catch (e) {
+  // 欄位與照片兩支 API 同時打（單戶頁等的是這兩個加起來的時間）；照片抓不到不算失敗
+  const [detailOutcome, picOutcome] = await Promise.allSettled([
+    getJson(`GetObjectDetail/${encodeURIComponent(saleId)}`, timeoutMs),
+    getJson(`GetObjectPicture/${encodeURIComponent(saleId)}`, timeoutMs),
+  ]);
+  if (detailOutcome.status === "rejected") {
+    const e = detailOutcome.reason;
     const msg = e instanceof Error ? e.message : String(e);
     return { ok: false, error: /timeout|abort/i.test(msg) ? `官網 ${Math.round(timeoutMs / 1000)} 秒沒回應` : `連不上太平洋官網：${msg.slice(0, 80)}` };
   }
+  const detailRes = detailOutcome.value;
   if (detailRes.status === 404) return { ok: false, error: `官網找不到 ${saleId}（可能已下架）` };
   if (detailRes.status !== 200) return { ok: false, error: `官網回應 ${detailRes.status}` };
   const detail = sanitizeDetail(detailRes.body);
   if (!detail) return { ok: false, error: `官網回的東西認不得（${saleId}），官網可能改版了` };
 
   const photos: string[] = [];
-  try {
-    const pic = await getJson(`GetObjectPicture/${encodeURIComponent(saleId)}`, timeoutMs);
-    if (pic.status === 200 && Array.isArray(pic.body)) {
-      const rows = (pic.body as Record<string, unknown>[])
-        .filter((p) => p && Number(p.type) === 1 && /^https?:\/\//.test(String(p.sysFileName ?? "")))
-        .map((p, i) => ({ url: String(p.sysFileName), sort: Number(p.sort ?? 9999), i }))
-        .sort((a, b) => a.sort - b.sort || a.i - b.i);
-      for (const r of rows) if (!photos.some((u) => u.toLowerCase() === r.url.toLowerCase())) photos.push(r.url);
-    }
-  } catch {
-    // 照片抓不到就沒照片，欄位照樣帶
+  if (picOutcome.status === "fulfilled" && picOutcome.value.status === 200 && Array.isArray(picOutcome.value.body)) {
+    const rows = (picOutcome.value.body as Record<string, unknown>[])
+      .filter((p) => p && Number(p.type) === 1 && /^https?:\/\//.test(String(p.sysFileName ?? "")))
+      .map((p, i) => ({ url: String(p.sysFileName), sort: Number(p.sort ?? 9999), i }))
+      .sort((a, b) => a.sort - b.sort || a.i - b.i);
+    for (const r of rows) if (!photos.some((u) => u.toLowerCase() === r.url.toLowerCase())) photos.push(r.url);
   }
   return { ok: true, detail, photos };
 }
