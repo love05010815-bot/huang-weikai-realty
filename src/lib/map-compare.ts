@@ -12,17 +12,25 @@ export const COMPARE_MAX = 4;
 export const COMPARE_MIN = 2;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** 太平洋官網 S／P 編號（match_listing 主鍵）。2026-10-20 起建案地圖的「＋ 比較」勾的是這個 */
+const SALE_ID_RE = /^[SP]\d{5,}$/i;
+
+/** 這個 id 是官網物件（S 編號）還是後台地圖物件（UUID） */
+export function isSaleId(id: string): boolean {
+  return SALE_ID_RE.test(String(id ?? "").trim());
+}
 
 /**
- * 網址 `?ids=a,b,c`（或重複的 `?ids=a&ids=b`）→ 去重、只留長得像 map_listing id 的、最多 COMPARE_MAX 個。
- * 亂打的東西直接丟掉，不會進資料庫查詢。
+ * 網址 `?ids=a,b,c`（或重複的 `?ids=a&ids=b`）→ 去重、只留長得像 map_listing id（UUID）或官網 S 編號的、最多 COMPARE_MAX 個。
+ * 亂打的東西直接丟掉，不會進資料庫查詢。UUID 一律小寫、S 編號一律大寫（兩張表主鍵就是這樣存的）。
  */
 export function parseCompareIds(raw: string | string[] | undefined | null): string[] {
   const joined = Array.isArray(raw) ? raw.join(",") : (raw ?? "");
   const out: string[] = [];
   for (const piece of joined.split(/[,\s]+/)) {
-    const id = piece.trim().toLowerCase();
-    if (!UUID_RE.test(id) || out.includes(id)) continue;
+    const t = piece.trim();
+    const id = SALE_ID_RE.test(t) ? t.toUpperCase() : t.toLowerCase();
+    if (!(UUID_RE.test(id) || SALE_ID_RE.test(id)) || out.includes(id)) continue;
     out.push(id);
     if (out.length >= COMPARE_MAX) break;
   }

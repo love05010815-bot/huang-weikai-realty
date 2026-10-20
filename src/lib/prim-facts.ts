@@ -9,8 +9,24 @@
  *    純規則（`primFactsFrom`）在 lib/prim-share.ts，這支只負責「抓＋查」。
  */
 import type { HouseolFacts } from "@/lib/houseol-facts";
+import { loadListingDetail } from "@/lib/listing-detail";
 import { getListing } from "@/lib/match/store";
-import { fetchPrimShare, primFactsFrom, primShareCode } from "@/lib/prim-share";
+import { pacificFactsFrom } from "@/lib/pacific-facts";
+import { fetchPrimShare, pacificSaleIdFrom, primFactsFrom, primShareCode } from "@/lib/prim-share";
+
+/**
+ * 官網物件頁 ?saleID=S…（或直接 S 編號）→ 九個欄位，資料來自官網單筆 API（lib/listing-detail.ts 的一小時快取）。
+ * 2026-10-20 建案地圖的「＋ 比較」改勾 S 編號之後用這條。讀不到 → null，**永遠不 throw**。
+ */
+export async function fetchPacificFacts(href: string): Promise<HouseolFacts | null> {
+  if (!pacificSaleIdFrom(href)) return null;
+  try {
+    const d = await loadListingDetail(href);
+    return d ? pacificFactsFrom(d.detail, d.share?.completeDate ?? null) : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * 這顆「物件介紹」連結（太平洋分享連結）對應的九個欄位。

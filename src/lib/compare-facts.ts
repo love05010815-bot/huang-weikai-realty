@@ -14,13 +14,16 @@
  */
 import { fetchHouseolFacts, type HouseolFacts } from "@/lib/houseol-facts";
 import { houseolCaseId } from "@/lib/houseol-price";
-import { fetchPrimFacts } from "@/lib/prim-facts";
-import { primShareCode } from "@/lib/prim-share";
+import { fetchPacificFacts, fetchPrimFacts } from "@/lib/prim-facts";
+import { pacificSaleIdFrom, primShareCode } from "@/lib/prim-share";
 
-/** 這顆連結認得出是型錄（愛屋）或太平洋分享連結 —— 九項抓得到才有意義；false 時畫面要跟客戶講清楚 */
+/**
+ * 這顆連結認得出是型錄（愛屋）、太平洋分享連結、或官網物件頁 —— 九項抓得到才有意義；false 時畫面要跟客戶講清楚。
+ * 官網物件頁是 2026-10-20 加的：建案地圖改列官網在售物件之後，「＋ 比較」勾的是 S 編號。
+ */
 export function isCatalogHref(href: string | null | undefined): boolean {
   if (!href) return false;
-  return Boolean(primShareCode(href) || houseolCaseId(href));
+  return Boolean(primShareCode(href) || houseolCaseId(href) || pacificSaleIdFrom(href));
 }
 
 /** 連結 → 九個欄位。不是型錄連結、抓不到 → null；永遠不 throw */
@@ -28,5 +31,6 @@ export async function fetchCompareFacts(href: string | null | undefined): Promis
   if (!href) return null;
   if (primShareCode(href)) return fetchPrimFacts(href);
   if (houseolCaseId(href)) return fetchHouseolFacts(href);
+  if (pacificSaleIdFrom(href)) return fetchPacificFacts(href);
   return null;
 }

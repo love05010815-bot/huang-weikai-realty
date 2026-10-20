@@ -46,19 +46,24 @@ import {
   type ProjectStatus,
 } from "@/data/port-projects";
 import LeafletMap from "./LeafletMap";
-// ⚠️ PhotoCarousel 內部吃的是 listings.module.css（.gallery/.photo/.arrow…），
-//    那份是跟 /listings 共用的。要調相簿外觀請改元件本身，不要在這裡硬蓋 ——
-//    CSS Modules 的類名是雜湊的，從外面根本選不到。
-import PhotoCarousel from "../listings/PhotoCarousel";
 import CompareBar, { type CompareItem } from "@/app/_ui/compare/CompareBar";
 import { useCompare } from "@/app/_ui/compare/useCompare";
-import { COMPARE_MAX, compareHref } from "@/lib/map-compare";
+import { COMPARE_MAX, COMPARE_MIN, compareHref } from "@/lib/map-compare";
 import FavButton from "@/app/_ui/favorites/FavButton";
 import { recordTrail } from "@/app/_ui/favorites/store";
 import type { ProjectInventoryMap } from "@/lib/project-inventory";
 import ProjectInventory from "./ProjectInventory";
 import styles from "./Map.module.css";
 
+/*
+ * 🔴 2026-10-20 晚上系統擁有者拍板：「物件不用區分我 key 的跟您抓到的，我 key 的部分全部移除，都改以官網抓到的資料為主」。
+ *    所以上面那段「在售物件哪裡來（map_listing）」已經不是這頁的現況：
+ *      ・詳情面板只剩一段 —— 太平洋官網在這個建案的在售物件（`inventory` prop，lib/project-inventory-data.ts 在伺服器對好的），
+ *        一列一戶、整列進 /map/unit/<S 編號>、「＋ 比較」勾的也是 S 編號；
+ *      ・他在後台 key 的 map_listing 卡片、⭐ 星號物件**都不畫了**（後台與 /map/listing/<id> 那條路還在，只是地圖不吃）；
+ *        他在後台點過的「這戶屬於哪個建案」仍是對照的第一順位（overrides）。
+ *    `ProjectListing`／`SoloMapListing` 兩個型別留著給還 import 它們的檔案，這頁自己不再用。
+ */
 type AreaFilter = "all" | ProjectArea;
 
 /**
@@ -146,18 +151,14 @@ const BADGE_CLASS: Record<ProjectStatus, string> = {
 export type SoloMapListing = ProjectListing & { lat: number; lng: number };
 
 export default function ProjectExplorer({
-  listings = {},
-  solo = [],
   reports = [],
   inventory = {},
 }: {
-  listings?: Record<string, ProjectListing[]>;
-  solo?: SoloMapListing[];
   /** 📄 有已發佈「社區銷售報告書」的建案 id（後台 /admin/reports 發佈的），詳情面板多一顆入口 */
   reports?: string[];
   /**
-   * 🏢 太平洋官網在各建案的在售物件（2026-10-20，lib/project-inventory-data.ts 在伺服器對好的；
-   * 已扣掉他自己上架的那幾戶）。詳情面板在「我在 ○○ 的在售物件」底下多一段，清單上「在售 N」是兩者相加。
+   * 🏢 太平洋官網在各建案的在售物件（lib/project-inventory-data.ts 在伺服器對好的）。
+   * 2026-10-20 晚上起這是地圖上**唯一**的一套在售物件：詳情面板那一段、清單的「在售 N」、圖釘上的 ★ 都看它。
    */
   inventory?: ProjectInventoryMap;
 }) {
@@ -165,26 +166,15 @@ export default function ProjectExplorer({
   const [area, setArea] = useState<AreaFilter>("all");
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedSoloId, setSelectedSoloId] = useState<string | null>(null);
 
   const stats = useMemo(() => projectStats(), []);
-  const mine = useMemo(() => {
-    const out: Record<string, number> = {};
-    for (const [id, list] of Object.entries(listings)) out[id] = list.length;
-    return out;
-  }, [listings]);
-  const mineTotal = useMemo(
-    () => Object.values(listings).reduce((s, l) => s + l.length, 0),
-    [listings]
-  );
-  /** 🏢 官網在售（已去重）：建案 id → 幾間；清單上的「在售 N」＝ 我的 ＋ 這個 */
+  /** 🏢 建案 id → 官網在售幾間 */
   const invCount = useMemo(() => {
     const out: Record<string, number> = {};
     for (const [id, list] of Object.entries(inventory)) out[id] = list.length;
     return out;
   }, [inventory]);
   const invTotal = useMemo(() => Object.values(inventory).reduce((s, l) => s + l.length, 0), [inventory]);
-  const saleCount = useCallback((id: string) => (mine[id] ?? 0) + (invCount[id] ?? 0), [mine, invCount]);
 
   /** 每個區域各有幾案。商圈現在都是 0 —— 照實顯示，不要藏 */
   const areaCounts = useMemo(() => {
@@ -266,21 +256,7 @@ export default function ProjectExplorer({
     () => PROJECTS.find((p) => p.id === selectedId) ?? null,
     [selectedId]
   );
-  const selectedListings = selected ? listings[selected.id] ?? [] : [];
-
-  /** 選建案與選星號互斥 —— 下方只有一塊詳情區，兩個都選會不知道要顯示誰 */
-  const onSelect = useCallback((p: Project) => {
-    setSelectedId(p.id);
-    setSelectedSoloId(null);
-  }, []);
-  const onSelectSolo = useCallback((id: string) => {
-    setSelectedSoloId(id);
-    setSelectedId(null);
-  }, []);
-  const selectedSolo = useMemo(
-    () => solo.find((s) => s.id === selectedSoloId) ?? null,
-    [solo, selectedSoloId],
-  );
+  const onSelect = useCallback((p: Project) => setSelectedId(p.id), []);
 
   /**
    * 🔀 物件比較（2026-09-10 系統擁有者指定）：卡片上「＋ 比較」勾起來、畫面底下浮一條比較列、
@@ -293,12 +269,12 @@ export default function ProjectExplorer({
   const compare = useCompare();
   const listingIndex = useMemo(() => {
     const m = new Map<string, CompareItem>();
-    for (const [projectId, list] of Object.entries(listings)) {
+    for (const [projectId, list] of Object.entries(inventory)) {
       const project = PROJECTS.find((p) => p.id === projectId)?.name ?? "";
       for (const l of list) m.set(l.id, { id: l.id, title: l.title, project });
     }
     return m;
-  }, [listings]);
+  }, [inventory]);
   const compareItems = useMemo(
     () => compare.ids.map((id) => listingIndex.get(id)).filter((x): x is CompareItem => x !== undefined),
     [compare.ids, listingIndex],
@@ -363,7 +339,6 @@ export default function ProjectExplorer({
     const id = new URLSearchParams(window.location.search).get("project");
     if (!id || !PROJECTS.some((p) => p.id === id)) return;
     setSelectedId(id);
-    setSelectedSoloId(null);
     window.setTimeout(() => detailRef.current?.scrollIntoView({ block: "start" }), 0);
   }, []);
 
@@ -428,12 +403,7 @@ export default function ProjectExplorer({
       <aside className={styles.sideList} aria-label="建案清單">
         <div className={styles.sideHead}>
           <span>{`建案清單 ${rows.length}／${stats.total}`}</span>
-          {/* 我的 ＋ 太平洋官網的（已去重）。只有官網的就只寫官網 */}
-          {mineTotal + invTotal > 0 && (
-            <span className={styles.sideMine}>
-              {mineTotal > 0 ? `我有 ${mineTotal} 件在售${invTotal > 0 ? `・官網另 ${invTotal} 間` : ""}` : `官網在售 ${invTotal} 間`}
-            </span>
-          )}
+          {invTotal > 0 && <span className={styles.sideMine}>{`在售 ${invTotal} 間`}</span>}
         </div>
         {rows.length === 0 ? (
           <p className={styles.empty}>沒有符合的建案。換個關鍵字或篩選試試。</p>
@@ -459,7 +429,7 @@ export default function ProjectExplorer({
                         <em>{p.builder}</em>
                       </span>
                       <span className={styles.sideMeta}>
-                        {saleCount(p.id) > 0 && <u>{`在售 ${saleCount(p.id)}`}</u>}
+                        {(invCount[p.id] ?? 0) > 0 && <u>{`在售 ${invCount[p.id]}`}</u>}
                         {!COORDS[p.id] && <s>未標位置</s>}
                         <i style={{ background: TONE_SWATCH[p.status] }} aria-hidden="true" />
                       </span>
@@ -484,10 +454,8 @@ export default function ProjectExplorer({
             area={area}
             selectedId={selectedId}
             onSelect={onSelect}
-            mine={mine}
-            solo={solo}
-            selectedSoloId={selectedSoloId}
-            onSelectSolo={onSelectSolo}
+            /* ★ 徽章：2026-10-20 晚上起代表「這棟有在售物件（官網）」，不再是「我有物件」 */
+            mine={invCount}
           />
           <div className={styles.lmBar}>
             <div className={styles.lmLegend}>
@@ -503,7 +471,7 @@ export default function ProjectExplorer({
                 <b className={styles.lmStarMine} aria-hidden="true">
                   ★
                 </b>
-                我有物件在售
+                有在售物件
               </span>
               {/* 商圈色塊。**只標名稱、不標戶數**（2026-08-26 系統擁有者指定） */}
               {ZONES.map((z) => (
@@ -521,7 +489,7 @@ export default function ProjectExplorer({
                   // 不要讓畫面看起來像壞掉。地圖色塊仍然在，客戶還是看得到位置。
                   "這一區目前沒有我在追蹤的建案。地圖上的色塊還在，可以先看看位置；" +
                   "想找這一帶的房子直接跟我說，我手上不一定有掛在網站上。"
-                : `地圖上有 ${rows.length} 個建案。點大樓圖示看那個建案的在售物件（我自己上架的，加上太平洋房屋官網的），有社區銷售報告書的建案點案名直接開；` +
+                : `地圖上有 ${rows.length} 個建案，有 ★ 的目前有在售物件。點大樓圖示看那個建案的在售物件（資料來自太平洋房屋官網），有社區銷售報告書的建案點案名直接開；` +
                   "縮小到看整個生活圈時，建案會收成一顆藍色膠囊，點它就展開。"}
             </p>
             {/* ⚠️ 這行不可以拿掉。商圈沒有官方界線，不講清楚就等於對外發表
@@ -585,87 +553,21 @@ export default function ProjectExplorer({
                   2026-10-02 系統擁有者拍板整段拿掉：建案的介紹日後都做成「社區銷售報告書」，
                   點上面的案名直接開。不要加回來。 */}
 
-              {/* ── 我在這個建案的在售物件 ── */}
-              {selectedListings.length > 0 ? (
+              {/* 🏢 這個建案目前的在售物件 —— 2026-10-20 晚上起只有這一段（太平洋官網同步表）。
+                  他在後台 key 的 map_listing 卡片依他指示整段拿掉；那邊點過的建案歸屬只拿來當對照依據（overrides）。 */}
+              {(inventory[selected.id]?.length ?? 0) > 0 ? (
                 <div className={styles.mineBlock}>
-                  <h4 className={styles.mineTitle}>{`我在 ${selected.name} 的在售物件`}</h4>
-                  <p className={styles.cmpHelp}>
-                    {`想把幾戶放在一起看？按「＋ 比較」勾起來（最多 ${COMPARE_MAX} 件，可跨建案），再按畫面底下的「開始比較」。`}
-                  </p>
-                  {/* 橫條式：照片在左、文字在右（2026-08-26 系統擁有者拍板）。
-                      右欄只有約 476px 可用，/listings 那種直式卡片塞進來，
-                      標題會變成一行 4 個字。
-
-                      ⚠️ 樣式全部是這頁自己的 `styles.sale*`，**不要再借用**
-                         `listings.module.css` 的 .card/.body/.title —— 那份是
-                         兩頁共用的，借了就得同時滿足兩種版面，遲早改壞其中一邊。
-                         PhotoCarousel 仍然共用（它是自成一體的元件）。 */}
-                  <div className={styles.saleList}>
-                    {selectedListings.map((item) => (
-                      /* 整張卡都能點進單戶頁（2026-10-20）：照片每一格是連結、文字區 .saleBodyLink 用 ::after
-                         鋪滿 .saleBody；底下的按鈕在 .saleBtns 墊高，點它們還是它們自己。不鋪到照片區，手機左右滑才不會壞。 */
-                      <article key={item.id} className={styles.saleRow}>
-                        <div className={styles.saleThumb}>
-                          <PhotoCarousel photos={item.photos} alt={`${selected.name}－${item.title}`} href={`/map/listing/${item.id}`} />
-                        </div>
-                        <div className={styles.saleBody}>
-                          {/* 進單戶頁的那顆不掛 data-listing-*：單戶頁自己會記「被打開」，這裡再記一次就重複 */}
-                          <Link href={`/map/listing/${item.id}`} className={styles.saleBodyLink}>
-                            <span className={styles.saleArea}>{selected.name}</span>
-                            <h5 className={styles.saleTitle}>{item.title}</h5>
-                            <span className={styles.saleGo}>看這戶的完整資訊 →</span>
-                          </Link>
-                          {/* 「預約諮詢」掛 data-listing-slug／data-listing-action，全站的 ListingClickTracker 會記一次點擊。
-                              這裡的 slug 用地圖物件的 id（UUID）—— 跟精選好案那些人看得懂的 slug 共用同一張表也不會撞。 */}
-                          <div className={styles.saleBtns}>
-                            <Link
-                              className={styles.saleBtn}
-                              href="/card/booking"
-                              data-listing-slug={item.id}
-                              data-listing-action="booking"
-                            >
-                              預約諮詢
-                            </Link>
-                            {/* 🔀 加入比較。滿 4 件時其他戶的按鈕變灰，要先在底下的比較列移除一件 */}
-                            <button
-                              type="button"
-                              className={compare.has(item.id) ? styles.cmpBtnOn : styles.cmpBtn}
-                              onClick={() => compare.toggle(item.id)}
-                              disabled={!compare.has(item.id) && compare.full}
-                              aria-pressed={compare.has(item.id)}
-                              title={!compare.has(item.id) && compare.full ? `最多比 ${COMPARE_MAX} 件，先移除一件` : undefined}
-                            >
-                              {compare.has(item.id) ? "✓ 已加入比較" : compare.full ? `已滿 ${COMPARE_MAX} 件` : "＋ 比較"}
-                            </button>
-                          </div>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                  <p className={styles.mineNote}>
-                    ⚠️ 物件資訊僅供初步參考。
-                    <strong>實際坪數、格局、屋況與產權，以現場勘查及不動產說明書所載為準。</strong>
-                    物件狀態隨時可能異動，成交後即下架。
-                  </p>
-                  {/* 🏢 太平洋官網在這棟的其他在售（已扣掉上面那幾戶）。沒有就什麼都不畫 */}
-                  <ProjectInventory projectName={selected.name} items={inventory[selected.id] ?? []} mineCount={selectedListings.length} />
-                </div>
-              ) : (inventory[selected.id]?.length ?? 0) > 0 ? (
-                /* 🏢 我手上沒有、但太平洋官網有（2026-10-20）：直接列官網的，話術改成「找我帶看」 */
-                <div className={styles.noMine}>
-                  <p>
-                    {`我手上目前沒有自己上架的 ${selected.name}，但太平洋房屋在這棟有 ${inventory[selected.id]?.length ?? 0} 間在售 —— `}
-                    看中哪一戶都可以找我帶看，有新釋出的也會第一時間通知你。
-                  </p>
-                  <ProjectInventory projectName={selected.name} items={inventory[selected.id] ?? []} mineCount={0} divider={false} />
-                  <Link className={styles.cta} href="/card/booking">
-                    {`想看 ${selected.name}？預約我帶看`}
-                  </Link>
+                  {(inventory[selected.id]?.length ?? 0) >= COMPARE_MIN && (
+                    <p className={styles.cmpHelp}>
+                      {`想把幾戶放在一起看？按「＋ 比較」勾起來（最多 ${COMPARE_MAX} 件，可跨建案），再按畫面底下的「開始比較」。`}
+                    </p>
+                  )}
+                  <ProjectInventory projectName={selected.name} items={inventory[selected.id] ?? []} divider={false} compare={compare} />
                 </div>
               ) : (
                 <div className={styles.noMine}>
                   <p>
-                    {`目前 ${selected.name} 沒有在售中的物件（我自己的和太平洋官網的都沒有）。這一區釋出速度很快，`}
+                    {`太平洋房屋官網目前沒有 ${selected.name} 在售中的物件。這一區釋出速度很快，`}
                     想找這個建案可以先跟我說，有案子我第一時間通知你。
                   </p>
                   <Link className={styles.cta} href="/card/booking">
@@ -674,44 +576,9 @@ export default function ProjectExplorer({
                 </div>
               )}
             </>
-          ) : selectedSolo ? (
-            /* ⭐ 沒有建案的物件（社區不在建案總表裡，例如「大學之道」）。
-               只顯示物件本身 —— 沒有建案可以介紹，硬湊一個「建案資訊」區塊反而像資料缺漏。 */
-            <>
-              <header className={styles.detailHead}>
-                <div>
-                  <h3 className={styles.detailTitle}>{selectedSolo.title}</h3>
-                </div>
-              </header>
-              <div className={styles.saleList}>
-                <article className={styles.saleRow}>
-                  <div className={styles.saleThumb}>
-                    <PhotoCarousel photos={selectedSolo.photos} alt={selectedSolo.title} href={`/map/listing/${selectedSolo.id}`} />
-                  </div>
-                  <div className={styles.saleBody}>
-                    <Link href={`/map/listing/${selectedSolo.id}`} className={styles.saleBodyLink}>
-                      <span className={styles.saleArea}>⭐ 單獨標示的物件</span>
-                      <h5 className={styles.saleTitle}>{selectedSolo.title}</h5>
-                      <span className={styles.saleGo}>看這戶的完整資訊 →</span>
-                    </Link>
-                    <div className={styles.saleBtns}>
-                      <Link
-                        className={styles.saleBtn}
-                        href="/card/booking"
-                        data-listing-slug={selectedSolo.id}
-                        data-listing-action="booking"
-                      >
-                        預約諮詢
-                      </Link>
-                    </div>
-                  </div>
-                </article>
-              </div>
-            </>
           ) : (
             <p className={styles.detailEmpty}>
-              點清單裡的建案、或地圖上的大樓圖示，這裡就會顯示那個建案目前的在售物件（我自己上架的，加上太平洋房屋官網的）；有社區銷售報告書的建案，點案名直接開。
-              地圖上的 <b>⭐ 星號</b>是不屬於任何建案的單獨物件，點了也會顯示在這裡。
+              點清單裡的建案、或地圖上的大樓圖示，這裡就會顯示那個建案目前在售的物件（資料來自太平洋房屋官網，每 30 分鐘更新）；有社區銷售報告書的建案，點案名直接開。
             </p>
           )}
         </section>

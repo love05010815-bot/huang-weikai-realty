@@ -18,8 +18,12 @@ import type { Metadata } from "next";
 import { OWNER } from "@/config/owner";
 import { AREA_LABEL, PROJECTS } from "@/data/port-projects";
 import { fetchCompareFacts, isCatalogHref } from "@/lib/compare-facts";
-import { parseCompareIds } from "@/lib/map-compare";
+import { isSaleId, parseCompareIds } from "@/lib/map-compare";
 import { getPublicMapListingsByIds } from "@/lib/map-listings";
+import { getListings } from "@/lib/match/store";
+import { pacificDetailUrl } from "@/lib/prim-share";
+import { attributeListing } from "@/lib/project-inventory";
+import { INVENTORY_INDEX, sourceFromListing } from "@/lib/project-inventory-data";
 import CompareView, { type CompareEntry } from "./CompareView";
 
 /** 網址帶 ids、每次都查資料庫 —— 這頁本來就是動態的；型錄那層自己有一小時快取 */
@@ -40,11 +44,15 @@ type Search = { ids?: string | string[] };
 export default async function ComparePage({ searchParams }: { searchParams: Promise<Search> }) {
   const { ids: raw } = await searchParams;
   const ids = parseCompareIds(raw);
-  const rows = ids.length > 0 ? await getPublicMapListingsByIds(ids) : [];
+  // 2026-10-20 起建案地圖勾的是官網物件（S 編號，match_listing）；舊連結裡的 UUID（後台地圖物件）照樣認
+  const uuidIds = ids.filter((id) => !isSaleId(id));
+  const saleIds = ids.filter(isSaleId);
+  const rows = uuidIds.length > 0 ? await getPublicMapListingsByIds(uuidIds) : [];
+  const units = saleIds.length > 0 ? (await getListings(saleIds)).filter((u) => u.status === "available") : [];
 
   // 型錄並行抓：一戶抓不到就那一戶 null（整欄顯示「—」），其他戶照常；fetchCompareFacts 永遠不 throw
-  const entries: CompareEntry[] = await Promise.all(
-    rows.map(async (row) => {
+  const built = await Promise.all([
+    ...rows.map(async (row): Promise<CompareEntry> => {
       const project = PROJECTS.find((p) => p.id === row.projectId) ?? null;
       return {
         listing: { id: row.id, title: row.title, photos: row.photos, linkHref: row.linkHref },
@@ -53,7 +61,22 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
         catalogLink: isCatalogHref(row.linkHref),
       };
     }),
-  );
+    ...units.map(async (u): Promise<CompareEntry> => {
+      // 建案照地圖同一套規則對（標題案名／座標最近），九項從官網單筆 API 來
+      const hit = attributeListing(INVENTORY_INDEX, sourceFromListing(u));
+      const project = hit ? (PROJECTS.find((p) => p.id === hit.projectId) ?? null) : null;
+      const href = pacificDetailUrl(u.id);
+      return {
+        listing: { id: u.id, title: u.title, photos: u.images.slice(0, 1), linkHref: href },
+        project: project ? { name: project.name, area: AREA_LABEL[project.area] } : null,
+        facts: await fetchCompareFacts(href),
+        catalogLink: true,
+      };
+    }),
+  ]);
+  // 照客戶勾的順序排
+  const byId = new Map(built.map((e) => [e.listing.id, e]));
+  const entries = ids.map((id) => byId.get(id)).filter((e): e is CompareEntry => e !== undefined);
 
-  return <CompareView source="map" entries={entries} dropped={ids.length - rows.length} />;
+  return <CompareView source="map" entries={entries} dropped={ids.length - entries.length} />;
 }

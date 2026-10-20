@@ -20,7 +20,7 @@ import { houseolCaseId } from "@/lib/houseol-price";
 import type { PublicMapListing } from "@/lib/map-listings";
 import { ensureMatchTables, type MatchListing } from "@/lib/match/store";
 import { fetchPrimShare, pacificSaleIdFrom, primShareCode } from "@/lib/prim-share";
-import { buildInventoryIndex, buildProjectInventory, type InventorySource, type ProjectInventoryMap } from "@/lib/project-inventory";
+import { buildInventoryIndex, buildProjectInventory, normalizeName, type InventorySource, type ProjectInventoryMap } from "@/lib/project-inventory";
 
 /** 建案名稱與圖釘的查找表 —— 建案總表是靜態的，整個程序建一次就好 */
 export const INVENTORY_INDEX = buildInventoryIndex(PROJECTS, COORDS);
@@ -110,58 +110,77 @@ export async function listInventorySources(): Promise<InventorySource[]> {
   return rows.map(sourceFromRow);
 }
 
-/** 他自己那幾戶（map_listing）對應的 S 編號。對不回去的就不在集合裡（由同建案同標題那條規則接手） */
-export async function ownedSaleIds(owned: Iterable<PublicMapListing>): Promise<Set<string>> {
-  const ids = new Set<string>();
-  const houseolIds: string[] = [];
-  const primCodes: string[] = [];
-  for (const l of owned) {
-    const href = l.linkHref ?? "";
-    if (!href) continue;
-    const sale = pacificSaleIdFrom(href);
-    if (sale) {
-      ids.add(sale.toUpperCase());
-      continue;
+export type OwnerOverrides = {
+  /** 大寫 S 編號 → 他在後台掛的建案 id */
+  overrides: Map<string, string>;
+  /** normalizeName(標題) → 建案 id（連結對不回 S 編號那幾戶的備援） */
+  titleOverrides: Map<string, string>;
+};
+
+/**
+ * 他自己在後台（map_listing）指定過的「這一戶屬於哪個建案」→ S 編號對照。
+ * 2026-10-20 他拍板地圖不再另外顯示他 key 的那一段、一律以官網資料為主，但他點過的建案歸屬還是最可信的依據，
+ * 拿來當對照的第一順位（lib/project-inventory.ts 的 overrides）。
+ * 對不回 S 編號的（沒填連結、分享連結失效）退而用標題對（titleOverrides）。
+ */
+export async function ownerOverrides(ownedByProject: Map<string, PublicMapListing[]>): Promise<OwnerOverrides> {
+  const overrides = new Map<string, string>();
+  const titleOverrides = new Map<string, string>();
+  const houseolIds: Array<{ aa: string; projectId: string }> = [];
+  const primCodes: Array<{ code: string; projectId: string }> = [];
+  for (const [projectId, list] of ownedByProject) {
+    if (!projectId) continue;
+    for (const l of list) {
+      const t = normalizeName(l.title);
+      if (t) titleOverrides.set(t, projectId);
+      const href = l.linkHref ?? "";
+      if (!href) continue;
+      const sale = pacificSaleIdFrom(href);
+      if (sale) {
+        overrides.set(sale.toUpperCase(), projectId);
+        continue;
+      }
+      const code = primShareCode(href);
+      if (code) {
+        primCodes.push({ code, projectId });
+        continue;
+      }
+      const aa = houseolCaseId(href);
+      if (aa) houseolIds.push({ aa: aa.toUpperCase(), projectId });
     }
-    const code = primShareCode(href);
-    if (code) {
-      primCodes.push(code);
-      continue;
-    }
-    const aa = houseolCaseId(href);
-    if (aa) houseolIds.push(aa.toUpperCase());
   }
 
   if (houseolIds.length > 0) {
-    const uniq = [...new Set(houseolIds)].slice(0, 300);
-    const rows = await db.$queryRawUnsafe<{ id: string }[]>(
-      `SELECT id FROM match_listing WHERE houseol_id IN (${uniq.map(() => "?").join(",")})`,
+    const byAa = new Map(houseolIds.map((x) => [x.aa, x.projectId]));
+    const uniq = [...byAa.keys()].slice(0, 300);
+    const rows = await db.$queryRawUnsafe<{ id: string; houseol_id: string }[]>(
+      `SELECT id, houseol_id FROM match_listing WHERE houseol_id IN (${uniq.map(() => "?").join(",")})`,
       ...uniq,
     );
-    for (const r of rows) ids.add(String(r.id).toUpperCase());
+    for (const r of rows) {
+      const pid = byAa.get(String(r.houseol_id ?? "").toUpperCase());
+      if (pid) overrides.set(String(r.id).toUpperCase(), pid);
+    }
   }
 
   // 分享連結：網路不是資料庫，可以並行；選項跟 lib/houseol-price.ts 的售價一樣 → Next Data Cache 同一筆
-  const uniqCodes = [...new Set(primCodes)].slice(0, 100);
-  const shares = await Promise.all(uniqCodes.map((code) => fetchPrimShare(code, { revalidate: 3600, timeoutMs: 6000 })));
-  for (const r of shares) {
-    if (r.ok && r.share.items.length === 1) ids.add(r.share.items[0].objNo.toUpperCase());
-  }
-  return ids;
+  const uniqCodes = primCodes.slice(0, 100);
+  const shares = await Promise.all(uniqCodes.map((x) => fetchPrimShare(x.code, { revalidate: 3600, timeoutMs: 6000 })));
+  shares.forEach((r, i) => {
+    if (r.ok && r.share.items.length === 1) overrides.set(r.share.items[0].objNo.toUpperCase(), uniqCodes[i].projectId);
+  });
+  return { overrides, titleOverrides };
 }
 
 /**
- * /map 用：建案 id → 官網在售物件（已扣掉他自己那幾戶、便宜的排前面）。讀不到回 {}，不丟例外。
- * @param ownedByProject getMapListingsByProject() 的結果（他自己上架的，照建案分好）
+ * /map 用：建案 id → 官網在售物件（便宜的排前面）。讀不到回 {}，不丟例外。
+ * @param ownedByProject getMapListingsByProject() 的結果（他在後台掛好建案的那幾戶）—— 只拿來當對照依據，不另外顯示
  */
 export async function getProjectInventory(ownedByProject: Map<string, PublicMapListing[]>): Promise<ProjectInventoryMap> {
   try {
     const sources = await listInventorySources();
-    const all = [...ownedByProject.values()].flat();
-    const excludeIds = await ownedSaleIds(all);
-    const excludeTitlesByProject: Record<string, string[]> = {};
-    for (const [pid, list] of ownedByProject) excludeTitlesByProject[pid] = list.map((l) => l.title);
-    return buildProjectInventory(INVENTORY_INDEX, sources, { excludeIds, excludeTitlesByProject });
+    const owner = await ownerOverrides(ownedByProject);
+    return buildProjectInventory(INVENTORY_INDEX, sources, owner);
   } catch (e) {
     console.error("[project-inventory] 讀不到官網在售物件，建案底下先不列：", e);
     return {};

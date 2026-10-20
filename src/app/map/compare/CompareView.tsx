@@ -30,7 +30,7 @@ import {
   formatPing,
   type HouseolFacts,
 } from "@/lib/houseol-facts";
-import { COMPARE_MAX, COMPARE_MIN } from "@/lib/map-compare";
+import { COMPARE_MAX, COMPARE_MIN, isSaleId } from "@/lib/map-compare";
 import { resolvePhotoSrc } from "@/lib/photo-src";
 import SiteNav from "@/app/_ui/SiteNav";
 import styles from "../Map.module.css";
@@ -186,7 +186,8 @@ function NextSteps({ source, entry }: { source: CompareSource; entry: CompareEnt
   // 2026-10-20 下午起地圖物件也不外連：「物件介紹 ↗」改成站內單戶頁 /map/listing/<id>（單戶頁自己記「被打開」，這顆不掛 data-listing-*）
   return (
     <div className={cmp.btns}>
-      <Link className={styles.saleLink} href={`/map/listing/${encodeURIComponent(id)}`}>
+      {/* 2026-10-20 晚上起地圖勾的是官網物件（S 編號）→ /map/unit/<S 編號>；舊的後台地圖物件（UUID）仍是 /map/listing/<id> */}
+      <Link className={styles.saleLink} href={isSaleId(id) ? `/map/unit/${encodeURIComponent(id)}` : `/map/listing/${encodeURIComponent(id)}`}>
         看這戶的完整介紹 →
       </Link>
       <Link className={styles.saleBtn} href="/card/booking" data-listing-slug={id} data-listing-action="booking">

@@ -67,9 +67,11 @@ export type InventoryItem = {
   kind: string;
   age: number | null;
   photo: string | null;
-  /** 怎麼對到這個建案的：title＝標題有案名、near＝座標最近 */
-  how: "title" | "near";
+  /** 怎麼對到這個建案的：owner＝他在後台指定過、title＝標題有案名、near＝座標最近 */
+  how: InventoryHow;
 };
+
+export type InventoryHow = "owner" | "title" | "near";
 
 export type ProjectInventoryMap = Record<string, InventoryItem[]>;
 
@@ -211,21 +213,44 @@ export function isRental(title: string): boolean {
   return /^\s*(租|出租|月租|招租)/.test(String(title ?? ""));
 }
 
-export type Attribution = { projectId: string; how: "title" | "near" };
+export type Attribution = { projectId: string; how: InventoryHow };
 
-/** 一筆物件 → 掛在哪個建案底下；對不到回 null */
-export function attributeListing(index: InventoryIndex, src: InventorySource): Attribution | null {
-  if (isRental(src.title) || NEVER_TYPES.has(src.type)) return null;
+export type AttributeOptions = {
+  /**
+   * 他在後台 /admin/map-listings 指定過「這一戶屬於哪個建案」（map_listing.project_id，由連結對回 S 編號）——
+   * 這是他親手點的，比標題、座標都可信，**最優先**。2026-10-20 起地圖不再另外顯示他 key 的那一段，
+   * 但他的指定還是拿來當對照依據。key 是大寫 S 編號。
+   */
+  overrides?: ReadonlyMap<string, string>;
+  /** 同上，但連結對不回 S 編號那幾戶改用標題對：normalizeName(標題) → 建案 id */
+  titleOverrides?: ReadonlyMap<string, string>;
+};
+
+/**
+ * 一筆物件 → 掛在哪個建案底下；對不到回 null。順序：
+ *   官網標題明寫案名 ＞ 他在後台指定的 ＞ 座標最近
+ * 他 2026-10-20 說「都改以官網抓到的資料為主」—— 所以官網標題跟他後台點的不一樣時聽官網
+ * （實測 1 筆：標題「聯悦臻邊間海景…」他在後台掛成聯悅馨，多半是點錯）；
+ * 但他的指定仍贏過座標（實測 1 筆：座標說德光二城、他說德光一築，兩棟緊鄰、座標差 30 公尺很正常，人比較準）。
+ */
+export function attributeListing(index: InventoryIndex, src: InventorySource, opts: AttributeOptions = {}): Attribution | null {
+  if (isRental(src.title)) return null;
+  const never = NEVER_TYPES.has(src.type);
   const pt = src.lat !== null && src.lng !== null ? { lat: src.lat, lng: src.lng } : null;
 
-  const byTitle = matchByTitle(index, src.title);
-  if (byTitle) {
-    const pin = index.pinById.get(byTitle.id);
-    const suspicious = byTitle.start > 0 && byTitle.prevCjk && pt && pin && distanceM(pt, pin) > TITLE_FAR_M;
-    if (!suspicious) return { projectId: byTitle.id, how: "title" };
+  if (!never) {
+    const byTitle = matchByTitle(index, src.title);
+    if (byTitle) {
+      const pin = index.pinById.get(byTitle.id);
+      const suspicious = byTitle.start > 0 && byTitle.prevCjk && pt && pin && distanceM(pt, pin) > TITLE_FAR_M;
+      if (!suspicious) return { projectId: byTitle.id, how: "title" };
+    }
   }
 
-  if (!pt || !PROXIMITY_TYPES.has(src.type)) return null;
+  const owner = opts.overrides?.get(String(src.id ?? "").trim().toUpperCase()) ?? opts.titleOverrides?.get(normalizeName(src.title));
+  if (owner) return { projectId: owner, how: "owner" };
+
+  if (never || !pt || !PROXIMITY_TYPES.has(src.type)) return null;
   const { first, second } = nearestPins(index, pt);
   if (!first || first.d > NEAR_MAX_M) return null;
   if (second && (second.d < NEAR_SECOND_MIN_M || second.d < first.d * NEAR_SECOND_RATIO)) return null;
@@ -234,7 +259,7 @@ export function attributeListing(index: InventoryIndex, src: InventorySource): A
 
 const posOrNull = (n: number): number | null => (Number.isFinite(n) && n > 0 ? n : null);
 
-export function toInventoryItem(src: InventorySource, how: "title" | "near"): InventoryItem {
+export function toInventoryItem(src: InventorySource, how: InventoryHow): InventoryItem {
   const photo = src.images.find((u) => /^https?:\/\//i.test(String(u ?? ""))) ?? null;
   return {
     id: src.id,
@@ -262,27 +287,16 @@ export function sortInventory(items: InventoryItem[]): InventoryItem[] {
   });
 }
 
-export type BuildOptions = {
-  /** 已經在「我在這個建案的在售物件」出現過的 S 編號 */
-  excludeIds?: ReadonlySet<string>;
-  /** 建案 id → 他自己那幾戶的標題（正規化前的原字即可）—— 同建案同標題的也當同一戶 */
-  excludeTitlesByProject?: Record<string, readonly string[]>;
-};
-
-/** 整份在售物件 → 建案 id → 物件清單（沒有物件的建案不會有 key） */
-export function buildProjectInventory(index: InventoryIndex, sources: readonly InventorySource[], opts: BuildOptions = {}): ProjectInventoryMap {
-  const excludeIds = opts.excludeIds ?? new Set<string>();
-  const titleSets = new Map<string, Set<string>>();
-  for (const [pid, titles] of Object.entries(opts.excludeTitlesByProject ?? {})) {
-    titleSets.set(pid, new Set(titles.map(normalizeName).filter(Boolean)));
-  }
+/** 整份在售物件 → 建案 id → 物件清單（沒有物件的建案不會有 key）。同一個 S 編號只進一次。 */
+export function buildProjectInventory(index: InventoryIndex, sources: readonly InventorySource[], opts: AttributeOptions = {}): ProjectInventoryMap {
   const out: Record<string, InventoryItem[]> = {};
+  const seen = new Set<string>();
   for (const src of sources) {
     const id = String(src.id ?? "").trim().toUpperCase();
-    if (!id || excludeIds.has(id)) continue;
-    const hit = attributeListing(index, src);
+    if (!id || seen.has(id)) continue;
+    const hit = attributeListing(index, src, opts);
     if (!hit) continue;
-    if (titleSets.get(hit.projectId)?.has(normalizeName(src.title))) continue;
+    seen.add(id);
     (out[hit.projectId] ??= []).push(toInventoryItem({ ...src, id }, hit.how));
   }
   for (const pid of Object.keys(out)) out[pid] = sortInventory(out[pid]);
