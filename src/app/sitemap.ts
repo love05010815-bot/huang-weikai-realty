@@ -31,6 +31,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: SITE_URL + "/buy", lastModified, changeFrequency: "monthly", priority: 0.8 },
     // 2026-09-29 賣房流程與費用。「賣房要繳什麼稅」「土地增值稅」是賣方族群常搜的字
     { url: SITE_URL + "/sell", lastModified, changeFrequency: "monthly", priority: 0.8 },
+    // 2026-10-20 常見問題（買方流程、賣方流程兩題問答）
+    { url: SITE_URL + "/faq", lastModified, changeFrequency: "monthly", priority: 0.7 },
     { url: SITE_URL + "/listings", lastModified, changeFrequency: "weekly", priority: 0.8 },
     // 稅費試算是很強的搜尋入口（「房地合一稅試算」搜尋量高），優先度給高一點
     { url: SITE_URL + "/tax", lastModified, changeFrequency: "monthly", priority: 0.9 },

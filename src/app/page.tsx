@@ -99,6 +99,8 @@ const SERVICES = [
     links: [
       { label: "買方流程", href: "/buy" },
       { label: "賣方流程", href: "/sell" },
+      // 2026-10-20 他說「先做 FAQ」「買方流程及賣方流程直接做成兩題問答」→ /faq，入口放同一張卡
+      { label: "常見問題", href: "/faq" },
     ],
   },
   {

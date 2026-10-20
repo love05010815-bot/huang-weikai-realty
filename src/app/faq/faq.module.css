@@ -1,0 +1,131 @@
+/* /faq —— 常見問題。配色變數來自 home.module.css 的 .page（這頁一樣套用那個 class）。
+   手風琴用原生 <details>／<summary>：不用 JS、鍵盤與讀屏軟體原生支援、收著的內容 Google 一樣讀得到。
+   免責聲明與「回首頁」沿用 buy.module.css（跟 /buy、/sell 同一個長相）。 */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0 0 20px;
+}
+
+.item {
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  /* 錨點跳過來時別被 sticky header 蓋住 */
+  scroll-margin-top: 96px;
+}
+
+.item summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 22px;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.5;
+  color: var(--ink);
+  border-radius: var(--radius);
+}
+
+/* Safari 的預設三角形 */
+.item summary::-webkit-details-marker {
+  display: none;
+}
+
+.item summary:hover {
+  color: var(--primary);
+}
+
+.item summary:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.q {
+  flex: 1 1 auto;
+}
+
+.chev {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  color: var(--primary);
+  transition: transform 0.18s ease;
+}
+
+.item[open] .chev {
+  transform: rotate(180deg);
+}
+
+.answer {
+  padding: 16px 22px 22px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 14.5px;
+  line-height: 1.85;
+}
+
+.answer p {
+  margin: 0 0 12px;
+}
+
+.steps {
+  margin: 0 0 14px;
+  padding: 0 0 0 22px;
+}
+
+.steps li + li {
+  margin-top: 8px;
+}
+
+.steps strong {
+  color: var(--ink);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* 跟首頁服務卡的「買方流程 →」藥丸同一個長相 */
+.link {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border: 1.5px solid var(--primary);
+  border-radius: 999px;
+  color: var(--primary);
+  font-size: 13.5px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.link:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chev {
+    transition: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .item summary {
+    padding: 16px 18px;
+    font-size: 16px;
+  }
+
+  .answer {
+    padding: 14px 18px 20px;
+  }
+}
