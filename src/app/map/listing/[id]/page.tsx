@@ -9,9 +9,10 @@
  * 🔴 `address` 欄（門牌）**刻意不拿出來**：那是後台自己認物件用的，對外只顯示官網的路名。
  * 下架後不 404（傳出去的網址收不回來），改說「已下架」；整筆被刪才 404。
  *
- * 刻意沒有 generateStaticParams：地圖物件近百戶，建置時一口氣打官網會踩到它的限流；
- * 第一次被點才算一次（約 1 秒），之後走 ISR 五分鐘、官網結果另有一小時 Data Cache。
- * 卡片是 <Link>，進到畫面就會預先抓，實際點的時候多半已經好了。
+ * generateStaticParams 回空陣列（刻意）：地圖物件近百戶，建置時一口氣打官網會踩到它的限流，所以不在建置時算；
+ * 但**沒有這個函式的話 Vercel 會把這條路由當成純動態、每次都現算**（上線實測第二次請求仍 MISS、0.7 秒），
+ * 回空陣列 ＋ dynamicParams 預設 true ＝ 第一次被點才算一次、之後進 Full Route Cache、ISR 五分鐘背景重生，
+ * 官網結果另有一小時 Data Cache。卡片是 <Link>，進到畫面就會預先抓，實際點的時候多半已經好了。
  */
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -29,6 +30,11 @@ import ListingView, { absolutePhoto, type ListingViewMode } from "@/app/listings
 export const revalidate = 300;
 
 type Params = { id: string };
+
+/** 空陣列：建置時不預產任何一戶（理由見檔頭），但讓路由進 ISR 快取 */
+export async function generateStaticParams(): Promise<Params[]> {
+  return [];
+}
 
 type PageData = { rec: PublicMapListingPage; project: Project | null; item: Listing; detail: ListingDetail | null } | null;
 
