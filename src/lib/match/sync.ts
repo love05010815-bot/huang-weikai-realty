@@ -2,7 +2,8 @@
  * 物件同步（太平洋官網 ＋ 愛屋店網 → match_listing），以及「新物件／價格異動推播給條件相符的買方」
  *
  * 兩個來源（2026-10-02 起，規則與原因見 lib/match/merge.ts）：
- *   pacific  太平洋官網 www.pacific.com.tw 的查詢 API，海線七家店（config/match.ts 的 PACIFIC_STORES）。主來源。
+ *   pacific  太平洋官網 www.pacific.com.tw 的查詢 API，海線的店（config/match.ts 的 PACIFIC_STORES；2026-10-20 起六家，沙鹿幸福領航拿掉）。主來源。
+ *            店名單改了不用動資料庫：被拿掉的店已同步進來的物件，下一次完整同步時 listingsToHide 會把它們標成下架。
  *   houseol  愛屋店網 storeid 4817 的公開頁，只補梧棲店「官網沒上架」的那幾筆。
  *
  * 誰來觸發：

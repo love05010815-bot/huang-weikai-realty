@@ -438,7 +438,7 @@ export default function MatchAdmin({
                   在售 {counts.available} 戶 · 已下架 {counts.hidden} 戶
                 </div>
                 <div style={{ color: CIS.textMute, fontSize: 12, marginTop: 4 }}>
-                  來源：太平洋官網海線七家店（{Object.values(PACIFIC_STORES).map((s) => s.name).join("、")}）＋ 愛屋店網 storeid {MATCH.houseolStoreId}
+                  來源：太平洋官網海線 {Object.keys(PACIFIC_STORES).length} 家店（{Object.values(PACIFIC_STORES).map((s) => s.name).join("、")}）＋ 愛屋店網 storeid {MATCH.houseolStoreId}
                   （只補梧棲店官網沒上架的）。兩個來源輪流、各每 {MATCH.syncIntervalMin} 分鐘自動同步一次。
                 </div>
                 {(["pacific", "houseol"] as const).map((source) => {
