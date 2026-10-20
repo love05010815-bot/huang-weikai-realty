@@ -17,16 +17,7 @@
  */
 import { revalidatePath } from "next/cache";
 import { OWNER } from "@/config/owner";
-import { lineUrlFromInput } from "@/lib/match/colleague-link";
-import {
-  countBuyersOfColleague,
-  createColleague,
-  deleteColleague,
-  listColleagues,
-  offboardColleague,
-  rotateColleagueKey,
-  updateColleague,
-} from "@/lib/match/colleagues";
+import { addColleagueOp, deleteColleagueOp, listColleagueRows, rotateColleagueOp, setColleagueOp } from "@/lib/match/colleague-ops";
 import {
   buildBuyerBrief,
   buyerOwnedBy,
@@ -36,7 +27,6 @@ import {
   pushBriefToBuyer,
   saveBuyerFromForm,
   toIntakeBuyer,
-  toIntakeColleagueRow,
   type BuyerBrief,
   type BuyerFormInput,
   type IntakeBuyer,
@@ -45,7 +35,7 @@ import {
   type IntakeViewingRow,
 } from "@/lib/match/intake";
 import { actorOwnerId, resolveIntakeActor, type IntakeActor } from "@/lib/match/intake-key";
-import { countPushSubscriptions, deletePushSubscription, parseSubscription, savePushSubscription, sendTestPush } from "@/lib/match/push";
+import { deletePushSubscription, parseSubscription, savePushSubscription, sendTestPush } from "@/lib/match/push";
 import { deleteBuyer, getBuyer, getViewing } from "@/lib/match/store";
 import { applyViewingStatus } from "@/lib/match/viewing-status";
 
@@ -179,12 +169,8 @@ async function ownerOnly(key: string): Promise<IntakeActor | Fail> {
   return actor;
 }
 
-async function colleagueRows(): Promise<IntakeColleagueRow[]> {
-  const rows: IntakeColleagueRow[] = [];
-  // 連線池只有 3 條：循序問，不要 Promise.all
-  for (const c of await listColleagues()) rows.push(toIntakeColleagueRow(c, await countBuyersOfColleague(c.id), await countPushSubscriptions(c.id)));
-  return rows;
-}
+// 同事的增刪改跟後台「買方資料建檔 → 同事」共用 lib/match/colleague-ops.ts（2026-10-20 他說兩邊要同步）；這裡只負責「本人的金鑰才能按」。
+const colleagueRows = (): Promise<IntakeColleagueRow[]> => listColleagueRows();
 
 export async function intakeColleaguesAction(key: string): Promise<Fail | { ok: true; rows: IntakeColleagueRow[] }> {
   const gate = await ownerOnly(key);
@@ -202,20 +188,7 @@ export async function intakeAddColleagueAction(
 ): Promise<Fail | { ok: true; rows: IntakeColleagueRow[]; created: IntakeColleagueRow }> {
   const gate = await ownerOnly(key);
   if ("ok" in gate) return gate;
-  const name = String(input.name ?? "").trim().slice(0, 40);
-  const phone = String(input.phone ?? "").trim().replace(/[^\d+\-]/g, "").slice(0, 40);
-  const lineRaw = String(input.line ?? "").trim();
-  const lineUrl = lineUrlFromInput(lineRaw);
-  if (!name) return { ok: false, error: "請填同事的稱呼（例如「王小明」）" };
-  if (lineRaw && !lineUrl) return { ok: false, error: "LINE 看不懂：填 LINE ID（例如 abc123），或貼 line.me 開頭的加好友連結" };
-  try {
-    const c = await createColleague({ name, phone, lineUrl });
-    const rows = await colleagueRows();
-    const created = rows.find((r) => r.id === c.id) ?? toIntakeColleagueRow(c, 0, 0);
-    return { ok: true, rows, created };
-  } catch (e) {
-    return { ok: false, error: describeError(e) };
-  }
+  return addColleagueOp(input);
 }
 
 export async function intakeSetColleagueAction(
@@ -225,53 +198,23 @@ export async function intakeSetColleagueAction(
 ): Promise<Fail | { ok: true; rows: IntakeColleagueRow[] }> {
   const gate = await ownerOnly(key);
   if ("ok" in gate) return gate;
-  try {
-    const clean: { active?: boolean; name?: string; phone?: string; lineUrl?: string } = {};
-    if (patch.active !== undefined) clean.active = Boolean(patch.active);
-    if (patch.name !== undefined) {
-      clean.name = String(patch.name).trim().slice(0, 40);
-      if (!clean.name) return { ok: false, error: "稱呼不能空白" };
-    }
-    if (patch.phone !== undefined) clean.phone = String(patch.phone).trim().replace(/[^\d+\-]/g, "").slice(0, 40);
-    if (patch.line !== undefined) {
-      const raw = String(patch.line).trim();
-      const url = lineUrlFromInput(raw);
-      if (raw && !url) return { ok: false, error: "LINE 看不懂：填 LINE ID，或貼 line.me 開頭的加好友連結" };
-      clean.lineUrl = url;
-    }
-    if (!(await updateColleague(id, clean))) return { ok: false, error: "找不到這位同事" };
-    // 停用 = 離職：連結作廢（金鑰換掉）、手機通知訂閱清掉（lib/match/colleagues.ts 的 offboardColleague）
-    if (clean.active === false) await offboardColleague(id);
-    return { ok: true, rows: await colleagueRows() };
-  } catch (e) {
-    return { ok: false, error: describeError(e) };
-  }
+  return setColleagueOp(id, patch);
 }
 
 /** 重新產生同事的連結 —— 舊的立刻失效 */
 export async function intakeRotateColleagueKeyAction(key: string, id: string): Promise<Fail | { ok: true; rows: IntakeColleagueRow[] }> {
   const gate = await ownerOnly(key);
   if ("ok" in gate) return gate;
-  try {
-    if (!(await rotateColleagueKey(id))) return { ok: false, error: "找不到這位同事" };
-    return { ok: true, rows: await colleagueRows() };
-  } catch (e) {
-    return { ok: false, error: describeError(e) };
-  }
+  return rotateColleagueOp(id);
 }
 
 /** 刪同事。在職且有客人的刪不掉；停用的連她的客人、預約一起清（理由在 colleagues.deleteColleague） */
 export async function intakeDeleteColleagueAction(key: string, id: string): Promise<Fail | { ok: true; rows: IntakeColleagueRow[]; buyers: number; viewings: number }> {
   const gate = await ownerOnly(key);
   if ("ok" in gate) return gate;
-  try {
-    const r = await deleteColleague(id);
-    if (!r.ok) return { ok: false, error: r.reason ?? "刪除失敗" };
-    revalidatePath("/admin/match");
-    return { ok: true, rows: await colleagueRows(), buyers: r.buyers ?? 0, viewings: r.viewings ?? 0 };
-  } catch (e) {
-    return { ok: false, error: describeError(e) };
-  }
+  const r = await deleteColleagueOp(id);
+  if (r.ok) revalidatePath("/admin/match");
+  return r;
 }
 
 // ---------------------------------------------------------------- 同事的手機通知（Web Push，只有同事的連結）

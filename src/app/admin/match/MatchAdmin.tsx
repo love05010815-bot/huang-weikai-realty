@@ -15,6 +15,8 @@ import { deleteBuyerAction, rotateIntakeKeyAction, setViewingStatusAction } from
 import { lineText, type LineVia } from "@/lib/match/line-via";
 import { SOURCE_LABEL, type Source } from "@/lib/match/merge";
 import type { SyncJob, SyncSummary } from "@/lib/match/sync";
+import type { IntakeColleagueRow } from "@/lib/match/intake";
+import ColleaguesAdmin from "./ColleaguesAdmin";
 import styles from "./match-admin.module.css";
 
 export type AdminViewing = {
@@ -69,7 +71,7 @@ export type AdminListing = {
   syncedAt: string | null;
 };
 
-type Tab = "viewings" | "buyers" | "sync";
+type Tab = "viewings" | "buyers" | "colleagues" | "sync";
 
 const STATUS_TONE: Record<string, ChipTone> = {
   pending: "neutral",
@@ -122,12 +124,15 @@ export default function MatchAdmin({
   intakeUrl,
   viewings,
   buyers,
+  colleagues,
   listings,
   counts,
   lastSync,
 }: {
   viewings: AdminViewing[];
   buyers: AdminBuyer[];
+  /** 同事名單（跟本人建檔頁的「同事」同一份；2026-10-20 他說要同步到後台） */
+  colleagues: IntakeColleagueRow[];
   listings: AdminListing[];
   counts: { available: number; hidden: number };
   /** 兩個來源與補土地類別，各自最近一次的結果 */
@@ -146,7 +151,7 @@ export default function MatchAdmin({
   // 從買方子頁按「← 買方配對」回來要落在「買方」那一頁，不然每次都得再點一次
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
-    if (t === "viewings" || t === "buyers" || t === "sync") setTab(t);
+    if (t === "viewings" || t === "buyers" || t === "colleagues" || t === "sync") setTab(t);
   }, []);
 
   async function changeStatus(id: string, status: string) {
@@ -239,6 +244,7 @@ export default function MatchAdmin({
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
         {tabBtn("viewings", "預約看屋", viewings.length)}
         {tabBtn("buyers", "買方", buyers.length)}
+        {tabBtn("colleagues", "同事", colleagues.length)}
         {tabBtn("sync", "物件同步", counts.available)}
       </div>
       {msg && (
@@ -420,6 +426,8 @@ export default function MatchAdmin({
           </table>
         </div>
       )}
+
+      {tab === "colleagues" && <ColleaguesAdmin initial={colleagues} />}
 
       {tab === "sync" && (
         <div>

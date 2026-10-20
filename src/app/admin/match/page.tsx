@@ -17,6 +17,8 @@ import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
 import { getAdminCheckArgs, isCurrentUserAdmin } from "@/lib/admin-check";
 import { describePreference } from "@/lib/match/matcher";
 import { countListings, getListings, listBuyersForAdmin, listListingsForAdmin, listViewingsForAdmin } from "@/lib/match/store";
+import { listColleagueRows } from "@/lib/match/colleague-ops";
+import type { IntakeColleagueRow } from "@/lib/match/intake";
 import { intakeUrl } from "@/lib/match/intake-key";
 import { getLastSyncResults, type SyncJob, type SyncSummary } from "@/lib/match/sync";
 import MatchAdmin, { type AdminBuyer, type AdminListing, type AdminViewing } from "./MatchAdmin";
@@ -34,6 +36,7 @@ export default async function MatchAdminPage() {
 
   let viewings: AdminViewing[] = [];
   let buyers: AdminBuyer[] = [];
+  let colleagues: IntakeColleagueRow[] = [];
   let listings: AdminListing[] = [];
   let counts = { available: 0, hidden: 0 };
   let lastSync: Record<SyncJob, SyncSummary | null> = { pacific: null, houseol: null, land: null };
@@ -94,6 +97,8 @@ export default async function MatchAdminPage() {
     lastSync = await getLastSyncResults();
     // 第一次進來會自動產生金鑰（見 lib/match/intake-key.ts）
     intake = await intakeUrl();
+    // 同事名單跟本人建檔頁的「同事」同一份（2026-10-20）
+    colleagues = await listColleagueRows();
   } catch (e) {
     loadError = e instanceof Error ? e.message : String(e);
   }
@@ -110,7 +115,7 @@ export default async function MatchAdminPage() {
             資料庫讀不到：{loadError}
           </div>
         ) : (
-          <MatchAdmin viewings={viewings} buyers={buyers} listings={listings} counts={counts} lastSync={lastSync} intakeUrl={intake} />
+          <MatchAdmin viewings={viewings} buyers={buyers} colleagues={colleagues} listings={listings} counts={counts} lastSync={lastSync} intakeUrl={intake} />
         )}
       </div>
     </main>
