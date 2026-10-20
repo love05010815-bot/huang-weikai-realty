@@ -67,6 +67,17 @@ export default function ListingCard({ item, eager, variant }: Props) {
                 {item.video.label} ↗
               </a>
             ) : null}
+            {/* 💰 算月付金（2026-10-20 他要的）：帶著售價進房貸月付金試算，那邊自動算出來；沒抓到售價就不出現 */}
+            {item.price != null ? (
+              <Link
+                className={lst.actionLink}
+                href={`/tax?price=${item.price}&title=${encodeURIComponent(item.title)}#loan`}
+                data-listing-slug={item.slug}
+                data-listing-action="loan"
+              >
+                算這戶的月付金 💰
+              </Link>
+            ) : null}
             <Link className={lst.actionBtn} href="/card/booking" data-listing-slug={item.slug} data-listing-action="booking">
               預約看屋
             </Link>

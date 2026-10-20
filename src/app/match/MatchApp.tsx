@@ -375,6 +375,12 @@ export default function MatchApp({ initial, colleague: colleagueProp = null }: {
                 物件詳情 →
               </a>
             )}
+            {/* 💰 算月付金（2026-10-20 他要的）：帶著售價進 /tax 的房貸月付金，那邊預設貸 8 成直接算出來 */}
+            {m.price > 0 && (
+              <a className={styles.detail} href={`/tax?price=${m.price}&title=${encodeURIComponent(m.title)}#loan`}>
+                算月付金 →
+              </a>
+            )}
           </div>
         </div>
       </article>

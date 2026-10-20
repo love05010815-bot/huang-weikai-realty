@@ -409,11 +409,32 @@ function TaxResultCard({ result }: { result: TaxResult }) {
 
 /* ══════════════════ 房貸月付金 ══════════════════ */
 
+/** 「算月付金」按鈕能帶進來的貸款成數選項；預設 8 成（海線一般住宅銀行常見的核貸） */
+const LOAN_RATIOS = [7, 7.5, 8, 8.5] as const;
+
 function LoanForm() {
   const [amountWan, setAmountWan] = useState("");
   const [rate, setRate] = useState("2.2");
   const [years, setYears] = useState("30");
   const [graceYears, setGraceYears] = useState("0");
+  /**
+   * 從精選好案／物件快搜的「算月付金」按鈕進來的那一戶（網址 ?price=售價萬&title=案名；2026-10-20 他要的）。
+   * 掛載後才讀網址（跟出售日一樣，避免 hydration 對不上）；有的話貸款金額先填「售價 × 成數」，月付金就直接出來。
+   */
+  const [from, setFrom] = useState<{ price: number; title: string } | null>(null);
+  const [ratio, setRatio] = useState<number>(8);
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const price = Number(p.get("price"));
+    if (!Number.isFinite(price) || price <= 0 || price > 1_000_000) return;
+    const title = (p.get("title") ?? "").trim().slice(0, 60);
+    setFrom({ price, title });
+    setAmountWan(String(Math.round((price * 8) / 10)));
+  }, []);
+  function pickRatio(r: number) {
+    setRatio(r);
+    if (from) setAmountWan(String(Math.round((from.price * r) / 10)));
+  }
 
   const outcome = useMemo(() => {
     const amount = parseWan(amountWan);
@@ -433,6 +454,20 @@ function LoanForm() {
 
   return (
     <>
+      {from && (
+        <div className={styles.notice}>
+          已帶入{from.title ? `「${from.title}」` : "這一戶"}的售價 <strong>{from.price.toLocaleString("zh-TW")} 萬</strong>。
+          貸款成數先抓 <strong>{ratio} 成</strong>（自備款約 {Math.round(from.price - (from.price * ratio) / 10).toLocaleString("zh-TW")} 萬），
+          可以在下面換成數，或直接改貸款金額。
+          <div className={styles.seg} style={{ marginTop: 10, maxWidth: 360 }}>
+            {LOAN_RATIOS.map((r) => (
+              <button key={r} type="button" className={ratio === r ? `${styles.segBtn} ${styles.segOn}` : styles.segBtn} onClick={() => pickRatio(r)}>
+                {r} 成
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className={styles.form}>
         <div className={styles.grid}>
           <MoneyField label="貸款金額" hint="房價扣掉自備款" value={amountWan} onChange={setAmountWan} placeholder="1000" />
