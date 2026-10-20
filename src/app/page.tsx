@@ -498,7 +498,8 @@ export default async function HomePage() {
             這一區白底、不放弧，所以看起來是 hero 那片白的延續、只多一張卡 ——
             首頁的色序（hero 白 → 精選好案 淡藍 → 服務 白 → 試算 蜜桃 → 預約 深藍綠）
             是他 9/07 拍板的，中間插一塊新顏色會把整頁的節奏打亂。詳見 home.module.css 的 .matchBand。 */}
-        <section className={styles.matchBand} aria-label="自動配對找房">
+        {/* id="match"：導覽列「物件快搜」的錨點（2026-10-20 他說「首頁好案配對的地方也加入到上方書籤列」） */}
+        <section id="match" className={styles.matchBand} aria-label="自動配對找房">
           <div className={styles.matchCard}>
             <div className={styles.matchCardBody}>
               <span className={styles.matchTag}>🏠 自動配對找房</span>
