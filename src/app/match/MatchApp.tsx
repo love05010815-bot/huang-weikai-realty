@@ -17,6 +17,7 @@
  *
  * 條件表單的欄位在 PreferenceForm.tsx、狀態換算在 preference-state.ts —— 後台代客建檔用同一份。
  */
+import ShareButton from "@/app/_ui/ShareButton";
 import type { ColleagueContact } from "@/lib/match/colleague-link";
 import { useCallback, useEffect, useState } from "react";
 import styles from "./match.module.css";
@@ -381,6 +382,15 @@ export default function MatchApp({ initial, colleague: colleagueProp = null }: {
                 算月付金 →
               </a>
             )}
+            {/* 📤 分享給朋友（2026-10-20 他要的）：分享站內連結 /match?book=編號，朋友點開直接看到這一戶、可預約 */}
+            <ShareButton
+              className={styles.detail}
+              style={{ background: "none", border: 0, padding: 0, font: "inherit", cursor: "pointer" }}
+              path={`/match?book=${encodeURIComponent(m.id)}`}
+              title={m.title}
+              text={`${m.title}｜${money(m.price)}｜${m.city}${m.district}`}
+              label="分享 →"
+            />
           </div>
         </div>
       </article>

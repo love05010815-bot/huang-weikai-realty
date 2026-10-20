@@ -21,6 +21,7 @@ import lst from "./listings.module.css";
 import PhotoCarousel from "./PhotoCarousel";
 import FavButton from "@/app/_ui/favorites/FavButton";
 import fav from "@/app/_ui/favorites/FavButton.module.css";
+import ShareButton from "@/app/_ui/ShareButton";
 
 type Props = {
   item: Listing;
@@ -78,6 +79,17 @@ export default function ListingCard({ item, eager, variant }: Props) {
                 算這戶的月付金 💰
               </Link>
             ) : null}
+            {/* 📤 分享給朋友（2026-10-20 他要的）：手機叫出分享面板、電腦複製連結；分享的是站內單戶頁 */}
+            <ShareButton
+              className={lst.actionLink}
+              style={{ width: "100%", cursor: "pointer", font: "inherit", fontWeight: 800 }}
+              path={href}
+              title={item.title}
+              text={`${item.area}｜${item.title}${item.price != null ? `｜售價 ${formatWan(item.price)}` : ""}`}
+              label="分享給朋友 ↗"
+              data-listing-slug={item.slug}
+              data-listing-action="share"
+            />
             <Link className={lst.actionBtn} href="/card/booking" data-listing-slug={item.slug} data-listing-action="booking">
               預約看屋
             </Link>
