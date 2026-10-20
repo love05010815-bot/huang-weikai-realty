@@ -1,0 +1,67 @@
+/* 📤 分享鈕。脈絡見 ShareButton.tsx。圓鈕的尺寸、底色、陰影照 ❤️ 收藏鈕（favorites/FavButton.module.css 的 .icon）抄，
+   兩顆疊在同一張照片的左右上角時才會一樣大、一樣白。顏色一樣自己帶 fallback。 */
+
+.wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+/* 疊在照片右上角（左上角是 ❤️）。容器要是 position: relative —— 精選好案是 .photoWrap、物件快搜是 .listing */
+.onPhotoRight {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+}
+
+.icon {
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--ink, #22323f);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(18, 42, 56, 0.16);
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.icon:hover {
+  transform: scale(1.08);
+  color: var(--primary, #2fa894);
+}
+
+.svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+/* 電腦複製完浮出來的那一句（手機走系統分享面板，不會看到） */
+.toast {
+  max-width: 240px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(1, 39, 56, 0.86);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-all;
+  box-shadow: 0 4px 12px rgba(18, 42, 56, 0.16);
+}
+
+.textMsg {
+  display: block;
+  margin-top: 4px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted, #5b6b73);
+  word-break: break-all;
+}

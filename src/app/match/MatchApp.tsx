@@ -18,6 +18,7 @@
  * 條件表單的欄位在 PreferenceForm.tsx、狀態換算在 preference-state.ts —— 後台代客建檔用同一份。
  */
 import ShareButton from "@/app/_ui/ShareButton";
+import share from "@/app/_ui/ShareButton.module.css";
 import type { ColleagueContact } from "@/lib/match/colleague-link";
 import { useCallback, useEffect, useState } from "react";
 import styles from "./match.module.css";
@@ -345,6 +346,8 @@ export default function MatchApp({ initial, colleague: colleagueProp = null }: {
           // eslint-disable-next-line @next/next/no-img-element
           <img className={styles.img} src={m.images[0]} alt={m.title} loading="lazy" />
         )}
+        {/* 📤 分享疊在卡片（照片）右上角（2026-10-20 他指定「以圖示呈現」）：分享站內 /match?book=編號，朋友點開直接看到這一戶、可預約 */}
+        <ShareButton className={share.onPhotoRight} path={`/match?book=${encodeURIComponent(m.id)}`} title={m.title} text={`${m.title}｜${money(m.price)}｜${m.city}${m.district}`} />
         <div className={styles.body}>
           <span className={`${styles.score} ${m.recommended ? "" : styles.scoreLow}`}>配對度 {m.score}%</span>
           <div className={styles.title}>{m.title}</div>
@@ -382,15 +385,6 @@ export default function MatchApp({ initial, colleague: colleagueProp = null }: {
                 算月付金 →
               </a>
             )}
-            {/* 📤 分享給朋友（2026-10-20 他要的）：分享站內連結 /match?book=編號，朋友點開直接看到這一戶、可預約 */}
-            <ShareButton
-              className={styles.detail}
-              style={{ background: "none", border: 0, padding: 0, font: "inherit", cursor: "pointer" }}
-              path={`/match?book=${encodeURIComponent(m.id)}`}
-              title={m.title}
-              text={`${m.title}｜${money(m.price)}｜${m.city}${m.district}`}
-              label="分享 →"
-            />
           </div>
         </div>
       </article>

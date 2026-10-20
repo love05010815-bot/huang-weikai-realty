@@ -265,6 +265,8 @@
   gap: 14px;
 }
 .listing {
+  /* 📤 分享圓鈕（ShareButton 的 .onPhotoRight）疊在右上角，要有這個定位基準 */
+  position: relative;
   background: #fff;
   border: 1px solid var(--line-warm, #d3e2e9);
   border-radius: var(--radius, 14px);
