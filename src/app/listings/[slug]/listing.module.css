@@ -236,12 +236,6 @@
   background: linear-gradient(var(--primary), var(--accent));
 }
 
-/* 推薦理由的字比卡片上大一號，這裡是主角不是摘要 */
-.pointsBig li {
-  font-size: 15.5px;
-  color: var(--ink);
-}
-
 .factGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

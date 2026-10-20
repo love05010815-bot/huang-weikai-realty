@@ -12,17 +12,14 @@ import type { Metadata } from "next";
 import { OG_IMAGE, OWNER, SITE_URL } from "@/config/owner";
 import BreadcrumbJsonLd from "@/app/_ui/BreadcrumbJsonLd";
 import { getPublicListings, sortByPrice } from "@/lib/listings";
-import { formatWan } from "@/lib/houseol-price";
 import styles from "../home.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
 import SiteFooter from "@/app/_ui/SiteFooter";
 import lst from "./listings.module.css";
 import FeaturedTitle from "./FeaturedTitle";
-import PhotoCarousel from "./PhotoCarousel";
-// ❤️ 收藏鈕（2026-10-02）疊在卡片照片左上角；client 元件，直接放進這個 server 頁沒問題
-import FavButton from "@/app/_ui/favorites/FavButton";
-import fav from "@/app/_ui/favorites/FavButton.module.css";
+// 卡片本體跟首頁共用（照片、區域、標題、售價、整張可點、影片賞析＋預約看屋）
+import ListingCard from "./ListingCard";
 
 const TITLE = `精選好案｜台中海線房仲${OWNER.name}｜沙鹿梧棲清水龍井`;
 const DESCRIPTION = `${OWNER.name}目前主打的台中海線精選物件。沙鹿、梧棲、清水、龍井的透天與大樓，格局、屋況、生活機能一次看清楚，看中意可直接線上預約看屋。`;
@@ -135,75 +132,10 @@ export default async function ListingsPage() {
                     ⚠️ 跳過去會被 sticky header 蓋住，靠 `listings.module.css` 的
                     `.card { scroll-margin-top }` 讓位。**兩者要一起在**，
                     少一個就是「網址跳到了、但看到的是卡片中段，標題被 header 吃掉」。 */}
+                {/* 卡片本體在 ListingCard.tsx（跟首頁共用）。第一排三張是首屏，封面圖立刻載；其餘等捲到才載。
+                    🚫 2026-10-20 系統擁有者拍板：卡片不列 ✨ 賣點、不外連「物件資訊」，整張卡點了就進單戶頁。 */}
                 {listings.map((item, i) => (
-                  <article key={item.slug} id={item.slug} className={lst.card}>
-                    {/* 一張照片就是一張圖；兩張以上會自動變成可左右滑的相簿。
-                        第一排三張是首屏，封面圖立刻載；其餘等捲到才載。
-                        ❤️ 愛心疊在照片左上角（右上角是相簿的「1/3」）。
-                        2026-10-20 起點照片直接進單戶頁（href），所有資訊都在那一頁看。 */}
-                    <div className={fav.photoWrap}>
-                      <PhotoCarousel
-                        photos={item.photos}
-                        alt={`${item.area}－${item.title}`}
-                        eager={i < 3}
-                        href={"/listings/" + item.slug}
-                      />
-                      <FavButton
-                        variant="icon"
-                        className={fav.onPhoto}
-                        kind="listing"
-                        id={item.slug}
-                        title={item.title}
-                        sub={item.area}
-                      />
-                    </div>
-                    <div className={lst.body}>
-                      <span className={lst.area}>{item.area}</span>
-                      <h2 className={lst.title}>{item.title}</h2>
-                      {/* 🏷️ 售價：從物件資訊那顆愛屋型錄連結現抓（lib/houseol-price.ts），
-                          不是後台填的。抓不到、或連結是 591 → price 是 null → 這行整個不渲染。
-                          看到某張卡片沒有售價，先看它的物件資訊連的是不是愛屋，再懷疑抓取。 */}
-                      {item.price != null ? (
-                        <p className={lst.price}>
-                          售價 <b>{formatWan(item.price)}</b>
-                        </p>
-                      ) : null}
-                      <ul className={lst.points}>
-                        {item.points.map((p) => (
-                          <li key={p}>{p}</li>
-                        ))}
-                      </ul>
-                      {/* 每戶自己的一頁（/listings/<slug>）：要傳給客戶的網址用那個，LINE 預覽才會是這戶的照片。
-                          這顆不掛 data-listing-*：單戶頁自己會記「被打開」，這裡再記一次就重複。 */}
-                      <Link href={"/listings/" + item.slug} className={lst.detailLink}>
-                        看這戶的完整介紹 →
-                      </Link>
-                      {/* 影片賞析（YouTube）放在預約按鈕上面當次要動作；後台留空這顆就不出現。
-                          🚫 2026-10-20 系統擁有者拍板：「物件資訊」不再導去外部網站 —— 那條連結改當資料來源
-                          （單戶頁從太平洋官網抓完整資料），客戶點照片或「看這戶的完整介紹」就在站內看。
-                          data-listing-* 是給後台點擊統計用的（見 ListingClickTracker.tsx）。 */}
-                      {item.video ? (
-                        <a
-                          className={lst.actionLink}
-                          href={item.video.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          data-listing-slug={item.slug}
-                          data-listing-action="video"
-                        >
-                          {item.video.label} ↗
-                        </a>
-                      ) : null}
-                      <Link
-                        className={lst.actionBtn}
-                        href="/card/booking"
-                        data-listing-slug={item.slug}
-                        data-listing-action="booking"
-                      >
-                        預約看屋
-                      </Link>
-                    </div>
-                  </article>
+                  <ListingCard key={item.slug} item={item} eager={i < 3} variant="list" />
                 ))}
               </div>
             )}

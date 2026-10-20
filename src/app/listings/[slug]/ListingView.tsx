@@ -8,13 +8,14 @@
  *
  *   ① 上半：左相簿（大圖＋縮圖＋燈箱）、右「摘要卡」（桌機黏在畫面上）——
  *      區域／社區標籤、標題、路名、售價（降過價會畫掉舊價）、四格一眼看、預約／LINE／影片、收藏、分享
- *   ② 瑋凱推薦理由：後台填的賣點（✨），這是他自己的話，排在官網資料前面
+ *   ② 物件特色：官網特色欄拆成一條一條（2026-10-20 下午他拍板排在物件資料上面）
  *   ③ 物件資料：官網欄位分三組（基本資料／坪數明細／建物與管理），沒有的格不出現
- *   ④ 物件特色：官網特色欄拆成一條一條
- *   ⑤ 生活機能與位置：學校／公園／市場標籤 ＋ Google 地圖、該區實價登錄、建案地圖
- *   ⑥ 預約的收尾色帶；手機另有黏在底部的「售價＋LINE＋預約」列
+ *   ④ 生活機能與位置：學校／公園／市場標籤 ＋ Google 地圖、該區實價登錄、建案地圖
+ *   ⑤ 預約的收尾色帶；手機另有黏在底部的「售價＋LINE＋預約」列
  *
- * 官網讀不到（detail 為 null）時 ③④⑤ 整段不畫，頁面退回「標題＋賣點＋照片」，跟改版前一樣。
+ * 🚫 後台填的 ✨ 賣點（item.points）**不再顯示在這一頁、也不在卡片上**（2026-10-20 下午他拍板：有官網的
+ *    物件特色就夠了，「這整段所有物件都不要了」）。它們只剩搜尋描述／JSON-LD 的備援與 LINE 機器人在用。
+ * 官網讀不到（detail 為 null）時 ②③④ 整段不畫，頁面只剩相簿＋摘要卡。
  *
  * status 決定兩種長相：
  *   active → 上面那套
@@ -86,7 +87,8 @@ export default function ListingView({ item, status, detail }: Props) {
         name: displayName,
         url: shareUrl,
         image: photos.map(absolutePhoto),
-        description: item.points.join("；"),
+        // 官網特色優先（頁面上看得到的字）；沒有官網資料才退回後台賣點
+        description: (features.length > 0 ? features : item.points).join("；"),
         ...(price != null
           ? {
               offers: {
@@ -259,15 +261,15 @@ export default function ListingView({ item, status, detail }: Props) {
                   </aside>
                 </div>
 
-                {/* ② 他自己的話 */}
-                {item.points.length > 0 ? (
-                  <section className={one.block} aria-labelledby="sec-points">
-                    <h2 id="sec-points" className={one.blockTitle}>
-                      {OWNER.alias}推薦理由
+                {/* ② 官網特色 —— 排在物件資料上面（2026-10-20 下午他指定的順序） */}
+                {features.length > 0 ? (
+                  <section className={one.block} aria-labelledby="sec-features">
+                    <h2 id="sec-features" className={one.blockTitle}>
+                      物件特色
                     </h2>
-                    <ul className={`${lst.points} ${one.pointsBig}`}>
-                      {item.points.map((p) => (
-                        <li key={p}>{p}</li>
+                    <ul className={one.features}>
+                      {features.map((f) => (
+                        <li key={f}>{f}</li>
                       ))}
                     </ul>
                   </section>
@@ -302,21 +304,7 @@ export default function ListingView({ item, status, detail }: Props) {
                   </section>
                 ) : null}
 
-                {/* ④ 官網特色 */}
-                {features.length > 0 ? (
-                  <section className={one.block} aria-labelledby="sec-features">
-                    <h2 id="sec-features" className={one.blockTitle}>
-                      物件特色
-                    </h2>
-                    <ul className={one.features}>
-                      {features.map((f) => (
-                        <li key={f}>{f}</li>
-                      ))}
-                    </ul>
-                  </section>
-                ) : null}
-
-                {/* ⑤ 生活機能與位置 */}
+                {/* ④ 生活機能與位置 */}
                 {showLife ? (
                   <section className={one.block} aria-labelledby="sec-life">
                     <h2 id="sec-life" className={one.blockTitle}>
@@ -350,7 +338,7 @@ export default function ListingView({ item, status, detail }: Props) {
                   </section>
                 ) : null}
 
-                {/* ⑥ 收尾 */}
+                {/* ⑤ 收尾 */}
                 <section className={one.cta} aria-label="預約看屋">
                   <div>
                     <h2>想親自看這戶？</h2>

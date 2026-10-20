@@ -15,20 +15,16 @@ import { periodTextForDisplay } from "@/lib/lvr-parse";
 import vid from "./videos/videos.module.css";
 // 常見問題的手風琴，跟 /faq 頁同一份（題目在 src/config/faq.ts）
 import FaqList from "@/app/_ui/FaqList";
-import { formatWan } from "@/lib/houseol-price";
 import styles from "./home.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
 import SectionWave from "@/app/_ui/SectionWave";
 import HomePopups from "@/app/_ui/HomePopups";
-// 卡片樣式跟 /listings 共用同一份，改一處兩邊都會變
+// 卡片樣式與卡片本體跟 /listings 共用同一份，改一處兩邊都會變
 import lst from "./listings/listings.module.css";
 import FeaturedTitle from "./listings/FeaturedTitle";
-import PhotoCarousel from "./listings/PhotoCarousel";
+import ListingCard from "./listings/ListingCard";
 import VisitCounter from "./_visits/VisitCounter";
-// ❤️ 收藏鈕（2026-10-02）疊在卡片照片左上角；它是 client 元件，直接放進這個 server 頁沒問題
-import FavButton from "@/app/_ui/favorites/FavButton";
-import fav from "@/app/_ui/favorites/FavButton.module.css";
 
 // 標題只放三項最有搜尋量的 —— <title> 太長會被 Google 截掉，五項塞不下。
 // 完整五項寫在下面的 description 裡。
@@ -545,47 +541,10 @@ export default async function HomePage() {
           <div className={styles.container}>
             {listings.length > 0 && (
               <div className={lst.grid}>
+                {/* 卡片本體在 listings/ListingCard.tsx（跟 /listings 共用）：照片、區域、標題、售價，整張卡點了就進單戶頁。
+                    🚫 2026-10-20 系統擁有者拍板：卡片不列 ✨ 賣點、不外連「物件資訊」。首頁這三張沒有動作按鈕。 */}
                 {listings.slice(0, HOME_FEATURED_COUNT).map((item, i) => (
-                  /* 卡片不能整張包在 <a> 裡了 —— 相簿有圓點與箭頭，
-                     按鈕放進連結裡是無效的 HTML，點擊行為也會打架。
-                     改成照片區獨立，文字區整塊當連結。 */
-                  <article key={item.slug} className={lst.card}>
-                    {/* ❤️ 愛心疊在照片左上角（右上角是相簿的「1/3」）。
-                        不能放進下面那個 <Link> 裡 —— 按鈕包在連結裡是無效的 HTML。 */}
-                    <div className={fav.photoWrap}>
-                      {/* 2026-10-20 起點照片直接進那一戶的單戶頁（所有資訊都在那裡） */}
-                      <PhotoCarousel
-                        photos={item.photos}
-                        alt={`${item.area}－${item.title}`}
-                        eager={i === 0}
-                        href={"/listings/" + item.slug}
-                      />
-                      <FavButton
-                        variant="icon"
-                        className={fav.onPhoto}
-                        kind="listing"
-                        id={item.slug}
-                        title={item.title}
-                        sub={item.area}
-                      />
-                    </div>
-                    <Link className={lst.body} href={"/listings/" + item.slug}>
-                      <span className={lst.area}>{item.area}</span>
-                      <h3 className={lst.title}>{item.title}</h3>
-                      {/* 🏷️ 售價，跟 /listings 那張卡同一來源（愛屋型錄現抓）；null 就不渲染 */}
-                      {item.price != null ? (
-                        <span className={lst.price}>
-                          售價 <b>{formatWan(item.price)}</b>
-                        </span>
-                      ) : null}
-                      <ul className={lst.points}>
-                        {item.points.map((p) => (
-                          <li key={p}>{p}</li>
-                        ))}
-                      </ul>
-                      <span className={lst.action}>看這戶的完整資訊 →</span>
-                    </Link>
-                  </article>
+                  <ListingCard key={item.slug} item={item} eager={i === 0} variant="home" />
                 ))}
               </div>
             )}

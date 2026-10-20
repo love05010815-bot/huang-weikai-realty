@@ -235,10 +235,36 @@
   flex-direction: column;
   flex: 1;
   padding: 22px 22px 20px;
-  /* 首頁的卡片本體是 <a>（照片區有按鈕，不能整張包在連結裡），
-     要自己壓掉瀏覽器預設的底線與連結色 */
+  /* 2026-10-20「點到整個方框都可以」：文字區整塊是連結 —— .bodyLink 的 ::after 鋪滿這裡，
+     定位基準就是 .body（不鋪到照片區：照片區每一格本身是連結，鋪上去會把手機的左右滑吃掉） */
+  position: relative;
   color: inherit;
   text-decoration: none;
+}
+
+/* 文字區那顆連結（區域、標題、售價、「看這戶的完整資訊 →」都在裡面）。
+   ::after 鋪滿 .body，所以標題旁邊的空白點到也算；底下的動作按鈕用 .cardActions 墊高。 */
+.bodyLink {
+  display: flex;
+  flex-direction: column;
+  color: inherit;
+  text-decoration: none;
+}
+
+.bodyLink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+/* 影片賞析＋預約看屋：疊在鋪滿的連結上面，點它們還是它們自己。推到卡片底部，不同高度的卡按鈕才對齊 */
+.cardActions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  margin-top: auto;
+  padding-top: 14px;
 }
 
 .area {
@@ -282,40 +308,7 @@
   color: var(--pacific-red);
 }
 
-.points {
-  list-style: none;
-  margin: 0 0 18px;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.points li {
-  font-size: 14px;
-  line-height: 1.65;
-  color: var(--muted);
-  /* ✨ 用 ::before 補，資料檔裡就不用每筆都自己打 */
-  padding-left: 24px;
-  position: relative;
-}
-
-.points li::before {
-  content: "✨";
-  position: absolute;
-  left: 0;
-  top: 0;
-}
-
-/* 把動作推到卡片底部，不同長度的卡片按鈕才會對齊 */
-.action {
-  margin-top: auto;
-  padding-top: 4px;
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--primary);
-  text-align: center;
-}
+/* 🚫 2026-10-20 系統擁有者：卡片上的 ✨ 賣點整段拿掉（單戶頁有官網的「物件特色」），.points 的樣式跟著刪。 */
 
 /* 外部連結（FB 影片／591 物件頁）。次要動作，做成外框按鈕，
    讓實心的「預約看屋」還是視覺重心。margin-top:auto 推到底部，
@@ -452,18 +445,18 @@
   }
 }
 
-/* 卡片裡通往單一物件頁的連結。放在賣點下面、按鈕上面：
-   字級比賣點小一點、用主色，看得出可以點，但不搶「預約看屋」的戲。 */
+/* 卡片裡「看這戶的完整資訊 →」那行：售價下面、按鈕上面。
+   它只是 .bodyLink 裡的一個 span（整張卡都能點了），字用主色、看得出可以點，但不搶「預約看屋」的戲；
+   滑到卡片任何地方都畫底線，告訴使用者「這整張是可以點的」。 */
 .detailLink {
   display: inline-block;
   align-self: flex-start;
-  margin: -6px 0 16px;
+  margin: -4px 0 0;
   font-size: 13.5px;
   font-weight: 800;
   color: var(--primary);
-  text-decoration: none;
 }
 
-.detailLink:hover {
+.card:hover .detailLink {
   text-decoration: underline;
 }
