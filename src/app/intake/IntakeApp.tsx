@@ -91,6 +91,8 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
   const [colleagues, setColleagues] = useState<IntakeColleagueRow[] | null>(null);
   const [colleaguesError, setColleaguesError] = useState<string | null>(null);
   const [cMsg, setCMsg] = useState<string | null>(null);
+  /** 正在編輯的那位同事（稱呼、電話、LINE 在卡片上原地改；2026-10-20 他要補同事的 LINE ID） */
+  const [cEdit, setCEdit] = useState<{ id: string; name: string; phone: string; line: string } | null>(null);
   const [cName, setCName] = useState("");
   const [cPhone, setCPhone] = useState("");
   const [cLine, setCLine] = useState("");
@@ -200,6 +202,22 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
   }
 
   // ---------------------------------------------------------------- 同事管理
+  async function saveColleagueEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!cEdit) return;
+    setCBusy(true);
+    setCMsg(null);
+    const r = await intakeSetColleagueAction(intakeKey, cEdit.id, { name: cEdit.name, phone: cEdit.phone, line: cEdit.line });
+    setCBusy(false);
+    if (!r.ok) {
+      setCMsg(r.error);
+      return;
+    }
+    setColleagues(r.rows);
+    setCEdit(null);
+    setCMsg(`「${cEdit.name.trim()}」的資料已更新。`);
+  }
+
   async function addColleague(e: React.FormEvent) {
     e.preventDefault();
     setCBusy(true);
@@ -640,7 +658,35 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
                     </span>
                   </div>
                   {c.active ? <p className={styles.curl}>{c.url}</p> : <p className={styles.curl}>（已停用：舊連結已失效；重新啟用會給一條新連結）</p>}
+                  {cEdit?.id === c.id ? (
+                    <form onSubmit={saveColleagueEdit} noValidate>
+                      <label className={styles.field}>
+                        稱呼
+                        <input className={styles.input} value={cEdit.name} onChange={(e) => setCEdit({ ...cEdit, name: e.target.value })} autoComplete="off" />
+                      </label>
+                      <label className={styles.field}>
+                        電話（客人看得到）
+                        <input className={styles.input} type="tel" inputMode="tel" value={cEdit.phone} onChange={(e) => setCEdit({ ...cEdit, phone: e.target.value })} autoComplete="off" />
+                      </label>
+                      <label className={styles.field}>
+                        LINE ID 或加好友連結（客人看得到）
+                        <input className={styles.input} value={cEdit.line} onChange={(e) => setCEdit({ ...cEdit, line: e.target.value })} placeholder="例如：abc123，或 https://line.me/ti/p/…" autoComplete="off" />
+                      </label>
+                      <p className={styles.hint}>連結不會變，改完他不用重新加到主畫面。清空 LINE 就是拿掉那顆按鈕。</p>
+                      <div className={styles.actions}>
+                        <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`} disabled={cBusy}>
+                          {cBusy ? "儲存中…" : "儲存"}
+                        </button>
+                        <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setCEdit(null)} disabled={cBusy}>
+                          取消
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
                   <div className={styles.actions}>
+                    <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setCEdit({ id: c.id, name: c.name, phone: c.phone, line: c.lineUrl })}>
+                      編輯
+                    </button>
                     {c.active && (
                       <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => copyText(c.url, `${c.name}的連結`, setCMsg)}>
                         複製連結
@@ -660,6 +706,7 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
                       </button>
                     )}
                   </div>
+                  )}
                 </div>
               ))}
             </div>
