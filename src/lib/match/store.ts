@@ -141,6 +141,15 @@ export async function ensureMatchTables(): Promise<void> {
   `);
   // （正式站的 match_colleague 還留著 line_user_id、bind_code 兩欄：2026-10-05 當天做了官方帳號綁定又拿掉，
   //   改走下面的手機通知。欄位沒用了、也沒刪，別拿它們判斷任何事。）
+  // 同事有沒有真的開過連結（2026-10-20 他要的）：第一次、最近一次、開了幾次。同事的建檔頁每載入一次就記一筆。
+  for (const [col, ddl] of [
+    ["first_used_at", "ALTER TABLE match_colleague ADD COLUMN first_used_at DATETIME NULL AFTER active"],
+    ["last_used_at", "ALTER TABLE match_colleague ADD COLUMN last_used_at DATETIME NULL AFTER first_used_at"],
+    ["use_count", "ALTER TABLE match_colleague ADD COLUMN use_count INT NOT NULL DEFAULT 0 AFTER last_used_at"],
+  ] as const) {
+    const has = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM match_colleague LIKE '${col}'`);
+    if (has.length === 0) await db.$executeRawUnsafe(ddl);
+  }
 
   // 同事的手機通知（Web Push，2026-10-05 他說「不綁我的官方 line 了」）：一支手機一筆訂閱。見 lib/match/push.ts
   await db.$executeRawUnsafe(`

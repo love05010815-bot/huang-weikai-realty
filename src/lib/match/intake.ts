@@ -331,6 +331,10 @@ export type IntakeColleagueRow = {
   pushDevices: number;
   buyers: number;
   createdAt: string | null;
+  /** 他第一次／最近一次打開連結、開了幾次（2026-10-20）；firstUsedAt 是 null 就是還沒開過 */
+  firstUsedAt: string | null;
+  lastUsedAt: string | null;
+  useCount: number;
 };
 
 export function toIntakeColleagueRow(c: Colleague, buyers: number, pushDevices: number): IntakeColleagueRow {
@@ -344,5 +348,8 @@ export function toIntakeColleagueRow(c: Colleague, buyers: number, pushDevices: 
     pushDevices,
     buyers,
     createdAt: c.createdAt ? new Date(c.createdAt).toISOString() : null,
+    firstUsedAt: c.firstUsedAt ? new Date(c.firstUsedAt).toISOString() : null,
+    lastUsedAt: c.lastUsedAt ? new Date(c.lastUsedAt).toISOString() : null,
+    useCount: c.useCount,
   };
 }

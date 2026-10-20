@@ -31,6 +31,10 @@ export type Colleague = {
   /** 他的快速建檔金鑰（連結本身就是鑰匙，跟本人的同一種） */
   intakeKey: string;
   active: boolean;
+  /** 他第一次／最近一次打開自己的建檔連結、開了幾次（2026-10-20）；null／0 = 還沒開過 */
+  firstUsedAt: Date | null;
+  lastUsedAt: Date | null;
+  useCount: number;
   createdAt: Date | null;
   updatedAt: Date | null;
 };
@@ -42,11 +46,14 @@ type Row = {
   line_url: string | null;
   intake_key: string;
   active: number;
+  first_used_at: Date | null;
+  last_used_at: Date | null;
+  use_count: number | bigint | null;
   created_at: Date | null;
   updated_at: Date | null;
 };
 
-const COLS = "id, name, phone, line_url, intake_key, active, created_at, updated_at";
+const COLS = "id, name, phone, line_url, intake_key, active, first_used_at, last_used_at, use_count, created_at, updated_at";
 
 function toColleague(r: Row): Colleague {
   return {
@@ -56,9 +63,21 @@ function toColleague(r: Row): Colleague {
     lineUrl: r.line_url ?? "",
     intakeKey: r.intake_key,
     active: Number(r.active) !== 0,
+    firstUsedAt: r.first_used_at,
+    lastUsedAt: r.last_used_at,
+    useCount: Number(r.use_count ?? 0),
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
+}
+
+/** 同事打開自己的建檔頁：記第一次（只記一次）、最近一次、次數。本人在「同事」頁看得到誰真的在用（2026-10-20 他要的） */
+export async function touchColleagueUse(id: string): Promise<void> {
+  await ensureMatchTables();
+  await db.$executeRawUnsafe(
+    "UPDATE match_colleague SET first_used_at = COALESCE(first_used_at, NOW()), last_used_at = NOW(), use_count = use_count + 1 WHERE id = ?",
+    id,
+  );
 }
 
 /** 24 bytes → 32 個 base64url 字元（跟本人的金鑰同一種做法） */

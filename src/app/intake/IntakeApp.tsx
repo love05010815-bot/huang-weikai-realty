@@ -59,6 +59,9 @@ export type IntakeWho = {
 
 const fmtDay = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString("zh-TW", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric" }) : "";
+/** 幾月幾日 幾點幾分（同事什麼時候開過連結） */
+const fmtWhen = (iso: string | null) =>
+  iso ? new Date(iso).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }) : "";
 
 /** 預約狀態的小標籤顏色：確認／完成綠、取消紅、其餘灰 */
 const statusTag = (status: string) => (status === "cancelled" ? styles.tagOff : status === "confirmed" || status === "done" ? styles.tagOn : "");
@@ -628,6 +631,13 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
                     <span>{c.buyers} 位客人</span>
                     <span>{fmtDay(c.createdAt)} 加入</span>
                     <span>{c.pushDevices > 0 ? `🔔 手機通知已開（${c.pushDevices} 支）` : "🔕 還沒開手機通知"}</span>
+                  </div>
+                  <div className={styles.rowMeta}>
+                    <span>
+                      {c.firstUsedAt
+                        ? `✅ 已開啟連結：第一次 ${fmtWhen(c.firstUsedAt)}，最近 ${fmtWhen(c.lastUsedAt)}，共 ${c.useCount} 次`
+                        : "⏳ 還沒開過連結"}
+                    </span>
                   </div>
                   {c.active ? <p className={styles.curl}>{c.url}</p> : <p className={styles.curl}>（已停用：舊連結已失效；重新啟用會給一條新連結）</p>}
                   <div className={styles.actions}>

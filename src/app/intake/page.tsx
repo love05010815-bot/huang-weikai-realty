@@ -14,6 +14,7 @@
 import type { Metadata } from "next";
 import { cache } from "react";
 import { OWNER } from "@/config/owner";
+import { touchColleagueUse } from "@/lib/match/colleagues";
 import { resolveIntakeActor, type IntakeActor } from "@/lib/match/intake-key";
 import { buildMatchMeta } from "@/lib/match/meta";
 import { getPushPublicKey } from "@/lib/match/push";
@@ -81,6 +82,14 @@ export default async function IntakePage({ searchParams }: { searchParams: Promi
     );
   }
 
+  // 同事開了連結就記一筆（第一次、最近一次、次數）—— 本人在「同事」頁看得到誰真的在用（2026-10-20 他要的）。記不到不影響頁面。
+  if (actor.kind === "colleague") {
+    try {
+      await touchColleagueUse(actor.colleague.id);
+    } catch (e) {
+      console.error("[intake] 記同事開連結失敗:", e);
+    }
+  }
   const meta = await buildMatchMeta();
   // 同事才有手機通知；公鑰第一次用到時會自己產生（lib/match/push.ts）。拿不到就給空字串，畫面會說通知服務沒準備好
   let pushPublicKey = "";
