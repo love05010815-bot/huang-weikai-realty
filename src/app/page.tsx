@@ -13,6 +13,8 @@ import { getDistrictStats, latestSuccessfulSync } from "@/lib/lvr";
 import { periodTextForDisplay } from "@/lib/lvr-parse";
 // 影片卡片的播放鈕與分類標籤跟 /videos 共用同一份樣式
 import vid from "./videos/videos.module.css";
+// 常見問題的手風琴，跟 /faq 頁同一份（題目在 src/config/faq.ts）
+import FaqList from "@/app/_ui/FaqList";
 import { formatWan } from "@/lib/houseol-price";
 import styles from "./home.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
@@ -86,22 +88,27 @@ export const metadata: Metadata = {
  * ⚠️ 卡片數量改變時記得看一眼版面：.serviceGrid 是「最後一排置中」的排法，
  *    3 或 6 張會剛好填滿，4、5 張最後一排會置中，不會靠左留一個洞。
  */
-const SERVICES = [
+/** 服務卡。`links` 是卡片底下的藥丸（可選）—— 2026-10-20 起沒有任何一張卡在用，型別留著讓渲染那段過得了 tsc */
+type Service = {
+  icon: string;
+  title: string;
+  desc: string;
+  tag: string;
+  links?: { label: string; href: string }[];
+};
+
+const SERVICES: Service[] = [
   {
     icon: "🏘️",
     title: "買賣／租賃",
     desc: "買、賣、出租、找租屋都能處理。從帶看議價到過戶點交，每一步先說清楚。",
     tag: "Sales & Leasing",
     /**
-     * 2026-09-29 系統擁有者指定：買房／賣房流程頁的入口放在這張卡，標成「買方流程」「賣方流程」。
-     * 這個欄位只有這張卡有；JSON-LD 的 makesOffer 只讀 title，不受影響。
+     * 🚫 2026-10-20 系統擁有者：「這個區域不要再顯示紅框內三個內容，請移除」——
+     * 卡上原本的三顆藥丸（買方流程／賣方流程／常見問題，2026-09-29 與 10-20 加的）全部拿掉。
+     * /buy、/sell、/faq 的首頁入口改成下面「常見問題」區塊（#faq，影音專區下方）：兩題答案底下就是連過去的藥丸。
+     * `links` 欄位的渲染機制留著（下面 service.links 那段），哪天要放回來只要在這裡加陣列。
      */
-    links: [
-      { label: "買方流程", href: "/buy" },
-      { label: "賣方流程", href: "/sell" },
-      // 2026-10-20 他說「先做 FAQ」「買方流程及賣方流程直接做成兩題問答」→ /faq，入口放同一張卡
-      { label: "常見問題", href: "/faq" },
-    ],
   },
   {
     icon: "💰",
@@ -698,6 +705,26 @@ export default async function HomePage() {
             </div>
           </section>
         ) : null}
+
+        {/* ---------------- 常見問題（2026-10-20） ----------------
+            他先要 /faq 一頁（當天早上），同日改口：「買賣／租賃卡上的三顆藥丸移除，把常見問題放在首頁影音專區的下方單獨顯示」。
+            題目與答案在 src/config/faq.ts，清單元件 _ui/FaqList 跟 /faq 頁同一份（/faq 留著當可單獨分享的版本）。
+            /buy、/sell 在首頁的入口現在只剩這裡：兩題答案底下的藥丸。
+            ⚠️ 上面影音那塊一支影片都沒有時整個不畫；這塊不吃任何資料、永遠在。
+            底色用米色（bandSoft）：影音是白、預約那塊是深藍綠，夾在中間才分得出三塊。 */}
+        <section id="faq" className={`${styles.section} ${styles.band} ${styles.bandSoft}`}>
+          <SectionWave />
+          <div className={`${styles.container} ${styles.center}`}>
+            <span className={styles.eyebrow}>FAQ</span>
+            <h2 className={styles.sectionTitle}>常見問題</h2>
+            <p className={styles.sectionDesc}>
+              買房、賣房最常被問的流程與費用，點開題目就看得到；每一題底下都有連結可以看完整的表格。
+            </p>
+          </div>
+          <div className={styles.container}>
+            <FaqList />
+          </div>
+        </section>
 
         {/* ---------------- 預約諮詢（2026-09-08 第二版：人像＋三步＋三顆按鈕） ----------------
             系統擁有者：「把首頁最下方的預約諮詢改的再淺顯易懂，不要太複雜，並加上我的這張示意圖，重新編排規劃」。

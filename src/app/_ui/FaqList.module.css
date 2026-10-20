@@ -1,19 +1,20 @@
-/* /faq —— 常見問題。配色變數來自 home.module.css 的 .page（這頁一樣套用那個 class）。
-   手風琴用原生 <details>／<summary>：不用 JS、鍵盤與讀屏軟體原生支援、收著的內容 Google 一樣讀得到。
-   免責聲明與「回首頁」沿用 buy.module.css（跟 /buy、/sell 同一個長相）。 */
+/* 常見問題的手風琴（FaqList.tsx）—— 首頁「常見問題」區塊跟 /faq 頁共用。
+   配色變數來自 home.module.css 的 .page（兩個地方的最外層都是 .page），後面的備用色只是保險。
+   手風琴用原生 <details>／<summary>：不用 JS、鍵盤與讀屏軟體原生支援、收著的內容 Google 一樣讀得到。 */
 
 .list {
   display: flex;
   flex-direction: column;
   gap: 14px;
   margin: 0 0 20px;
+  text-align: left;
 }
 
 .item {
   background: #fff;
-  border: 1px solid var(--line-warm);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  border: 1px solid var(--line-warm, #d3e2e9);
+  border-radius: var(--radius, 14px);
+  box-shadow: var(--shadow, 0 12px 30px rgba(34, 50, 63, 0.1));
   /* 錨點跳過來時別被 sticky header 蓋住 */
   scroll-margin-top: 96px;
 }
@@ -28,8 +29,8 @@
   font-size: 17px;
   font-weight: 900;
   line-height: 1.5;
-  color: var(--ink);
-  border-radius: var(--radius);
+  color: var(--ink, #22323f);
+  border-radius: var(--radius, 14px);
 }
 
 /* Safari 的預設三角形 */
@@ -38,11 +39,11 @@
 }
 
 .item summary:hover {
-  color: var(--primary);
+  color: var(--primary, #2fa894);
 }
 
 .item summary:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--primary, #2fa894);
   outline-offset: 2px;
 }
 
@@ -54,7 +55,7 @@
   flex: 0 0 auto;
   width: 22px;
   height: 22px;
-  color: var(--primary);
+  color: var(--primary, #2fa894);
   transition: transform 0.18s ease;
 }
 
@@ -64,8 +65,8 @@
 
 .answer {
   padding: 16px 22px 22px;
-  border-top: 1px solid var(--line);
-  color: var(--muted);
+  border-top: 1px solid var(--line, #d9e2e6);
+  color: var(--muted, #5b6b73);
   font-size: 14.5px;
   line-height: 1.85;
 }
@@ -84,7 +85,7 @@
 }
 
 .steps strong {
-  color: var(--ink);
+  color: var(--ink, #22323f);
 }
 
 .links {
@@ -94,14 +95,14 @@
   margin-top: 4px;
 }
 
-/* 跟首頁服務卡的「買方流程 →」藥丸同一個長相 */
+/* 外框式藥丸，跟站上其他次要連結同一個長相 */
 .link {
   display: inline-flex;
   align-items: center;
   padding: 8px 14px;
-  border: 1.5px solid var(--primary);
+  border: 1.5px solid var(--primary, #2fa894);
   border-radius: 999px;
-  color: var(--primary);
+  color: var(--primary, #2fa894);
   font-size: 13.5px;
   font-weight: 800;
   text-decoration: none;
@@ -109,7 +110,7 @@
 }
 
 .link:hover {
-  background: var(--primary);
+  background: var(--primary, #2fa894);
   color: #fff;
 }
 

@@ -5,8 +5,9 @@
  * 題目與答案都在 src/config/faq.ts（答案的每個數字都來自 /buy、/sell，不是新寫的），要加題改那裡。
  *
  * 版面：跟 /buy、/sell 同一套（header、社群列、eyebrow＋h1、內容、免責聲明、頁尾）。
- * 問答用原生 <details>，第一題預設展開（兩題都收著的話客戶一進來只看到兩行字）。
- * 入口：首頁「買賣／租賃」那張卡多一顆「常見問題 →」藥丸；導覽列沒加（已經九格、1045px 只剩 25px 餘裕）。
+ * 問答清單是共用元件 <FaqList />（src/app/_ui/FaqList.tsx），第一題預設展開（兩題都收著的話客戶一進來只看到兩行字）。
+ * 入口：2026-10-20 他同日改口「首頁買賣卡的三顆藥丸拿掉，常見問題放在首頁影音專區下方單獨顯示」——
+ *   所以首頁 #faq 區塊才是主要入口，這一頁留著當可以單獨分享的版本（sitemap 有收）；導覽列沒加（已經九格、1045px 只剩 25px 餘裕）。
  *
  * JSON-LD 放 FAQPage：Google 2023 年起只給政府／醫療類網站顯示 FAQ 精選摘要，所以不預期搜尋結果會多出問答，
  * 放著只是讓它讀得懂這頁是什麼，不花成本。
@@ -16,12 +17,12 @@ import type { Metadata } from "next";
 import { OG_IMAGE, OWNER, SITE_URL } from "@/config/owner";
 import { FAQ, faqAnswerText } from "@/config/faq";
 import BreadcrumbJsonLd from "@/app/_ui/BreadcrumbJsonLd";
+import FaqList from "@/app/_ui/FaqList";
 import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
 import SiteFooter from "@/app/_ui/SiteFooter";
 import styles from "../home.module.css";
 import buy from "../buy/buy.module.css";
-import faq from "./faq.module.css";
 
 const TITLE = `買房賣房常見問題｜流程與費用一次問清楚｜台中海線房仲${OWNER.name}`;
 const DESCRIPTION =
@@ -99,36 +100,7 @@ export default function FaqPage() {
           </div>
 
           <div className={styles.container}>
-            <div className={faq.list}>
-              {FAQ.map((item, i) => (
-                <details key={item.id} id={item.id} className={faq.item} open={i === 0}>
-                  <summary>
-                    <span className={faq.q}>{item.q}</span>
-                    <svg className={faq.chev} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M6 9l6 6 6-6" />
-                    </svg>
-                  </summary>
-                  <div className={faq.answer}>
-                    <p>{item.intro}</p>
-                    <ol className={faq.steps}>
-                      {item.steps.map((s) => (
-                        <li key={s.title}>
-                          <strong>{s.title}</strong>｜{s.text}
-                        </li>
-                      ))}
-                    </ol>
-                    <p>{item.costs}</p>
-                    <div className={faq.links}>
-                      {item.links.map((l) => (
-                        <Link key={l.href} className={faq.link} href={l.href}>
-                          {l.label} →
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                </details>
-              ))}
-            </div>
+            <FaqList />
 
             <p className={buy.disclaimer}>
               ⚠️ 以上費用項目、比例與天數為一般行情與作業慣例，僅供參考；
