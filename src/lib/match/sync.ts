@@ -15,7 +15,7 @@
  *     （lib/match/land-enrich.ts；他 2026-10-02 說「土地改用愛屋抓取」）。
  *
  * 同步規則：
- *   - 主鍵是官網的 S 編號（店網網址裡也是同一個），兩邊同一間落在同一筆。重複同步只更新、不重複建立。
+ *   - 主鍵是官網編號（S 開頭；2026-10 起也有 P 開頭的，店網網址裡也是同一個），兩邊同一間落在同一筆。重複同步只更新、不重複建立。
  *   - 官網寫它看到的全部；店網只寫「官網目前沒有、或官網已下架」的，官網有的由官網作主。
  *   - 消失的物件（成交、撤件）標成 hidden，配對結果就不會再出現 —— 只動自己來源寫的，
  *     而且**只有在整份清單抓完整時才做**：抓一半就把沒看到的當下架，會把好物件誤殺。
@@ -37,7 +37,7 @@ import { rankListings } from "./matcher";
 import { isBaseline, listingsToHide, pickDueSource, planHouseolWrites, sameSourceSnapshot, SOURCE_LABEL, SOURCES, type Source } from "./merge";
 import { fetchPacificListings } from "./pacific-fetch";
 import { pacificToListingUpsert } from "./pacific-parse";
-import { countLandPending, deleteLegacyListings, ensureMatchTables, getListingSnapshot, hideListings, listBuyersForNotify, upsertListings } from "./store";
+import { countLandPending, ensureMatchTables, getListingSnapshot, hideListings, listBuyersForNotify, upsertListings } from "./store";
 import { createBuyerToken } from "./token";
 
 export type { Source } from "./merge";
@@ -71,7 +71,7 @@ export type SyncSummary = {
   storeName?: string;
   /** 來源說它有幾筆（官網是八區全部、含別家） */
   total?: number;
-  /** 抓到幾筆（官網：過濾完只剩七家店的） */
+  /** 抓到幾筆（官網：過濾完只剩名單上那幾家店的） */
   fetched?: number;
   complete?: boolean;
   added?: number;
@@ -80,6 +80,7 @@ export type SyncSummary = {
   skipped?: number;
   hidden?: number;
   /** 清掉幾筆換主鍵前的舊格式資料 */
+  /** 2026-10-20 之前的結果才有（那時每次完整同步會清舊格式資料；後來發現它把官網 P 開頭的編號也刪了，整段拿掉） */
   removedLegacy?: number;
   notifiedBuyers?: number;
   /** 這次比對出幾筆價格異動 */
@@ -198,7 +199,7 @@ async function runLand(trigger: "auto" | "manual", startedAt: number, opts: { li
   return summary;
 }
 
-/** 太平洋官網：海線八區逐區抓，只留七家店 */
+/** 太平洋官網：海線八區逐區抓，只留 PACIFIC_STORES 名單上的店 */
 async function syncPacific(trigger: "auto" | "manual"): Promise<SyncSummary> {
   const r = await fetchPacificListings({
     city: PACIFIC_CITY,
@@ -253,13 +254,10 @@ async function writeAndNotify(
   await upsertListings(upserts);
 
   let hidden = 0;
-  let removedLegacy = 0;
   if (complete) {
     const gone = listingsToHide(snapshot, seen, source);
     await hideListings(gone);
     hidden = gone.length;
-    // 換主鍵（2026-10-02）之前的舊資料：只要有一個來源完整跑過一次，就可以清了
-    if (upserts.length > 0) removedLegacy = await deleteLegacyListings();
   }
 
   // 一次冒出一大堆價格異動，多半是解析壞了或官網改版，不是真的全店降價 —— 擋下來只記數字。
@@ -281,7 +279,6 @@ async function writeAndNotify(
     added: fresh.length,
     updated,
     hidden,
-    removedLegacy,
     notifiedBuyers,
     priceChanged: priceChanges.length,
     priceChangeSkipped,

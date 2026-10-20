@@ -112,6 +112,16 @@ test("parseBlocks：真實頁面 10 筆，欄位完整", () => {
   assert.equal(items.filter((x) => x.layout && x.size > 0).length, items.length, "每筆都應有格局與坪數");
 });
 
+test("parseBlocks：店網網址裡的官網編號是 P 開頭也認得（2026-10-20，P0001195 那種）", () => {
+  const orig = parseBlocks(html).find((x) => x.objId === "AA6260018");
+  assert.equal(orig.saleId, "S2413795");
+  const it = parseBlocks(html.replace(/H229-S2413795/g, "H229-P0000324")).find((x) => x.objId === "AA6260018");
+  assert.ok(it, "應包含 AA6260018");
+  assert.equal(it.saleId, "P0000324");
+  assert.equal(it.url, "https://www.houseol.com.tw/sell_item/H229-P0000324/");
+  assert.equal(toListingUpsert(it, "CUK").id, "P0000324", "主鍵要是官網的 P 編號，不是愛屋的 AA 編號");
+});
+
 test("toListingUpsert：轉成資料表格式並對應類型／需求標籤", () => {
   const it = parseBlocks(html).find((x) => x.objId === "AA6260018");
   const l = toListingUpsert(it, "CUK");

@@ -19,7 +19,7 @@ import { db } from "@/lib/db";
 import { houseolCaseId } from "@/lib/houseol-price";
 import type { PublicMapListing } from "@/lib/map-listings";
 import { ensureMatchTables, type MatchListing } from "@/lib/match/store";
-import { fetchPrimShare, pacificSaleIdFrom, primShareCode } from "@/lib/prim-share";
+import { fetchPrimShare, PACIFIC_SALE_ID, pacificSaleIdFrom, primShareCode } from "@/lib/prim-share";
 import { buildInventoryIndex, buildProjectInventory, normalizeName, type InventorySource, type ProjectInventoryMap } from "@/lib/project-inventory";
 
 /** 建案名稱與圖釘的查找表 —— 建案總表是靜態的，整個程序建一次就好 */
@@ -107,7 +107,8 @@ export function sourceFromListing(l: MatchListing): InventorySource {
 export async function listInventorySources(): Promise<InventorySource[]> {
   await ensureMatchTables();
   const rows = await db.$queryRawUnsafe<Row[]>(SELECT_AVAILABLE);
-  return rows.map(sourceFromRow);
+  // 只收官網編號（S／P 開頭）：店網解析不到編號時會退回愛屋的 AA 編號當主鍵，那種沒有官網單戶頁可連
+  return rows.filter((r) => PACIFIC_SALE_ID.test(r.id)).map(sourceFromRow);
 }
 
 export type OwnerOverrides = {

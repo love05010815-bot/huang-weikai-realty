@@ -9,7 +9,7 @@
  *   5. 之後新物件同步進來，自動推播給條件相符、且綁過 LINE 的買方
  *
  * 物件來源（2026-10-02 起兩個，見 lib/match/sync.ts 與 lib/match/merge.ts）：
- *   1. 太平洋官網 www.pacific.com.tw 的物件查詢 API —— 海線七家店（PACIFIC_STORES）的物件，主來源。
+ *   1. 太平洋官網 www.pacific.com.tw 的物件查詢 API —— 海線的店（PACIFIC_STORES 名單；2026-10-20 起六家）的物件，主來源。
  *   2. 愛屋店網 www.houseol.com.tw/sell_item?storeid=4817 的公開頁 —— 只補梧棲店「官網沒上架」的那幾筆。
  * 都不用登入、不用書籤小工具；兩個來源輪流、各自每 30 分鐘同步一次。
  *
@@ -82,8 +82,8 @@ export const PACIFIC_STORES: Record<string, { name: string; phone: string }> = {
 export const PACIFIC_CITY = "臺中市";
 
 /**
- * 官網一次只能查一個行政區，這八區就是海線七家店物件所在的地方（地圖模式一區一次回整份，八區約 10 秒）。
- * 七家店偶爾有海線以外的物件（西屯、員林…每家十來筆），那些靠店網補、或就不收 —— 全臺中市兩萬筆要抓四分鐘，不划算。
+ * 官網一次只能查一個行政區，這八區就是名單上那幾家店物件所在的地方（地圖模式一區一次回整份，八區約 10 秒）。
+ * 這幾家店偶爾有海線以外的物件（西屯、員林…每家十來筆），那些靠店網補、或就不收 —— 全臺中市兩萬筆要抓四分鐘，不划算。
  */
 export const PACIFIC_DISTRICTS = ["梧棲區", "沙鹿區", "清水區", "龍井區", "大肚區", "大甲區", "大安區", "外埔區"] as const;
 

@@ -19,7 +19,7 @@ export type RawHouseolItem = {
   objId: string;
   /** 店碼（網址 /sell_item/H229-S.../ 的 H229） */
   storeCode: string;
-  /** 官網的 S 編號（網址 /sell_item/H229-S2413795/ 的 S2413795）。跟太平洋官網同一個，所以當主鍵 */
+  /** 官網編號（網址 /sell_item/H229-S2413795/ 的 S2413795；2026-10 起也有 P 開頭的）。跟太平洋官網同一個，所以當主鍵 */
   saleId: string;
   url: string;
   title: string;
@@ -107,7 +107,8 @@ export function parseBlocks(html: string): RawHouseolItem[] {
     if (!link || !objId) continue;
     const path = link[1].replace(/\/$/, "");
     const storeCode = path.match(/\/sell_item\/([^-/]+)-/)?.[1] ?? "";
-    const saleId = path.match(/-(S\d+)$/)?.[1] ?? "";
+    // 官網編號：S 開頭為主，2026-10 起也有 P 開頭的（P0001195 那種）—— 漏認的話會退回 AA 編號當主鍵、跟官網那筆對不上
+    const saleId = path.match(/-([SP]\d+)$/)?.[1] ?? "";
     const photos = [...block.matchAll(/<img oid="[^"]+" src="([^"]+)"/g)].map((m) => m[1]).filter((u) => !/nopic/.test(u));
     const mainImg = block.match(/<img src='([^']+)' class='image featured'/)?.[1];
     const youtube = block.match(/href='(\/\/www\.youtube\.com\/embed\/[^'?]+)/)?.[1];

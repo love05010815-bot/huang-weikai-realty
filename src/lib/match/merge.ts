@@ -2,7 +2,7 @@
  * 兩個物件來源怎麼合在同一張表 —— 純函式，不碰資料庫、不碰網路
  *
  * 2026-10-02 起物件有兩個來源（決定過程見 .claude/memory/project_buyer_match.md）：
- *   pacific  太平洋官網，海線七家店的物件。**主來源**。
+ *   pacific  太平洋官網，海線的店（config/match.ts 的 PACIFIC_STORES 名單）的物件。**主來源**。
  *   houseol  愛屋店網（梧棲店 storeid 4817）。只用來補梧棲店「官網沒上架」的那幾筆（實測 262 筆少 39 筆）。
  * 兩邊同一間物件的主鍵都是官網的 S 編號，所以會落在同一筆。
  *
@@ -22,7 +22,7 @@ export const SOURCES: readonly Source[] = ["pacific", "houseol"];
 
 /** 給後台顯示用的名稱（放這裡而不是 sync.ts：那支會拖進資料庫與 LINE，client component 不能 import） */
 export const SOURCE_LABEL: Record<Source, string> = {
-  pacific: "太平洋官網（海線七家店）",
+  pacific: "太平洋官網（海線各店）",
   houseol: "愛屋店網（梧棲店補洞）",
 };
 

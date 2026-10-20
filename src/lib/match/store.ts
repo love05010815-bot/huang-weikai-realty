@@ -463,18 +463,12 @@ export async function hideListings(ids: string[]): Promise<void> {
   }
 }
 
-/**
- * 清掉 2026-10-02 換主鍵之前的舊格式資料（主鍵是愛屋編號 AA…／AK…，現在一律是官網的 S 編號）。
- * 兩個來源都是機器同步進來的、隨時抓得回來，所以直接刪；有預約指著的那幾筆留著（後台那一列還要讀得到）。
- * 回刪了幾筆。
+/*
+ * 這裡原本有 deleteLegacyListings()：清掉 2026-10-02 換主鍵之前的舊格式資料（愛屋編號 AA…／AK…／QQ…），
+ * 判準寫成「id 不是 S 開頭就刪」。2026-10-20 發現官網多了 P 開頭的編號（P0001195 之類，六家店 43 筆），
+ * 每次完整同步都被它當舊資料刪掉 → 地圖與快搜永遠看不到、每次又算成「新增」去推播。
+ * 舊格式早就清完（庫裡已經沒有非官網編號的列），所以整個拿掉；以後官網再換字首也不會再被誤刪。
  */
-export async function deleteLegacyListings(): Promise<number> {
-  await ensureMatchTables();
-  const affected = await db.$executeRawUnsafe(
-    `DELETE FROM match_listing WHERE id NOT LIKE 'S%' AND id NOT IN (SELECT listing_id FROM match_viewing)`,
-  );
-  return Number(affected) || 0;
-}
 
 // ---------------------------------------------------------------- 土地類別改用愛屋物件頁補（lib/match/land-enrich.ts）
 
