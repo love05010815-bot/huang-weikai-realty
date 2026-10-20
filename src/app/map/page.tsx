@@ -26,6 +26,7 @@ import { OWNER, SITE_URL } from "@/config/owner";
 import { DISTRICT, PROJECTS, SOURCES, projectStats, AREA_FILTERS } from "@/data/port-projects";
 import { ZONES } from "@/data/port-zones";
 import { getMapListingsByProject, getSoloMapListings } from "@/lib/map-listings";
+import { getProjectInventory } from "@/lib/project-inventory-data";
 import { listPublishedReports } from "@/lib/project-reports";
 import ProjectExplorer, { type ProjectListing } from "./ProjectExplorer";
 import styles from "./Map.module.css";
@@ -246,6 +247,9 @@ export default async function MapPage() {
   const solo = await getSoloMapListings();
   // 📄 哪些建案有已發佈的社區銷售報告書（/map/report/<id>）：詳情面板會多一顆入口。讀不到就空陣列。
   const reportIds = (await listPublishedReports()).map((r) => r.projectId);
+  // 🏢 太平洋官網在各建案的在售物件（2026-10-20 他要的）：match_listing（官網每 30 分鐘同步）對到建案，
+  //    已扣掉上面 byProject 那些他自己上架的。讀不到回 {}，頁面照常。
+  const inventory = await getProjectInventory(byProject);
 
   const listings: Record<string, ProjectListing[]> = {};
   for (const [projectId, list] of byProject) {
@@ -342,10 +346,10 @@ export default async function MapPage() {
               stats.located === stats.total
                 ? `位置由${OWNER.alias}本人逐一標定。`
                 : `其中 ${stats.located} 案的位置由${OWNER.alias}本人逐一標定；另外 ${stats.total - stats.located} 案還沒標上地圖，先列在下方清單裡。`
-            }點大樓圖示看我在那個建案的在售物件；有社區銷售報告書的建案，點案名直接開。`}
+            }點大樓圖示看那個建案的在售物件（我自己上架的，加上太平洋房屋官網的）；有社區銷售報告書的建案，點案名直接開。`}
           </p>
 
-          <ProjectExplorer listings={listings} solo={solo} reports={reportIds} />
+          <ProjectExplorer listings={listings} solo={solo} reports={reportIds} inventory={inventory} />
         </div>
       </section>
 

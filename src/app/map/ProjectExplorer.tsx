@@ -55,6 +55,8 @@ import { useCompare } from "@/app/_ui/compare/useCompare";
 import { COMPARE_MAX, compareHref } from "@/lib/map-compare";
 import FavButton from "@/app/_ui/favorites/FavButton";
 import { recordTrail } from "@/app/_ui/favorites/store";
+import type { ProjectInventoryMap } from "@/lib/project-inventory";
+import ProjectInventory from "./ProjectInventory";
 import styles from "./Map.module.css";
 
 type AreaFilter = "all" | ProjectArea;
@@ -147,11 +149,17 @@ export default function ProjectExplorer({
   listings = {},
   solo = [],
   reports = [],
+  inventory = {},
 }: {
   listings?: Record<string, ProjectListing[]>;
   solo?: SoloMapListing[];
   /** 📄 有已發佈「社區銷售報告書」的建案 id（後台 /admin/reports 發佈的），詳情面板多一顆入口 */
   reports?: string[];
+  /**
+   * 🏢 太平洋官網在各建案的在售物件（2026-10-20，lib/project-inventory-data.ts 在伺服器對好的；
+   * 已扣掉他自己上架的那幾戶）。詳情面板在「我在 ○○ 的在售物件」底下多一段，清單上「在售 N」是兩者相加。
+   */
+  inventory?: ProjectInventoryMap;
 }) {
   const hasReport = useMemo(() => new Set(reports), [reports]);
   const [area, setArea] = useState<AreaFilter>("all");
@@ -169,6 +177,14 @@ export default function ProjectExplorer({
     () => Object.values(listings).reduce((s, l) => s + l.length, 0),
     [listings]
   );
+  /** 🏢 官網在售（已去重）：建案 id → 幾間；清單上的「在售 N」＝ 我的 ＋ 這個 */
+  const invCount = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const [id, list] of Object.entries(inventory)) out[id] = list.length;
+    return out;
+  }, [inventory]);
+  const invTotal = useMemo(() => Object.values(inventory).reduce((s, l) => s + l.length, 0), [inventory]);
+  const saleCount = useCallback((id: string) => (mine[id] ?? 0) + (invCount[id] ?? 0), [mine, invCount]);
 
   /** 每個區域各有幾案。商圈現在都是 0 —— 照實顯示，不要藏 */
   const areaCounts = useMemo(() => {
@@ -412,7 +428,12 @@ export default function ProjectExplorer({
       <aside className={styles.sideList} aria-label="建案清單">
         <div className={styles.sideHead}>
           <span>{`建案清單 ${rows.length}／${stats.total}`}</span>
-          {mineTotal > 0 && <span className={styles.sideMine}>{`我有 ${mineTotal} 件在售`}</span>}
+          {/* 我的 ＋ 太平洋官網的（已去重）。只有官網的就只寫官網 */}
+          {mineTotal + invTotal > 0 && (
+            <span className={styles.sideMine}>
+              {mineTotal > 0 ? `我有 ${mineTotal} 件在售${invTotal > 0 ? `・官網另 ${invTotal} 間` : ""}` : `官網在售 ${invTotal} 間`}
+            </span>
+          )}
         </div>
         {rows.length === 0 ? (
           <p className={styles.empty}>沒有符合的建案。換個關鍵字或篩選試試。</p>
@@ -438,7 +459,7 @@ export default function ProjectExplorer({
                         <em>{p.builder}</em>
                       </span>
                       <span className={styles.sideMeta}>
-                        {(mine[p.id] ?? 0) > 0 && <u>{`在售 ${mine[p.id]}`}</u>}
+                        {saleCount(p.id) > 0 && <u>{`在售 ${saleCount(p.id)}`}</u>}
                         {!COORDS[p.id] && <s>未標位置</s>}
                         <i style={{ background: TONE_SWATCH[p.status] }} aria-hidden="true" />
                       </span>
@@ -500,7 +521,7 @@ export default function ProjectExplorer({
                   // 不要讓畫面看起來像壞掉。地圖色塊仍然在，客戶還是看得到位置。
                   "這一區目前沒有我在追蹤的建案。地圖上的色塊還在，可以先看看位置；" +
                   "想找這一帶的房子直接跟我說，我手上不一定有掛在網站上。"
-                : `地圖上有 ${rows.length} 個建案。點大樓圖示看我的在售物件，有社區銷售報告書的建案點案名直接開；` +
+                : `地圖上有 ${rows.length} 個建案。點大樓圖示看那個建案的在售物件（我自己上架的，加上太平洋房屋官網的），有社區銷售報告書的建案點案名直接開；` +
                   "縮小到看整個生活圈時，建案會收成一顆藍色膠囊，點它就展開。"}
             </p>
             {/* ⚠️ 這行不可以拿掉。商圈沒有官方界線，不講清楚就等於對外發表
@@ -626,11 +647,25 @@ export default function ProjectExplorer({
                     <strong>實際坪數、格局、屋況與產權，以現場勘查及不動產說明書所載為準。</strong>
                     物件狀態隨時可能異動，成交後即下架。
                   </p>
+                  {/* 🏢 太平洋官網在這棟的其他在售（已扣掉上面那幾戶）。沒有就什麼都不畫 */}
+                  <ProjectInventory projectName={selected.name} items={inventory[selected.id] ?? []} mineCount={selectedListings.length} />
+                </div>
+              ) : (inventory[selected.id]?.length ?? 0) > 0 ? (
+                /* 🏢 我手上沒有、但太平洋官網有（2026-10-20）：直接列官網的，話術改成「找我帶看」 */
+                <div className={styles.noMine}>
+                  <p>
+                    {`我手上目前沒有自己上架的 ${selected.name}，但太平洋房屋在這棟有 ${inventory[selected.id]?.length ?? 0} 間在售 —— `}
+                    看中哪一戶都可以找我帶看，有新釋出的也會第一時間通知你。
+                  </p>
+                  <ProjectInventory projectName={selected.name} items={inventory[selected.id] ?? []} mineCount={0} divider={false} />
+                  <Link className={styles.cta} href="/card/booking">
+                    {`想看 ${selected.name}？預約我帶看`}
+                  </Link>
                 </div>
               ) : (
                 <div className={styles.noMine}>
                   <p>
-                    {`目前我手上沒有 ${selected.name} 的物件在售。這一區釋出速度很快，`}
+                    {`目前 ${selected.name} 沒有在售中的物件（我自己的和太平洋官網的都沒有）。這一區釋出速度很快，`}
                     想找這個建案可以先跟我說，有案子我第一時間通知你。
                   </p>
                   <Link className={styles.cta} href="/card/booking">
@@ -675,7 +710,7 @@ export default function ProjectExplorer({
             </>
           ) : (
             <p className={styles.detailEmpty}>
-              點清單裡的建案、或地圖上的大樓圖示，這裡就會顯示我在那個建案的在售物件；有社區銷售報告書的建案，點案名直接開。
+              點清單裡的建案、或地圖上的大樓圖示，這裡就會顯示那個建案目前的在售物件（我自己上架的，加上太平洋房屋官網的）；有社區銷售報告書的建案，點案名直接開。
               地圖上的 <b>⭐ 星號</b>是不屬於任何建案的單獨物件，點了也會顯示在這裡。
             </p>
           )}

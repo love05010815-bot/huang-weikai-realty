@@ -1,0 +1,182 @@
+/* 🏢 /map 詳情面板裡「太平洋房屋在這個建案的在售物件」那一段（ProjectInventory.tsx）。
+   顏色變數來自 Map.module.css 的 .page（--primary／--ink／--muted／--line…），這裡只用、不重定義。
+   刻意不借 Map.module.css 的 .sale*（那是他自己那幾戶的大卡片）—— 官網的一次十幾二十戶，要的是緊湊的列。 */
+
+.wrap {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--line);
+}
+
+/* 放在 .noMine（自己已有一條虛線）裡面時用這個 */
+.wrapFlat {
+  margin: 4px 0 14px;
+}
+
+.head {
+  margin-bottom: 10px;
+}
+
+.title {
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.count {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 800;
+  color: #6b4a12;
+  background: var(--accent-soft);
+  border: 1px solid var(--line-warm);
+  border-radius: 999px;
+  padding: 1px 9px;
+}
+
+.note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+/* 一列一戶，寬的時候兩欄 —— 面板內寬約 870px（桌機）排得下兩欄 300px 的列 */
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 10px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 8px 8px;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: 12px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.row:hover {
+  border-color: var(--primary);
+  box-shadow: 0 6px 18px rgba(34, 50, 63, 0.08);
+}
+
+/* 照片＋文字整塊是一個連結（進單戶頁） */
+.main {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.thumb {
+  display: block;
+  width: 96px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #eef3f5;
+}
+
+.thumbEmpty {
+  background: linear-gradient(135deg, #eef3f5, #dfe8ec);
+}
+
+.body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ttl {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.4;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.main:hover .ttl {
+  color: var(--primary-dark);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.price {
+  font-size: 15px;
+  font-weight: 900;
+  color: #b45309;
+}
+
+.spec {
+  min-width: 0;
+}
+
+/* 右邊那顆直接進預約（/match?book=）—— 跟整列的連結是兩個不同的 <a>，不用擋冒泡 */
+.book {
+  flex: none;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--primary);
+  background: #fff;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.book:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+.foot {
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+@media (max-width: 560px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+  .book {
+    justify-self: end;
+  }
+  .main {
+    grid-template-columns: 84px minmax(0, 1fr);
+  }
+  .thumb {
+    width: 84px;
+    height: 63px;
+  }
+}
