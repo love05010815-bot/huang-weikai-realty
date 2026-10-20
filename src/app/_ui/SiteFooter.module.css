@@ -16,12 +16,21 @@
   color: #fff;
 }
 
-.footer .legal {
-  margin: 14px 0 0;
+.footer .legal,
+.footer .legal2 {
   font-size: 11.5px;
   line-height: 1.8;
   letter-spacing: 0.02em;
   color: rgba(255, 255, 255, 0.38);
   word-break: keep-all;
   overflow-wrap: anywhere;
+}
+
+.footer .legal {
+  margin: 14px 0 0;
+}
+
+/* 營業員登字號緊跟在經紀人那行下面（2026-10-20），兩行是同一塊揭露，間距要比 .legal 窄很多 */
+.footer .legal2 {
+  margin: 2px 0 0;
 }

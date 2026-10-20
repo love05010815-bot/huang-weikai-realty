@@ -506,11 +506,20 @@
   text-decoration: underline;
 }
 
-.agentLegal {
-  margin: 12px 0 0;
+.agentLegal,
+.agentLegal2 {
   font-size: 11.5px;
   color: rgba(255, 255, 255, 0.6);
   overflow-wrap: anywhere;
+}
+
+.agentLegal {
+  margin: 12px 0 0;
+}
+
+/* 營業員登字號緊跟在經紀人那行下面（2026-10-20），兩行是同一塊揭露，間距要比 .agentLegal 窄很多 */
+.agentLegal2 {
+  margin: 2px 0 0;
 }
 
 @media (max-width: 640px) {

@@ -392,6 +392,9 @@ export default async function MapPage() {
           <p className={styles.footerLegal}>
             {OWNER.brokerage}　不動產經紀人：{OWNER.brokerName}　{OWNER.brokerLicense}
           </p>
+          <p className={styles.footerLegal2}>
+            不動產營業員 {OWNER.name} {OWNER.salespersonLicense}
+          </p>
         </div>
       </footer>
     </main>

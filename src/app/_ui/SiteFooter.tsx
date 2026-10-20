@@ -23,6 +23,9 @@ export default function SiteFooter() {
       <p className={styles.legal}>
         {OWNER.brokerage}　不動產經紀人：{OWNER.brokerName}　{OWNER.brokerLicense}
       </p>
+      <p className={styles.legal2}>
+        不動產營業員 {OWNER.name} {OWNER.salespersonLicense}
+      </p>
     </footer>
   );
 }
