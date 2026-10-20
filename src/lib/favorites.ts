@@ -1,5 +1,5 @@
 /**
- * ❤️ 我的最愛／瀏覽足跡 —— 前後端共用的小規則（純函式，沒有任何相依，client 與 server 都能 import）
+ * ❤️ 我的最愛／瀏覽足跡 —— 前後端共用的小規則（純函式，只吃同樣純的 lib/map-compare 常數，client 與 server 都能 import）
  *
  * 2026-10-02 系統擁有者：「客戶在建案地圖或精選好案看到喜歡的建案，可以在我的網站裡面
  * 加到我的最愛，以及他瀏覽過的足跡」。
@@ -30,6 +30,8 @@
  * 瀏覽器那一側的讀寫在 `app/_ui/favorites/store.ts`，這裡只有不碰 window 的規則，
  * 所以 `npm run check:favorites` 能用假資料把每一條都跑過。
  */
+
+import { COMPARE_MAX } from "@/lib/map-compare";
 
 export const SAVED_KINDS = ["project", "listing"] as const;
 export type SavedKind = (typeof SAVED_KINDS)[number];
@@ -206,4 +208,55 @@ export function favoritesApiHref(items: SavedItem[]): string | null {
   if (p.length) params.set("p", p.join(","));
   if (l.length) params.set("l", l.join(","));
   return `/api/favorites?${params.toString()}`;
+}
+
+// ---------------------------------------------------------------- 精選好案比較（2026-10-20）
+
+/**
+ * 🔀 收藏頁的「＋ 比較」—— 2026-10-20 系統擁有者：「客戶在我的最愛裡面的物件也設置一個可以比較的表及按鈕」。
+ * 跟 /map 那條比較列同一套規則（最多 COMPARE_MAX 件、至少 COMPARE_MIN 件、勾選存 sessionStorage、開新分頁），
+ * 差在這裡比的是精選好案（key ＝ slug），開的是 `/favorites/compare?l=<slug>,…`。
+ * 勾選另外存一把（FAV_COMPARE_STORAGE_KEY）：/map 存的是 map_listing 的 UUID，混在一起「已選 N 件」會算到對方的。
+ * 建案（kind project）不能比 —— 比較表比的是一戶一戶的坪數格局車位，建案沒有這些。
+ */
+export const FAVORITES_COMPARE_HREF = "/favorites/compare";
+export const FAV_COMPARE_STORAGE_KEY = "weikai.favorites.compare.v1";
+
+/** 比較頁的網址。slug 只有小寫英數與連字號（KEY_RE），不用 encode */
+export function favoritesCompareHref(slugs: string[]): string {
+  return `${FAVORITES_COMPARE_HREF}?l=${slugs.join(",")}`;
+}
+
+/** 網址 `?l=a,b,c`（或重複的 `?l=a&l=b`）→ 去重、只留合法 slug、最多 COMPARE_MAX 個；亂打的不進資料庫 */
+export function parseCompareSlugs(raw: string | string[] | null | undefined): string[] {
+  return parseKeyList(Array.isArray(raw) ? raw.join(",") : raw, "listing", COMPARE_MAX);
+}
+
+/**
+ * 台中市的區名（兩個字以上的 24 區；中／東／西／南／北區是單字，一定要帶「區」才認，不然建案名裡的「北」「南」會誤判）。
+ * 後台有時只打「梧棲」沒打「區」（線上就有「梧棲・和築好好窩」），所以「區」可有可無，認到了顯示時一律補成「梧棲區」。
+ */
+const TAICHUNG_DISTRICT_RE =
+  /^(西屯|南屯|北屯|豐原|東勢|大甲|清水|沙鹿|梧棲|后里|神岡|潭子|大雅|新社|石岡|外埔|大安|烏日|大肚|龍井|霧峰|太平|大里|和平)(區)?$/;
+
+/** 這一段是不是行政區：台中的區名（可不帶「區」）、或任何「○○區／鄉／鎮／市」結尾的字；是就回顯示用的寫法 */
+function districtOf(token: string): string | null {
+  const m = token.match(TAICHUNG_DISTRICT_RE);
+  if (m) return `${m[1]}區`;
+  return /[區鄉鎮市]$/.test(token) ? token : null;
+}
+
+/**
+ * 精選好案的 `area` 欄是後台填的「行政區・建案名」（例：`梧棲區・隱玉2`），比較表「建案名」那列從這裡拆。
+ * 分隔符號跟以前掛建案那套一樣寬鬆（・‧·／/、，,）；哪一段是行政區看 districtOf，其餘併成建案名。
+ * 沒有分隔 → 整段當建案名、行政區 null；只有行政區或空字串 → name 空（畫面退回型錄的「社區」）。
+ */
+export function splitListingArea(area: string): { district: string | null; name: string } {
+  const parts = area
+    .split(/[・‧·／/、，,]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const at = parts.findIndex((p) => districtOf(p) !== null);
+  if (at === -1) return { district: null, name: parts.join("・") };
+  return { district: districtOf(parts[at]), name: parts.filter((_, i) => i !== at).join("・") };
 }

@@ -11,6 +11,11 @@
  * 不要做成「API 回來前整頁轉圈圈」—— 這頁最常見的狀況是客戶在手機訊號不好的地方打開。
  *
  * 足跡跟最愛共用同一種卡片，差在足跡那邊的愛心是「可以加進最愛」、而且有「從足跡移除」。
+ *
+ * 🔀 精選好案比較（2026-10-20 系統擁有者：「客戶在我的最愛裡面的物件也設置一個可以比較的表及按鈕」）：
+ *   精選好案那一列多一顆「＋ 比較」，勾了畫面底下浮出比較列（跟 /map 同一個元件），「開始比較」開新分頁
+ *   /favorites/compare。能勾的只有「還在架上的精選好案」—— 建案沒有坪數格局可比，已下架／已刪掉的
+ *   比較頁也會剔除，乾脆在這裡就不給勾。兩個頁籤共用同一份勾選：在最愛勾兩戶、切到足跡再勾一戶，比較列都看得到。
  */
 
 import Link from "next/link";
@@ -18,19 +23,27 @@ import { useEffect, useMemo, useState } from "react";
 import { OWNER } from "@/config/owner";
 import { formatWan } from "@/lib/houseol-price";
 import {
+  FAV_COMPARE_STORAGE_KEY,
   favoritesApiHref,
+  favoritesCompareHref,
   type FavoritesPayload,
   type ListingCard,
   type ProjectCard,
   type SavedItem,
 } from "@/lib/favorites";
+import { COMPARE_MAX } from "@/lib/map-compare";
+import CompareBar, { type CompareItem } from "@/app/_ui/compare/CompareBar";
+import { useCompare } from "@/app/_ui/compare/useCompare";
 import FavButton from "@/app/_ui/favorites/FavButton";
-import { clearTrail, removeTrail, useSavedState } from "@/app/_ui/favorites/store";
+import { clearTrail, removeTrail, savedLoaded, useSavedState } from "@/app/_ui/favorites/store";
 import styles from "./favorites.module.css";
 
 type Tab = "favs" | "trail";
 type Cards = Pick<FavoritesPayload, "projects" | "listings">;
 type Fetch = "idle" | "loading" | "ok" | "error";
+
+/** 那一列「＋ 比較」鈕要的東西；null ＝ 這戶不能比（已下架／已刪掉），鈕整顆不出現 */
+type RowCompare = { on: boolean; full: boolean; toggle: () => void } | null;
 
 const NO_CARDS: Cards = { projects: {}, listings: {} };
 
@@ -41,7 +54,8 @@ function shortDate(ms: number): string {
 }
 
 export default function FavoritesView() {
-  const { favs, trail } = useSavedState();
+  const saved = useSavedState();
+  const { favs, trail } = saved;
   const [tab, setTab] = useState<Tab>("favs");
   const [cards, setCards] = useState<Cards>(NO_CARDS);
   const [fetchState, setFetchState] = useState<Fetch>("idle");
@@ -79,10 +93,39 @@ export default function FavoritesView() {
     return () => ctrl.abort();
   }, [apiHref]);
 
+  /**
+   * 🔀 比較的勾選（sessionStorage，跟 /map 分開一把鍵）。
+   * compareIndex ＝ 現在能比的精選好案（slug → 比較列上那顆小籤要的字），最愛與足跡合在一起看、同 slug 只算一次。
+   */
+  const compare = useCompare(FAV_COMPARE_STORAGE_KEY);
+  const compareIndex = useMemo(() => {
+    const m = new Map<string, CompareItem>();
+    for (const item of [...favs, ...trail]) {
+      if (item.kind !== "listing" || m.has(item.key)) continue;
+      const card = cards.listings[item.key];
+      // 已下架、或 API 回來了卻沒這戶（後台整筆刪掉）→ 不能比
+      if (card?.status === "sold" || (fetchState === "ok" && !card)) continue;
+      m.set(item.key, { id: item.key, title: card?.title ?? item.title, project: card?.area ?? item.sub });
+    }
+    return m;
+  }, [favs, trail, cards, fetchState]);
+  const compareItems = useMemo(
+    () => compare.ids.map((id) => compareIndex.get(id)).filter((x): x is CompareItem => x !== undefined),
+    [compare.ids, compareIndex],
+  );
+  // sessionStorage 裡留著已經不在清單裡（取消收藏、足跡清掉）或已下架的 slug → 剔除，「已選 N 件」才不會算到看不見的。
+  // ⚠️ 清單還沒從 localStorage 讀回來（savedLoaded 為 false）時 favs／trail 是空的，這時候剔除會把勾選整份清掉，要等。
+  const { replace: replaceCompare } = compare;
+  const staleCompare = savedLoaded(saved) && compareItems.length !== compare.ids.length;
+  useEffect(() => {
+    if (staleCompare) replaceCompare(compareItems.map((x) => x.id));
+  }, [staleCompare, compareItems, replaceCompare]);
+
   const list = tab === "favs" ? favs : trail;
+  const comparableInTab = list.some((item) => item.kind === "listing" && compareIndex.has(item.key));
 
   return (
-    <div className={styles.wrap}>
+    <div className={compareItems.length > 0 ? `${styles.wrap} ${styles.wrapWithBar}` : styles.wrap}>
       <div className={styles.tabs} role="tablist" aria-label="我的最愛與瀏覽足跡">
         <button
           type="button"
@@ -108,6 +151,12 @@ export default function FavoritesView() {
 
       {fetchState === "error" && list.length > 0 && (
         <p className={styles.warn}>暫時讀不到最新資料，先顯示你收藏當時的資訊；售價與上架狀態請以物件頁為準。</p>
+      )}
+
+      {comparableInTab && (
+        <p className={styles.cmpHelp}>
+          {`想把幾戶放在一起看？在精選好案按「＋ 比較」勾起來（最多 ${COMPARE_MAX} 件），再按畫面底下的「開始比較」，開價、坪數、格局、車位、公設比一次對照。`}
+        </p>
       )}
 
       {list.length === 0 ? (
@@ -149,6 +198,11 @@ export default function FavoritesView() {
                 missing={fetchState === "ok" && !cards.listings[item.key]}
                 inTrail={tab === "trail"}
                 loading={fetchState === "loading"}
+                compare={
+                  compareIndex.has(item.key)
+                    ? { on: compare.has(item.key), full: compare.full, toggle: () => compare.toggle(item.key) }
+                    : null
+                }
               />
             ),
           )}
@@ -174,6 +228,14 @@ export default function FavoritesView() {
         換手機、換瀏覽器或清除瀏覽資料就會消失。想長期保留的建案，歡迎直接
         <Link href="/card/booking">預約諮詢</Link>，我幫你一起記著。
       </p>
+
+      {/* 🔀 浮在畫面底下的比較列（position: fixed，放哪裡都一樣；勾了才出現） */}
+      <CompareBar
+        items={compareItems}
+        href={favoritesCompareHref(compareItems.map((x) => x.id))}
+        onRemove={compare.remove}
+        onClear={compare.clear}
+      />
     </div>
   );
 }
@@ -255,6 +317,7 @@ function ListingRow({
   missing,
   inTrail,
   loading,
+  compare,
 }: {
   item: SavedItem;
   card: ListingCard | undefined;
@@ -262,6 +325,7 @@ function ListingRow({
   missing: boolean;
   inTrail: boolean;
   loading: boolean;
+  compare: RowCompare;
 }) {
   const title = card?.title ?? item.title;
   const area = card?.area ?? item.sub;
@@ -307,6 +371,19 @@ function ListingRow({
             <Link className={styles.btnGhost} href="/listings">
               看看其他好案
             </Link>
+          )}
+          {/* 🔀 加入比較。滿 4 件時其他戶的按鈕變灰，要先在底下的比較列移除一件（跟 /map 卡片同一套） */}
+          {compare && (
+            <button
+              type="button"
+              className={compare.on ? styles.cmpBtnOn : styles.cmpBtn}
+              onClick={compare.toggle}
+              disabled={!compare.on && compare.full}
+              aria-pressed={compare.on}
+              title={!compare.on && compare.full ? `最多比 ${COMPARE_MAX} 件，先移除一件` : undefined}
+            >
+              {compare.on ? "✓ 已加入比較" : compare.full ? `已滿 ${COMPARE_MAX} 件` : "＋ 比較"}
+            </button>
           )}
           <FavButton kind="listing" id={item.key} title={title} sub={area} />
           {inTrail && (

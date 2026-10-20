@@ -331,6 +331,72 @@
   font-weight: 800;
 }
 
+/* ---------- 精選好案比較（2026-10-20） ----------
+   卡片上的「＋ 比較」鈕與說明，長相跟 /map 卡片那顆一樣（Map.module.css 的 .cmpBtn）；
+   浮在底下的比較列本身在 _ui/compare/CompareBar.module.css，兩頁共用。 */
+
+.cmpHelp {
+  margin: -6px 0 14px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.cmpBtn,
+.cmpBtnOn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  font-family: inherit;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.cmpBtn {
+  border: 1px dashed var(--primary);
+  background: #fff;
+  color: var(--primary);
+}
+
+.cmpBtn:hover {
+  border-style: solid;
+  background: var(--accent-soft);
+}
+
+.cmpBtn:disabled {
+  border: 1px solid var(--line);
+  background: #f4f6f7;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.cmpBtnOn {
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #fff;
+}
+
+.cmpBtnOn:hover {
+  background: #3a4d5c;
+  border-color: #3a4d5c;
+}
+
+/* 比較列浮在最下面，會蓋住最後一張卡跟底下那段說明 —— 有勾選時多留底部空間（900px 以下比較列會疊成兩排，留更多） */
+.wrapWithBar {
+  padding-bottom: 120px;
+}
+
+@media (max-width: 900px) {
+  .wrapWithBar {
+    padding-bottom: 180px;
+  }
+}
+
 /* ---------- 手機 ---------- */
 
 @media (max-width: 560px) {

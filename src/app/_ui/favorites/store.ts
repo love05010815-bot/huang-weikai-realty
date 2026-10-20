@@ -103,6 +103,15 @@ export function useSavedState(): SavedState {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
+/**
+ * 這份狀態是不是已經從 localStorage 讀回來了（false ＝ 還是 server／hydration 那個空的）。
+ * 收藏頁的比較列靠它：清單還沒讀回來之前 favs／trail 都是空的，這時候去判定「勾的那戶已經不在最愛裡」
+ * 會把 sessionStorage 裡的勾選整份清掉。
+ */
+export function savedLoaded(state: SavedState): boolean {
+  return state !== EMPTY;
+}
+
 export function useIsFav(kind: SavedKind, key: string): boolean {
   const { favs } = useSavedState();
   return favs.some((x) => sameItem(x, kind, key));

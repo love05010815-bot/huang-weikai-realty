@@ -1,0 +1,171 @@
+/* 🔀 浮在畫面底下的「比較列」—— /map 與 /favorites 共用（2026-10-20 從 Map.module.css 的 .cmpBar* 搬出來）。
+   色票變數 --accent／--ink 兩個頁的 .page 都有；深底白字是刻意的，跟頁面本身的白底卡片分開，
+   客戶一眼就知道「這條是我勾的東西」。 */
+
+.bar {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  /* /map 的 sticky header 是 30、Leaflet 控制項被 .lmMap 的 z-index:0 關在自己的堆疊裡；
+     /favorites 右側浮動社群列是 90 但在畫面中段，不會跟底下這條疊到 —— 40 兩邊都蓋得過該蓋的 */
+  z-index: 40;
+  width: min(980px, calc(100vw - 24px));
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(34, 50, 63, 0.96);
+  color: #fff;
+  box-shadow: 0 14px 40px rgba(34, 50, 63, 0.35);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 132px;
+}
+
+.count {
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.hint {
+  font-size: 12px;
+  opacity: 0.78;
+  white-space: nowrap;
+}
+
+.chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 6px 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.chipProject {
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.chipTitle {
+  font-weight: 700;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chipX {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 11px;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.chipX:hover {
+  background: var(--accent);
+  color: var(--ink);
+}
+
+.btns {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.start,
+.startOff,
+.clear {
+  display: inline-block;
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 800;
+  font-family: inherit;
+  line-height: 1.4;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.start {
+  background: var(--accent);
+  color: var(--ink);
+}
+
+.start:hover {
+  background: #f19a5e;
+}
+
+.startOff {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+}
+
+.clear {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.clear:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+@media (max-width: 900px) {
+  .bar {
+    bottom: 8px;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .btns {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .start,
+  .startOff,
+  .clear {
+    flex: 1;
+    text-align: center;
+  }
+
+  .chipTitle {
+    max-width: 140px;
+  }
+}

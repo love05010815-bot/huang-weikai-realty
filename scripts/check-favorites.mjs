@@ -101,5 +101,40 @@ ok(F.favoritesApiHref([]) === null, "沒有東西 → null（不用打 API）");
   ok(F.favoritesApiHref([proj("a")]) === "/api/favorites?p=a", "只有建案就沒有 l 參數");
 }
 
+console.log("=== G 精選好案比較：favoritesCompareHref／parseCompareSlugs／splitListingArea ===");
+{
+  const MC = await import("../src/lib/map-compare.ts");
+  ok(F.favoritesCompareHref(["a-1", "b-2"]) === "/favorites/compare?l=a-1,b-2", "比較頁網址", F.favoritesCompareHref(["a-1", "b-2"]));
+  const r = F.parseCompareSlugs("Shalu-01, wuqi-02,shalu-01,../etc,UNDER_SCORE");
+  ok(r.length === 2 && r[0] === "shalu-01" && r[1] === "wuqi-02", "轉小寫、去重、丟掉亂打的", r.join(","));
+  const arr = F.parseCompareSlugs(["a-1", "b-2"]);
+  ok(arr.join(",") === "a-1,b-2", "重複的 ?l=a&l=b（陣列）也認", arr.join(","));
+  ok(F.parseCompareSlugs(null).length === 0, "null → 空");
+  ok(F.parseCompareSlugs(undefined).length === 0, "undefined → 空");
+  const many = Array.from({ length: 10 }, (_, i) => "s-" + i).join(",");
+  ok(F.parseCompareSlugs(many).length === MC.COMPARE_MAX, `最多 COMPARE_MAX（${MC.COMPARE_MAX}）件`, F.parseCompareSlugs(many).length);
+  const a1 = F.splitListingArea("梧棲區・隱玉2");
+  ok(a1.district === "梧棲區" && a1.name === "隱玉2", "「行政區・建案名」拆開", JSON.stringify(a1));
+  const a2 = F.splitListingArea("聯悅聚 / 清水區");
+  ok(a2.district === "清水區" && a2.name === "聯悅聚", "順序反過來、用斜線也認", JSON.stringify(a2));
+  const a3 = F.splitListingArea("沙鹿區・台中港市鎮中心・德光四季");
+  ok(a3.district === "沙鹿區" && a3.name === "台中港市鎮中心・德光四季", "三段：行政區拿掉、其餘併成建案名", JSON.stringify(a3));
+  const a4 = F.splitListingArea("隱玉2");
+  ok(a4.district === null && a4.name === "隱玉2", "沒分隔 → 整段當建案名", JSON.stringify(a4));
+  const a5 = F.splitListingArea("梧棲區");
+  ok(a5.district === "梧棲區" && a5.name === "", "只有行政區 → 建案名空（畫面退回型錄的社區）", JSON.stringify(a5));
+  const a6 = F.splitListingArea("");
+  ok(a6.district === null && a6.name === "", "空字串", JSON.stringify(a6));
+  // 線上真的有這筆：後台只打「梧棲」沒打「區」
+  const a7 = F.splitListingArea("梧棲・和築好好窩");
+  ok(a7.district === "梧棲區" && a7.name === "和築好好窩", "區名沒帶「區」也認，顯示時補成「梧棲區」", JSON.stringify(a7));
+  const a8 = F.splitListingArea("太平洋・隱玉");
+  ok(a8.district === null && a8.name === "太平洋・隱玉", "「太平洋」不是「太平」區（整段比對，不是前綴）", JSON.stringify(a8));
+  const a9 = F.splitListingArea("北・某某建案");
+  ok(a9.district === null && a9.name === "北・某某建案", "單字「北」不帶「區」不當行政區", JSON.stringify(a9));
+  const a10 = F.splitListingArea("北區・某某建案");
+  ok(a10.district === "北區" && a10.name === "某某建案", "「北區」帶「區」就認", JSON.stringify(a10));
+}
+
 console.log(pass ? "\n✅ 全部通過" : "\n❌ 有失敗");
 process.exit(pass ? 0 : 1);

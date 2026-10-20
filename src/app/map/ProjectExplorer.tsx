@@ -49,9 +49,9 @@ import LeafletMap from "./LeafletMap";
 //    那份是跟 /listings 共用的。要調相簿外觀請改元件本身，不要在這裡硬蓋 ——
 //    CSS Modules 的類名是雜湊的，從外面根本選不到。
 import PhotoCarousel from "../listings/PhotoCarousel";
-import CompareBar, { type CompareItem } from "./CompareBar";
-import { useCompare } from "./useCompare";
-import { COMPARE_MAX } from "@/lib/map-compare";
+import CompareBar, { type CompareItem } from "@/app/_ui/compare/CompareBar";
+import { useCompare } from "@/app/_ui/compare/useCompare";
+import { COMPARE_MAX, compareHref } from "@/lib/map-compare";
 import FavButton from "@/app/_ui/favorites/FavButton";
 import { recordTrail } from "@/app/_ui/favorites/store";
 import styles from "./Map.module.css";
@@ -714,7 +714,12 @@ export default function ProjectExplorer({
       </div>
 
       {/* 🔀 浮在畫面底下的比較列（position: fixed，放哪裡都一樣；勾了才出現） */}
-      <CompareBar items={compareItems} onRemove={compare.remove} onClear={compare.clear} />
+      <CompareBar
+        items={compareItems}
+        href={compareHref(compareItems.map((x) => x.id))}
+        onRemove={compare.remove}
+        onClear={compare.clear}
+      />
     </div>
   );
 }
