@@ -47,7 +47,7 @@ import styles from "./SiteNav.module.css";
  */
 type NavItem =
   | { label: string; kind: "anchor"; hash: string }
-  | { label: string; kind: "route"; href: "/about" | "/map" | "/videos" | "/news" | "/lvr" };
+  | { label: string; kind: "route"; href: "/about" | "/map" | "/videos" | "/news" | "/lvr" | "/match" };
 
 const ITEMS: readonly NavItem[] = [
   // 🚫 2026-09-07 系統擁有者：「首頁上方的關於我請移除」—— 導覽列不再有「關於我」。
@@ -55,10 +55,11 @@ const ITEMS: readonly NavItem[] = [
   //    同日稍早首頁的「關於我」區塊也已拿掉（介紹併進 hero）。
   { label: "服務項目", kind: "anchor", hash: "#services" },
   { label: "精選好案", kind: "anchor", hash: "#listings" },
-  // 2026-10-20 系統擁有者：「官網首頁好案配對的地方也加入到上方書籤列『物件快搜』」——
-  // 連到首頁的自動配對找房區塊（page.tsx 的 <section id="match">），放在「精選好案」旁邊（兩個都是找物件）。
+  // 2026-10-20 系統擁有者：「官網首頁好案配對的地方也加入到上方書籤列『物件快搜』」，
+  // 同日看過之後改口「點下去要直接跳轉到這邊（/match）」—— 所以是 route，直接進自動配對找房那一頁，
+  // 不是首頁的 <section id="match"> 錨點（那個 id 留著，別處要連首頁那一塊還能用）。放在「精選好案」旁邊（兩個都是找物件）。
   // ⚠️ 這是第十格。加之前照 SiteNav.module.css 檔頭的規矩重掃了斷點，結果與新斷點見那邊 2026-10-20 的紀錄。
-  { label: "物件快搜", kind: "anchor", hash: "#match" },
+  { label: "物件快搜", kind: "route", href: "/match" },
   // 2026-08-21 恢復入口。原本雪藏是因為「土地使用分區」那層的建商名沒核對完；該層已從 /map 移除。
   // 2026-09-07 系統擁有者拍板把標籤從「重劃區建案」改成「海線建案一覽」。
   // ⚠️ **不要改回去。** 這頁剛開的時候真的只有重劃區 39 案，現在是整條海線八個生活圈 500 多案，
