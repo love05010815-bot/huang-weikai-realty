@@ -22,6 +22,12 @@ type Props = {
   /** 足跡快照用：標題與區域分開存 */
   listingTitle: string;
   area: string;
+  /**
+   * 要不要記進客戶瀏覽器的「瀏覽足跡」。精選好案 true；建案地圖的物件（/map/listing/<id>）false ——
+   * 收藏頁只認精選好案的 slug 與建案（map_listing 刻意不收，見 lib/favorites.ts），記進去會變成一筆查不到的足跡。
+   * 預設 true。
+   */
+  trail?: boolean;
 };
 
 const ENDPOINT = "/api/listing-click";
@@ -44,13 +50,13 @@ function recordPageView(slug: string): void {
   }
 }
 
-export default function ListingPageView({ slug, shareUrl, title, listingTitle, area }: Props) {
+export default function ListingPageView({ slug, shareUrl, title, listingTitle, area, trail = true }: Props) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     recordPageView(slug);
-    recordTrail({ kind: "listing", key: slug, title: listingTitle, sub: area });
-  }, [slug, listingTitle, area]);
+    if (trail) recordTrail({ kind: "listing", key: slug, title: listingTitle, sub: area });
+  }, [slug, listingTitle, area, trail]);
 
   async function share(): Promise<void> {
     try {

@@ -5,7 +5,7 @@
  * 版面照 2026-09-10 系統擁有者給的範本（另一家的社區比較頁）：左邊一欄「比較項目」，
  * 每件物件一欄，最上面是照片＋建案名＋標題，底下九列就是他指定的九項（順序也照他列的），
  * 最後一列放下一步的按鈕：
- *   ・/map：「物件介紹 ↗」「預約諮詢」—— 跟 /map 卡片同一組，樣式也借同一份
+ *   ・/map：「看這戶的完整介紹 →」（站內 /map/listing/<id>，2026-10-20 起不外連）「預約諮詢」—— 樣式借 /map 卡片那份
  *   ・/favorites：「看這戶的完整介紹 →」「預約看這戶」—— 跟收藏頁那列同一組；精選好案 2026-10-20 起
  *     不再把客戶導去外部網站（單戶頁自己顯示官網資料），所以這邊不放外連
  *
@@ -183,20 +183,12 @@ function NextSteps({ source, entry }: { source: CompareSource; entry: CompareEnt
       </div>
     );
   }
+  // 2026-10-20 下午起地圖物件也不外連：「物件介紹 ↗」改成站內單戶頁 /map/listing/<id>（單戶頁自己記「被打開」，這顆不掛 data-listing-*）
   return (
     <div className={cmp.btns}>
-      {entry.listing.linkHref && (
-        <a
-          className={styles.saleLink}
-          href={entry.listing.linkHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          data-listing-slug={id}
-          data-listing-action="link"
-        >
-          物件介紹 ↗
-        </a>
-      )}
+      <Link className={styles.saleLink} href={`/map/listing/${encodeURIComponent(id)}`}>
+        看這戶的完整介紹 →
+      </Link>
       <Link className={styles.saleBtn} href="/card/booking" data-listing-slug={id} data-listing-action="booking">
         預約諮詢
       </Link>

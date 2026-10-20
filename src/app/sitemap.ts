@@ -18,6 +18,7 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/config/owner";
 import { listAllListings } from "@/lib/listings";
+import { listAllMapListings } from "@/lib/map-listings";
 import { getPublicPosts } from "@/lib/posts";
 import { listPublishedReports } from "@/lib/project-reports";
 
@@ -68,6 +69,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     listings = [];
   }
 
+  // 2026-10-20 建案地圖的每一戶也有自己的單戶頁 /map/listing/<id>（上架中的才列；已下架那頁是 noindex）。
+  // ⚠️ 一樣不跟上面並行 —— 連線池只有 3 條。
+  let mapListings: MetadataRoute.Sitemap = [];
+  try {
+    const rows = await listAllMapListings();
+    mapListings = rows
+      .filter((row) => row.status === "active")
+      .map((row) => ({
+        url: SITE_URL + "/map/listing/" + row.id,
+        lastModified: row.updatedAt ?? lastModified,
+        changeFrequency: "weekly" as const,
+        priority: 0.6,
+      }));
+  } catch {
+    mapListings = [];
+  }
+
   // 房產消息的每一篇。⚠️ 只有已發佈的會進來（`getPublicPosts()` 自己過濾），
   // 草稿列進 sitemap 的話 Google 會報「已提交的網址回傳 404」。
   // ⚠️ 刻意不跟上面的 listAllListings() 並行 —— 這個專案的連線池只有 3 條（P2024）。
@@ -92,5 +110,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...fixed, ...listings, ...posts, ...reports];
+  return [...fixed, ...listings, ...mapListings, ...posts, ...reports];
 }

@@ -23,6 +23,13 @@
   text-decoration: none;
 }
 
+/* 中間每一層是「› 連結」一組（地圖物件那頁多一層「海線建案一覽」） */
+.crumb {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .crumbs a:hover {
   text-decoration: underline;
 }

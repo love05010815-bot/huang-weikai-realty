@@ -249,13 +249,12 @@ export default async function MapPage() {
 
   const listings: Record<string, ProjectListing[]> = {};
   for (const [projectId, list] of byProject) {
+    // 2026-10-20 起卡片只有照片、建案、標題（賣點與「物件介紹」連結不再顯示，整張卡進 /map/listing/<id>）
     listings[projectId] = list.map((l) => ({
       id: l.id,
       title: l.title,
-      points: l.points,
       // 傳原始值就好，PhotoCarousel 自己會解析成網址
       photos: l.photos,
-      linkHref: l.linkHref,
     }));
   }
 

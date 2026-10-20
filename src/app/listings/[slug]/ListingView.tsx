@@ -46,18 +46,48 @@ export function absolutePhoto(value: string): string {
   return /^https?:\/\//i.test(src) ? src : `${SITE_URL}${src}`;
 }
 
+/**
+ * 這一頁被兩種物件共用（2026-10-20 下午起）：精選好案 `/listings/<slug>`（預設）與建案地圖的物件 `/map/listing/<id>`。
+ * 兩種只差「網址、麵包屑、回哪裡、預約連結、能不能收藏」，用這組設定帶進來；版面與資料邏輯完全同一份。
+ */
+export type ListingViewMode = {
+  /** 這一頁自己的路徑（分享網址、JSON-LD、麵包屑最後一層） */
+  pageHref: string;
+  /** 「首頁 › …」中間那幾層（最後一層是物件本身，這裡不用寫） */
+  crumbs: { name: string; href: string }[];
+  backHref: string;
+  backLabel: string;
+  /** 「預約看這戶」按去哪（精選好案帶 ?listing=<slug>，表單會顯示那戶；地圖物件表單認不得 id，就不帶） */
+  bookingHref: string;
+  /** 已下架那頁的主按鈕字 */
+  soldCtaLabel: string;
+  /** 精選好案才有 ❤️ 收藏與瀏覽足跡（map_listing 刻意不收，見 lib/favorites.ts） */
+  collectible: boolean;
+};
+
 type Props = {
   item: Listing;
   status: "active" | "sold";
   /** 太平洋官網那一筆（lib/listing-detail.ts）；讀不到就 null，頁面只顯示後台填的東西 */
   detail: ListingDetail | null;
+  /** 不給就是精選好案的那一套 */
+  mode?: ListingViewMode;
 };
 
-export default function ListingView({ item, status, detail }: Props) {
+export default function ListingView({ item, status, detail, mode }: Props) {
   const sold = status === "sold";
-  const shareUrl = `${SITE_URL}/listings/${item.slug}`;
+  const m: ListingViewMode = mode ?? {
+    pageHref: `/listings/${item.slug}`,
+    crumbs: [{ name: "精選好案", href: "/listings" }],
+    backHref: "/listings",
+    backLabel: "← 回精選好案",
+    bookingHref: `/card/booking?listing=${encodeURIComponent(item.slug)}`,
+    soldCtaLabel: "看看其他好案",
+    collectible: true,
+  };
+  const shareUrl = `${SITE_URL}${m.pageHref}`;
   const displayName = `${item.area} ${item.title}`;
-  const bookingHref = `/card/booking?listing=${encodeURIComponent(item.slug)}`;
+  const bookingHref = m.bookingHref;
 
   const d = detail?.detail ?? null;
   const share = detail?.share ?? null;
@@ -133,12 +163,7 @@ export default function ListingView({ item, status, detail }: Props) {
 
   return (
     <div className={styles.page}>
-      <BreadcrumbJsonLd
-        items={[
-          { name: "精選好案", href: "/listings" },
-          { name: item.title, href: `/listings/${item.slug}` },
-        ]}
-      />
+      <BreadcrumbJsonLd items={[...m.crumbs, { name: item.title, href: m.pageHref }]} />
       <header className={styles.header}>
         <div className={styles.navWrap}>
           <Link href="/" className={styles.brand}>
@@ -165,8 +190,12 @@ export default function ListingView({ item, status, detail }: Props) {
           <div className={`${styles.container} ${one.wrap}`}>
             <nav className={one.crumbs} aria-label="所在位置">
               <Link href="/">首頁</Link>
-              <span aria-hidden="true">›</span>
-              <Link href="/listings">精選好案</Link>
+              {m.crumbs.map((c) => (
+                <span key={c.href} className={one.crumb}>
+                  <span aria-hidden="true">›</span>
+                  <Link href={c.href}>{c.name}</Link>
+                </span>
+              ))}
               <span aria-hidden="true">›</span>
               <span>{item.area}</span>
             </nav>
@@ -183,8 +212,8 @@ export default function ListingView({ item, status, detail }: Props) {
                   也歡迎直接告訴我您的需求，有合適的第一時間通知您。
                 </p>
                 <div className={one.soldActions}>
-                  <Link className={`${styles.btn} ${styles.btnPrimary}`} href="/listings">
-                    看看其他好案
+                  <Link className={`${styles.btn} ${styles.btnPrimary}`} href={m.backHref}>
+                    {m.soldCtaLabel}
                   </Link>
                   <Link className={one.btnAlt} href="/card/booking">
                     告訴我您的需求
@@ -253,10 +282,17 @@ export default function ListingView({ item, status, detail }: Props) {
                       ) : null}
                     </div>
 
-                    {/* ❤️ 收藏（存客戶瀏覽器，收藏頁在 /favorites）＋ 分享（手機系統分享面板／桌機複製網址） */}
+                    {/* ❤️ 收藏（存客戶瀏覽器，收藏頁在 /favorites；只有精選好案）＋ 分享（手機系統分享面板／桌機複製網址） */}
                     <div className={one.favRow}>
-                      <FavButton kind="listing" id={item.slug} title={item.title} sub={item.area} />
-                      <ListingPageView slug={item.slug} shareUrl={shareUrl} title={displayName} listingTitle={item.title} area={item.area} />
+                      {m.collectible ? <FavButton kind="listing" id={item.slug} title={item.title} sub={item.area} /> : null}
+                      <ListingPageView
+                        slug={item.slug}
+                        shareUrl={shareUrl}
+                        title={displayName}
+                        listingTitle={item.title}
+                        area={item.area}
+                        trail={m.collectible}
+                      />
                     </div>
                   </aside>
                 </div>
@@ -363,8 +399,8 @@ export default function ListingView({ item, status, detail }: Props) {
               物件狀態隨時可能異動，成交後即下架。詳細條件與價格歡迎預約當面說明。
             </p>
 
-            <Link href="/listings" className={lst.backLink}>
-              ← 回精選好案
+            <Link href={m.backHref} className={lst.backLink}>
+              {m.backLabel}
             </Link>
           </div>
         </section>

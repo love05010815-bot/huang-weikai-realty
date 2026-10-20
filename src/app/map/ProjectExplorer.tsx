@@ -26,8 +26,9 @@
  * 先前那版是拿精選好案的 `area` 欄做文字比對來掛（「清水區・聯悅聚」），已廢除：
  * 打錯字物件就默默消失，而且沒辦法「只上架到地圖、不上架到首頁」。
  *
- * ⚠️ 這裡的物件卡片**刻意不放「影片賞析」按鈕**（系統擁有者指定），
- *    只有「物件介紹」與「預約諮詢」兩顆。`/listings` 那邊仍然兩顆外連都放。
+ * ⚠️ 這裡的物件卡片**刻意不放「影片賞析」按鈕**（系統擁有者指定）。
+ * 🚫 2026-10-20 下午系統擁有者拍板：「物件介紹 ↗」外連拿掉、賣點不列、**整張卡點了進站內單戶頁
+ *    `/map/listing/<id>`**（跟精選好案同一套畫面，資料從太平洋官網抓）。卡上只剩「預約諮詢」「＋ 比較」。
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -67,11 +68,8 @@ type AreaFilter = "all" | ProjectArea;
 export type ProjectListing = {
   id: string;
   title: string;
-  points: string[];
   /** 原始值，PhotoCarousel 自己會解析成網址 */
   photos: string[];
-  /** 「物件資訊」按鈕的網址。null＝不顯示那顆按鈕 */
-  linkHref: string | null;
 };
 
 
@@ -583,37 +581,22 @@ export default function ProjectExplorer({
                          PhotoCarousel 仍然共用（它是自成一體的元件）。 */}
                   <div className={styles.saleList}>
                     {selectedListings.map((item) => (
+                      /* 整張卡都能點進單戶頁（2026-10-20）：照片每一格是連結、文字區 .saleBodyLink 用 ::after
+                         鋪滿 .saleBody；底下的按鈕在 .saleBtns 墊高，點它們還是它們自己。不鋪到照片區，手機左右滑才不會壞。 */
                       <article key={item.id} className={styles.saleRow}>
                         <div className={styles.saleThumb}>
-                          <PhotoCarousel photos={item.photos} alt={`${selected.name}－${item.title}`} />
+                          <PhotoCarousel photos={item.photos} alt={`${selected.name}－${item.title}`} href={`/map/listing/${item.id}`} />
                         </div>
                         <div className={styles.saleBody}>
-                          <span className={styles.saleArea}>{selected.name}</span>
-                          <h5 className={styles.saleTitle}>{item.title}</h5>
-                          <ul className={styles.salePoints}>
-                            {item.points.map((p) => (
-                              <li key={p}>{p}</li>
-                            ))}
-                          </ul>
-                          {/* 這裡刻意只有兩顆：物件介紹＋預約諮詢。
-                              「影片賞析」是 /listings 才有的，系統擁有者指定這頁不要。 */}
-                          {/* 👆 兩顆按鈕都掛 data-listing-slug／data-listing-action，
-                              全站的 ListingClickTracker 會自己聽到並記一次點擊。
-                              這裡的 slug 用地圖物件的 id（UUID）—— 地圖物件沒有 slug，
-                              跟精選好案那些人看得懂的 slug 共用同一張表也不會撞。 */}
+                          {/* 進單戶頁的那顆不掛 data-listing-*：單戶頁自己會記「被打開」，這裡再記一次就重複 */}
+                          <Link href={`/map/listing/${item.id}`} className={styles.saleBodyLink}>
+                            <span className={styles.saleArea}>{selected.name}</span>
+                            <h5 className={styles.saleTitle}>{item.title}</h5>
+                            <span className={styles.saleGo}>看這戶的完整資訊 →</span>
+                          </Link>
+                          {/* 「預約諮詢」掛 data-listing-slug／data-listing-action，全站的 ListingClickTracker 會記一次點擊。
+                              這裡的 slug 用地圖物件的 id（UUID）—— 跟精選好案那些人看得懂的 slug 共用同一張表也不會撞。 */}
                           <div className={styles.saleBtns}>
-                            {item.linkHref && (
-                              <a
-                                className={styles.saleLink}
-                                href={item.linkHref}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                data-listing-slug={item.id}
-                                data-listing-action="link"
-                              >
-                                物件介紹 ↗
-                              </a>
-                            )}
                             <Link
                               className={styles.saleBtn}
                               href="/card/booking"
@@ -668,29 +651,15 @@ export default function ProjectExplorer({
               <div className={styles.saleList}>
                 <article className={styles.saleRow}>
                   <div className={styles.saleThumb}>
-                    <PhotoCarousel photos={selectedSolo.photos} alt={selectedSolo.title} />
+                    <PhotoCarousel photos={selectedSolo.photos} alt={selectedSolo.title} href={`/map/listing/${selectedSolo.id}`} />
                   </div>
                   <div className={styles.saleBody}>
-                    <span className={styles.saleArea}>⭐ 單獨標示的物件</span>
-                    <h5 className={styles.saleTitle}>{selectedSolo.title}</h5>
-                    <ul className={styles.salePoints}>
-                      {selectedSolo.points.map((p) => (
-                        <li key={p}>{p}</li>
-                      ))}
-                    </ul>
+                    <Link href={`/map/listing/${selectedSolo.id}`} className={styles.saleBodyLink}>
+                      <span className={styles.saleArea}>⭐ 單獨標示的物件</span>
+                      <h5 className={styles.saleTitle}>{selectedSolo.title}</h5>
+                      <span className={styles.saleGo}>看這戶的完整資訊 →</span>
+                    </Link>
                     <div className={styles.saleBtns}>
-                      {selectedSolo.linkHref && (
-                        <a
-                          className={styles.saleLink}
-                          href={selectedSolo.linkHref}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          data-listing-slug={selectedSolo.id}
-                          data-listing-action="link"
-                        >
-                          物件介紹 ↗
-                        </a>
-                      )}
                       <Link
                         className={styles.saleBtn}
                         href="/card/booking"

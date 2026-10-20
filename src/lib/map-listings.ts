@@ -327,6 +327,51 @@ export async function getPublicMapListingsByIds(
   return out;
 }
 
+/** 單戶頁（/map/listing/<id>）拿到的一筆：對外欄位 ＋ 建案、狀態、座標、更新時間。address 刻意不在裡面（只給後台看） */
+export type PublicMapListingPage = PublicMapListing & {
+  projectId: string;
+  status: MapListingStatus;
+  lat: number | null;
+  lng: number | null;
+  updatedAt: Date | null;
+};
+
+/**
+ * 單戶頁用：照 id 找一戶，**含已下架的** —— 傳出去的網址收不回來，下架後那頁要能說「已下架」，不能 404。
+ * id 不是 UUID、找不到、資料庫連不上 → null（頁面自己決定 404）。
+ */
+export async function getPublicMapListingById(idRaw: string): Promise<PublicMapListingPage | null> {
+  const id = String(idRaw ?? "")
+    .trim()
+    .toLowerCase();
+  if (!/^[0-9a-f-]{36}$/.test(id)) return null;
+  try {
+    await ensureMapListingTable();
+    const rows = await db.$queryRawUnsafe<Row[]>(
+      `SELECT id, project_id, title, address, lat, lng, points, photos, link_href, link_state, link_note, link_checked_at, status, sort_order, updated_at
+         FROM map_listing
+        WHERE id = ? LIMIT 1`,
+      id,
+    );
+    if (!rows[0]) return null;
+    const r = toRecord(rows[0]);
+    return {
+      id: r.id,
+      projectId: r.projectId,
+      title: r.title,
+      points: r.points,
+      photos: r.photos,
+      linkHref: r.linkHref,
+      status: r.status,
+      lat: r.lat,
+      lng: r.lng,
+      updatedAt: r.updatedAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ---------------------------------------------------------------- 驗證
 
 /** 台灣本島的範圍。座標打錯（經緯度顛倒、少一位）大多會掉出這個框 */

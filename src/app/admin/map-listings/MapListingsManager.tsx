@@ -659,7 +659,8 @@ export default function MapListingsManager({
                           {(() => {
                             const stat = clickStats[r.id];
                             const cells: Array<[string, number, number]> = [
-                              ["物件介紹", stat?.actions.link.total ?? 0, stat?.actions.link.recent ?? 0],
+                              // 2026-10-20 起卡片沒有「物件介紹 ↗」了，這格只剩歷史數字；單戶頁被打開記在 actions.page
+                              ["單戶頁", stat?.actions.page.total ?? 0, stat?.actions.page.recent ?? 0],
                               ["預約諮詢", stat?.actions.booking.total ?? 0, stat?.actions.booking.recent ?? 0],
                             ];
                             return (
@@ -944,17 +945,24 @@ export default function MapListingsManager({
                   onChange={(e) => patch({ pointsText: e.target.value })}
                   placeholder={"無限棟距｜視野開闊\n主＋附 20 坪大兩房，配 B2 柱邊平車位"}
                 />
+                <small>
+                  2026-10-20 起 /map 的卡片與單戶頁都不再顯示賣點（單戶頁改用太平洋官網的「物件特色」）；
+                  這欄只剩搜尋引擎描述的備援（官網讀不到時才用）。
+                </small>
               </label>
 
               <label>
-                <span>「物件資訊」按鈕網址（可留空）</span>
+                <span>「物件資訊」來源網址（太平洋分享連結；客戶看不到）</span>
                 <input
                   type="url"
                   value={draft.linkHref}
                   onChange={(e) => patch({ linkHref: e.target.value })}
-                  placeholder="https://…（591、FB 貼文等）"
+                  placeholder="https://prim.pacific.com.tw/s/XXXXXXXX"
                 />
-                <small>留空的話卡片上就只有「預約諮詢」一顆按鈕，不會留白。</small>
+                <small>
+                  2026-10-20 起 /map 的物件卡不再有「物件介紹 ↗」外連：客戶點整張卡進站內單戶頁（/map/listing/…），
+                  那一頁用這條連結到太平洋官網抓售價、坪數、格局、樓層、屋齡、特色。留空的話單戶頁只有標題與照片。
+                </small>
               </label>
 
               <div className={styles.photoBlock}>
