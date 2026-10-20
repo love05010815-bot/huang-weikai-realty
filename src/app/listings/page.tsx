@@ -139,12 +139,14 @@ export default async function ListingsPage() {
                   <article key={item.slug} id={item.slug} className={lst.card}>
                     {/* 一張照片就是一張圖；兩張以上會自動變成可左右滑的相簿。
                         第一排三張是首屏，封面圖立刻載；其餘等捲到才載。
-                        ❤️ 愛心疊在照片左上角（右上角是相簿的「1/3」）。 */}
+                        ❤️ 愛心疊在照片左上角（右上角是相簿的「1/3」）。
+                        2026-10-20 起點照片直接進單戶頁（href），所有資訊都在那一頁看。 */}
                     <div className={fav.photoWrap}>
                       <PhotoCarousel
                         photos={item.photos}
                         alt={`${item.area}－${item.title}`}
                         eager={i < 3}
+                        href={"/listings/" + item.slug}
                       />
                       <FavButton
                         variant="icon"
@@ -176,31 +178,22 @@ export default async function ListingsPage() {
                       <Link href={"/listings/" + item.slug} className={lst.detailLink}>
                         看這戶的完整介紹 →
                       </Link>
-                      {/* 外部連結（FB 影片／591）放在預約按鈕上面當次要動作 ——
-                          先讓客戶看得更清楚，再引導到預約，順序不要顛倒。 */}
-                      {/* 兩顆連結各自獨立：後台哪一欄留空，那顆就不出現。
-                          兩個都留空的話這區塊整個不渲染，卡片不會留一塊空白。 */}
-{/* data-listing-* 是給後台點擊統計用的（見 ListingClickTracker.tsx）。
-                          兩顆外連要分開記 —— 「想看影片」跟「想看 591 細節」是不同的意向強度，
-                          攪成一個數字就看不出來了。 */}
-                      {[
-                        { action: "link", target: item.link },
-                        { action: "video", target: item.video },
-                      ]
-                        .filter((x) => x.target)
-                        .map((x) => (
-                          <a
-                            key={x.target!.href}
-                            className={lst.actionLink}
-                            href={x.target!.href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            data-listing-slug={item.slug}
-                            data-listing-action={x.action}
-                          >
-                            {x.target!.label} ↗
-                          </a>
-                        ))}
+                      {/* 影片賞析（YouTube）放在預約按鈕上面當次要動作；後台留空這顆就不出現。
+                          🚫 2026-10-20 系統擁有者拍板：「物件資訊」不再導去外部網站 —— 那條連結改當資料來源
+                          （單戶頁從太平洋官網抓完整資料），客戶點照片或「看這戶的完整介紹」就在站內看。
+                          data-listing-* 是給後台點擊統計用的（見 ListingClickTracker.tsx）。 */}
+                      {item.video ? (
+                        <a
+                          className={lst.actionLink}
+                          href={item.video.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          data-listing-slug={item.slug}
+                          data-listing-action="video"
+                        >
+                          {item.video.label} ↗
+                        </a>
+                      ) : null}
                       <Link
                         className={lst.actionBtn}
                         href="/card/booking"

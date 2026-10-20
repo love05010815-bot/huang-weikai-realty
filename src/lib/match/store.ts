@@ -336,6 +336,23 @@ export async function getListing(id: string): Promise<MatchListing | null> {
   return rows[0] ? toListing(rows[0]) : null;
 }
 
+/**
+ * 愛屋編號（AA…）→ 官網同步表那一筆。精選好案裡還有舊的愛屋型錄連結（沒有 S 編號），
+ * 單戶頁要靠這個對回太平洋官網的物件。在售的優先、再看最近同步的。
+ */
+export async function getListingByHouseolId(houseolId: string): Promise<MatchListing | null> {
+  const id = String(houseolId ?? "")
+    .trim()
+    .toUpperCase();
+  if (!id) return null;
+  await ensureMatchTables();
+  const rows = await db.$queryRawUnsafe<ListingRow[]>(
+    `SELECT ${LISTING_COLS} FROM match_listing WHERE houseol_id = ? ORDER BY status ASC, synced_at DESC LIMIT 1`,
+    id,
+  );
+  return rows[0] ? toListing(rows[0]) : null;
+}
+
 /** 後台用：全部（含已下架），最新同步的在前 */
 export async function listListingsForAdmin(limit = 500): Promise<MatchListing[]> {
   await ensureMatchTables();

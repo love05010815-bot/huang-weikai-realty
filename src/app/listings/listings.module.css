@@ -37,6 +37,18 @@
    選 3:2 讓多數幾乎不被裁（2.6%），少數那兩張改裁上下約 11%。
    房屋照少一點天花板，比左右少一截牆面好。
    佔位塊也用同一個比例，之後補圖版面不會跳。 */
+/* 相簿裡的一格：剛好一個卡片寬，不縮不撐。2026-10-20 起照片外面多這一層 ——
+   卡片點照片要能進單戶頁，所以這一格可能是 <a>；scroll-snap 的單位跟著搬到這裡。 */
+.slide {
+  display: block;
+  flex: 0 0 100%;
+  min-width: 0;
+  scroll-snap-align: center;
+  /* 連結版本：不要有底線也不要變色，看起來就是一張照片 */
+  color: inherit;
+  text-decoration: none;
+}
+
 .photo {
   aspect-ratio: 3 / 2;
   width: 100%;
@@ -46,9 +58,6 @@
   height: auto;
   object-fit: cover;
   display: block;
-  /* 相簿裡一格剛好一個卡片寬，不縮不撐 */
-  flex: 0 0 100%;
-  scroll-snap-align: center;
 }
 
 /* ---------- 照片相簿 ----------

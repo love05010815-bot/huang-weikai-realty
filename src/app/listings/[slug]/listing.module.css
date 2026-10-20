@@ -1,10 +1,10 @@
-/* ---------- 單一物件頁 ----------
+/* ---------- 單一物件頁（2026-10-20 新版）----------
    配色變數來自 home.module.css 的 .page（這頁一樣套那個 class）。
-   卡片元素（照片相簿、區域標籤、售價、賣點、按鈕）直接沿用 listings.module.css，
-   這裡只管「一戶一頁」特有的版面：左相簿右資訊、麵包屑、下架框、分享鈕。 */
+   售價、賣點、按鈕的基本樣式沿用 listings.module.css；這裡管「一戶一頁」特有的版面：
+   相簿＋摘要卡、三組物件資料、特色、生活機能、收尾色帶、手機底部黏條、麵包屑、下架框。 */
 
 .wrap {
-  max-width: 1080px;
+  max-width: 1120px;
 }
 
 .crumbs {
@@ -27,33 +27,144 @@
   text-decoration: underline;
 }
 
-/* 左：相簿（略寬） 右：資訊。860px 以下改成上下。 */
 .detail {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 30px;
+}
+
+/* ---------- ① 相簿 ＋ 摘要卡 ---------- */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr);
+  gap: 26px;
   align-items: start;
 }
 
-/* 相簿外面借用清單的 .card 當外框（圓角、邊框、桌機左右箭頭靠 .card:hover 才出現），
-   但這頁不要卡片那個「滑鼠移上去浮起來」的效果 —— 這裡它不是清單裡的一張卡。
-   .wrap .mediaCard:hover 三層選擇器，蓋得過 listings.module.css 的 .card:hover。 */
-.wrap .mediaCard:hover {
-  transform: none;
-  border-color: var(--line-warm);
-}
-
-.info {
+/* 桌機黏在畫面上：客戶捲到下面看坪數、特色時，售價與「預約」一直在右邊 */
+.summary {
+  position: sticky;
+  top: 92px;
   display: flex;
   flex-direction: column;
   min-width: 0;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px 24px 22px;
+}
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tag {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 11px;
+  border-radius: 999px;
+}
+
+.tagArea {
+  color: var(--primary);
+  background: var(--accent-soft);
+}
+
+.tagSoft {
+  color: var(--muted);
+  background: #eef4f7;
 }
 
 .title {
-  font-size: clamp(22px, 3vw, 30px);
+  font-size: clamp(21px, 2.6vw, 27px);
   font-weight: 900;
   line-height: 1.35;
+  margin: 0 0 8px;
+  color: var(--ink);
+}
+
+.road {
   margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.priceBox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--soft);
+}
+
+.priceLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* 數字用紅色：2026-09-07 系統擁有者指定，沿用 home.module.css 刻意保留的太平洋紅 */
+.priceNum {
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1.1;
+  color: var(--pacific-red);
+}
+
+.priceWas {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.priceDrop {
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--pacific-red);
+  padding: 2px 9px;
+  border-radius: 999px;
+}
+
+/* 四格一眼看：建坪／格局／樓層／屋齡 */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.stats li {
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f6fafb;
+}
+
+.stats small {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.stats b {
+  font-size: 15.5px;
+  font-weight: 900;
   color: var(--ink);
 }
 
@@ -63,21 +174,22 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 6px;
 }
 
 .actions > a {
   margin: 0;
 }
 
-/* ❤️ 收藏鈕那一行（2026-10-02）：賣點清單跟按鈕之間 */
+/* ❤️ 收藏 ＋ 分享 同一列 */
 .favRow {
-  margin: -4px 0 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-top: 16px;
 }
 
 .shareBtn {
-  align-self: flex-start;
-  margin-top: 16px;
   border: 1.5px dashed var(--line-warm);
   background: #fff;
   color: var(--muted);
@@ -94,7 +206,222 @@
   color: var(--primary);
 }
 
-/* 已下架／找不到：一個置中的框，兩顆按鈕 */
+/* ---------- ②③④⑤ 白色區塊 ---------- */
+
+.block {
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  padding: 26px 28px;
+}
+
+/* 標題左邊一道主色→蜜桃的小直條，這一頁的識別 */
+.blockTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 18px;
+  font-size: 19px;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.blockTitle::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 6px;
+  height: 22px;
+  border-radius: 3px;
+  background: linear-gradient(var(--primary), var(--accent));
+}
+
+/* 推薦理由的字比卡片上大一號，這裡是主角不是摘要 */
+.pointsBig li {
+  font-size: 15.5px;
+  color: var(--ink);
+}
+
+.factGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px 28px;
+}
+
+.factGroup h3 {
+  margin: 0 0 8px;
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--primary);
+}
+
+.factList {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.factList > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 14px;
+}
+
+.factList dt {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.factList dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.source {
+  margin: 18px 0 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.features li {
+  position: relative;
+  padding-left: 22px;
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.features li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: 900;
+  color: var(--primary);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: var(--blue);
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.chip small {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.linkRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* ---------- ⑥ 收尾色帶 ---------- */
+
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+  box-sizing: border-box;
+  padding: 28px 30px;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+}
+
+.cta h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.cta p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  opacity: 0.92;
+}
+
+.ctaBtns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btnWhite,
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 12px 22px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.btnWhite {
+  background: #fff;
+  color: var(--primary-dark);
+}
+
+.btnWhite:hover {
+  background: var(--accent-soft);
+}
+
+.btnGhost {
+  border: 1.5px solid rgba(255, 255, 255, 0.75);
+  color: #fff;
+}
+
+.btnGhost:hover {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ---------- 手機底部黏條（桌機不出現）---------- */
+
+.stickyBar {
+  display: none;
+}
+
+/* ---------- 已下架／找不到：一個置中的框，兩顆按鈕 ---------- */
+
 .soldBox {
   text-align: center;
   background: var(--soft);
@@ -146,13 +473,108 @@
   background: var(--soft);
 }
 
+@media (max-width: 1000px) {
+  .factGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 860px) {
-  .detail {
+  .hero {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 18px;
+  }
+
+  .summary {
+    position: static;
+  }
+
+  .block {
+    padding: 22px 20px;
+  }
+
+  .factGrid,
+  .features {
+    grid-template-columns: 1fr;
   }
 
   .soldActions a {
     width: 100%;
+  }
+
+  /* 底部黏條露出來；頁尾留一段高度不要被它蓋住 */
+  .wrap {
+    padding-bottom: 72px;
+  }
+
+  .stickyBar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-sizing: border-box;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.96);
+    border-top: 1px solid var(--line-warm);
+    box-shadow: 0 -8px 24px rgba(34, 50, 63, 0.12);
+    backdrop-filter: blur(6px);
+  }
+
+  .stickyPrice {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+  }
+
+  .stickyPrice small {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+  }
+
+  .stickyPrice b {
+    font-size: 20px;
+    font-weight: 900;
+    color: var(--pacific-red);
+  }
+
+  .stickyTitle {
+    font-size: 14px !important;
+    color: var(--ink) !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .stickyLine,
+  .stickyBook {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    border-radius: 999px;
+    font-weight: 800;
+    text-decoration: none;
+  }
+
+  .stickyLine {
+    padding: 11px 14px;
+    border: 1.5px solid var(--line-green);
+    color: var(--line-green);
+    font-size: 14px;
+  }
+
+  .stickyBook {
+    padding: 12px 18px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 14.5px;
   }
 }

@@ -14,6 +14,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { resolvePhotoSrc } from "@/lib/photo-src";
 import styles from "./listings.module.css";
 
@@ -26,9 +27,14 @@ type Props = {
    * 其餘一律 lazy —— 九個物件各三張就是 27 張圖，全部搶著載會把首屏拖垮。
    */
   eager?: boolean;
+  /**
+   * 給了就把每一張照片包成連結（2026-10-20 系統擁有者：卡片點照片直接進單戶頁看所有資訊）。
+   * 左右滑、箭頭、圓點照常可用 —— 滑動不會觸發點擊，點了才會跳頁。
+   */
+  href?: string;
 };
 
-export default function PhotoCarousel({ photos, alt, eager = false }: Props) {
+export default function PhotoCarousel({ photos, alt, eager = false, href }: Props) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
   const many = photos.length > 1;
@@ -70,22 +76,33 @@ export default function PhotoCarousel({ photos, alt, eager = false }: Props) {
   return (
     <div className={styles.gallery}>
       <div className={styles.track} ref={trackRef}>
-        {photos.map((file, i) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={file}
-            className={styles.photo}
-            /* 可能是 Blob 網址、repo 舊檔路徑、或更舊的裸檔名，統一解析 */
-            src={resolvePhotoSrc(file)}
-            alt={i === 0 ? alt : `${alt}（照片 ${i + 1}）`}
-            width={640}
-            height={480}
-            /* 只有首屏卡片的封面圖立刻載，其他都等捲到才載 */
-            loading={eager && i === 0 ? "eager" : "lazy"}
-            /* 桌機拖曳圖片會觸發原生拖放，跟左右捲動打架 */
-            draggable={false}
-          />
-        ))}
+        {photos.map((file, i) => {
+          const img = (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              className={styles.photo}
+              /* 可能是 Blob 網址、repo 舊檔路徑、或更舊的裸檔名，統一解析 */
+              src={resolvePhotoSrc(file)}
+              alt={i === 0 ? alt : `${alt}（照片 ${i + 1}）`}
+              width={640}
+              height={480}
+              /* 只有首屏卡片的封面圖立刻載，其他都等捲到才載 */
+              loading={eager && i === 0 ? "eager" : "lazy"}
+              /* 桌機拖曳圖片會觸發原生拖放，跟左右捲動打架 */
+              draggable={false}
+            />
+          );
+          // 一格一個 .slide 當 scroll-snap 的單位；有 href 就是連結，沒有就是普通的框
+          return href ? (
+            <Link key={file} href={href} className={styles.slide} draggable={false}>
+              {img}
+            </Link>
+          ) : (
+            <div key={file} className={styles.slide}>
+              {img}
+            </div>
+          );
+        })}
       </div>
 
       {many && (

@@ -20,6 +20,8 @@ import { notFound } from "next/navigation";
 import { OWNER, SITE_URL } from "@/config/owner";
 import { getListingBySlug } from "@/lib/listings";
 import { formatWan } from "@/lib/houseol-price";
+import { loadListingDetail } from "@/lib/listing-detail";
+import { keyStats } from "@/lib/listing-facts";
 import ListingView, { absolutePhoto } from "./ListingView";
 
 /** 跟 /listings 一樣：後台存檔會主動 revalidate，這裡只是保險 */
@@ -58,8 +60,12 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 
   const priceText = item.price != null ? `售價 ${formatWan(item.price)}` : "";
   const title = `${[item.area, item.title, priceText].filter(Boolean).join("｜")}｜${OWNER.name}`;
-  const description = `${item.points.slice(0, 3).join("、")}。台中海線房仲${OWNER.name}親自帶看，線上預約看屋。`;
-  const cover = item.photos[0] ? absolutePhoto(item.photos[0]) : `${SITE_URL}${OWNER.photoUrl}`;
+  // 2026-10-20 起有官網資料：描述先放坪數／格局／樓層／屋齡，再接賣點（跟頁面本體同一次抓，React cache 去重）
+  const detail = await loadListingDetail(item.link?.href);
+  const specs = detail ? keyStats(detail.detail, detail.share).map((s) => `${s.label} ${s.value}`) : [];
+  const description = `${[...specs, ...item.points.slice(0, specs.length > 0 ? 2 : 3)].join("、")}。台中海線房仲${OWNER.name}親自帶看，線上預約看屋。`;
+  const photos = item.photos.length > 0 ? item.photos : (detail?.photos ?? []);
+  const cover = photos[0] ? absolutePhoto(photos[0]) : `${SITE_URL}${OWNER.photoUrl}`;
   const alt = `${item.area}－${item.title}`;
 
   return {
@@ -85,5 +91,8 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
   const { slug } = await params;
   const found = await getListingBySlug(slug);
   if (!found.listing) notFound();
-  return <ListingView item={found.listing} status={found.status === "sold" ? "sold" : "active"} />;
+  const sold = found.status === "sold";
+  // 已下架的那頁不放物件內容，就不用去打官網
+  const detail = sold ? null : await loadListingDetail(found.listing.link?.href);
+  return <ListingView item={found.listing} status={sold ? "sold" : "active"} detail={detail} />;
 }

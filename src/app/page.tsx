@@ -553,10 +553,12 @@ export default async function HomePage() {
                     {/* ❤️ 愛心疊在照片左上角（右上角是相簿的「1/3」）。
                         不能放進下面那個 <Link> 裡 —— 按鈕包在連結裡是無效的 HTML。 */}
                     <div className={fav.photoWrap}>
+                      {/* 2026-10-20 起點照片直接進那一戶的單戶頁（所有資訊都在那裡） */}
                       <PhotoCarousel
                         photos={item.photos}
                         alt={`${item.area}－${item.title}`}
                         eager={i === 0}
+                        href={"/listings/" + item.slug}
                       />
                       <FavButton
                         variant="icon"
@@ -567,8 +569,7 @@ export default async function HomePage() {
                         sub={item.area}
                       />
                     </div>
-                    <Link className={lst.body} href="/listings">
-
+                    <Link className={lst.body} href={"/listings/" + item.slug}>
                       <span className={lst.area}>{item.area}</span>
                       <h3 className={lst.title}>{item.title}</h3>
                       {/* 🏷️ 售價，跟 /listings 那張卡同一來源（愛屋型錄現抓）；null 就不渲染 */}
@@ -582,7 +583,7 @@ export default async function HomePage() {
                           <li key={p}>{p}</li>
                         ))}
                       </ul>
-                      <span className={lst.action}>物件資訊 →</span>
+                      <span className={lst.action}>看這戶的完整資訊 →</span>
                     </Link>
                   </article>
                 ))}

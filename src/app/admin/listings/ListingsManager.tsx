@@ -734,11 +734,12 @@ function ListingForm({
             style={inputStyle}
             value={form.linkHref}
             onChange={(e) => set("linkHref", e.target.value)}
-            placeholder="https://www.591.com.tw/..."
+            placeholder="https://prim.pacific.com.tw/s/XXXXXXXX"
           />
           <div className={styles.hint} style={{ color: CIS.textMute }}>
-            物件詳情頁。<b>貼愛屋型錄（es.houseol.com.tw）的話，前台卡片跟這裡的列表會自動顯示售價</b>
-            （從型錄現抓、最慢一小時更新）；連 591 就不會有售價。**留空這顆按鈕就不會出現**，不會在卡片上留空位。
+            <b>這條是資料來源，客戶看不到它。</b>貼太平洋的分享連結（prim.pacific.com.tw/s/…）或官網物件頁，
+            前台卡片會自動顯示售價，單戶頁會從官網抓坪數、格局、樓層、屋齡、管理費、特色等完整資料（最慢五分鐘更新）。
+            2026-10-20 起前台不再有「物件資訊 ↗」外連按鈕，客戶點照片就在站內看完整資訊；留空的話單戶頁只會有標題、賣點與照片。
           </div>
         </div>
 

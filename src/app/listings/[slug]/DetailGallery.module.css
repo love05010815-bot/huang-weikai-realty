@@ -1,0 +1,265 @@
+/* ---------- 單戶物件頁的相簿 ----------
+   配色變數來自 home.module.css 的 .page（這頁一樣套那個 class）。
+   大圖固定 3:2（跟卡片同一個比例，後台的照片都是照這個裁的）；縮圖一列橫向捲。 */
+
+.gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.stage {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--line-warm);
+  background: #0f1d26;
+}
+
+.stageBtn {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.stageImg {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  height: auto;
+  object-fit: cover;
+}
+
+/* 右上角「3 / 8」。沒有這個沒人知道還有別張 */
+.counter {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(1, 39, 56, 0.78);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 4px 11px;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+/* 左下角的小提示：大圖是可以點的 */
+.zoomHint {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  background: rgba(1, 39, 56, 0.6);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  padding: 0 0 4px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--primary);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(1, 39, 56, 0.25);
+  transition: background 0.15s ease;
+}
+
+.arrow:hover {
+  background: #fff;
+}
+
+.prev {
+  left: 12px;
+}
+
+.next {
+  right: 12px;
+}
+
+.thumbs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.thumbs::-webkit-scrollbar {
+  display: none;
+}
+
+.thumb {
+  flex: 0 0 auto;
+  width: 92px;
+  margin: 0;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  overflow: hidden;
+  background: none;
+  cursor: pointer;
+  opacity: 0.72;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+
+.thumb img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  height: auto;
+  object-fit: cover;
+}
+
+.thumb:hover,
+.thumbOn {
+  opacity: 1;
+}
+
+.thumbOn {
+  border-color: var(--primary);
+}
+
+.thumb:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* 佔位塊。刻意做成看得出來是佔位的樣子 */
+.placeholder {
+  aspect-ratio: 3 / 2;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--soft) 0%, var(--accent-soft) 100%);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.placeholder span:first-child {
+  font-size: 30px;
+  opacity: 0.5;
+}
+
+/* ---------- 燈箱 ---------- */
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 16px;
+  background: rgba(5, 18, 26, 0.94);
+  cursor: zoom-out;
+}
+
+.lightImg {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  cursor: default;
+}
+
+.close,
+.lightArrow {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  margin: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.close:hover,
+.lightArrow:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.close {
+  top: 14px;
+  right: 14px;
+  width: 44px;
+  height: 44px;
+  padding: 0 0 4px;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.lightArrow {
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  padding: 0 0 5px;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.lightPrev {
+  left: 14px;
+}
+
+.lightNext {
+  right: 14px;
+}
+
+.lightCounter {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 20px;
+  text-align: center;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .thumb {
+    width: 72px;
+  }
+
+  .lightbox {
+    padding: 56px 8px;
+  }
+}
