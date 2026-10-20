@@ -338,11 +338,12 @@ export default function ReportBody({ project, data, listings, stamp, preview = f
               官方 LINE @a8865
             </a>
           </p>
-          <p className={s.agentLegal}>
-            {OWNER.brokerage}　不動產經紀人：{OWNER.brokerName}　{OWNER.brokerLicense}
+          <p className={s.agentLegal}>{OWNER.brokerage}</p>
+          <p className={s.agentLegal2}>
+            不動產營業員 {OWNER.name}　{OWNER.salespersonLicense}
           </p>
           <p className={s.agentLegal2}>
-            不動產營業員 {OWNER.name} {OWNER.salespersonLicense}
+            不動產經紀人 {OWNER.brokerName}　{OWNER.brokerLicense}
           </p>
         </div>
       </footer>

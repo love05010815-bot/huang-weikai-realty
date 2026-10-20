@@ -20,11 +20,14 @@ export default function SiteFooter() {
       <p>電話 {OWNER.phone}　LINE @a8865</p>
       <p>地址 {OWNER.addressStreet}</p>
       <p>&copy; {new Date().getFullYear()} Huang Wei-Kai Realty. All rights reserved.</p>
-      <p className={styles.legal}>
-        {OWNER.brokerage}　不動產經紀人：{OWNER.brokerName}　{OWNER.brokerLicense}
+      {/* 2026-10-20 系統擁有者指定排法：公司單獨一行，業務員（他本人）在上、經紀人（加盟店法人代表）在下。
+          三行是同一塊揭露，公司那行吃 .legal 的上緣留白，底下兩行各自掛 .legal2 讓彼此貼得緊。 */}
+      <p className={styles.legal}>{OWNER.brokerage}</p>
+      <p className={styles.legal2}>
+        不動產營業員 {OWNER.name}　{OWNER.salespersonLicense}
       </p>
       <p className={styles.legal2}>
-        不動產營業員 {OWNER.name} {OWNER.salespersonLicense}
+        不動產經紀人 {OWNER.brokerName}　{OWNER.brokerLicense}
       </p>
     </footer>
   );

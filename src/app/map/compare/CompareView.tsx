@@ -352,11 +352,12 @@ export default function CompareView({
           <Link href={s.backHref}>{s.from}</Link>
           {"　"}
           <Link href="/card/booking">線上預約</Link>
-          <p className={styles.footerLegal}>
-            {OWNER.brokerage}　不動產經紀人：{OWNER.brokerName}　{OWNER.brokerLicense}
+          <p className={styles.footerLegal}>{OWNER.brokerage}</p>
+          <p className={styles.footerLegal2}>
+            不動產營業員 {OWNER.name}　{OWNER.salespersonLicense}
           </p>
           <p className={styles.footerLegal2}>
-            不動產營業員 {OWNER.name} {OWNER.salespersonLicense}
+            不動產經紀人 {OWNER.brokerName}　{OWNER.brokerLicense}
           </p>
         </div>
       </footer>

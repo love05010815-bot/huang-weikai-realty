@@ -804,12 +804,13 @@ export default async function HomePage() {
         </div>
         {/* 2026-09-08 系統擁有者指定放在頁面最底部：經紀業名稱與經紀人證號。
             三個值都在 owner.ts，換經紀人只改那一個檔；/map 頁尾也放同一行。
-            2026-10-20 再加一行他本人的營業員登字號（owner.ts 的 salespersonLicense）。 */}
-        <p className={styles.footerLegal}>
-          {OWNER.brokerage}　不動產經紀人：{OWNER.brokerName}　{OWNER.brokerLicense}
+            2026-10-20 排法改成三行：公司單獨一行，業務員（他本人）在上、經紀人（加盟店法人代表）在下。 */}
+        <p className={styles.footerLegal}>{OWNER.brokerage}</p>
+        <p className={styles.footerLegal2}>
+          不動產營業員 {OWNER.name}　{OWNER.salespersonLicense}
         </p>
         <p className={styles.footerLegal2}>
-          不動產營業員 {OWNER.name} {OWNER.salespersonLicense}
+          不動產經紀人 {OWNER.brokerName}　{OWNER.brokerLicense}
         </p>
       </footer>
 
