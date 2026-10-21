@@ -90,3 +90,41 @@ export function calcLoan(input: LoanInput): LoanResult {
     notes,
   };
 }
+
+/* ══════════════════ 「一眼看」用的預設條件 ══════════════════ */
+
+const YUAN_PER_WAN = 10_000;
+
+/**
+ * 物件頁摘要卡的「房貸月付金」格（2026-10-21 他要的「做到物件表裡面」）跟 /tax 房貸月付金的起始值共用這一份，
+ * 客人在物件頁看到的數字，點「換條件算」進 /tax 之後起始值會一模一樣，不會兩邊對不上。
+ * 8 成是海線一般住宅銀行常見的核貸；2.2%、30 年是 2026 年的常見條件，要改就只改這裡。
+ */
+export const QUICK_LOAN = { ratio: 8, annualRate: 2.2, years: 30 } as const;
+
+export type QuickLoan = {
+  /** 貸款金額（萬） */
+  loanWan: number;
+  /** 自備款（萬），售價減貸款 */
+  downWan: number;
+  /** 每月本息（元，四捨五入） */
+  monthly: number;
+};
+
+/** 售價（萬）→ 用 QUICK_LOAN 的條件、無寬限期算出來的月付金；售價不合理（0、負數、超過 100 萬萬）回 null，畫面就不畫那一格 */
+export function quickLoanFromPrice(priceWan: number): QuickLoan | null {
+  if (!Number.isFinite(priceWan) || priceWan <= 0 || priceWan > 1_000_000) return null;
+  const loanWan = Math.round((priceWan * QUICK_LOAN.ratio) / 10);
+  if (loanWan <= 0) return null;
+  const { monthlyPayment } = calcLoan({
+    amount: loanWan * YUAN_PER_WAN,
+    annualRate: QUICK_LOAN.annualRate,
+    years: QUICK_LOAN.years,
+    graceYears: 0,
+  });
+  return {
+    loanWan,
+    downWan: Math.round((priceWan - loanWan) * 10) / 10,
+    monthly: Math.round(monthlyPayment),
+  };
+}

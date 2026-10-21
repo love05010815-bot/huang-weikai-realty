@@ -25,6 +25,7 @@ import Link from "next/link";
 import { OWNER, SITE_URL, SOCIAL } from "@/config/owner";
 import type { Listing } from "@/config/listings";
 import { formatWan } from "@/lib/houseol-price";
+import { QUICK_LOAN, quickLoanFromPrice } from "@/lib/loan";
 import { resolvePhotoSrc } from "@/lib/photo-src";
 import type { ListingDetail } from "@/lib/listing-detail";
 import { detailFeatures, factGroups, keyStats, lifeChips, mapsUrl, priceDrop } from "@/lib/listing-facts";
@@ -95,6 +96,8 @@ export default function ListingView({ item, status, detail, mode }: Props) {
   const photos = item.photos.length > 0 ? item.photos : (detail?.photos ?? []);
   // 售價跟卡片同一條規則（lib/listings.ts 補的）；卡片抓不到才退回官網欄位
   const price = item.price ?? d?.price ?? null;
+  /** 🏦 房貸月付金（2026-10-21 他要的「做到物件表裡面」）：售價 × 預設成數，條件跟 /tax 的起始值同一份（lib/loan.ts 的 QUICK_LOAN） */
+  const loan = price != null ? quickLoanFromPrice(price) : null;
   // 「已降價」只在官網現價跟卡片顯示的售價一致時才畫 —— 兩邊對不上就不要畫出矛盾的數字
   const dropRaw = d ? priceDrop(d) : null;
   const drop = dropRaw && price !== null && dropRaw.to === price ? dropRaw : null;
@@ -249,7 +252,7 @@ export default function ListingView({ item, status, detail, mode }: Props) {
                       </div>
                     ) : null}
 
-                    {stats.length > 0 ? (
+                    {stats.length > 0 || loan ? (
                       <ul className={one.stats}>
                         {stats.map((s) => (
                           <li key={s.label}>
@@ -257,6 +260,33 @@ export default function ListingView({ item, status, detail, mode }: Props) {
                             <b>{s.value}</b>
                           </li>
                         ))}
+                        {/* 🏦 房貸月付金：先用常見條件算一個數字給客人看；「換條件算」帶著售價進 /tax 的房貸月付金細調成數、利率、年限 */}
+                        {loan && price != null ? (
+                          <li className={one.loanCell}>
+                            <small>
+                              房貸月付金
+                              <span className={one.loanTerms}>
+                                貸 {QUICK_LOAN.ratio} 成・{QUICK_LOAN.years} 年・利率 {QUICK_LOAN.annualRate}%
+                              </span>
+                            </small>
+                            <b>
+                              約 {loan.monthly.toLocaleString("zh-TW")} 元<span className={one.loanUnit}>／月</span>
+                            </b>
+                            <span className={one.loanFoot}>
+                              <span>
+                                貸款 {loan.loanWan.toLocaleString("zh-TW")} 萬・自備款約 {loan.downWan.toLocaleString("zh-TW")} 萬
+                              </span>
+                              <Link
+                                className={one.loanLink}
+                                href={`/tax?price=${price}&title=${encodeURIComponent(item.title)}#loan`}
+                                data-listing-slug={item.slug}
+                                data-listing-action="loan"
+                              >
+                                換條件算 →
+                              </Link>
+                            </span>
+                          </li>
+                        ) : null}
                       </ul>
                     ) : null}
 

@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { calcLandTax, type Residency, type TaxResult } from "@/lib/land-tax";
-import { calcLoan, type LoanResult } from "@/lib/loan";
+import { calcLoan, QUICK_LOAN, type LoanResult } from "@/lib/loan";
 import RentSubsidyForm from "./RentSubsidyForm";
 import YouthLoanForm from "./YouthLoanForm";
 import styles from "./tax.module.css";
@@ -409,27 +409,27 @@ function TaxResultCard({ result }: { result: TaxResult }) {
 
 /* ══════════════════ 房貸月付金 ══════════════════ */
 
-/** 「算月付金」按鈕能帶進來的貸款成數選項；預設 8 成（海線一般住宅銀行常見的核貸） */
+/** 「算月付金」按鈕能帶進來的貸款成數選項；預設成數、利率、年限在 lib/loan.ts 的 QUICK_LOAN（物件頁的月付金格也用同一份） */
 const LOAN_RATIOS = [7, 7.5, 8, 8.5] as const;
 
 function LoanForm() {
   const [amountWan, setAmountWan] = useState("");
-  const [rate, setRate] = useState("2.2");
-  const [years, setYears] = useState("30");
+  const [rate, setRate] = useState(String(QUICK_LOAN.annualRate));
+  const [years, setYears] = useState(String(QUICK_LOAN.years));
   const [graceYears, setGraceYears] = useState("0");
   /**
    * 從精選好案／物件快搜的「算月付金」按鈕進來的那一戶（網址 ?price=售價萬&title=案名；2026-10-20 他要的）。
    * 掛載後才讀網址（跟出售日一樣，避免 hydration 對不上）；有的話貸款金額先填「售價 × 成數」，月付金就直接出來。
    */
   const [from, setFrom] = useState<{ price: number; title: string } | null>(null);
-  const [ratio, setRatio] = useState<number>(8);
+  const [ratio, setRatio] = useState<number>(QUICK_LOAN.ratio);
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     const price = Number(p.get("price"));
     if (!Number.isFinite(price) || price <= 0 || price > 1_000_000) return;
     const title = (p.get("title") ?? "").trim().slice(0, 60);
     setFrom({ price, title });
-    setAmountWan(String(Math.round((price * 8) / 10)));
+    setAmountWan(String(Math.round((price * QUICK_LOAN.ratio) / 10)));
   }, []);
   function pickRatio(r: number) {
     setRatio(r);

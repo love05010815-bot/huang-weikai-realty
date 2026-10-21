@@ -175,6 +175,56 @@
   color: var(--ink);
 }
 
+/* 🏦 房貸月付金（2026-10-21 他要的「做到物件表裡面」）：四格下面再一格、橫跨兩欄，暖底色跟上面四格區隔。
+   數字跟售價一樣用太平洋紅；條件寫在標籤旁邊，貸款／自備款與「換條件算」在底下一列。 */
+.stats .loanCell {
+  grid-column: 1 / -1;
+  background: #fff7ef;
+  border-color: #f1dcc4;
+}
+
+.stats .loanCell b {
+  font-size: 19px;
+  color: var(--pacific-red);
+}
+
+.loanTerms {
+  margin-left: 6px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.loanUnit {
+  margin-left: 2px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.loanFoot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-top: 5px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.loanLink {
+  /* 手機版卡片窄、換行時這顆自己一行，margin-left:auto 讓它一樣靠右 */
+  margin-left: auto;
+  font-weight: 800;
+  color: var(--primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.loanLink:hover {
+  text-decoration: underline;
+}
+
 /* 按鈕一顆一排。清單卡片的 .actionLink／.actionBtn 自帶 margin-top:auto 把自己推到卡片底，
    這頁不需要，用 .actions > a 把 margin 歸零（0,1,1 贏過 0,1,0）。 */
 .actions {
