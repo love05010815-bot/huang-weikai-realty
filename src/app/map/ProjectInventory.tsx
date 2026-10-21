@@ -32,8 +32,9 @@ export default function ProjectInventory({ projectName, items, divider = true, c
   return (
     <section className={divider ? styles.wrap : styles.wrapFlat} aria-label={`${projectName} 的在售物件`}>
       <header className={styles.head}>
+        {/* 小標只寫「目前在售」：面板標題已經是建案名，2026-10-21 他圈掉重複的那一個 */}
         <h4 className={styles.title}>
-          {`${projectName} 目前在售`}
+          目前在售
           <em className={styles.count}>{`${items.length} 間`}</em>
         </h4>
         <p className={styles.note}>資料來自太平洋房屋官網，每 30 分鐘更新，只列出售、不含出租。看中哪一戶都可以直接找我帶看。</p>

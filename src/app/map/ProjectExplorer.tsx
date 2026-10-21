@@ -526,7 +526,7 @@ export default function ProjectExplorer({
                         title={`開 ${selected.name} 的社區銷售報告書`}
                       >
                         {selected.name}
-                        <em className={styles.detailTitleHint}>社區銷售報告書 →</em>
+                        <em className={styles.detailTitleHint}>📄 社區銷售報告書 →</em>
                       </Link>
                     ) : (
                       selected.name
