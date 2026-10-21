@@ -10,6 +10,7 @@
  *
  * variant="icon"（預設）：36px 圓鈕＋分享圖示，位置由呼叫端的 className 決定（.onPhotoRight 在 ShareButton.module.css）。
  * variant="text"：純文字按鈕，樣式全由呼叫端的 className 給，這裡只處理行為。
+ *   給 inlineDone（例如「已複製 ✓」）的話，電腦複製成功時按鈕的字暫時換成它，不另外浮一行 —— 建案地圖面板那種小藥丸用這個。
  */
 import { useState } from "react";
 import styles from "./ShareButton.module.css";
@@ -21,6 +22,7 @@ export default function ShareButton({
   variant = "icon",
   className,
   label = "分享給朋友",
+  inlineDone,
   style,
   ...rest
 }: {
@@ -33,9 +35,12 @@ export default function ShareButton({
   className?: string;
   /** 文字版的字；圖示版只用在 aria-label */
   label?: string;
+  /** 文字版：複製成功時按鈕的字暫時換成這個（例如「已複製 ✓」），不另外浮一行訊息；沒給就浮一行 */
+  inlineDone?: string;
   style?: React.CSSProperties;
 } & Record<`data-${string}`, string | undefined>) {
   const [msg, setMsg] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
 
   async function share() {
     const url = new URL(path, window.location.origin).toString();
@@ -51,6 +56,11 @@ export default function ShareButton({
     }
     try {
       await navigator.clipboard.writeText(`${text}\n${url}`);
+      if (variant === "text" && inlineDone) {
+        setDone(true);
+        window.setTimeout(() => setDone(false), 2200);
+        return;
+      }
       setMsg("連結已複製，貼給朋友就好");
     } catch {
       setMsg(url);
@@ -61,8 +71,8 @@ export default function ShareButton({
   if (variant === "text") {
     return (
       <>
-        <button type="button" className={className} style={style} onClick={share} aria-label={`分享「${title}」給朋友`} {...rest}>
-          {label}
+        <button type="button" className={className} style={style} onClick={share} aria-label={`分享「${title}」給朋友`} aria-live="polite" {...rest}>
+          {done && inlineDone ? inlineDone : label}
         </button>
         {msg && (
           <span role="status" className={styles.textMsg}>

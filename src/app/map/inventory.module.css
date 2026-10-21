@@ -197,6 +197,29 @@
   border-color: var(--primary-dark);
 }
 
+/* 📤 分享（2026-10-21 他要的）：跟「＋ 比較」同一款虛線藥丸；電腦複製成功時字變「已複製 ✓」（ShareButton 的 inlineDone） */
+.share {
+  flex: none;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px dashed var(--line-warm);
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.4;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.share:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
 .foot {
   margin: 12px 0 0;
   font-size: 12px;
