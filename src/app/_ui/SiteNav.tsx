@@ -29,7 +29,7 @@
  */
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { OWNER } from "@/config/owner";
 import { FAVORITES_HREF } from "@/lib/favorites";
 import HeartIcon from "./favorites/HeartIcon";
@@ -92,6 +92,26 @@ const ITEMS: readonly NavItem[] = [
   { label: "預約諮詢", kind: "anchor", hash: "#booking" },
 ];
 
+/**
+ * 「免費小工具」桌機下拉選單裡列的六個工具。2026-10-22 系統擁有者：
+ * 「免費小工具右方做下拉選單，把小工具列出在選單內」。
+ *
+ * ⚠️ **跟首頁 `page.tsx` 的 `TOOLS` 是兩份獨立清單，故意不共用**：那邊每項多了
+ * icon／desc／source，是整塊介紹卡片要用的；這裡只要「名字＋連結」給選單用。
+ * 兩邊都改到才會一致——新增或改工具時，**這裡跟 `page.tsx` 的 `TOOLS` 要一起改**，
+ * 順序也跟著那邊（房地合一稅／房貸月付金／租金補貼／新青安 3.0 都在 /tax 分段，
+ * 後面才是 /school、/area）。實價登錄（/lvr）不在這裡——它是獨立的導覽列項目，
+ * 不是「小工具」的一部分（見 page.tsx 的 TOOLS 同一條備註）。
+ */
+const TOOLS_MENU: readonly { label: string; href: string }[] = [
+  { label: "房地合一稅試算", href: "/tax#land-tax" },
+  { label: "房貸月付金試算", href: "/tax#loan" },
+  { label: "租金補貼試算", href: "/tax#rent" },
+  { label: "新青安 3.0 資格檢測", href: "/tax#youth-loan" },
+  { label: "國中小學區查詢", href: "/school" },
+  { label: "坪數與地籍面積換算", href: "/area" },
+];
+
 type Variant = "home" | "sub";
 
 function NavItemLink({
@@ -121,6 +141,90 @@ function NavItemLink({
     >
       {item.label}
     </a>
+  );
+}
+
+/**
+ * 「免費小工具」桌機那顆的下拉選單。**只有桌機那條在用**——手機漢堡選單裡
+ * 「免費小工具」還是原本的 `NavItemLink`（單純連去 `#tools`），沒有做成手風琴：
+ * 他的原話「右方做下拉選單」講的是桌機那條橫的，手機的漢堡面板本來就是整頁
+ * 捲動，跳去 `#tools` 看完整的六張卡片（含說明文字）反而比選單裡塞六個次連結清楚。
+ *
+ * 開合邏輯比照手機選單既有的模式（Esc 關閉、點外面關閉），多了滑鼠移入移出：
+ * 觸發鈕是 `<button>` 不是連結 —— 它本來就不導去任何地方，點它只是開合選單，
+ * 底部另外有一個「查看完整說明」才是真的連結。
+ */
+function ToolsDropdown({ variant }: { variant: Variant }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLLIElement>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openNow = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    setOpen(true);
+  };
+  // 滑鼠離開時留一點緩衝，不然遊標從按鈕移到選單的路上稍微偏一點就會提早關掉
+  const closeSoon = () => {
+    closeTimer.current = setTimeout(() => setOpen(false), 150);
+  };
+  const close = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    setOpen(false);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    const onPointerDown = (event: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) close();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    document.addEventListener("mousedown", onPointerDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("mousedown", onPointerDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  return (
+    <li ref={rootRef} className={styles.dropdownRoot} onMouseEnter={openNow} onMouseLeave={closeSoon}>
+      <button
+        type="button"
+        className={styles.desktopLink}
+        aria-expanded={open}
+        aria-haspopup="true"
+        aria-controls="tools-dropdown-panel"
+        onClick={() => (open ? close() : openNow())}
+      >
+        免費小工具
+        <span className={styles.dropdownCaret} aria-hidden="true">
+          ▾
+        </span>
+      </button>
+      {open && (
+        <ul id="tools-dropdown-panel" className={styles.dropdownPanel}>
+          {TOOLS_MENU.map((tool) => (
+            <li key={tool.label}>
+              <Link href={tool.href} className={styles.dropdownItem} onClick={close}>
+                {tool.label}
+              </Link>
+            </li>
+          ))}
+          <li>
+            <a
+              href={variant === "home" ? "#tools" : "/#tools"}
+              className={styles.dropdownSeeAll}
+              onClick={close}
+            >
+              查看完整說明 →
+            </a>
+          </li>
+        </ul>
+      )}
+    </li>
   );
 }
 
@@ -189,11 +293,17 @@ export default function SiteNav({ variant }: { variant: Variant }) {
           改完有照 SiteNav.module.css 檔頭的規矩在 1045px 重掃過。 */}
       <nav className={styles.desktopNav} aria-label="主選單">
         <ul className={styles.desktopList}>
-          {ITEMS.map((item) => (
-            <li key={item.label}>
-              <NavItemLink item={item} variant={variant} className={styles.desktopLink} />
-            </li>
-          ))}
+          {ITEMS.map((item) =>
+            // 「免費小工具」桌機這條換成下拉選單（見 ToolsDropdown），其餘八項不變。
+            // 手機漢堡選單那份 ITEMS.map（下面）沒有這個特判，還是原本的 NavItemLink。
+            item.label === "免費小工具" ? (
+              <ToolsDropdown key={item.label} variant={variant} />
+            ) : (
+              <li key={item.label}>
+                <NavItemLink item={item} variant={variant} className={styles.desktopLink} />
+              </li>
+            ),
+          )}
           {/* ❤️ 第九格：只有圖示（有收藏時多一顆數字，最寬「99+」約 49px）。
               已照 SiteNav.module.css 檔頭的規矩重掃斷點：斷點不動、gap 20→14 吃掉它的寬度。 */}
           <li>

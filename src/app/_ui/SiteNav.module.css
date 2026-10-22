@@ -139,6 +139,99 @@
   transform: scaleX(1);
 }
 
+/* ---------- 「免費小工具」下拉選單（2026-10-22；見 ToolsDropdown） ---------- */
+
+/* 觸發鈕是 <button> 不是 <a>，重置瀏覽器預設的邊框／背景／字型，讓它長得跟其他
+   八個 .desktopLink 一模一樣——顏色、hover 變色、下面那條細線動畫都直接沿用
+   `.desktopLink` 跟 `.desktopLink:hover(::after)`，這裡只補 <button> 特有的重置。 */
+button.desktopLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.dropdownCaret {
+  font-size: 11px;
+  transition: transform 0.15s ease;
+}
+
+/* 選單開著的時候（aria-expanded="true"），觸發鈕要長得跟「滑鼠正停在上面」一樣
+   （變色＋細線），不然遊標移進下面的選單本體時，鈕本身的 :hover 會解除、細線
+   跟著消失，看起來選單是自己憑空浮出來的。箭頭順便轉向，呼應「已展開」。 */
+.desktopLink[aria-expanded="true"] {
+  color: var(--primary, #2fa894);
+}
+
+.desktopLink[aria-expanded="true"]::after {
+  transform: scaleX(1);
+}
+
+.desktopLink[aria-expanded="true"] .dropdownCaret {
+  transform: rotate(180deg);
+}
+
+.dropdownRoot {
+  position: relative;
+}
+
+.dropdownPanel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  /* 14px 落在 .navWrap 的下邊距裡、再加一點呼吸空間，跟細線（bottom:-9px）
+     不衝突，選單本體不會貼著細線。 */
+  margin-top: 18px;
+  min-width: 220px;
+  list-style: none;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 8px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid var(--line, #dce4e9);
+  box-shadow: 0 14px 30px rgba(18, 42, 56, 0.16);
+  /* 蓋過底下的頁面內容（header 本身是 100），不用搶 float 社群直排的 90 */
+  z-index: 10;
+}
+
+.dropdownItem {
+  display: block;
+  padding: 9px 12px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink, #22323f);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.dropdownItem:hover,
+.dropdownItem:focus-visible {
+  background: var(--accent-soft, #fde7d6);
+  color: var(--primary, #2fa894);
+}
+
+.dropdownSeeAll {
+  display: block;
+  margin-top: 4px;
+  padding: 10px 12px 9px;
+  border-top: 1px solid var(--line, #dce4e9);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary, #2fa894);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.dropdownSeeAll:hover {
+  color: var(--primary-dark, #227f71);
+}
+
 /* ❤️ 我的最愛（2026-10-02）—— 桌機那條的第九格，只放愛心圖示＋收藏數，不放文字。
    文字版「我的最愛」四個字要 78px，八項之後 1045px 那條線只剩 16px 餘裕，放不下；
    圖示 20px＋數字最寬 26px 約 46px，所以照檔頭的規矩重掃過斷點（結果記在檔頭）。
@@ -275,7 +368,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .bars span,
-  .desktopLink::after {
+  .desktopLink::after,
+  .dropdownCaret {
     transition: none;
   }
 }
