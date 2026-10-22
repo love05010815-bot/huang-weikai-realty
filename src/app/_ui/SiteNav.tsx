@@ -59,7 +59,9 @@ const ITEMS: readonly NavItem[] = [
   //    同日稍早首頁的「關於我」區塊也已拿掉（介紹併進 hero）。
   // 2026-10-22 系統擁有者：「服務項目連結移除改為首頁連結」——不再跳到 #services 錨點，
   //    改成單純連回首頁（在子頁點是「回首頁」，在首頁點本來就等於沒動）。
-  { label: "服務項目", kind: "route", href: "/" },
+  // 2026-10-22 同日再拍板：名稱也跟著改成「首頁」，跟它現在連去的地方對上
+  //    （首頁上那段真正的服務項目清單是 page.tsx 的 <h2>服務項目</h2> 區塊，沒有改名、不受影響）。
+  { label: "首頁", kind: "route", href: "/" },
   // 2026-10-22 系統擁有者：「精選好案的連結改這裡 https://huang-weikai-realty.vercel.app/listings」——
   //    不再跳首頁 #listings 錨點，改連獨立總覽頁 /listings（站內相對路徑，不是寫死完整網域）。
   { label: "精選好案", kind: "route", href: "/listings" },
