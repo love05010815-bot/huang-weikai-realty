@@ -237,14 +237,16 @@ export default async function LvrPage({ searchParams }: { searchParams: Promise<
             </Link>
           </div>
         </div>
+        {/* 2026-10-22 系統擁有者：社群藥丸搬到 logo 下方、固定不隨頁面捲動消失——
+            header 本身就是 position:sticky，當第二排會一起固定，見 home.module.css 的說明。 */}
+        <div className={styles.headerSocial}>
+          <SocialLinks variant="bar" align="center" className={styles.headerSocialBar} />
+        </div>
       </header>
 
-      {/* 一定要放在 <header> 外面，理由見 SiteNav.tsx */}
-      <SocialLinks variant="float" />
       <main>
         <section className={styles.section}>
           <div className={`${styles.container} ${styles.center}`}>
-            <SocialLinks variant="bar" align="center" />
             <span className={styles.eyebrow}>TOOLS</span>
             <h1 className={styles.sectionTitle}>梧棲・清水・沙鹿・龍井 最新實價登錄</h1>
             <p className={styles.sectionDesc}>

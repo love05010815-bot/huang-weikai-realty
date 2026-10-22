@@ -206,9 +206,12 @@ export default function SiteNav({ variant }: { variant: Variant }) {
           1280px 實測 brand 173.5＋導覽列 526＋社群組 157＋電話與預約鈕 258＋三個間距 48
           ＝ 1163px，容器只有 1080，溢出 83px —— 而且視窗再寬也沒用，容器是固定的。
           縮 icon、縮導覽列間距、拿掉分隔線全加起來省不到 83。
-          改成桌機右側固定的直排（<SocialLinks variant="float">，各頁自己渲染在 header 外面，
+          當時改成桌機右側固定的直排（`<SocialLinks variant="float">`，各頁自己渲染在 header 外面，
           因為 header 有 backdrop-filter，會把 position:fixed 的子元素關在 header 裡）。
-          **不要再試著把它塞回這一排。** */}
+          **不要再試著把它塞回這一排。**
+          2026-10-22 起 `float` 在子頁已經不用了——社群藥丸改成 header 底下自己一排（見各頁
+          `.headerSocial`），本身就跟著 header 固定，直排變多餘。這裡留著只是解釋「為什麼
+          不塞進這條 `<ul>`」，不是在說現在的做法。 */}
 
       {/* 手機：1044px 以下 */}
       <div className={styles.mobile}>

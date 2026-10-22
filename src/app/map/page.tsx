@@ -267,16 +267,15 @@ export default async function MapPage() {
             預約諮詢
           </Link>
         </div>
+        {/* 2026-10-22 系統擁有者：社群藥丸搬到 logo 下方、固定不隨頁面捲動消失——
+            header 本身就是 position:sticky，當第二排會一起固定，見 Map.module.css 的說明。 */}
+        <div className={styles.headerSocial}>
+          <SocialLinks variant="bar" align="center" className={styles.headerSocialBar} />
+        </div>
       </header>
 
-      {/* 🚫 這頁不放右側固定的社群直排（其他五頁有）。
-          /map 的容器接近滿版：1280px 視窗實測內容到 x=1237，直排要佔 x=1203～1251，
-          會壓到地圖與建案清單的右緣。頂端那顆藥丸所有寬度都顯示，這頁不需要直排接手。 */}
       <section className={styles.hero}>
         <div className={styles.container}>
-          {/* 社群藥丸（所有寬度都顯示）。這頁沒有右側直排（容器接近滿版會被壓到）。
-              放在 hero 最上面，手機一打開就看得到 */}
-          <SocialLinks variant="bar" align="center" />
           <span className={styles.eyebrow}>台中海線・區域研究</span>
           {/* ⚠️ 標題講的是「整個生活圈」，不是重劃區 —— 2026-08-26 起地圖範圍已擴大到
               沙鹿的商圈，2026-08-27 系統擁有者指定把這塊的名稱改過來。

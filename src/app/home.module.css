@@ -263,6 +263,27 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* 2026-10-22 系統擁有者：「除了首頁以外的平台連結，改在 logo 下方，固定住不隨著頁面滾動而隱藏」——
+   子頁的社群藥丸搬進這裡當 header 的第二排。header 本身已經是 position:sticky，兩排是同一個
+   盒子，會一起固定，不用去量 header 高度算 top 位移（那樣每頁高度一不一致都要分別試）。
+   取代原本「藥丸在內容最上面（捲走）＋桌機另有一條右側浮動直排負責捲動時也看得到」那兩套——
+   藥丸現在本身就固定，直排變多餘，兩個同時出現在桌機上也是視覺雜訊，所以 variant="float" 一併拿掉。
+   首頁不在這次範圍內，藥丸仍在 hero banner 裡、不吃這一塊樣式。 */
+.headerSocial {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 20px 12px;
+  display: flex;
+  justify-content: center;
+}
+
+/* 蓋掉 SocialLinks.module.css 的 .barOuter 預設 28px 底距（那是給「內容頂端、下面接標題」用的間距，
+   搬進 header 第二排不需要）。兩個 class 會一起出現在同一個 DOM 節點上，用 !important 確保
+   不管兩份 CSS module 誰先載入都蓋得過去。 */
+.headerSocialBar {
+  margin: 0 !important;
+}
+
 .navWrap {
   max-width: 1080px;
   margin: 0 auto;

@@ -8,23 +8,26 @@
  *
  * ## 三種樣式，各有各的位置
  *
- *   `variant="bar"`   每一頁內容最上面那顆白底藥丸：粗體文案＋五顆 36px icon，
- *                     **所有寬度都顯示**。2026-09-03 第一版在 1220px 以上會收掉讓位給直排，
- *                     結果系統擁有者在桌機上「找不到那句文案」、子頁「不明顯」——
- *                     文案只有這裡有，收掉等於桌機整個沒有。現在不收了。
- *   `variant="float"` 桌機右側固定的直排（position:fixed，1220px 以上一直在），
- *                     負責「往下捲也看得到」。剛打開時會跟藥丸同時在畫面上，是刻意的：
- *                     曾試過「藥丸捲出視窗才浮出來」（IntersectionObserver），但這個 session
- *                     的瀏覽器窗格不產生畫格、IO 永遠不觸發，**驗不到就不上**。
- *                     ⚠️ 要放在 <header> 外面：header 有 backdrop-filter，
- *                     會變成 fixed 子元素的定位基準。原本想塞進 header 那一排，量過塞不下
- *                     （見 SiteNav.tsx）。/map 容器接近滿版會被壓到，那頁不放。
+ *   `variant="bar"`   白底藥丸：粗體文案＋五顆 36px icon，**所有寬度都顯示**。2026-09-03 第一版
+ *                     在 1220px 以上會收掉讓位給直排，結果系統擁有者在桌機上「找不到那句文案」、
+ *                     子頁「不明顯」—— 文案只有這裡有，收掉等於桌機整個沒有。現在不收了。
+ *                     2026-10-22 起**子頁改放 header 第二排**（各頁自己在 `<header>` 裡多一個
+ *                     `.headerSocial` 包著它，傳 `className={styles.headerSocialBar}` 蓋掉預設
+ *                     底距），跟著 header 的 `position:sticky` 一起固定、不隨頁面捲動消失——
+ *                     不用算 header 高度去對 `top` 位移，兩排本來就是同一個盒子。**首頁例外**，
+ *                     藥丸還在 hero banner 右上角、當內容頂端的第一屏元素（見下一條規則）。
+ *   `variant="float"` 桌機右側固定的直排（position:fixed，1220px 以上一直在）。2026-10-22 起
+ *                     **子頁已經沒有任何地方在用**——藥丸本身變成固定的了，直排的「往下捲也看得到」
+ *                     變多餘，兩個同時出現在桌機上還是視覺雜訊，所以把呼叫都拿掉了。這個變體本身
+ *                     沒刪，仍然能用，只是目前沒有頁面在用；要放回來的話 ⚠️ 要放在 <header> 外面：
+ *                     header 有 backdrop-filter，會變成 fixed 子元素的定位基準（見 SiteNav.tsx）。
  *   `variant="tiles"` 底磚版。`tone="dark"`（預設）白磚配深色區塊；`tone="light"` 米色磚
  *                     配淺色底 —— /card 名片頁用這個。
  *
- * ⚠️ **`bar` 一定要放在該頁第一屏內容的最前面。** 首頁 860px 以下 `.heroPhotoWrap` 是
- *    `order: -1`，形象照排在所有文字前面，放按鈕下面手機第一屏根本看不到，
- *    但桌機看起來完全正常 —— 這種「只有手機壞掉」的差別不會有任何錯誤訊息。
+ * ⚠️ **首頁的 `bar`（`page.tsx` 裡那個，沒傳 `className`）一定要放在第一屏內容的最前面。**
+ *    860px 以下 `.heroPhotoWrap` 是 `order: -1`，形象照排在所有文字前面，放按鈕下面手機第一屏
+ *    根本看不到，但桌機看起來完全正常 —— 這種「只有手機壞掉」的差別不會有任何錯誤訊息。
+ *    子頁的 `bar`（傳了 `headerSocialBar`）在 header 裡，不吃這條規則。
  *
  * ## ⚠️ 沒填網址的平台會整顆消失，不是變灰
  *
@@ -76,9 +79,11 @@ type Props = {
   align?: "end" | "center";
   /** tiles 的標題；bar 的標題是長短兩句寫死在上面，傳這個會把兩句都換掉；float 不顯示標題 */
   title?: string;
+  /** bar 專用的額外 class，加在最外層 —— 塞進 header 當第二排時用它蓋掉預設的 28px 底距 */
+  className?: string;
 };
 
-export default function SocialLinks({ variant = "tiles", tone = "dark", align = "end", title }: Props) {
+export default function SocialLinks({ variant = "tiles", tone = "dark", align = "end", title, className }: Props) {
   const live = PLATFORMS.filter((p) => p.href);
   if (live.length === 0) return null;
 
@@ -121,7 +126,11 @@ export default function SocialLinks({ variant = "tiles", tone = "dark", align = 
 
   if (variant === "bar") {
     return (
-      <div className={[styles.barOuter, align === "center" ? styles.barCenter : ""].filter(Boolean).join(" ")}>
+      <div
+        className={[styles.barOuter, align === "center" ? styles.barCenter : "", className]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <div className={styles.bar}>
           {/* 長短兩句都渲染、靠 CSS 切換 —— 這是 server component，拿不到視窗寬度 */}
           <span className={`${styles.barTitle} ${styles.barTitleLong}`}>{title ?? BAR_TITLE_LONG}</span>

@@ -99,16 +99,16 @@ export default async function NewsPage() {
             </Link>
           </div>
         </div>
+        {/* 2026-10-22 系統擁有者：社群藥丸搬到 logo 下方、固定不隨頁面捲動消失——
+            header 本身就是 position:sticky，當第二排會一起固定，見 home.module.css 的說明。 */}
+        <div className={styles.headerSocial}>
+          <SocialLinks variant="bar" align="center" className={styles.headerSocialBar} />
+        </div>
       </header>
-
-      {/* 桌機右側固定的社群直排。⚠️ 一定要在 <header> 外面 ——
-          header 的 backdrop-filter 會把 position:fixed 的子元素關在 header 裡。 */}
-      <SocialLinks variant="float" />
 
       <main>
         <section className={styles.section}>
           <div className={`${styles.container} ${styles.center}`}>
-            <SocialLinks variant="bar" align="center" />
             <span className={styles.eyebrow}>NEWS &amp; KNOW-HOW</span>
             <h1 className={styles.sectionTitle}>房產消息</h1>
             <p className={styles.sectionDesc}>

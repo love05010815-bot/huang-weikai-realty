@@ -89,19 +89,16 @@ export default function TaxPage() {
             </Link>
           </div>
         </div>
+        {/* 2026-10-22 系統擁有者：社群藥丸搬到 logo 下方、固定不隨頁面捲動消失——
+            header 本身就是 position:sticky，當第二排會一起固定，見 home.module.css 的說明。 */}
+        <div className={styles.headerSocial}>
+          <SocialLinks variant="bar" align="center" className={styles.headerSocialBar} />
+        </div>
       </header>
 
-      {/* 桌機右側固定的社群直排（1220px 以上一直在，負責捲動時也看得到）。
-          ⚠️ 一定要放在 <header> 外面 —— header 的 backdrop-filter 會把 position:fixed 的
-             子元素關在 header 裡。原本想塞進 header 那一排，量過塞不下（見 SiteNav.tsx）。 */}
-      <SocialLinks variant="float" />
       <main>
         <section className={styles.section}>
           <div className={`${styles.container} ${styles.center}`}>
-            {/* 社群藥丸（所有寬度都顯示；桌機另有右側固定直排負責捲動時也看得到）。
-                放在第一個 section 最上面，手機一打開就看得到 —— 跟首頁 hero 同一個位置邏輯。
-                這頁標題置中，藥丸跟著置中。 */}
-            <SocialLinks variant="bar" align="center" />
             <span className={styles.eyebrow}>TOOLS</span>
             <h1 className={styles.sectionTitle}>稅費試算</h1>
             <p className={styles.sectionDesc}>
