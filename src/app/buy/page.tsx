@@ -19,6 +19,7 @@ import buy from "./buy.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
 import SiteFooter from "@/app/_ui/SiteFooter";
+import StageStepper, { type Stage } from "@/app/_ui/StageStepper";
 
 const TITLE = `買房流程與費用一次看懂｜台中海線房仲${OWNER.name}｜沙鹿梧棲清水龍井`;
 const DESCRIPTION =
@@ -72,42 +73,47 @@ const COSTS: { item: string; desc: string }[] = [
   { item: "水電瓦斯、房屋稅、地價稅、管理費", desc: "皆分算至交屋當日，由買賣雙方互相找補" },
 ];
 
-type Stage = {
-  name: string;
-  days: string;
-  payment: string;
-  prep: string;
-  note: string;
-};
-
+/**
+ * 簽約到交屋四階段。2026-10-22 他說「改為圖示的呈現，有一步一步漸進式的感覺」——
+ * 原本的四欄表格＋底下白話段落合併成 <StageStepper>（_ui/StageStepper.tsx），
+ * 白話那幾句搬進各階段的 desc；天數、比例、要準備的東西一個字都沒改。
+ * ⚠️ 改這裡的數字，src/config/faq.ts 買方那題要跟著改（那邊是手動抄的）。
+ */
 const STAGES: Stage[] = [
   {
-    name: "① 簽約",
+    icon: "✍️",
+    name: "簽約",
     days: "一天",
-    payment: "10% ＋ 服務費 2%",
+    money: "付 10% ＋ 服務費 2%",
     prep: "身份證、印章",
     note: "同時確定貸款額度",
+    desc: "簽約當天先付總價 10% 加 2% 服務費，同時確定貸款額度大概能貸多少。",
   },
   {
-    name: "② 備證（用印）",
+    icon: "📄",
+    name: "備證（用印）",
     days: "三～五天（簽約當天一起確定備證時間）",
-    payment: "10%（預收代書費一萬元）",
+    money: "付 10%（預收代書費一萬元）",
     prep: "戶口名簿、確定買受人身份（身份證、印章）、確定貸款銀行、扣繳憑單、財力證明",
-    note: "",
+    desc: "接下來三到五天是備證：確定要用哪家銀行貸款，同時再付一筆代書費（一萬元）當作預收款。",
   },
   {
-    name: "③ 完稅",
+    icon: "🧾",
+    name: "完稅",
     days: "備證後約 14～21 天（以稅單核發日期為準）",
-    payment: "10%（繳交契稅）",
+    money: "付 10%（繳交契稅）",
     prep: "押尾款本票一張，交由代書保管",
     note: "準備過戶到買受人名下",
+    desc: "備證完成後，稅單核發需要一到三週，這段時間叫完稅，會再繳一筆總價 10% 當作契稅款，同時準備一張本票交給代書保管，作為交屋前的保障。",
   },
   {
-    name: "④ 交屋",
+    icon: "🔑",
+    name: "交屋",
     days: "完稅後約 10 天",
-    payment: "70%（多為貸款撥款；若不需貸款 7 成，不足尾款以現金補足）",
+    money: "付 70%（多為貸款撥款；若不需貸款 7 成，不足尾款以現金補足）",
     prep: "交付尾款、確認屋況",
     note: "完成交屋手續：結清代書費、保費、補貼房屋稅／地價稅、結清水電瓦斯管理費、確認產權無誤",
+    desc: "完稅之後大約十天可以交屋：剩下的尾款（多半是貸款撥下來的錢）付清、確認屋況沒問題，結清代書費、保險費、水電瓦斯與稅費，就正式交屋、拿到鑰匙。",
   },
 ];
 
@@ -186,50 +192,8 @@ export default function BuyPage() {
             </p>
           </div>
           <div className={styles.container}>
-            <div className={buy.tableWrap}>
-              <table className={buy.table}>
-                <thead>
-                  <tr>
-                    <th>階段</th>
-                    <th>約需天數</th>
-                    <th>付款</th>
-                    <th>要準備</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {STAGES.map((s) => (
-                    <tr key={s.name}>
-                      <td className={buy.itemCell}>{s.name}</td>
-                      <td>{s.days}</td>
-                      <td>{s.payment}</td>
-                      <td>
-                        {s.prep}
-                        {s.note ? <span className={buy.stageNote}>{s.note}</span> : null}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* 表格是給查找用的；這裡用白話再走一次，給第一次買房、不熟流程的人看 */}
-            <div className={buy.narrative}>
-              <p>
-                <strong>簽約當天</strong>先付總價 10% 加 2% 服務費，同時確定貸款額度大概能貸多少。
-              </p>
-              <p>
-                接下來三到五天是<strong>備證</strong>：準備戶口名簿、身份證、印章，確定要用哪家銀行貸款，
-                同時再付一筆代書費（一萬元）當作預收款。
-              </p>
-              <p>
-                備證完成後，稅單核發需要一到三週，這段時間叫<strong>完稅</strong>，會再繳一筆總價
-                10% 當作契稅款，同時準備一張本票交給代書保管，作為交屋前的保障。
-              </p>
-              <p>
-                完稅之後大約十天可以<strong>交屋</strong>：剩下的尾款（多半是貸款撥下來的錢）付清、
-                確認屋況沒問題，結清代書費、保險費、水電瓦斯與稅費，就正式交屋、拿到鑰匙。
-              </p>
-            </div>
+            {/* 2026-10-22 起是一步一步的圖示版（圓圈＋編號＋卡），表格與白話段落都併進去了 */}
+            <StageStepper stages={STAGES} />
           </div>
 
           {/* ── 斡旋方式 ── */}

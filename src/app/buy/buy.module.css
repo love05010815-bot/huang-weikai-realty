@@ -47,33 +47,8 @@
   white-space: nowrap;
 }
 
-.stageNote {
-  display: block;
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-/* 表格是給查找用的，這裡再用白話走一次流程 */
-.narrative {
-  margin: 0 0 20px;
-  padding: 4px 4px 4px 20px;
-  border-left: 3px solid var(--accent);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.narrative p {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.85;
-  font-size: 14.5px;
-}
-
-.narrative strong {
-  color: var(--ink);
-}
+/* 四階段流程的表格與白話段落 2026-10-22 改成 _ui/StageStepper（圖示一步一步版），
+   .stageNote／.narrative 那幾條跟著移除；上面的表格樣式還給費用表與稅率表用。 */
 
 .offerGrid {
   display: grid;

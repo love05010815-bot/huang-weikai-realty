@@ -21,6 +21,7 @@ import buy from "../buy/buy.module.css";
 import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
 import SiteFooter from "@/app/_ui/SiteFooter";
+import StageStepper, { type Stage } from "@/app/_ui/StageStepper";
 
 const TITLE = `賣房流程與費用一次看懂｜台中海線房仲${OWNER.name}｜沙鹿梧棲清水龍井`;
 const DESCRIPTION =
@@ -84,42 +85,45 @@ const TAX_RATES: { holding: string; person: string; company: string }[] = [
   { holding: "持有超過 10 年", person: "15%", company: "20%" },
 ];
 
-type Stage = {
-  name: string;
-  days: string;
-  money: string;
-  prep: string;
-  note: string;
-};
-
+/**
+ * 簽約到交屋四階段。2026-10-22 他說「改為圖示的呈現，有一步一步漸進式的感覺」——
+ * 原本的四欄表格＋底下白話段落合併成 <StageStepper>（_ui/StageStepper.tsx），
+ * 白話那幾句搬進各階段的 desc；天數、比例、要準備的東西一個字都沒改。
+ * ⚠️ 改這裡的數字，src/config/faq.ts 賣方那題要跟著改（那邊是手動抄的）。
+ */
 const STAGES: Stage[] = [
   {
-    name: "① 簽約",
+    icon: "✍️",
+    name: "簽約",
     days: "一天",
     money: "收 10%；服務費 4% 從履保專戶扣除",
     prep: "身份證、印章、房屋稅單、地價稅單、權狀正本",
-    note: "",
+    desc: "簽約當天先收到總價 10%。服務費 4% 是從履保專戶裡扣，不用另外準備現金。",
   },
   {
-    name: "② 備證（用印）",
+    icon: "📄",
+    name: "備證（用印）",
     days: "三～五天（簽約當天一起確定備證時間）",
     money: "收 10%",
     prep: "印鑑證明二份",
-    note: "",
+    desc: "接下來三到五天是備證：主要是去戶政事務所申請兩份印鑑證明。這個階段再收 10%。",
   },
   {
-    name: "③ 完稅",
+    icon: "🧾",
+    name: "完稅",
     days: "備證後約 14～21 天（以稅單核發日期為準）",
     money: "收 10%；繳交土地增值稅",
     prep: "買方押尾款本票一張，交由代書保管",
-    note: "",
+    desc: "備證完成後，稅單核發需要一到三週，這段時間叫完稅：再收 10%，同時繳土地增值稅；買方會押一張尾款本票給代書保管，作為交屋前的保障。",
   },
   {
-    name: "④ 交屋",
+    icon: "🔑",
+    name: "交屋",
     days: "完稅後約 10 天",
     money: "收 70%（多為買方貸款撥款；房子若還有貸款，由買方的貸款銀行直接替您清償餘額）",
     prep: "交付尾款、確認屋況",
     note: "完成交屋手續：結清代書費、火險、補貼房屋稅／地價稅、結清水電瓦斯管理費、確認產權無誤",
+    desc: "完稅之後大約十天交屋：剩下的 70% 多半是買方的貸款撥下來的錢。房子如果還有貸款，由買方的貸款銀行直接替您清償餘額，不用自己先籌錢還清。結清代書費、保險費、水電瓦斯與稅費，確認產權無誤，就正式交屋。",
   },
 ];
 
@@ -229,51 +233,8 @@ export default function SellPage() {
             </p>
           </div>
           <div className={styles.container}>
-            <div className={buy.tableWrap}>
-              <table className={buy.table}>
-                <thead>
-                  <tr>
-                    <th>階段</th>
-                    <th>約需天數</th>
-                    <th>收款／付款</th>
-                    <th>要準備</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {STAGES.map((s) => (
-                    <tr key={s.name}>
-                      <td className={buy.itemCell}>{s.name}</td>
-                      <td>{s.days}</td>
-                      <td>{s.money}</td>
-                      <td>
-                        {s.prep}
-                        {s.note ? <span className={buy.stageNote}>{s.note}</span> : null}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* 表格是給查找用的；這裡用白話再走一次，給第一次賣房的人看 */}
-            <div className={buy.narrative}>
-              <p>
-                <strong>簽約當天</strong>先收到總價 10%。服務費 4% 是從履保專戶裡扣，不用另外準備現金。
-                要帶身份證、印章、房屋稅單、地價稅單和權狀正本。
-              </p>
-              <p>
-                接下來三到五天是<strong>備證</strong>：主要是去戶政事務所申請兩份印鑑證明。這個階段再收 10%。
-              </p>
-              <p>
-                備證完成後，稅單核發需要一到三週，這段時間叫<strong>完稅</strong>：再收 10%，同時繳土地增值稅；
-                買方會押一張尾款本票給代書保管，作為交屋前的保障。
-              </p>
-              <p>
-                完稅之後大約十天<strong>交屋</strong>：剩下的 70% 多半是買方的貸款撥下來的錢。房子如果還有貸款，
-                由買方的貸款銀行直接替您清償餘額，不用自己先籌錢還清。結清代書費、保險費、水電瓦斯與稅費，
-                確認產權無誤，就正式交屋。
-              </p>
-            </div>
+            {/* 2026-10-22 起是一步一步的圖示版（圓圈＋編號＋卡），表格與白話段落都併進去了 */}
+            <StageStepper stages={STAGES} />
           </div>
 
           {/* ── 買方出價的兩種方式 ── */}

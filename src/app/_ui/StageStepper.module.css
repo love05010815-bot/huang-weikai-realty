@@ -1,0 +1,169 @@
+/* 四階段流程（StageStepper.tsx）—— /buy、/sell 共用。配色變數來自 home.module.css 的 .page（兩頁最外層都是它）。
+   桌機（901px 以上）：四格橫排，一條線穿過四顆圓圈、編號由左到右；
+   手機（900px 以下）：直排，圓圈在左、卡在右，線在圓圈底下往下接到下一顆。
+   圓圈 68px、線 3px，下面幾個數字都從這兩個推出來，改尺寸要一起改。 */
+
+.stepper {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 這一顆圓圈到下一顆圓圈之間的那段線（最後一步沒有） */
+.step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 32.5px; /* 圓圈中線 34 − 線高一半 1.5 */
+  left: calc(50% + 34px);
+  width: calc(100% + 18px - 68px); /* 這格剩下的一半 ＋ gap ＋ 下一格的一半，扣掉兩個半顆圓圈 */
+  height: 3px;
+  border-radius: 2px;
+  background: var(--primary, #2fa894);
+  opacity: 0.35;
+}
+
+.circle {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--primary, #2fa894);
+  box-shadow: var(--shadow, 0 12px 30px rgba(34, 50, 63, 0.1));
+  font-size: 30px;
+  line-height: 1;
+}
+
+/* 左上角的步驟編號 */
+.num {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary, #2fa894);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.card {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  margin-top: 14px;
+  padding: 18px 16px 16px;
+  background: #fff;
+  border: 1px solid var(--line-warm, #d3e2e9);
+  border-radius: var(--radius, 14px);
+  box-shadow: var(--shadow, 0 12px 30px rgba(34, 50, 63, 0.1));
+}
+
+.title {
+  margin: 0 0 12px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--ink, #22323f);
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink, #22323f);
+}
+
+.meta li {
+  display: flex;
+  gap: 8px;
+}
+
+.meta li > span:first-child {
+  flex: 0 0 auto;
+}
+
+.prep {
+  margin: 12px 0 0;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--muted, #5b6b73);
+}
+
+.prep strong {
+  color: var(--ink, #22323f);
+}
+
+.note {
+  display: block;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--muted, #5b6b73);
+}
+
+/* 白話那句，跟上面結構化的三行用虛線隔開 */
+.desc {
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line, #d9e2e6);
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--muted, #5b6b73);
+}
+
+@media (max-width: 900px) {
+  .stepper {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .step {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .step:not(:last-child)::after {
+    top: 68px;
+    left: 32.5px; /* 圓圈中線 34 − 線寬一半 1.5 */
+    width: 3px;
+    height: calc(100% + 16px - 68px); /* 這格剩下的高度 ＋ gap，扣掉自己那顆圓圈 */
+  }
+
+  .circle {
+    flex: 0 0 68px;
+  }
+
+  .card {
+    width: auto;
+    margin-top: 0;
+  }
+
+  .title {
+    text-align: left;
+  }
+}
