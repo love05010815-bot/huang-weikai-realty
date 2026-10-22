@@ -155,6 +155,19 @@ export default function BuyPage() {
             </p>
           </div>
 
+          {/* ── 過戶流程（2026-10-22 他要求搬到費用一覽上面：先看流程、再看費用） ── */}
+          <div className={`${styles.container} ${styles.center} ${styles.aboutBlock}`}>
+            <h2 className={styles.aboutSubTitle}>簽約到交屋，四個階段</h2>
+            <p className={styles.sectionDesc}>
+              從簽約到真正拿到鑰匙，大致會走完下面四個階段，合計大約一個半月到兩個月，
+              實際天數會因為稅單核發、貸款銀行作業時間而有出入。
+            </p>
+          </div>
+          <div className={styles.container}>
+            {/* 2026-10-22 起是一步一步的圖示版（圓圈＋編號＋卡），表格與白話段落都併進去了 */}
+            <StageStepper stages={STAGES} />
+          </div>
+
           {/* ── 買方費用一覽 ── */}
           <div className={`${styles.container} ${styles.center} ${styles.aboutBlock}`}>
             <h2 className={styles.aboutSubTitle}>買方費用一覽</h2>
@@ -181,19 +194,6 @@ export default function BuyPage() {
                 </tbody>
               </table>
             </div>
-          </div>
-
-          {/* ── 過戶流程 ── */}
-          <div className={`${styles.container} ${styles.center} ${styles.aboutBlock}`}>
-            <h2 className={styles.aboutSubTitle}>簽約到交屋，四個階段</h2>
-            <p className={styles.sectionDesc}>
-              從簽約到真正拿到鑰匙，大致會走完下面四個階段，合計大約一個半月到兩個月，
-              實際天數會因為稅單核發、貸款銀行作業時間而有出入。
-            </p>
-          </div>
-          <div className={styles.container}>
-            {/* 2026-10-22 起是一步一步的圖示版（圓圈＋編號＋卡），表格與白話段落都併進去了 */}
-            <StageStepper stages={STAGES} />
           </div>
 
           {/* ── 斡旋方式 ── */}

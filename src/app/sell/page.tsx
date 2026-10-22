@@ -165,6 +165,19 @@ export default function SellPage() {
             </p>
           </div>
 
+          {/* ── 過戶流程（2026-10-22 他貼截圖要求搬到費用一覽上面：先看流程、再看費用） ── */}
+          <div className={`${styles.container} ${styles.center} ${styles.aboutBlock}`}>
+            <h2 className={styles.aboutSubTitle}>簽約到交屋，四個階段</h2>
+            <p className={styles.sectionDesc}>
+              價金分四次進來：簽約、備證、完稅各 10%，交屋時收剩下的 70%。
+              合計大約一個半月到兩個月，實際天數會因為稅單核發、買方貸款銀行作業時間而有出入。
+            </p>
+          </div>
+          <div className={styles.container}>
+            {/* 2026-10-22 起是一步一步的圖示版（圓圈＋編號＋卡），表格與白話段落都併進去了 */}
+            <StageStepper stages={STAGES} />
+          </div>
+
           {/* ── 賣方費用一覽 ── */}
           <div className={`${styles.container} ${styles.center} ${styles.aboutBlock}`}>
             <h2 className={styles.aboutSubTitle}>賣方費用一覽</h2>
@@ -222,19 +235,6 @@ export default function SellPage() {
                 </tbody>
               </table>
             </div>
-          </div>
-
-          {/* ── 過戶流程 ── */}
-          <div className={`${styles.container} ${styles.center} ${styles.aboutBlock}`}>
-            <h2 className={styles.aboutSubTitle}>簽約到交屋，四個階段</h2>
-            <p className={styles.sectionDesc}>
-              價金分四次進來：簽約、備證、完稅各 10%，交屋時收剩下的 70%。
-              合計大約一個半月到兩個月，實際天數會因為稅單核發、買方貸款銀行作業時間而有出入。
-            </p>
-          </div>
-          <div className={styles.container}>
-            {/* 2026-10-22 起是一步一步的圖示版（圓圈＋編號＋卡），表格與白話段落都併進去了 */}
-            <StageStepper stages={STAGES} />
           </div>
 
           {/* ── 買方出價的兩種方式 ── */}
