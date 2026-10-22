@@ -106,6 +106,7 @@
 .desktopLink {
   /* 中文可逐字斷行。空間一緊，flex 就把每項壓窄、文字折成兩行，
      header 會從 78px 撐到 83px。鎖住之後寧可整條導覽列隱藏，也不要折行。 */
+  position: relative;
   white-space: nowrap;
   font-size: 14.5px;
   font-weight: 700;
@@ -115,6 +116,27 @@
 
 .desktopLink:hover {
   color: var(--primary, #2fa894);
+}
+
+/* 2026-10-22 系統擁有者：滑鼠移到項目上方時，下面要跑出一條細線。
+   用 ::after＋scaleX 做動畫，不是 border-bottom ——
+   那樣不會動到 .desktopLink 的高度，不用重掃檔頭那組斷點。
+   bottom: -9px 落在 .navWrap 14px 的下邊距裡，不會頂到 header 的 border-bottom。 */
+.desktopLink::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -9px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--primary, #2fa894);
+  transform: scaleX(0);
+  transition: transform 0.2s ease;
+}
+
+.desktopLink:hover::after {
+  transform: scaleX(1);
 }
 
 /* ❤️ 我的最愛（2026-10-02）—— 桌機那條的第九格，只放愛心圖示＋收藏數，不放文字。
@@ -252,7 +274,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bars span {
+  .bars span,
+  .desktopLink::after {
     transition: none;
   }
 }
