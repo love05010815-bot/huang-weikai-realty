@@ -144,12 +144,12 @@ const SOURCE: Record<
   { from: string; noun: string; backHref: string; backLabel: string; emptyHow: string; emptyCta: string }
 > = {
   map: {
-    from: "海線建案一覽",
+    from: "海線社區一覽",
     noun: "在售物件",
     backHref: "/map",
     backLabel: "← 回建案地圖再挑",
-    emptyHow: "到「海線建案一覽」點建案，在我的在售物件按「＋ 比較」",
-    emptyCta: "前往海線建案一覽",
+    emptyHow: "到「海線社區一覽」點建案，在我的在售物件按「＋ 比較」",
+    emptyCta: "前往海線社區一覽",
   },
   favorites: {
     from: "我的最愛",

@@ -67,7 +67,7 @@ const loadPage = cache(async (id: string): Promise<PageData> => {
 function modeFor(rec: PublicMapListingPage, project: Project | null): ListingViewMode {
   return {
     pageHref: `/map/listing/${rec.id}`,
-    crumbs: [{ name: "海線建案一覽", href: "/map" }],
+    crumbs: [{ name: "海線社區一覽", href: "/map" }],
     backHref: "/map",
     backLabel: "← 回建案地圖",
     // 預約表單只認精選好案的 slug（/api/listings/<slug>），地圖物件就不帶參數

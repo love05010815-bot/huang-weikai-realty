@@ -29,12 +29,12 @@ export default function ReportNotFound() {
           <span className={styles.eyebrow}>{REPORT_LABEL}</span>
           <h1 className={styles.title}>這個社區還沒有銷售報告書</h1>
           <p className={styles.lede}>
-            可能是連結打錯、或這份報告書還在整理中。到海線建案一覽可以看這個社區的基本資料與我在售的物件；
+            可能是連結打錯、或這份報告書還在整理中。到海線社區一覽可以看這個社區的基本資料與我在售的物件；
             想先了解這個社區，直接預約諮詢，我把資料整理好跟你說。
           </p>
           <p style={{ marginTop: 18, display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Link href="/map" className={styles.headerCta}>
-              前往海線建案一覽
+              前往海線社區一覽
             </Link>
             <Link href="/card/booking" className={styles.cta} style={{ display: "inline-block", width: "auto", padding: "8px 18px" }}>
               預約諮詢

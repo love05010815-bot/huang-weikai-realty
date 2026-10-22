@@ -83,7 +83,7 @@ export default async function ReportsAdminPage({ searchParams }: { searchParams:
       <p className={styles.subtitle} style={{ color: CIS.textMute }}>
         客戶在
         <Link href="/map" target="_blank" rel="noopener noreferrer">
-          {" 海線建案一覽 "}
+          {" 海線社區一覽 "}
         </Link>
         點到建案，就能開這個社區的完整介紹（建商與建築團隊、地段價值、社區特色、我在售的物件、實價登錄入口、同區競品、買方輪廓）。
         發佈立刻生效，不用重新部署。

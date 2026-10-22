@@ -82,7 +82,7 @@ function modeFor(saleId: string, project: Project | null, active: boolean): List
   return {
     pageHref: `/map/unit/${saleId}`,
     // 麵包屑最後一層 ListingView 自己會印 item.area（＝建案名），這裡不用再放一層建案，不然會「聯悅臻 › 聯悅臻」
-    crumbs: [{ name: "海線建案一覽", href: "/map" }],
+    crumbs: [{ name: "海線社區一覽", href: "/map" }],
     backHref: back,
     backLabel: project ? `← 回 ${project.name}` : "← 回建案地圖",
     bookingHref: active ? `/match?book=${encodeURIComponent(saleId)}` : "/match",

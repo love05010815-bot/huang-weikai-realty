@@ -47,14 +47,22 @@ import styles from "./SiteNav.module.css";
  */
 type NavItem =
   | { label: string; kind: "anchor"; hash: string }
-  | { label: string; kind: "route"; href: "/about" | "/map" | "/videos" | "/news" | "/lvr" | "/match" };
+  | {
+      label: string;
+      kind: "route";
+      href: "/" | "/about" | "/map" | "/videos" | "/news" | "/lvr" | "/match" | "/listings";
+    };
 
 const ITEMS: readonly NavItem[] = [
   // 🚫 2026-09-07 系統擁有者：「首頁上方的關於我請移除」—— 導覽列不再有「關於我」。
   //    /about 頁還在（沒刪），只是沒有入口；要放回來就補一行 { label: "關於我", kind: "route", href: "/about" }。
   //    同日稍早首頁的「關於我」區塊也已拿掉（介紹併進 hero）。
-  { label: "服務項目", kind: "anchor", hash: "#services" },
-  { label: "精選好案", kind: "anchor", hash: "#listings" },
+  // 2026-10-22 系統擁有者：「服務項目連結移除改為首頁連結」——不再跳到 #services 錨點，
+  //    改成單純連回首頁（在子頁點是「回首頁」，在首頁點本來就等於沒動）。
+  { label: "服務項目", kind: "route", href: "/" },
+  // 2026-10-22 系統擁有者：「精選好案的連結改這裡 https://huang-weikai-realty.vercel.app/listings」——
+  //    不再跳首頁 #listings 錨點，改連獨立總覽頁 /listings（站內相對路徑，不是寫死完整網域）。
+  { label: "精選好案", kind: "route", href: "/listings" },
   // 2026-10-20 系統擁有者：「官網首頁好案配對的地方也加入到上方書籤列『物件快搜』」，
   // 同日看過之後改口「點下去要直接跳轉到這邊（/match）」—— 所以是 route，直接進自動配對找房那一頁，
   // 不是首頁的 <section id="match"> 錨點（那個 id 留著，別處要連首頁那一塊還能用）。放在「精選好案」旁邊（兩個都是找物件）。
@@ -64,13 +72,15 @@ const ITEMS: readonly NavItem[] = [
   // 2026-09-07 系統擁有者拍板把標籤從「重劃區建案」改成「海線建案一覽」。
   // ⚠️ **不要改回去。** 這頁剛開的時候真的只有重劃區 39 案，現在是整條海線八個生活圈 500 多案，
   //    重劃區只佔其中 33 案 —— 舊標籤會讓人以為點進去只有重劃區，是實際上的錯誤資訊。
-  { label: "海線建案一覽", kind: "route", href: "/map" },
+  // 2026-10-22 系統擁有者再拍板把標籤改成「海線社區一覽」（href 不變，仍是 /map）——
+  //    麵包屑、比較頁、報告書 404 頁裡提到這個頁名的地方都要跟著換，不是只改導覽列這一處。
+  { label: "海線社區一覽", kind: "route", href: "/map" },
   // 2026-09-30 系統擁有者：「增加到這邊」——把 /lvr（海線最新實價登錄）加進主選單，
-  // 放在「海線建案一覽」後面：兩頁都是海線的房產資料查詢，一個看建案總覽、一個看成交行情。
+  // 放在「海線社區一覽」後面：兩頁都是海線的房產資料查詢，一個看建案總覽、一個看成交行情。
   // ⚠️ 這是第八項，加之前已照下面 SiteNav.module.css 檔頭的規矩重掃斷點（結果：1045px 仍夠，見那邊的紀錄）。
   { label: "實價登錄", kind: "route", href: "/lvr" },
   { label: "免費小工具", kind: "anchor", hash: "#tools" },
-  // 2026-08-25 系統擁有者拍板：**影音不放首頁下滑區塊，做成獨立分頁**，跟「海線建案一覽」
+  // 2026-08-25 系統擁有者拍板：**影音不放首頁下滑區塊，做成獨立分頁**，跟「海線社區一覽」
   // 一樣。所以這是 route 不是 #videos 錨點 —— 首頁上沒有那個區塊了。
   { label: "影音專區", kind: "route", href: "/videos" },
   // 2026-09-18 系統擁有者要的新分頁：房市最新消息與房產知識（文章在 /admin/posts 後台）。
