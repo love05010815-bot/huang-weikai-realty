@@ -561,8 +561,8 @@ export default async function HomePage() {
           <SectionWave />
           <div className={`${styles.container} ${styles.center}`}>
             <span className={styles.eyebrow}>SERVICES</span>
-            <h2 className={styles.sectionTitle}>我提供的服務項目</h2>
-            <p className={styles.sectionDesc}>不只帶看，更陪您把房產相關的每個環節想清楚、做到位。</p>
+            <h2 className={styles.sectionTitle}>服務項目</h2>
+            <p className={styles.sectionDesc}>用專業守護每份託付・與您一起安心成家</p>
           </div>
           <div className={styles.container}>
             <div className={styles.serviceGrid}>
