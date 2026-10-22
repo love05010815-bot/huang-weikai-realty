@@ -98,6 +98,13 @@
   justify-content: center;
 }
 
+/* 2026-10-22 子頁 header 第二排的 compact 版：貼左對齊 logo。用 .barOuter.barStart
+   兩個 class 疊起來（specificity 比下面兩個 @media 裡單獨的 .barOuter 規則高），
+   不管視窗寬度都贏，不用管斷點先後順序。 */
+.barOuter.barStart {
+  justify-content: flex-start;
+}
+
 /* 藥丸本體。白底＋陰影是為了在淺色漸層（首頁 hero）跟純白區塊（子頁）上都看得出是一塊東西；
    第一版光禿禿的 30px icon 配 12.5px 灰字，系統擁有者說「不明顯」。 */
 .bar {
@@ -111,6 +118,22 @@
   background: #fff;
   border: 1px solid rgba(18, 42, 56, 0.1);
   box-shadow: 0 10px 28px rgba(18, 42, 56, 0.12);
+}
+
+/* compact：icon 本身已經用 size=22 縮小（SocialLinks.tsx），這裡把藥丸的內距跟著收，
+   不然 48px 的大按鈕包著一顆小 icon 看起來還是很大。同理用兩個 class 疊起來蓋過下面
+   480px 那個「變直排小卡」的規則 —— compact 任何寬度都是同一排小藥丸，不用跳版。 */
+.bar.barCompact {
+  flex-wrap: nowrap;
+  gap: 2px;
+  padding: 4px;
+  width: auto;
+  flex-direction: row;
+}
+
+.barCompact .barBtn {
+  padding: 4px;
+  border-radius: 8px;
 }
 
 .barTitle {

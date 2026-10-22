@@ -16,6 +16,10 @@
  *                     底距），跟著 header 的 `position:sticky` 一起固定、不隨頁面捲動消失——
  *                     不用算 header 高度去對 `top` 位移，兩排本來就是同一個盒子。**首頁例外**，
  *                     藥丸還在 hero banner 右上角、當內容頂端的第一屏元素（見下一條規則）。
+ *                     2026-10-22 同日系統擁有者看過之後嫌「每頁都縮小放在黃框處」（logo 正下方、
+ *                     不要整排置中那麼大），所以子頁又加了 `compact` 這個開關：icon 縮回跟
+ *                     `float` 一樣的 22px、拿掉文案、`align="start"` 貼左對齊 logo。**首頁沒有
+ *                     這個開關**，hero banner 那顆還是原本的大藥丸＋文案。
  *   `variant="float"` 桌機右側固定的直排（position:fixed，1220px 以上一直在）。2026-10-22 起
  *                     **子頁已經沒有任何地方在用**——藥丸本身變成固定的了，直排的「往下捲也看得到」
  *                     變多餘，兩個同時出現在桌機上還是視覺雜訊，所以把呼叫都拿掉了。這個變體本身
@@ -74,20 +78,32 @@ type Props = {
   variant?: "float" | "bar" | "tiles";
   /** tiles 專用：dark＝白磚配深色區塊（預設）、light＝米色磚配淺色底（/card） */
   tone?: "dark" | "light";
-  /** bar 專用：桌機靠右（預設）還是置中（子頁標題都置中）。首頁自 2026-09-08 起放在品牌 banner 的右上角
-   *  （page.tsx 的 .bannerSocial 負責定位、這裡傳 align="center"）。860px 以下一律置中 */
-  align?: "end" | "center";
+  /** bar 專用：桌機靠右（預設）、置中（子頁標題都置中）還是靠左（子頁 header 第二排的 compact 版，
+   *  貼齊 logo）。首頁自 2026-09-08 起放在品牌 banner 的右上角（page.tsx 的 .bannerSocial 負責定位、
+   *  這裡傳 align="center"）。860px 以下（非 compact 時）一律置中 */
+  align?: "end" | "center" | "start";
   /** tiles 的標題；bar 的標題是長短兩句寫死在上面，傳這個會把兩句都換掉；float 不顯示標題 */
   title?: string;
   /** bar 專用的額外 class，加在最外層 —— 塞進 header 當第二排時用它蓋掉預設的 28px 底距 */
   className?: string;
+  /** bar 專用：2026-10-22 子頁 header 第二排加的迷你版——icon 縮到跟 float 一樣 22px、拿掉
+   *  文案，整顆藥丸跟著變小。不影響首頁 hero 的大藥丸（首頁沒傳這個 prop）。 */
+  compact?: boolean;
 };
 
-export default function SocialLinks({ variant = "tiles", tone = "dark", align = "end", title, className }: Props) {
+export default function SocialLinks({
+  variant = "tiles",
+  tone = "dark",
+  align = "end",
+  title,
+  className,
+  compact = false,
+}: Props) {
   const live = PLATFORMS.filter((p) => p.href);
   if (live.length === 0) return null;
 
-  const size = variant === "float" ? 22 : variant === "bar" ? 36 : tone === "light" ? 26 : 28;
+  const size =
+    variant === "float" ? 22 : variant === "bar" ? (compact ? 22 : 36) : tone === "light" ? 26 : 28;
   const btnClass =
     variant === "float" ? styles.floatBtn : variant === "bar" ? styles.barBtn : styles.btn;
   const listClass =
@@ -125,16 +141,20 @@ export default function SocialLinks({ variant = "tiles", tone = "dark", align = 
   }
 
   if (variant === "bar") {
+    const alignClass =
+      align === "center" ? styles.barCenter : align === "start" ? styles.barStart : "";
     return (
-      <div
-        className={[styles.barOuter, align === "center" ? styles.barCenter : "", className]
-          .filter(Boolean)
-          .join(" ")}
-      >
-        <div className={styles.bar}>
-          {/* 長短兩句都渲染、靠 CSS 切換 —— 這是 server component，拿不到視窗寬度 */}
-          <span className={`${styles.barTitle} ${styles.barTitleLong}`}>{title ?? BAR_TITLE_LONG}</span>
-          <span className={`${styles.barTitle} ${styles.barTitleShort}`}>{title ?? BAR_TITLE_SHORT}</span>
+      <div className={[styles.barOuter, alignClass, className].filter(Boolean).join(" ")}>
+        <div className={[styles.bar, compact ? styles.barCompact : ""].filter(Boolean).join(" ")}>
+          {/* compact 版（子頁 header 第二排）沒有文案空間，只留 icon —— 長短兩句是給
+              有空間說「為什麼要點」的大藥丸（首頁 hero）用的。 */}
+          {!compact && (
+            <>
+              {/* 長短兩句都渲染、靠 CSS 切換 —— 這是 server component，拿不到視窗寬度 */}
+              <span className={`${styles.barTitle} ${styles.barTitleLong}`}>{title ?? BAR_TITLE_LONG}</span>
+              <span className={`${styles.barTitle} ${styles.barTitleShort}`}>{title ?? BAR_TITLE_SHORT}</span>
+            </>
+          )}
           {items}
         </div>
       </div>

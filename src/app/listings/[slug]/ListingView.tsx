@@ -188,7 +188,7 @@ export default function ListingView({ item, status, detail, mode }: Props) {
             header 本身就是 position:sticky，當第二排會一起固定，見 home.module.css 的說明。
             這支元件同時是 /listings/<slug>、/map/listing/<id>、/map/unit/<saleId> 三種單戶頁。 */}
         <div className={styles.headerSocial}>
-          <SocialLinks variant="bar" align="center" className={styles.headerSocialBar} />
+          <SocialLinks variant="bar" align="start" compact className={styles.headerSocialBar} />
         </div>
       </header>
 

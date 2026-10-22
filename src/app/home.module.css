@@ -268,13 +268,16 @@
    盒子，會一起固定，不用去量 header 高度算 top 位移（那樣每頁高度一不一致都要分別試）。
    取代原本「藥丸在內容最上面（捲走）＋桌機另有一條右側浮動直排負責捲動時也看得到」那兩套——
    藥丸現在本身就固定，直排變多餘，兩個同時出現在桌機上也是視覺雜訊，所以 variant="float" 一併拿掉。
-   首頁不在這次範圍內，藥丸仍在 hero banner 裡、不吃這一塊樣式。 */
+   首頁不在這次範圍內，藥丸仍在 hero banner 裡、不吃這一塊樣式。
+   2026-10-22 同日系統擁有者看了線上畫面，嫌藥丸置中太大太顯眼，改成貼左、縮小（SocialLinks
+   的 compact 版）、落在 logo 正下方 —— 這裡的水平 padding 20px 跟 .navWrap 的 20px 一樣，
+   所以 flex-start 會自動對齊 logo 左緣，不用另外量。 */
 .headerSocial {
   max-width: 1080px;
   margin: 0 auto;
   padding: 0 20px 12px;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 /* 蓋掉 SocialLinks.module.css 的 .barOuter 預設 28px 底距（那是給「內容頂端、下面接標題」用的間距，

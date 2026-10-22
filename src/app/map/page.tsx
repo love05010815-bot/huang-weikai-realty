@@ -270,7 +270,7 @@ export default async function MapPage() {
         {/* 2026-10-22 系統擁有者：社群藥丸搬到 logo 下方、固定不隨頁面捲動消失——
             header 本身就是 position:sticky，當第二排會一起固定，見 Map.module.css 的說明。 */}
         <div className={styles.headerSocial}>
-          <SocialLinks variant="bar" align="center" className={styles.headerSocialBar} />
+          <SocialLinks variant="bar" align="start" compact className={styles.headerSocialBar} />
         </div>
       </header>
 

@@ -47,13 +47,14 @@
 }
 
 /* 2026-10-22 系統擁有者：子頁的社群藥丸改放 header 下方、固定不隨頁面捲動消失——
-   搬進這裡當 header 第二排，跟 home.module.css 的 .headerSocial 同一個做法，見那邊的完整說明。 */
+   搬進這裡當 header 第二排，跟 home.module.css 的 .headerSocial 同一個做法，見那邊的完整說明。
+   2026-10-22 同日再改：貼左縮小版（compact），落在 logo 正下方，見 home.module.css 同一則。 */
 .headerSocial {
   max-width: 1240px;
   margin: 0 auto;
   padding: 0 20px 10px;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .headerSocialBar {
