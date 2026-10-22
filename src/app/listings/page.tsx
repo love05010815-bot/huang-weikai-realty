@@ -112,7 +112,7 @@ export default async function ListingsPage() {
                 放在第一個 section 最上面，手機一打開就看得到 —— 跟首頁 hero 同一個位置邏輯。
                 這頁標題置中，藥丸跟著置中。 */}
             <SocialLinks variant="bar" align="center" />
-            <span className={styles.eyebrow}>LISTINGS</span>
+            <span className={styles.eyebrow}>FEATURED PROPERTIES</span>
             <FeaturedTitle as="h1" className={styles.sectionTitle} />
             <p className={styles.sectionDesc}>
               台中海線目前主打的物件。看中意的直接約時間看屋，我陪您一間一間看清楚再決定。

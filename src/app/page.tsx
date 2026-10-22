@@ -530,7 +530,7 @@ export default async function HomePage() {
         <section id="listings" className={`${styles.section} ${styles.band} ${styles.bandBlue}`}>
           <SectionWave flip />
           <div className={`${styles.container} ${styles.center}`}>
-            <span className={styles.eyebrow}>LISTINGS</span>
+            <span className={styles.eyebrow}>FEATURED PROPERTIES</span>
             {/* 標題與 /listings 共用同一個元件，兩邊講的話保證一致。
                 導覽列那項維持短的「精選好案」—— 那是選單，塞不下整句 */}
             <FeaturedTitle as="h2" className={styles.sectionTitle} />
