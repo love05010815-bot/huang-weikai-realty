@@ -109,9 +109,13 @@ export default function SchoolPage() {
 
       <main>
         <section className={styles.section}>
-          <div className={`${styles.container} ${styles.center}`}>
+          {/* 2026-10-22 系統擁有者：「標題列不跟著頁面滑動」——稱呼＋標題黏住，見
+              home.module.css 的 .stickyTitleWrap。 */}
+          <div className={`${styles.container} ${styles.center} ${styles.stickyTitleWrap}`}>
             <span className={styles.eyebrow}>TOOLS</span>
             <h1 className={styles.sectionTitle}>國中小學區查詢</h1>
+          </div>
+          <div className={`${styles.container} ${styles.center}`}>
             <p className={styles.sectionDesc}>
               買房前最常被問的一句：「這裡讀哪間國小？」打路名或整個地址、選行政區和里、在地圖上點一下，
               或直接用手機定位，對應的國小與國中就列在下面，細節照教育局公告原文標出來。

@@ -167,9 +167,13 @@ export default function SellPage() {
 
       <main>
         <section className={styles.section}>
-          <div className={`${styles.container} ${styles.center}`}>
+          {/* 2026-10-22 系統擁有者：「標題列不跟著頁面滑動」——稱呼＋標題黏住，見
+              home.module.css 的 .stickyTitleWrap。 */}
+          <div className={`${styles.container} ${styles.center} ${styles.stickyTitleWrap}`}>
             <span className={styles.eyebrow}>SELLING GUIDE</span>
             <h1 className={styles.sectionTitle}>賣房流程與費用</h1>
+          </div>
+          <div className={`${styles.container} ${styles.center}`}>
             <p className={styles.sectionDesc}>
               賣房最常被問的兩件事：要繳哪些稅和費用、錢什麼時候進來。
               先把這些整理成一張表給您參考，實際委託時我會再依您的房子與持有狀況，把確切金額算給您聽。

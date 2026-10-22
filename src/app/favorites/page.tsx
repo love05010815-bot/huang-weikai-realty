@@ -65,9 +65,13 @@ export default function FavoritesPage() {
 
       <main>
         <section className={styles.section}>
-          <div className={`${styles.container} ${styles.center}`}>
+          {/* 2026-10-22 系統擁有者：「標題列不跟著頁面滑動」——稱呼＋標題黏住，見
+              home.module.css 的 .stickyTitleWrap。 */}
+          <div className={`${styles.container} ${styles.center} ${styles.stickyTitleWrap}`}>
             <span className={styles.eyebrow}>MY LIST</span>
             <h1 className={styles.sectionTitle}>我的最愛</h1>
+          </div>
+          <div className={`${styles.container} ${styles.center}`}>
             <p className={styles.sectionDesc}>
               在建案地圖或精選好案看到喜歡的，按一下愛心就會收在這裡；最近看過的也幫你留著。
               看中意的直接約時間，我陪您一間一間看清楚再決定。

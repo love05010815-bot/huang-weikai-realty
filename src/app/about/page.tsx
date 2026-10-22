@@ -98,9 +98,14 @@ export default function AboutPage() {
 
       <main>
         <section className={styles.section}>
-          <div className={`${styles.container} ${styles.center}`}>
+          {/* 2026-10-22 系統擁有者：「標題列不跟著頁面滑動」——稱呼＋標題黏住，見
+              home.module.css 的 .stickyTitleWrap。這頁沒有 .sectionDesc，下面那段
+              自我介紹（.aboutIntro）一樣不黏，拆法跟其他頁一致。 */}
+          <div className={`${styles.container} ${styles.center} ${styles.stickyTitleWrap}`}>
             <span className={styles.eyebrow}>ABOUT ME</span>
             <h1 className={styles.sectionTitle}>關於我</h1>
+          </div>
+          <div className={`${styles.container} ${styles.center}`}>
             <div className={styles.aboutIntro}>
               <div className={styles.aboutIntroLines}>
                 {INTRO_LINES.map((line) => (

@@ -22,9 +22,11 @@
   overflow: hidden;
   text-decoration: none;
   color: inherit;
-  /* 用 `/listings#<slug>` 直接跳到某一筆時，卡片頂端會剛好被 sticky header
-     蓋住（header 實測 78px），留 92px 讓位，跳過去看得到標題。 */
-  scroll-margin-top: 92px;
+  /* 用 `/listings#<slug>` 直接跳到某一筆時，卡片頂端會被 sticky header＋sticky
+     標題列（見 .stickyTitleWrap）兩層一起蓋住。2026-10-22 加了標題列之後線上
+     實測兩層疊起來的實際高度：1220px 以上 218px、以下 270px，各留 14px 呼吸
+     空間，所以是 232／284，不是只算 header 那 78px 了。 */
+  scroll-margin-top: 232px;
   transition: transform 0.15s ease, border-color 0.15s ease;
 }
 
@@ -468,6 +470,11 @@
 @media (max-width: 1219px) {
   .stickyTitleWrap {
     top: 130px;
+  }
+  /* header 在這個寬度變兩排（130px），疊上標題列的高度跟著變，.card 那條
+     scroll-margin-top 也要跟著切（270 實測＋14 呼吸空間＝284，見 .card 那條）。 */
+  .card {
+    scroll-margin-top: 284px;
   }
 }
 

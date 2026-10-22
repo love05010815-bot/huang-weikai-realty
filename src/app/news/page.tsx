@@ -117,9 +117,13 @@ export default async function NewsPage() {
 
       <main>
         <section className={styles.section}>
-          <div className={`${styles.container} ${styles.center}`}>
+          {/* 2026-10-22 系統擁有者：「標題列不跟著頁面滑動」——稱呼＋標題黏住，見
+              home.module.css 的 .stickyTitleWrap。 */}
+          <div className={`${styles.container} ${styles.center} ${styles.stickyTitleWrap}`}>
             <span className={styles.eyebrow}>NEWS &amp; KNOW-HOW</span>
             <h1 className={styles.sectionTitle}>房產消息</h1>
+          </div>
+          <div className={`${styles.container} ${styles.center}`}>
             <p className={styles.sectionDesc}>
               政策一變、成數一改，最先受影響的是正在看房的人。
               我把跟買賣真的有關的消息挑出來，用人話寫一遍，順便把該注意的地方講清楚。

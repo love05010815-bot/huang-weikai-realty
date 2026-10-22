@@ -134,9 +134,13 @@ export default async function MatchPage({ searchParams }: { searchParams: Promis
 
       <main>
         <section className={styles.section}>
-          <div className={`${styles.container} ${styles.center}`}>
+          {/* 2026-10-22 系統擁有者：「標題列不跟著頁面滑動」——稱呼＋標題黏住，見
+              home.module.css 的 .stickyTitleWrap。 */}
+          <div className={`${styles.container} ${styles.center} ${styles.stickyTitleWrap}`}>
             <span className={styles.eyebrow}>MATCH</span>
             <h1 className={styles.sectionTitle}>自動配對找房</h1>
+          </div>
+          <div className={`${styles.container} ${styles.center}`}>
             <p className={styles.sectionDesc}>
               告訴我們您的購屋條件，系統會從目前在售的物件裡自動配對，看中意可以直接預約看屋。
               {colleague ? `預約送出後，${colleague.name}會與您聯繫。` : "預約完成後在官方 LINE 收到確認，之後有符合條件的新物件也會第一時間通知您。"}

@@ -101,9 +101,13 @@ export default function FaqPage() {
 
       <main>
         <section className={styles.section}>
-          <div className={`${styles.container} ${styles.center}`}>
+          {/* 2026-10-22 系統擁有者：「標題列不跟著頁面滑動」——稱呼＋標題黏住，見
+              home.module.css 的 .stickyTitleWrap。 */}
+          <div className={`${styles.container} ${styles.center} ${styles.stickyTitleWrap}`}>
             <span className={styles.eyebrow}>FAQ</span>
             <h1 className={styles.sectionTitle}>常見問題</h1>
+          </div>
+          <div className={`${styles.container} ${styles.center}`}>
             <p className={styles.sectionDesc}>
               買房、賣房最常被問的流程與費用，先在這裡看一遍。每一題底下都有連結可以看完整的表格；
               有其他想問的，直接預約，我當面跟您說清楚。

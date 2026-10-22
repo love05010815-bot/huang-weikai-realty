@@ -255,9 +255,13 @@ export default async function LvrPage({ searchParams }: { searchParams: Promise<
 
       <main>
         <section className={styles.section}>
-          <div className={`${styles.container} ${styles.center}`}>
+          {/* 2026-10-22 系統擁有者：「標題列不跟著頁面滑動」——稱呼＋標題黏住，見
+              home.module.css 的 .stickyTitleWrap。 */}
+          <div className={`${styles.container} ${styles.center} ${styles.stickyTitleWrap}`}>
             <span className={styles.eyebrow}>TOOLS</span>
             <h1 className={styles.sectionTitle}>梧棲・清水・沙鹿・龍井 最新實價登錄</h1>
+          </div>
+          <div className={`${styles.container} ${styles.center}`}>
             <p className={styles.sectionDesc}>
               內政部最新一期的海線成交，每天自動同步。預設顯示近 6 個月，可切換看成屋或預售屋，
               也能指定要查的年度；成交日、門牌、坪數、總價與每坪單價一次看，先知道周圍行情，再談價格才有依據。

@@ -101,9 +101,13 @@ export default async function VideosPage() {
 
       <main>
         <section className={styles.section}>
-          <div className={`${styles.container} ${styles.center}`}>
+          {/* 2026-10-22 系統擁有者：「標題列不跟著頁面滑動」——稱呼＋標題黏住，見
+              home.module.css 的 .stickyTitleWrap。 */}
+          <div className={`${styles.container} ${styles.center} ${styles.stickyTitleWrap}`}>
             <span className={styles.eyebrow}>VIDEOS</span>
             <h1 className={styles.sectionTitle}>影音專區</h1>
+          </div>
+          <div className={`${styles.container} ${styles.center}`}>
             <p className={styles.sectionDesc}>
               我自己拍、自己講的。買房這件事講一次聽不懂很正常，影片可以重看，
               也可以先看完再決定要不要找我聊。

@@ -281,7 +281,9 @@ export default async function MapPage() {
           （Map.module.css 的 .headerSocial 沒有 home.module.css 那條 1220px 規則）。 */}
 
       <section className={styles.hero}>
-        <div className={styles.container}>
+        {/* 2026-10-22 系統擁有者：「標題列不跟著頁面滑動」——稱呼＋標題黏住，見
+            .stickyTitleWrap；lede／bounds 兩段不黏，拆到下面第二個 container。 */}
+        <div className={`${styles.container} ${styles.stickyTitleWrap}`}>
           <span className={styles.eyebrow}>台中海線・區域研究</span>
           {/* ⚠️ 標題講的是「整個生活圈」，不是重劃區 —— 2026-08-26 起地圖範圍已擴大到
               沙鹿的商圈，2026-08-27 系統擁有者指定把這塊的名稱改過來。
@@ -297,6 +299,8 @@ export default async function MapPage() {
               ⚠️ 這行 H1、`<title>`、og:title **三處要一起改**。只改一個不會報錯，
               但 Google 看到的、LINE 分享看到的、客戶點進來看到的會變成三種說法。 */}
           <h1 className={styles.title}>台中海線建案地圖・梧棲｜清水｜沙鹿｜龍井</h1>
+        </div>
+        <div className={styles.container}>
           {/* 🔴 2026-08-31 系統擁有者拍板：這句不要再出現「合計 N 戶」。
               理由：133 案裡有 45 案沒有 units，`stats.units` 只是有資料那 88 案的合計，
               接在「133 個建案」後面會被讀成 133 案的總戶數 —— 低報，但不準。

@@ -101,9 +101,13 @@ export default function AreaPage() {
 
       <main>
         <section className={styles.section}>
-          <div className={`${styles.container} ${styles.center}`}>
+          {/* 2026-10-22 系統擁有者：「標題列不跟著頁面滑動」——稱呼＋標題黏住，見
+              home.module.css 的 .stickyTitleWrap。 */}
+          <div className={`${styles.container} ${styles.center} ${styles.stickyTitleWrap}`}>
             <span className={styles.eyebrow}>TOOLS</span>
             <h1 className={styles.sectionTitle}>坪數與地籍面積換算</h1>
+          </div>
+          <div className={`${styles.container} ${styles.center}`}>
             <p className={styles.sectionDesc}>
               謄本寫平方公尺、廣告講坪、農地論甲論分。在任何一格打數字，
               平方公尺、坪、公畝、公頃、平方公里、甲、分七種單位就同時換好，不用自己乘來乘去。

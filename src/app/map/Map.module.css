@@ -127,6 +127,22 @@
   margin: 0;
 }
 
+/* 2026-10-22 系統擁有者：「標題列不跟著頁面滑動」——稱呼＋標題黏住，lede／bounds
+   兩段不黏，跟 home.module.css 的 .stickyTitleWrap 同一個做法（這裡另外定義一份，
+   因為這頁的 header 高度跟其他頁不一樣，數字不能照抄）。
+
+   這頁的 header 沒有 1220px 隱藏 headerSocial 那條規則（見上面 .headerSocial 的
+   說明——容器接近滿版，右側直排沒有跟進），compact 社群藥丸任何寬度都顯示，所以
+   header 高度不像其他頁會在 1220px 切換，這裡只要一個 top 值。 */
+.stickyTitleWrap {
+  position: sticky;
+  top: 126px;
+  z-index: 5;
+  background: #fff;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
 /* ---------- 免責 ---------- */
 .disclaimer {
   margin: 22px 0 0;

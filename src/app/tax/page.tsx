@@ -107,9 +107,13 @@ export default function TaxPage() {
 
       <main>
         <section className={styles.section}>
-          <div className={`${styles.container} ${styles.center}`}>
+          {/* 2026-10-22 系統擁有者：「標題列不跟著頁面滑動」——稱呼＋標題黏住，見
+              home.module.css 的 .stickyTitleWrap。 */}
+          <div className={`${styles.container} ${styles.center} ${styles.stickyTitleWrap}`}>
             <span className={styles.eyebrow}>TOOLS</span>
             <h1 className={styles.sectionTitle}>稅費試算</h1>
+          </div>
+          <div className={`${styles.container} ${styles.center}`}>
             <p className={styles.sectionDesc}>
               賣房子最怕的不是稅高，是簽了約才發現稅金把獲利吃掉了。
               這裡直接算，不用跳到別的網站，也會把每一步怎麼來的攤開給你看。

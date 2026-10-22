@@ -157,9 +157,13 @@ export default function BuyPage() {
 
       <main>
         <section className={styles.section}>
-          <div className={`${styles.container} ${styles.center}`}>
+          {/* 2026-10-22 系統擁有者：「標題列不跟著頁面滑動」——稱呼＋標題黏住，見
+              home.module.css 的 .stickyTitleWrap。 */}
+          <div className={`${styles.container} ${styles.center} ${styles.stickyTitleWrap}`}>
             <span className={styles.eyebrow}>BUYING GUIDE</span>
             <h1 className={styles.sectionTitle}>買房流程與費用</h1>
+          </div>
+          <div className={`${styles.container} ${styles.center}`}>
             <p className={styles.sectionDesc}>
               買房除了房屋總價，還有幾筆一定會遇到的費用；簽約之後到交屋，也有固定要走的幾個階段。
               先把這些整理成一張表給您參考，實際帶看時我會再依您的物件與貸款狀況，把確切金額算給您聽。

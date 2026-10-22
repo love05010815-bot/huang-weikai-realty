@@ -102,6 +102,35 @@
   margin-right: auto;
 }
 
+/* 2026-10-22 系統擁有者貼了好幾頁的標題截圖（/lvr、/map、/tax、/videos、/news…）：
+   「標題列不跟著頁面滑動」——每一頁最上面那顆「稱呼＋h1」黏住，不隨內容捲走。
+   跟 FeaturedTitle 那兩處（/listings、首頁「精選好案」，先前已做、class 定義在
+   listings.module.css）是同一個效果，這裡在 home.module.css 另外定義一份，
+   因為其餘十幾頁本來就吃這份共用樣式、不用為了一顆 class 多 import listings.module.css。
+
+   只黏「eyebrow＋h1」，下面那段描述（.sectionDesc 或其他）不黏——各頁 JSX 把原本同一個
+   `<div>` 拆成兩個，只在第一個掛這顆 class。
+
+   top 是兩個寬度量出的 header 實際高度（不是估的，見 /listings 那次線上實測）：
+     1220px 以上 78px（header 第二排的 compact 社群藥丸被藏起來）
+     1220px 以下 130px
+   這些頁的 header 都跟 /listings 共用同一份 home.module.css 的 .header/.headerSocial，
+   斷點數字可以直接沿用，不用每頁重新量。 */
+.stickyTitleWrap {
+  position: sticky;
+  top: 78px;
+  z-index: 5;
+  background: #fff;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+@media (max-width: 1219px) {
+  .stickyTitleWrap {
+    top: 130px;
+  }
+}
+
 /* ---------- 關於我 ---------- */
 
 /* 自我介紹方塊。六句刻意寫成等長（每句 12 個字），排起來會是一個整齊的
