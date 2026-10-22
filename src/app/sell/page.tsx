@@ -156,6 +156,15 @@ export default function SellPage() {
         </div>
       </header>
 
+      {/* 桌機右側固定的社群直排（1220px 以上一直在，捲動時也看得到）。2026-10-22 這排
+          一度被拿掉（header 第二排的藥丸已經「永遠看得到」，兩個一起多餘），同一天系統
+          擁有者又說「改移到右側邊下方，隨著頁面滾動」要這個——所以加回來，跟 headerSocial
+          用斷點分工：1220px 以上顯示這排、藏起 header 那顆 compact 藥丸；以下相反
+          （見 home.module.css／Map.module.css 的 .headerSocial 那條 1220px 規則），
+          兩個不會同時出現。⚠️ 一定要放在 <header> 外面——header 的 backdrop-filter
+          會把 position:fixed 的子元素關在 header 裡（見 SiteNav.tsx 的說明）。 */}
+      <SocialLinks variant="float" />
+
       <main>
         <section className={styles.section}>
           <div className={`${styles.container} ${styles.center}`}>

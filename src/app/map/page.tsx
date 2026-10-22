@@ -274,6 +274,12 @@ export default async function MapPage() {
         </div>
       </header>
 
+      {/* 🚫 這頁不放右側固定的社群直排（其他十四頁有）。
+          /map 的容器接近滿版：1280px 視窗實測內容到 x=1237，直排要佔 x=1203～1251，
+          會壓到地圖與建案清單的右緣——這是 2026-10-22 之前的舊規矩，今天「直排加回來」
+          那輪沒有重新量過，所以這頁繼續排除，compact 藥丸在這頁任何寬度都不藏起來
+          （Map.module.css 的 .headerSocial 沒有 home.module.css 那條 1220px 規則）。 */}
+
       <section className={styles.hero}>
         <div className={styles.container}>
           <span className={styles.eyebrow}>台中海線・區域研究</span>

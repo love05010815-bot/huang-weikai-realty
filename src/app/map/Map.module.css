@@ -48,7 +48,11 @@
 
 /* 2026-10-22 系統擁有者：子頁的社群藥丸改放 header 下方、固定不隨頁面捲動消失——
    搬進這裡當 header 第二排，跟 home.module.css 的 .headerSocial 同一個做法，見那邊的完整說明。
-   2026-10-22 同日再改：貼左縮小版（compact），落在 logo 正下方，見 home.module.css 同一則。 */
+   2026-10-22 同日再改：貼左縮小版（compact），落在 logo 正下方，見 home.module.css 同一則。
+   2026-10-22 又同一天：其他頁加回了桌機右側固定直排（variant="float"），1220px 以上讓位、
+   把這顆藏起來——這頁（/map）沒有跟進：容器接近滿版，直排會壓到地圖右緣（見 map/page.tsx
+   `</header>` 後面那條舊規矩），所以這裡故意不加 1220px 隱藏規則，compact 藥丸在 /map
+   任何寬度都顯示。 */
 .headerSocial {
   max-width: 1240px;
   margin: 0 auto;

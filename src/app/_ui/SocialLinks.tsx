@@ -19,12 +19,16 @@
  *                     2026-10-22 同日系統擁有者看過之後嫌「每頁都縮小放在黃框處」（logo 正下方、
  *                     不要整排置中那麼大），所以子頁又加了 `compact` 這個開關：icon 縮回跟
  *                     `float` 一樣的 22px、拿掉文案、`align="start"` 貼左對齊 logo。**首頁沒有
- *                     這個開關**，hero banner 那顆還是原本的大藥丸＋文案。
- *   `variant="float"` 桌機右側固定的直排（position:fixed，1220px 以上一直在）。2026-10-22 起
- *                     **子頁已經沒有任何地方在用**——藥丸本身變成固定的了，直排的「往下捲也看得到」
- *                     變多餘，兩個同時出現在桌機上還是視覺雜訊，所以把呼叫都拿掉了。這個變體本身
- *                     沒刪，仍然能用，只是目前沒有頁面在用；要放回來的話 ⚠️ 要放在 <header> 外面：
- *                     header 有 backdrop-filter，會變成 fixed 子元素的定位基準（見 SiteNav.tsx）。
+ *                     這個開關**，hero banner 那顆還是原本的大藥丸＋文案。**這顆 compact 藥丸
+ *                     只在 1220px 以下顯示**（見下一條、跟 `float` 用斷點分工），1220px 以上
+ *                     `.headerSocial` 自己 `display:none`（home.module.css／Map.module.css）。
+ *   `variant="float"` 桌機右側固定的直排（position:fixed，1220px 以上一直在，捲動時也看得到）。
+ *                     2026-10-22 子頁改放 header 第二排之後一度把這個拿掉（兩個同時出現是視覺
+ *                     雜訊），同一天系統擁有者又說「改移到右側邊下方，隨著頁面滾動」要回來，
+ *                     所以子頁又加回這個呼叫了——跟 compact 藥丸用 1220px 斷點分工，兩個
+ *                     不會同時出現（≥1220 顯示這排、<1220 顯示 header 那顆）。
+ *                     ⚠️ 一定要放在 `<header>` 外面：header 有 backdrop-filter，會變成
+ *                     fixed 子元素的定位基準（見 SiteNav.tsx）。
  *   `variant="tiles"` 底磚版。`tone="dark"`（預設）白磚配深色區塊；`tone="light"` 米色磚
  *                     配淺色底 —— /card 名片頁用這個。
  *

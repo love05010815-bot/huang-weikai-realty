@@ -271,13 +271,22 @@
    首頁不在這次範圍內，藥丸仍在 hero banner 裡、不吃這一塊樣式。
    2026-10-22 同日系統擁有者看了線上畫面，嫌藥丸置中太大太顯眼，改成貼左、縮小（SocialLinks
    的 compact 版）、落在 logo 正下方 —— 這裡的水平 padding 20px 跟 .navWrap 的 20px 一樣，
-   所以 flex-start 會自動對齊 logo 左緣，不用另外量。 */
+   所以 flex-start 會自動對齊 logo 左緣，不用另外量。
+   2026-10-22 又同一天，系統擁有者說「改移到右側邊下方隨著頁面滾動」——桌機右側固定直排
+   （variant="float"，稍早才拿掉的那個）加回來了，見各頁 `</header>` 後面那行。這裡跟它
+   用斷點分工：1220px 以上讓位給直排、這顆 compact 藥丸藏起來，避免兩個同時出現在桌機上。 */
 .headerSocial {
   max-width: 1080px;
   margin: 0 auto;
   padding: 0 20px 12px;
   display: flex;
   justify-content: flex-start;
+}
+
+@media (min-width: 1220px) {
+  .headerSocial {
+    display: none;
+  }
 }
 
 /* 蓋掉 SocialLinks.module.css 的 .barOuter 預設 28px 底距（那是給「內容頂端、下面接標題」用的間距，
