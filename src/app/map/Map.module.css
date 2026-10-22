@@ -133,10 +133,12 @@
 
    這頁的 header 沒有 1220px 隱藏 headerSocial 那條規則（見上面 .headerSocial 的
    說明——容器接近滿版，右側直排沒有跟進），compact 社群藥丸任何寬度都顯示，所以
-   header 高度不像其他頁會在 1220px 切換，這裡只要一個 top 值。 */
+   header 高度不像其他頁會在 1220px 切換，這裡只要一個 top 值。
+
+   top 線上實測 header 高度 114.8px（取整 115，不是先前部署時估的 126）。 */
 .stickyTitleWrap {
   position: sticky;
-  top: 126px;
+  top: 115px;
   z-index: 5;
   background: #fff;
   padding-top: 16px;
