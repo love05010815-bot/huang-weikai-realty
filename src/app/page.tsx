@@ -529,11 +529,16 @@ export default async function HomePage() {
         {/* ---------------- 精選好案 ---------------- */}
         <section id="listings" className={`${styles.section} ${styles.band} ${styles.bandBlue}`}>
           <SectionWave flip />
-          <div className={`${styles.container} ${styles.center}`}>
+          {/* 2026-10-22 系統擁有者：「每一頁的標題列不跟著頁面滑動」——稱呼＋標題黏住，長描述
+              不黏，拆成兩個 <div>；這個區塊底色是 --blue，多掛 stickyTitleWrapBlue 蓋掉白底，
+              見 listings.module.css 的 .stickyTitleWrap 完整說明。 */}
+          <div className={`${styles.container} ${styles.center} ${lst.stickyTitleWrap} ${lst.stickyTitleWrapBlue}`}>
             <span className={styles.eyebrow}>FEATURED PROPERTIES</span>
             {/* 標題與 /listings 共用同一個元件，兩邊講的話保證一致。
                 導覽列那項維持短的「精選好案」—— 那是選單，塞不下整句 */}
             <FeaturedTitle as="h2" className={styles.sectionTitle} />
+          </div>
+          <div className={`${styles.container} ${styles.center}`}>
             <p className={styles.sectionDesc}>
               台中海線目前主打的物件。看中意的直接約時間，我陪您一間一間看清楚再決定。
             </p>

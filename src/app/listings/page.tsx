@@ -117,9 +117,13 @@ export default async function ListingsPage() {
 
       <main>
         <section className={styles.section}>
-          <div className={`${styles.container} ${styles.center}`}>
+          {/* 2026-10-22 系統擁有者：「每一頁的標題列不跟著頁面滑動」——這兩行（稱呼＋標題）
+              黏住，長描述不黏，所以拆成兩個 <div>，見 listings.module.css 的 .stickyTitleWrap。 */}
+          <div className={`${styles.container} ${styles.center} ${lst.stickyTitleWrap}`}>
             <span className={styles.eyebrow}>FEATURED PROPERTIES</span>
             <FeaturedTitle as="h1" className={styles.sectionTitle} />
+          </div>
+          <div className={`${styles.container} ${styles.center}`}>
             <p className={styles.sectionDesc}>
               台中海線目前主打的物件。看中意的直接約時間看屋，我陪您一間一間看清楚再決定。
             </p>

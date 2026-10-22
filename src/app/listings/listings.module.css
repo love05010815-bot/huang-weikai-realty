@@ -439,6 +439,44 @@
   font-weight: 400;
 }
 
+/* ---------------- 標題列黏住、不跟頁面捲走 ---------------- */
+
+/* 2026-10-22 系統擁有者貼了「FEATURED PROPERTIES／本月瑋凱推薦好案」的截圖：
+   「每一頁的標題列不跟著頁面滑動」。這顆標題元件（FeaturedTitle）只有兩個地方用——
+   /listings 整頁的主標、首頁「精選好案」區塊——兩邊都要一起黏。
+
+   只讓「稱呼＋標題」兩行黏住，下面那句長描述（.sectionDesc）不黏：他截的圖只框了
+   這兩行，黏住一整塊連長描述會多佔太多畫面；JSX 把原本同一個 `<div>` 拆成兩個，
+   只在第一個（eyebrow＋FeaturedTitle）掛這顆 class。
+
+   top 是兩個寬度量出來的 header 實際高度（不是估的）：
+     1220px 以上：子頁 header 第二排的 compact 社群藥丸被藏起來，header 只剩 78px。
+     1220px 以下（含首頁；首頁 header 本來就只有一排，沒有第二排社群藥丸，但套同一個
+     斷點不影響它——首頁任何寬度都是 78px，130px 那個值對它來說用不到）：130px。
+   跟子頁 headerSocial 用的是同一條 1220px 分界線，背景色 #fff 讓它在捲動時蓋住
+   底下滑過去的卡片而不是被卡片蓋住（z-index 5，比卡片本身的層次都高、比 header
+   的 100 低）。 */
+.stickyTitleWrap {
+  position: sticky;
+  top: 78px;
+  z-index: 5;
+  background: #fff;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+@media (max-width: 1219px) {
+  .stickyTitleWrap {
+    top: 130px;
+  }
+}
+
+/* 首頁「精選好案」區塊底色是 --blue（#CFE2F3），不是白——黏住時背景要換成同一個藍，
+   不然捲到一半卡片會從白底的標題後面透出來，看起來像破圖。 */
+.stickyTitleWrapBlue {
+  background: var(--blue, #CFE2F3);
+}
+
 /* 手機版面窄，兩顆星會把標題擠到換行，縮小間距 */
 @media (max-width: 480px) {
   .titleStar {
