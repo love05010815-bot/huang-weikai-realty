@@ -91,7 +91,8 @@ async function withRetry<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-async function withSchema<T>(run: () => Promise<T>): Promise<T> {
+/** 撞到「表不存在」就建表再試一次。`lvr-estimate-data.ts` 也用這個，所以 export */
+export async function withSchema<T>(run: () => Promise<T>): Promise<T> {
   try {
     return await withRetry(run);
   } catch (error) {
@@ -101,8 +102,8 @@ async function withSchema<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-/** ⚠️ TiDB 的 SUM／COUNT／DECIMAL 經 Prisma 會變字串或 bigint，一律轉 */
-function toNumber(v: unknown): number {
+/** ⚠️ TiDB 的 SUM／COUNT／DECIMAL 經 Prisma 會變字串或 bigint，一律轉（`lvr-estimate-data.ts` 也用） */
+export function toNumber(v: unknown): number {
   if (v === null || v === undefined) return 0;
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;
   if (typeof v === "bigint") return Number(v);

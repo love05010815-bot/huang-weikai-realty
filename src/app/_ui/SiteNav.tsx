@@ -110,6 +110,8 @@ const TOOLS_MENU: readonly { label: string; href: string }[] = [
   { label: "新青安 3.0 資格檢測", href: "/tax#youth-loan" },
   { label: "國中小學區查詢", href: "/school" },
   { label: "坪數與地籍面積換算", href: "/area" },
+  // 2026-10-26 行情試算（/estimate），跟 page.tsx 的 TOOLS 同步加的
+  { label: "我的房子行情多少", href: "/estimate" },
 ];
 
 type Variant = "home" | "sub";

@@ -505,6 +505,14 @@ export default async function LvrPage({ searchParams }: { searchParams: Promise<
             ) : null}
 
             <div className={css.cta}>
+              {/* 2026-10-26 行情試算工具的入口：這頁看的是清單，那頁是「填四個條件、挑像的成交算區間」 */}
+              想知道自己那間大概落在哪？填行政區、型態、坪數、屋齡，
+              <Link href="/estimate" className={`${styles.btn} ${styles.btnSm}`}>
+                算我的房子行情 →
+              </Link>
+            </div>
+
+            <div className={css.cta}>
               想知道某個社區實際的可談空間、或這些數字對您要買要賣的房子代表什麼？
               <Link href="/card/booking" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`}>
                 線上預約，我幫您看

@@ -34,6 +34,7 @@
     "build:addr": "node --experimental-strip-types scripts/build-address-index.mjs",
     "check:addr": "node --experimental-strip-types scripts/check-address-index.mjs",
     "check:lvr": "node --experimental-strip-types scripts/check-lvr.mjs",
+    "check:estimate": "node --experimental-strip-types scripts/check-lvr-estimate.mjs",
     "check:area": "node --experimental-strip-types scripts/check-area-units.mjs",
     "check:favorites": "node --experimental-strip-types scripts/check-favorites.mjs",
     "check:owners": "node --experimental-strip-types scripts/check-owners.mjs",

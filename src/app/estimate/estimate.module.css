@@ -1,0 +1,288 @@
+/* ---------- 海線房屋行情試算 /estimate（2026-10-26） ----------
+   配色變數在 home.module.css 的 .page；表單欄位、結果卡外框、免責借 tax.module.css，
+   成交表借 lvr.module.css（含 720px 以下變卡片那套）。
+   這裡只放這頁自己的：範例鈕、欄位提示／錯誤、送出鈕、三格價位卡、區間說明。
+   ⚠️ 專案沒有全域 box-sizing reset，有邊框又設寬度的都要自己寫。 */
+
+/* ---------- 範例鈕 ---------- */
+
+.examples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.examplesLabel {
+  font-size: 13px;
+  color: var(--muted);
+  margin-right: 4px;
+}
+
+.exampleBtn {
+  box-sizing: border-box;
+  display: inline-block;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.exampleBtn:hover,
+.exampleBtn:focus-visible {
+  border-color: var(--primary);
+  background: var(--accent-soft);
+  outline: none;
+}
+
+/* ---------- 欄位底下的提示與錯誤 ---------- */
+
+.hint {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.hintWarn {
+  font-size: 12px;
+  line-height: 1.6;
+  font-weight: 700;
+  color: #8a4b00;
+}
+
+.fieldError {
+  font-size: 12.5px;
+  line-height: 1.6;
+  font-weight: 800;
+  color: #b42318;
+}
+
+/* ---------- 送出 ---------- */
+
+.submitRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--line);
+}
+
+.submitBtn {
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 999px;
+  padding: 13px 28px;
+  background: var(--primary);
+  color: #fff;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.submitBtn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.submitNote {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .submitBtn {
+    width: 100%;
+  }
+}
+
+/* ---------- 結果錨點 ----------
+   表單 action 帶 #result，送出後瀏覽器會捲到這裡；header（1220px 以上 78px、以下 130px）＋黏住的
+   標題列（一行 h1 約 114px、手機 h1 折兩行約 159px）會蓋住上面那段，所以 scroll-margin 要連它們一起算。
+   數字是 2026-10-26 在 375px 量的（標題列底 289px），其餘寬度用一行 h1 推算、留一點餘裕。 */
+.resultAnchor {
+  scroll-margin-top: 250px;
+}
+
+@media (min-width: 1220px) {
+  .resultAnchor {
+    scroll-margin-top: 200px;
+  }
+}
+
+@media (max-width: 720px) {
+  .resultAnchor {
+    scroll-margin-top: 300px;
+  }
+}
+
+/* ---------- 結果：三格價位卡 ---------- */
+
+.three {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 18px;
+}
+
+.pt {
+  box-sizing: border-box;
+  padding: 16px 16px 14px;
+  background: var(--soft);
+  border: 1px solid var(--line-warm);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.ptMid {
+  background: var(--accent-soft);
+  border-color: var(--primary);
+}
+
+.ptLabel {
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.ptMid .ptLabel {
+  color: var(--primary-dark);
+}
+
+.ptUnit {
+  margin-top: 6px;
+  font-size: clamp(24px, 5vw, 32px);
+  font-weight: 900;
+  line-height: 1.2;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.ptMid .ptUnit {
+  color: var(--primary-dark);
+}
+
+.ptUnit small {
+  font-size: 0.45em;
+  font-weight: 700;
+  margin-left: 3px;
+  color: var(--muted);
+}
+
+.ptTotal {
+  margin-top: 6px;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.ptTotal strong {
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.ptRef {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+/* 中位數旁邊的「常見區間」「實際總價」兩行 */
+.rangeLines {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 18px;
+  padding: 13px 16px;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: 10px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.rangeLines strong {
+  color: var(--primary-dark);
+}
+
+.rangeLines small {
+  color: var(--muted);
+}
+
+/* 成交表標題列 */
+.compsHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 14px;
+  margin: 22px 0 10px;
+}
+
+.compsTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.compsMore {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.compsMore:hover {
+  text-decoration: underline;
+}
+
+/* 樣本不足那塊 */
+.noResult {
+  margin-top: 22px;
+  padding: 22px 20px;
+  background: #fff8e8;
+  border: 1px solid #e7c47d;
+  border-radius: var(--radius);
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ink);
+}
+
+.noResult strong {
+  color: #8a4b00;
+}
+
+.noResult p {
+  margin: 0;
+}
+
+.noResult p + p {
+  margin-top: 8px;
+}
+
+/* ---------- 響應式 ---------- */
+
+@media (max-width: 640px) {
+  .three {
+    grid-template-columns: 1fr;
+  }
+
+  /* 手機上把中價位排第一（最重要的先看到），最低、最高接在後面 */
+  .ptMid {
+    order: -1;
+  }
+}
