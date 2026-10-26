@@ -7,6 +7,7 @@ import Link from "next/link";
 import { OWNER, SOCIAL, SITE_URL } from "@/config/owner";
 import { AREAS } from "@/config/profile";
 import { HOME_FEATURED_COUNT } from "@/config/listings";
+import { ROLE_LIST } from "@/config/roles";
 import { getPublicListings, sortByPrice } from "@/lib/listings";
 import { getPublicVideos, CATEGORY_META } from "@/lib/videos";
 import { getDistrictStats, latestSuccessfulSync } from "@/lib/lvr";
@@ -199,6 +200,10 @@ const TOOLS = [
   },
   // 實價登錄（/lvr）不在這裡：2026-09-30 系統擁有者「把這個單獨列出在首頁」，它有自己一區（見下面 #lvr）。
 ];
+
+/* hero 三顆按鈕底下的「我是屋主／我是買方」兩顆分流按鈕：字、圖示、目的地都在 config/roles.ts（ROLE_LIST），
+   連進去的 /owner、/buyer 頁面也讀同一份。2026-10-26 系統擁有者：「在紅框處做兩個按鈕，我是屋主 / 我是買方」，
+   同日指定兩頁各放兩顆工具按鈕（見 roles.ts 檔頭）。 */
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -418,6 +423,15 @@ export default async function HomePage() {
                 <a className={`${styles.btn} ${styles.btnOutline}`} href={`tel:${OWNER.phoneRaw}`}>
                   📞 {OWNER.phone}
                 </a>
+              </div>
+              {/* 我是屋主／我是買方 → /owner、/buyer（內容見 config/roles.ts） */}
+              <div className={styles.heroRoles} aria-label="我是屋主或買方">
+                {ROLE_LIST.map((r) => (
+                  <Link key={r.path} className={styles.heroRole} href={r.path}>
+                    <span aria-hidden="true">{r.icon}</span>
+                    {r.label}
+                  </Link>
+                ))}
               </div>
             </div>
             <div className={styles.heroPhotoWrap}>

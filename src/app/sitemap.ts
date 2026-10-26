@@ -45,6 +45,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: SITE_URL + "/area", lastModified, changeFrequency: "yearly", priority: 0.8 },
     // 2026-10-26 房屋行情試算。「沙鹿房價」「梧棲大樓一坪多少」是屋主與買方都會搜的字；資料每旬更新
     { url: SITE_URL + "/estimate", lastModified, changeFrequency: "weekly", priority: 0.9 },
+    // 2026-10-26 首頁 hero「我是屋主／我是買方」分流頁，各放兩顆工具入口（內容在 config/roles.ts）
+    { url: SITE_URL + "/owner", lastModified, changeFrequency: "monthly", priority: 0.6 },
+    { url: SITE_URL + "/buyer", lastModified, changeFrequency: "monthly", priority: 0.6 },
     // 2026-08-21 恢復。未核對的「土地使用分區」層已從該頁移除，
     // 現在是系統擁有者確認過的 39 個建案，可以收錄。
     { url: SITE_URL + "/map", lastModified, changeFrequency: "weekly", priority: 0.8 },
