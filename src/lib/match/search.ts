@@ -23,6 +23,8 @@ export type PublicMatch = ReturnType<typeof publicListing> & {
 };
 
 export type SearchPayload = {
+  /** 這批結果是買賣還是出租（2026-10-26）：畫面靠它決定價格寫「萬」還是「元／月」 */
+  deal: "sale" | "rent";
   buyerId: string | null;
   summary: string;
   threshold: number;
@@ -34,10 +36,13 @@ export type SearchPayload = {
 };
 
 export async function runMatchSearch(preference: Preference, buyerId: string | null): Promise<SearchPayload> {
-  const listings = await listAvailableListings();
+  // 租屋的客人（2026-10-26）配出租物件，其餘配買賣；舊條件沒有 deal 欄就是買賣
+  const deal: "sale" | "rent" = preference.deal === "rent" ? "rent" : "sale";
+  const listings = await listAvailableListings(deal);
   // 先全部配完才知道「真的有幾間符合」—— 40 間跟 99 間在畫面上不能長得一模一樣
   const ranked = rankListings(preference, listings, { limit: listings.length || 1 });
   return {
+    deal,
     buyerId,
     summary: describePreference(preference),
     threshold: MATCH.threshold,

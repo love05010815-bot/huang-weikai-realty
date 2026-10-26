@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import type { ColleagueContact } from "@/lib/match/colleague-link";
 import type { PublicListing } from "@/lib/match/public";
+import { formatDealPrice } from "@/lib/match/rent";
 import styles from "./book.module.css";
 
 const SLOTS = ["上午 10:00–12:00", "下午 14:00–17:00", "晚上 18:00–20:00"];
@@ -24,7 +25,6 @@ function tomorrow(): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-const money = (n: number) => `${Number(n).toLocaleString("zh-TW")} 萬`;
 
 function metaLine(l: PublicListing): string {
   const parts: string[] = [];
@@ -174,7 +174,7 @@ export default function BranchBook({
             )}
             <div className={styles.body}>
               <div className={styles.title}>{l.title}</div>
-              <div className={styles.price}>{money(l.price)}</div>
+              <div className={styles.price}>{formatDealPrice(l.price, l.deal)}</div>
               <div className={styles.meta}>{metaLine(l)}</div>
               {picked.length > 1 && (
                 <button type="button" className={styles.linkBtn} onClick={() => setPicked((p) => p.filter((x) => x.id !== l.id))}>

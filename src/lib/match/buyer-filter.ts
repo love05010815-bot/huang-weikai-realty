@@ -25,7 +25,7 @@ export const BUDGET_TIERS: readonly { value: BudgetTier; label: string }[] = [
 const OVER_FROM = 3000;
 
 /** 名單那一列篩選要看的三個欄位（IntakeRow 有） */
-export type FilterableRow = { budgetMax: number; districts: string[]; types: string[] };
+export type FilterableRow = { budgetMax: number; districts: string[]; types: string[]; deal?: "sale" | "rent" };
 
 export type RowFilter = {
   /** "" = 不限 */
@@ -48,8 +48,11 @@ function matchesAny(have: readonly string[], want: readonly string[]): boolean {
   return have.some((x) => want.includes(x));
 }
 
+/** 租屋的客人（2026-10-26）預算是元／月，「N 萬以下」那幾段對他不適用 → 跟沒填一樣，哪一段都出現 */
+const budgetOk = (row: FilterableRow, tier: BudgetTier | ""): boolean => row.deal === "rent" || matchesBudget(row.budgetMax, tier);
+
 export function matchesFilter(row: FilterableRow, f: RowFilter): boolean {
-  return matchesBudget(row.budgetMax, f.budget) && matchesAny(row.districts, f.districts) && matchesAny(row.types, f.types);
+  return budgetOk(row, f.budget) && matchesAny(row.districts, f.districts) && matchesAny(row.types, f.types);
 }
 
 export function isFilterActive(f: RowFilter): boolean {
@@ -68,7 +71,7 @@ export function distinctCounts(rows: readonly FilterableRow[], key: "districts" 
 /** 每一段預算有幾位 —— 跟篩選同一套規則（沒填預算的每一段都算進去） */
 export function budgetCounts(rows: readonly FilterableRow[]): Map<BudgetTier, number> {
   const m = new Map<BudgetTier, number>();
-  for (const t of BUDGET_TIERS) m.set(t.value, rows.filter((r) => matchesBudget(r.budgetMax, t.value)).length);
+  for (const t of BUDGET_TIERS) m.set(t.value, rows.filter((r) => budgetOk(r, t.value)).length);
   return m;
 }
 

@@ -58,13 +58,6 @@ export const MATCH = {
    * 沒這道閘門就會一次把幾百則錯誤推播送出去，額度燒光又要跟客戶道歉。
    */
   maxPriceChangesPerSync: 30,
-  /**
-   * 🔑 租屋快搜（2026-10-26）要不要對外：true 時 /match 的表單上面有「買房／租屋」切換；
-   * false 時切換不出現，但 /match?deal=rent 與 /rent/<編號> 照樣能開（給他先看、先驗）。
-   * 出租物件的同步（lib/match/sync.ts 的 pacific_rent）不看這個開關，一直在跑。
-   * 2026-10-26 下午他看過後說「這邊直接做出租/買」→ 打開。
-   */
-  rentPublic: true,
 } as const;
 
 /**
@@ -96,6 +89,13 @@ export const PACIFIC_DISTRICTS = ["梧棲區", "沙鹿區", "清水區", "龍井
 
 /** 表單「類型」選項。店網與官網的型態都會對應到這幾個（見 houseol-parse.ts 的 TYPE_MAP、pacific-parse.ts 的 PACIFIC_TYPE_MAP） */
 export const MATCH_TYPES = ["電梯大樓", "華廈", "公寓", "透天厝", "套房", "土地"] as const;
+
+/**
+ * 租屋模式的「類型」選項（2026-10-26）：太平洋官網出租物件的「出租型態」原字（rentTypeName），六家店 142 筆實測只有這七種。
+ * 同一組字也是店官網 type=rent 時 attribut= 吃的值（店官網 2026-10-26 定的契約），**不要改字**。
+ * 物件那邊存在 match_listing.usage_type（lib/match/pacific-parse.ts），配對時跟它比。
+ */
+export const RENT_TYPES = ["整層(棟)住家", "獨立套房", "店面商辦", "商用", "出租土地", "廠房", "其他"] as const;
 
 /**
  * 表單「其他需求」選項。

@@ -14,7 +14,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { MATCH } from "@/config/match";
 import { OG_IMAGE, OWNER, SITE_URL } from "@/config/owner";
 import BreadcrumbJsonLd from "@/app/_ui/BreadcrumbJsonLd";
 import SiteNav from "@/app/_ui/SiteNav";
@@ -62,7 +61,7 @@ async function PrefetchedMatch({ k, buyer, colleague }: { k: string; buyer: Buye
   } catch (e) {
     console.error("[match] 專屬連結預先配對失敗（退回一般流程）:", e);
   }
-  return <MatchApp initial={initial} colleague={colleague} rentEnabled={MATCH.rentPublic} />;
+  return <MatchApp initial={initial} colleague={colleague} />;
 }
 
 /** 配對還在算時的畫面。重點是講清楚「條件已經設好了」—— 不然客戶看到等待就以為要重填 */
@@ -153,7 +152,7 @@ export default async function MatchPage({ searchParams }: { searchParams: Promis
                 <PrefetchedMatch k={prefetch.k} buyer={prefetch.buyer} colleague={colleague} />
               </Suspense>
             ) : (
-              <MatchApp colleague={colleague} rentEnabled={MATCH.rentPublic} />
+              <MatchApp colleague={colleague} />
             )}
           </div>
         </section>

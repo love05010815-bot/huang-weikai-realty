@@ -122,6 +122,14 @@ export function pacificFloor(on: string | number | null | undefined, above: numb
   return `${span}/${total}`;
 }
 
+/**
+ * 標題上被店家標成「(已收訂)」「已出租」「已成交」那種的，官網還掛著但客人已經看不到房子了 ——
+ * 2026-10-26 他說「已收訂的自動藏起來」：同步時直接不收，這一次沒看到＝下架（lib/match/merge.ts 規則 3），標籤拿掉就自動回來。
+ */
+export function isReservedTitle(title: unknown): boolean {
+  return /已收[訂定]|已出租|已成交|已售出/.test(String(title ?? ""));
+}
+
 /** 照片檔名裡的愛屋編號（…/H229AA6362125a.jpg → AA6362125）；沒有就回空字串 */
 export function houseolIdFromPic(pic: string | null | undefined): string {
   return String(pic ?? "").match(/(A[A-Z]\d{7})/)?.[1] ?? "";

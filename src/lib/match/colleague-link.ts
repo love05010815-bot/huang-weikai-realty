@@ -42,13 +42,19 @@ export function branchBookUrl(token: string): string {
  * 客人到了店官網還可以自己改。坪數、樓層、其他需求、土地類別店官網沒有這幾個篩選，就不送。
  */
 export type BranchFilters = {
+  /**
+   * 租客（2026-10-26 店官網定的）：帶 type=rent，店官網直接開租屋物件。
+   * 租屋時 priceMax 是**元／月**、attribut 是出租型態（整層(棟)住家、店面商辦、獨立套房、出租土地、商用、其他、廠房）、
+   * 不送 ageMin/ageMax（出租物件多半沒屋齡，送了會被整批排除）。買客不帶（店官網預設買賣）。
+   */
+  type?: "rent";
   /** 梧棲區｜沙鹿區｜清水區｜龍井區（店官網只有這四區），多個用逗號隔開 */
   district?: string[];
-  /** 太平洋官網的物件型態字（電梯大廈、華廈、公寓、透天厝、別墅、樓中樓、套房、土地），多個用逗號隔開 */
+  /** 太平洋官網的物件型態字（電梯大廈、華廈、公寓、透天厝、別墅、樓中樓、套房、土地），多個用逗號隔開；租屋是出租型態 */
   attribut?: string[];
   /** 1｜2｜3｜4（4 = 4 房以上），多個用逗號隔開 */
   room?: number[];
-  /** 總價上限，萬 */
+  /** 總價上限，萬（租屋：月租，元） */
   priceMax?: number;
   /** 屋齡區間，年，兩端都含 */
   ageMin?: number;
@@ -77,14 +83,17 @@ const BRANCH_ATTRIBUT: Record<string, string[]> = {
 export function branchFiltersFromPreference(input: unknown): BranchFilters {
   const p = normalizePreference(input);
   const f: BranchFilters = {};
+  // 租客（2026-10-26）：type=rent；出租型態的字兩邊一樣（config/match.ts 的 RENT_TYPES）直接送；租金就是 priceMax（元／月）；不送屋齡
+  const rent = p.deal === "rent";
+  if (rent) f.type = "rent";
   const district = p.districts.filter((d) => BRANCH_DISTRICTS.includes(d));
   if (district.length) f.district = district;
-  const attribut = [...new Set(p.types.flatMap((t) => BRANCH_ATTRIBUT[t] ?? []))];
+  const attribut = rent ? [...new Set(p.types)] : [...new Set(p.types.flatMap((t) => BRANCH_ATTRIBUT[t] ?? []))];
   if (attribut.length) f.attribut = attribut;
   if (p.roomsList.length) f.room = p.roomsList;
   if (p.budgetMax > 0) f.priceMax = p.budgetMax;
-  if (p.ageMin > 0) f.ageMin = p.ageMin;
-  if (p.ageMax > 0) f.ageMax = p.ageMax;
+  if (!rent && p.ageMin > 0) f.ageMin = p.ageMin;
+  if (!rent && p.ageMax > 0) f.ageMax = p.ageMax;
   // 「其他需求」裡的車位種類 → stall。店官網只收一個值，兩種都勾（＝有車位就好）就不送，讓客人自己選
   const flat = p.features.includes("平面車位");
   const mech = p.features.includes("機械車位");
@@ -105,6 +114,7 @@ export function branchFiltersFromPreference(input: unknown): BranchFilters {
  */
 export function branchMatchUrl(selfLink: string, filters: BranchFilters = {}): string {
   const qs = new URLSearchParams();
+  if (filters.type === "rent") qs.set("type", "rent");
   if (filters.district?.length) qs.set("district", filters.district.join(","));
   if (filters.attribut?.length) qs.set("attribut", filters.attribut.join(","));
   if (filters.room?.length) qs.set("room", filters.room.join(","));

@@ -128,7 +128,7 @@ function buildMessage(name: string, summary: string | null, matched: number, lin
     const lead = summary ? `依您的需求（${summary}）我先在店官網幫您篩好了，點這裡看：` : "這是店官網的找房頁，可以依區域、總價、房數自己篩：";
     return `${who}\n${lead}\n${link}\n想看的勾起來（可以一次勾好幾間），按「前往預約看屋」就會送到我這裡，我再跟您約時間。`;
   }
-  if (!summary) return `${who}\n這是您的專屬找房連結，填好購屋條件就會自動配對，看中意可以直接預約看屋：\n${link}`;
+  if (!summary) return `${who}\n這是您的專屬找房連結，填好條件（買房或租屋都可以）就會自動配對，看中意可以直接預約看屋：\n${link}`;
   if (matched === 0) {
     return `${who}\n您的需求（${summary}）我已經記下來了，目前還沒有完全符合的物件，有新的進來會第一時間通知您。\n想調整條件可以點這裡：\n${link}`;
   }
@@ -144,7 +144,8 @@ export async function buildBuyerBrief(buyer: Buyer, showMax = 40, signer: string
   let matched = 0;
   let total = 0;
   if (buyer.preference) {
-    const listings = await listAvailableListings();
+    // 租屋的客人（2026-10-26）配出租物件；舊條件沒有 deal 欄就是買賣
+    const listings = await listAvailableListings(buyer.preference.deal === "rent" ? "rent" : "sale");
     total = listings.length;
     const ranked = rankListings(buyer.preference, listings, { limit: listings.length || 1 });
     matched = ranked.length;
@@ -181,7 +182,7 @@ export async function pushBriefToBuyer(buyerId: string): Promise<{ ok: boolean; 
   if (!buyer.followed) return { ok: false, error: "這位買方已封鎖官方帳號，推播送不到" };
   if (!buyer.preference) return { ok: false, error: "還沒有條件，先填條件" };
 
-  const matches = rankListings(buyer.preference, await listAvailableListings(), { threshold: MATCH.threshold, limit: 10 });
+  const matches = rankListings(buyer.preference, await listAvailableListings(buyer.preference.deal === "rent" ? "rent" : "sale"), { threshold: MATCH.threshold, limit: 10 });
   if (!matches.length) return { ok: false, error: "目前沒有符合條件的物件，沒有東西可以推" };
 
   const token = createBuyerToken(buyer.id);
@@ -236,6 +237,8 @@ export type IntakeRow = {
   linked: boolean;
   followed: boolean;
   summary: string | null;
+  /** 買房／租屋（2026-10-26）：租屋的 budgetMax 是元／月，名單的預算篩選不適用 */
+  deal: "sale" | "rent";
   /** 篩選用（lib/match/buyer-filter.ts）：預算上限（萬，0 = 沒填）、區域、型態 */
   budgetMax: number;
   districts: string[];
@@ -255,6 +258,7 @@ export function toIntakeRow(b: Buyer): IntakeRow {
     linked: Boolean(b.lineUserId),
     followed: b.followed,
     summary: b.preference ? describePreference(b.preference) : null,
+    deal: b.preference?.deal === "rent" ? "rent" : "sale",
     budgetMax: b.preference?.budgetMax ?? 0,
     districts: b.preference?.districts ?? [],
     types: b.preference?.types ?? [],
@@ -275,7 +279,7 @@ export type IntakeViewingRow = {
   name: string;
   phone: string;
   /** 這筆預約包含的物件：案名、完整地址、價格、物件頁連結（2026-10-05 他說只有案名不知道是哪一間） */
-  listings: { id: string; title: string; address: string; price: number; sourceUrl: string }[];
+  listings: { id: string; title: string; address: string; price: number; deal: "sale" | "rent"; sourceUrl: string }[];
   preferredAt: string;
   note: string;
   status: string;
@@ -298,8 +302,8 @@ export function toIntakeViewingRow(v: ViewingWithListing, listingById: Map<strin
     listings: v.listingIds.map((id) => {
       const l = listingById.get(id);
       return l
-        ? { id, title: l.title, address: `${l.city}${l.district}${l.address}`, price: l.price, sourceUrl: l.sourceUrl }
-        : { id, title: v.listingTitle || id, address: "", price: 0, sourceUrl: "" };
+        ? { id, title: l.title, address: `${l.city}${l.district}${l.address}`, price: l.price, deal: l.deal, sourceUrl: l.sourceUrl }
+        : { id, title: v.listingTitle || id, address: "", price: 0, deal: "sale" as const, sourceUrl: "" };
     }),
     preferredAt: v.preferredAt,
     note: v.note,

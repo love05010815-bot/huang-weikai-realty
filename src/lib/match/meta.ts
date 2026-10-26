@@ -5,7 +5,7 @@
  * 不然條件存進去、客戶那邊卻顯示不出來。
  * 縣市／行政區是從在售物件整理的；資料庫連不上就回空清單，表單至少還能用「不限」配對。
  */
-import { MATCH, MATCH_FEATURES, MATCH_TYPES } from "@/config/match";
+import { MATCH, MATCH_FEATURES, MATCH_TYPES, RENT_TYPES } from "@/config/match";
 import { addFriendUrl } from "./line";
 import { AGE_OPTIONS, FLOOR_RANGES, LAND_CATEGORIES, ROOM_OPTIONS } from "./matcher";
 import { getMatchMeta } from "./store";
@@ -15,6 +15,8 @@ export type MatchMetaPayload = {
   /** 房數選項，value 4 = 「4 房以上」 */
   rooms: { value: number; label: string }[];
   types: readonly string[];
+  /** 租屋模式的「類型」選項＝官網的出租型態（2026-10-26；跟店官網 type=rent 的 attribut 同一組字） */
+  rentTypes: readonly string[];
   features: readonly string[];
   floors: { value: string; label: string }[];
   /** 屋齡「幾年～幾年」兩個下拉共用的年數選項（2026-10-02 起；不限不在裡面，表單自己加） */
@@ -28,6 +30,7 @@ export async function buildMatchMeta(): Promise<MatchMetaPayload> {
   const base = {
     rooms: ROOM_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
     types: MATCH_TYPES,
+    rentTypes: RENT_TYPES,
     features: MATCH_FEATURES,
     floors: Object.entries(FLOOR_RANGES).map(([value, r]) => ({ value, label: r.label })),
     ages: AGE_OPTIONS.map((y) => ({ value: y, label: `${y} 年` })),

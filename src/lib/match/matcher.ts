@@ -125,9 +125,15 @@ function featureSatisfied(want: string, has: string[]): boolean {
 export const OTHER_CITY_CAP = 45;
 
 export type Preference = {
+  /**
+   * 買房還是租屋（2026-10-26 他要的：客人自己填跟代客建檔都要分）。
+   * 租屋：budgetMax 是「元／月」、types 是出租型態（整層(棟)住家／獨立套房…，比物件的 usageType）、不看屋齡樓層車位。
+   * 舊資料沒有這欄 → 買房。
+   */
+  deal: "sale" | "rent";
   city: string;
   districts: string[];
-  /** 萬元，0 = 不限 */
+  /** 萬元（租屋是元／月），0 = 不限 */
   budgetMax: number;
   /**
    * 房數（可複選）。**4 代表「4 房以上」**；空陣列 = 不限。
@@ -241,6 +247,7 @@ function ageBounds(p: Record<string, unknown>): { ageMin: number; ageMax: number
 export function normalizePreference(input: unknown): Preference {
   const p = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
   return {
+    deal: p.deal === "rent" ? "rent" : "sale",
     city: String(p.city ?? "").trim().slice(0, 16),
     districts: strList(p.districts).slice(0, 20),
     budgetMax: num(p.budgetMax),
@@ -338,11 +345,13 @@ export function scoreListing(prefInput: Preference | unknown, listing: Matchable
   // 他要的是「農地」，一塊建地就算同樣是土地也不該拿滿分。
   const wantCategory = pref.landCategories.length > 0;
   const typeWeight = wantCategory ? Math.round(WEIGHTS.type / 2) : WEIGHTS.type;
+  // 租屋（2026-10-26）：「類型」是出租型態（整層(棟)住家／獨立套房…），存在物件的 usageType；買賣照舊比 type
+  const listingType = pref.deal === "rent" ? listing.usageType : listing.type;
   if (pref.types.length) {
-    if (pref.types.includes(listing.type)) {
+    if (pref.types.includes(listingType)) {
       score += typeWeight;
-      reasons.push(`類型符合（${listing.type}）`);
-    } else miss(`類型不符（${listing.type}）`);
+      reasons.push(`類型符合（${listingType}）`);
+    } else miss(`類型不符（${listingType || "沒寫"}）`);
   } else score += typeWeight;
 
   if (wantCategory) {
@@ -445,9 +454,11 @@ export function rankListings<T extends MatchableListing>(
 export function describePreference(prefInput: Preference | unknown): string {
   const p = normalizePreference(prefInput);
   const parts: string[] = [];
+  // 租屋的客人一眼就要看得出來（名單、通知、簡報都用這一行）
+  if (p.deal === "rent") parts.push("租屋");
   if (p.districts.length) parts.push(`${p.city}${p.districts.join("/")}`);
   else if (p.city) parts.push(p.city);
-  if (p.budgetMax) parts.push(`預算 ${p.budgetMax.toLocaleString("zh-TW")} 萬內`);
+  if (p.budgetMax) parts.push(p.deal === "rent" ? `租金 ${p.budgetMax.toLocaleString("zh-TW")} 元內` : `預算 ${p.budgetMax.toLocaleString("zh-TW")} 萬內`);
   if (p.roomsList.length) parts.push(p.roomsList.map(roomLabel).join("/"));
   if (p.sizeMin || p.sizeMax) parts.push(`${p.sizeMin || "不限"}–${p.sizeMax || "不限"} 坪`);
   if (p.types.length) parts.push(p.types.join("/"));

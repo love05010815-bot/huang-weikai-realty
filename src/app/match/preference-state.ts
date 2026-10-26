@@ -14,6 +14,8 @@ export type MatchMeta = MatchMetaPayload;
 
 /** 資料庫存的購屋條件（GET /api/match/me?k=… 回的、後台讀出來的） */
 export type ApiPreference = {
+  /** 買房／租屋（2026-10-26）。租屋：budgetMax 是元／月、types 是出租型態。舊資料沒有這欄 → 買房 */
+  deal?: "sale" | "rent";
   city?: string;
   districts?: string[];
   budgetMax?: number;
@@ -40,6 +42,8 @@ export type ApiPreference = {
 
 /** 表單狀態。數字欄位是字串，空字串 = 不限 */
 export type PrefState = {
+  /** 買房／租屋（2026-10-26）。租屋：budgetMax 是元／月、types 是出租型態（RENT_TYPES） */
+  deal: "sale" | "rent";
   city: string;
   districts: string[];
   budgetMax: string;
@@ -59,6 +63,7 @@ export type PrefState = {
 };
 
 export const EMPTY_PREF: PrefState = {
+  deal: "sale",
   city: "",
   districts: [],
   budgetMax: "",
@@ -93,6 +98,7 @@ export const EMPTY_META: MatchMeta = {
   cities: [],
   rooms: ROOMS_FALLBACK,
   types: [],
+  rentTypes: [],
   features: [],
   floors: [],
   ages: AGES_FALLBACK,
@@ -116,6 +122,15 @@ export function toggleTypeIn(p: PrefState, t: string): PrefState {
 
 export const wantsLand = (p: PrefState): boolean => p.types.includes(LAND_TYPE);
 
+/**
+ * 切換買房／租屋（2026-10-26）。兩邊的「類型」選項不同（型態 vs 出租型態）、預算單位不同（萬 vs 元／月），
+ * 切換時這兩項清掉，免得帶著錯的單位、對不上的字送出去；土地那組也一併清（租屋沒有）。
+ */
+export function setDealIn(p: PrefState, deal: "sale" | "rent"): PrefState {
+  if (p.deal === deal) return p;
+  return { ...p, deal, types: [], budgetMax: "", landCategories: [], landMin: "", landMax: "" };
+}
+
 /** 2026-09-18～10-02 的固定五段，舊買方的條件還存著這些 key；進表單時換成上下限（0 = 不限） */
 const LEGACY_AGE_RANGES: Record<string, [number, number]> = { a0: [0, 5], a5: [5, 10], a10: [10, 15], a15: [15, 20], a30: [30, 0] };
 
@@ -135,6 +150,7 @@ export function toPrefState(p: ApiPreference | null | undefined): PrefState {
   const strList = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
   const roomsList = Array.isArray(p.roomsList) ? p.roomsList.map(Number).filter((n) => n >= 1 && n <= 4) : [];
   return {
+    deal: p.deal === "rent" ? "rent" : "sale",
     city: p.city ?? "",
     districts: strList(p.districts),
     budgetMax: numText(p.budgetMax),
@@ -155,7 +171,10 @@ export function toPrefState(p: ApiPreference | null | undefined): PrefState {
 /** 表單狀態 → 要送給 /api/match/search 或存進資料庫的條件 */
 export function toApiPreference(p: PrefState): Required<ApiPreference> {
   const land = wantsLand(p);
+  // 租屋（2026-10-26）不看屋齡、樓層、其他需求：欄位藏起來了，值不能跟著送（店官網 type=rent 吃到 ageMin 會整批排除）
+  const rent = p.deal === "rent";
   return {
+    deal: p.deal,
     city: p.city,
     districts: p.districts,
     budgetMax: Number(p.budgetMax) || 0,
@@ -165,13 +184,13 @@ export function toApiPreference(p: PrefState): Required<ApiPreference> {
     sizeMin: Number(p.sizeMin) || 0,
     sizeMax: Number(p.sizeMax) || 0,
     types: p.types,
-    ageMin: Number(p.ageMin) || 0,
-    ageMax: Number(p.ageMax) || 0,
+    ageMin: rent ? 0 : Number(p.ageMin) || 0,
+    ageMax: rent ? 0 : Number(p.ageMax) || 0,
     // 舊欄位歸零：表單已經改成上下限，之前存的五段／「幾年以內」就不該再跟著跑
     ageRange: "",
     maxAge: 0,
-    features: p.features,
-    floor: p.floor,
+    features: rent ? [] : p.features,
+    floor: rent ? "" : p.floor,
     // 沒勾土地就不送土地條件 —— 欄位藏起來了，值還跟著跑會變成看不見的篩選器
     landMin: land ? Number(p.landMin) || 0 : 0,
     landMax: land ? Number(p.landMax) || 0 : 0,

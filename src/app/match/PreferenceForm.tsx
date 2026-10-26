@@ -3,11 +3,15 @@
  * 購屋條件的表單欄位 —— 買方自己填的 /match 與後台「代客建檔」共用同一份。
  *
  * 只負責畫欄位、把改動丟回去；**不包 <form>、不放送出按鈕**，外面自己決定怎麼送。
+ *
+ * 🔑 最上面是「買房／租屋」切換（2026-10-26 他要的：客人自己填跟代客建檔都要分）。租屋時：預算欄變「租金上限（元／月）」、
+ *    類型的選項變出租型態（meta.rentTypes，跟店官網 type=rent 的 attribut 同一組字）、屋齡／樓層／其他需求整段不出現
+ *    （官網的出租物件多半沒填這些；送出時 toApiPreference 也會把它們歸零）。
  * 樣式用 styles 傳進來：前台是淺色（match.module.css），後台是深色（admin 那邊的 module），
  * 兩份 CSS 的 class 名字一樣、顏色不一樣。用到的 class：
  *   field / label / two / chips / chip / chipOn / hint / input / select / rangeRow / rangeSep
  */
-import { LAND_TYPE, toggle, toggleTypeIn, type MatchMeta, type PrefState } from "./preference-state";
+import { LAND_TYPE, setDealIn, toggle, toggleTypeIn, type MatchMeta, type PrefState } from "./preference-state";
 
 /** CSS module 的形狀（Next 的型別就是這樣，不另外收窄，不然 module 傳不進來） */
 export type FormStyles = { readonly [key: string]: string };
@@ -29,12 +33,26 @@ export default function PreferenceForm({
 }) {
   const districts = meta?.cities.find((c) => c.city === pref.city)?.districts ?? [];
   const wantsLand = pref.types.includes(LAND_TYPE);
+  const rent = pref.deal === "rent";
   const set = (patch: Partial<PrefState> | ((prev: PrefState) => Partial<PrefState>)) =>
     onChange((prev) => ({ ...prev, ...(typeof patch === "function" ? patch(prev) : patch) }));
   const chipClass = (on: boolean) => `${styles.chip} ${on ? styles.chipOn : ""}`;
 
   return (
     <>
+      {/* 🔑 買房／租屋。切換會清掉類型與預算（選項、單位不同），見 preference-state.ts 的 setDealIn */}
+      <div className={styles.field}>
+        <div className={styles.label}>我想要</div>
+        <div className={styles.chips}>
+          <button type="button" className={chipClass(!rent)} aria-pressed={!rent} onClick={() => onChange((p) => setDealIn(p, "sale"))}>
+            🏠 買房
+          </button>
+          <button type="button" className={chipClass(rent)} aria-pressed={rent} onClick={() => onChange((p) => setDealIn(p, "rent"))}>
+            🔑 租屋
+          </button>
+        </div>
+      </div>
+
       <label className={styles.field}>
         縣市
         <select className={styles.select} value={pref.city} onChange={(e) => set({ city: e.target.value, districts: [] })}>
@@ -63,8 +81,17 @@ export default function PreferenceForm({
       </div>
 
       <label className={styles.field}>
-        預算上限（萬）
-        <input className={styles.input} type="number" inputMode="numeric" min={0} step={10} placeholder="例如 1500" value={pref.budgetMax} onChange={(e) => set({ budgetMax: e.target.value })} />
+        {rent ? "租金上限（元／月）" : "預算上限（萬）"}
+        <input
+          className={styles.input}
+          type="number"
+          inputMode="numeric"
+          min={0}
+          step={rent ? 1000 : 10}
+          placeholder={rent ? "例如 20000" : "例如 1500"}
+          value={pref.budgetMax}
+          onChange={(e) => set({ budgetMax: e.target.value })}
+        />
       </label>
 
       {/* 2026-09-25 改成可複選：都不勾就是不限，所以不再需要一顆「不限」 */}
@@ -91,9 +118,9 @@ export default function PreferenceForm({
       </div>
 
       <div className={styles.field}>
-        <div className={styles.label}>類型（可複選）</div>
+        <div className={styles.label}>{rent ? "出租型態（可複選）" : "類型（可複選）"}</div>
         <div className={styles.chips}>
-          {(meta?.types ?? []).map((t) => (
+          {(rent ? (meta?.rentTypes ?? []) : (meta?.types ?? [])).map((t) => (
             <button key={t} type="button" className={chipClass(pref.types.includes(t))} onClick={() => onChange((p) => toggleTypeIn(p, t))}>
               {t}
             </button>
@@ -129,53 +156,58 @@ export default function PreferenceForm({
         </>
       )}
 
-      {/* 屋齡「幾年～幾年」兩個下拉（2026-10-02 他要的，照愛屋那樣讓客人自己選區間） */}
-      <div className={styles.field}>
-        <div className={styles.label}>屋齡</div>
-        <div className={styles.rangeRow}>
-          <select className={styles.select} value={pref.ageMin} onChange={(e) => set({ ageMin: e.target.value })} aria-label="屋齡下限">
-            <option value="">不限</option>
-            {(meta?.ages ?? []).map((a) => (
-              <option key={a.value} value={String(a.value)}>
-                {a.label}
-              </option>
-            ))}
-          </select>
-          <span className={styles.rangeSep}>～</span>
-          <select className={styles.select} value={pref.ageMax} onChange={(e) => set({ ageMax: e.target.value })} aria-label="屋齡上限">
-            <option value="">不限</option>
-            {(meta?.ages ?? []).map((a) => (
-              <option key={a.value} value={String(a.value)}>
-                {a.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <p className={styles.hint}>只選右邊就是「幾年內」，只選左邊就是「幾年以上」，都不選＝不看屋齡。</p>
-      </div>
+      {/* 租屋不看屋齡、樓層、車位（官網的出租物件多半沒填；店官網 type=rent 吃到屋齡會整批排除），這三段只有買房才出現 */}
+      {!rent && (
+        <>
+          {/* 屋齡「幾年～幾年」兩個下拉（2026-10-02 他要的，照愛屋那樣讓客人自己選區間） */}
+          <div className={styles.field}>
+            <div className={styles.label}>屋齡</div>
+            <div className={styles.rangeRow}>
+              <select className={styles.select} value={pref.ageMin} onChange={(e) => set({ ageMin: e.target.value })} aria-label="屋齡下限">
+                <option value="">不限</option>
+                {(meta?.ages ?? []).map((a) => (
+                  <option key={a.value} value={String(a.value)}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+              <span className={styles.rangeSep}>～</span>
+              <select className={styles.select} value={pref.ageMax} onChange={(e) => set({ ageMax: e.target.value })} aria-label="屋齡上限">
+                <option value="">不限</option>
+                {(meta?.ages ?? []).map((a) => (
+                  <option key={a.value} value={String(a.value)}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className={styles.hint}>只選右邊就是「幾年內」，只選左邊就是「幾年以上」，都不選＝不看屋齡。</p>
+          </div>
 
-      <label className={styles.field}>
-        希望樓層
-        <select className={styles.select} value={pref.floor} onChange={(e) => set({ floor: e.target.value })}>
-          <option value="">不限</option>
-          {(meta?.floors ?? []).map((f) => (
-            <option key={f.value} value={f.value}>
-              {f.label}
-            </option>
-          ))}
-        </select>
-      </label>
+          <label className={styles.field}>
+            希望樓層
+            <select className={styles.select} value={pref.floor} onChange={(e) => set({ floor: e.target.value })}>
+              <option value="">不限</option>
+              {(meta?.floors ?? []).map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </label>
 
-      <div className={styles.field}>
-        <div className={styles.label}>其他需求</div>
-        <div className={styles.chips}>
-          {(meta?.features ?? []).map((f) => (
-            <button key={f} type="button" className={chipClass(pref.features.includes(f))} onClick={() => set((p) => ({ features: toggle(p.features, f) }))}>
-              {f}
-            </button>
-          ))}
-        </div>
-      </div>
+          <div className={styles.field}>
+            <div className={styles.label}>其他需求</div>
+            <div className={styles.chips}>
+              {(meta?.features ?? []).map((f) => (
+                <button key={f} type="button" className={chipClass(pref.features.includes(f))} onClick={() => set((p) => ({ features: toggle(p.features, f) }))}>
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }

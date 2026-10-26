@@ -17,10 +17,12 @@
  *
  * 條件表單的欄位在 PreferenceForm.tsx、狀態換算在 preference-state.ts —— 後台代客建檔用同一份。
  *
- * 🔑 租屋模式（2026-10-26 他要的「在這個配對裡面增加租屋的物件」）：表單上面多一個「買房／租屋」切換（config/match.ts 的
- *    rentPublic 打開才顯示；?deal=rent 進來也會切到租屋）。租屋的條件在 RentForm.tsx、查詢打 /api/match/rent ——
- *    **不存買方條件、不推播**（理由見 lib/match/rent.ts）。結果頁兩種共用，靠 result.deal 決定價格寫「萬」還是「元／月」、
- *    租屋沒有「算月付金」、「看這戶」進站內 /rent/<編號>（不外連官網）、分享的也是 /rent/<編號>。預約流程兩種完全一樣。
+ * 🔑 租屋（2026-10-26 他要的「在這個配對裡面增加租屋的物件」，同日下午「代客建檔的連結裡也要分買屋還是租」）：
+ *    表單最上面是「買房／租屋」切換（在 PreferenceForm 裡，代客建檔同一份），條件存在 pref.deal；送的還是 /api/match/search，
+ *    伺服器依 deal 配出租或買賣（lib/match/search.ts），條件一樣存成買方條件（租屋的客人不推播，見 lib/match/sync.ts）。
+ *    ?deal=rent 進來（租屋單戶頁「回租屋快搜」、分享的租屋連結）直接切到租屋。
+ *    結果頁兩種共用，靠 result.deal 決定價格寫「萬」還是「元／月」、租屋沒有「算月付金」、
+ *    「看這戶」進站內 /rent/<編號>（不外連官網）、分享的也是 /rent/<編號>。預約流程兩種完全一樣。
  */
 import Link from "next/link";
 import ShareButton from "@/app/_ui/ShareButton";
@@ -30,8 +32,7 @@ import { formatDealPrice, type Deal } from "@/lib/match/rent";
 import { useCallback, useEffect, useState } from "react";
 import styles from "./match.module.css";
 import PreferenceForm from "./PreferenceForm";
-import RentForm, { EMPTY_RENT, toRentQuery, type RentFormState, type RentMetaPayload } from "./RentForm";
-import { EMPTY_META, EMPTY_PREF, toApiPreference, toPrefState, type ApiPreference, type MatchMeta, type PrefState } from "./preference-state";
+import { EMPTY_META, EMPTY_PREF, setDealIn, toApiPreference, toPrefState, type ApiPreference, type MatchMeta, type PrefState } from "./preference-state";
 
 type Listing = {
   id: string;
@@ -161,16 +162,8 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
  * colleague：這位客人是同事的（2026-10-05 同事版）→ 署名、加 LINE、預約完成頁全部換成同事的，不碰官方帳號。
  * 伺服器端先認出來的從 props 進來；用 ?k= 在瀏覽器裡認的從 /api/match/me 回來。
  */
-export default function MatchApp({
-  initial,
-  colleague: colleagueProp = null,
-  rentEnabled = false,
-}: { initial?: MatchInitial | null; colleague?: ColleagueContact | null; rentEnabled?: boolean } = {}) {
+export default function MatchApp({ initial, colleague: colleagueProp = null }: { initial?: MatchInitial | null; colleague?: ColleagueContact | null } = {}) {
   const [meta, setMeta] = useState<MatchMeta | null>(null);
-  /** 🔑 買房／租屋（2026-10-26）。租屋的選項與查詢另外一套，見 RentForm.tsx 與 /api/match/rent */
-  const [deal, setDeal] = useState<Deal>("sale");
-  const [rentMeta, setRentMeta] = useState<RentMetaPayload | null>(null);
-  const [rentQ, setRentQ] = useState<RentFormState>(EMPTY_RENT);
   const [step, setStep] = useState<Step>(initial?.result ? "results" : "form");
   const [pref, setPref] = useState<PrefState>(() => (initial?.preference ? toPrefState(initial.preference) : EMPTY_PREF));
   const [result, setResult] = useState<SearchResult | null>(initial?.result ?? null);
@@ -218,7 +211,7 @@ export default function MatchApp({
     const params = new URLSearchParams(window.location.search);
 
     // 🔑 ?deal=rent：從租屋單戶頁「回租屋快搜」回來、或分享出去的租屋連結 → 直接開在租屋模式（2026-10-26）
-    if (params.get("deal") === "rent") setDeal("rent");
+    if (params.get("deal") === "rent") setPref((p) => setDealIn(p, "rent"));
 
     // 從官方帳號的連結進來：帶回他目前設定的條件與聯絡方式，然後立刻把識別碼從網址上拿掉
     // —— 網址會被截圖、被轉貼，留著等於把他的資料給別人。識別碼過期就當沒帶，照原本流程走。
@@ -268,15 +261,6 @@ export default function MatchApp({
     }
   }, []);
 
-  // 租屋的選項（行政區、出租型態、型態）從目前出租中的物件整理，切到租屋時才讀一次
-  useEffect(() => {
-    if (deal !== "rent" || rentMeta) return;
-    api<RentMetaPayload>("/api/match/rent")
-      .then(setRentMeta)
-      // 讀不到也給一張能用的表單：租金級距與房數 RentForm 自己有備援，行政區／型態就先空著
-      .catch(() => setRentMeta({ cities: [], types: [], rentTypes: [], tiers: [], rooms: [], total: 0 }));
-  }, [deal, rentMeta]);
-
   async function onSearch(e: React.FormEvent) {
     e.preventDefault();
     await runSearch(pref);
@@ -301,26 +285,6 @@ export default function MatchApp({
       go("results");
     } catch (err) {
       setError(err instanceof Error ? err.message : "配對失敗，請稍後再試");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function onRentSearch(e: React.FormEvent) {
-    e.preventDefault();
-    await runRentSearch();
-  }
-
-  /** 🔑 租屋快搜：純查詢，不存條件、不綁買方（lib/match/rent.ts） */
-  async function runRentSearch() {
-    setBusy(true);
-    setError(null);
-    try {
-      const data = await api<SearchResult>("/api/match/rent", { method: "POST", body: JSON.stringify(toRentQuery(rentQ, rentMeta)) });
-      setResult({ ...data, deal: "rent" });
-      go("results");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "查詢失敗，請稍後再試");
     } finally {
       setBusy(false);
     }
@@ -381,30 +345,13 @@ export default function MatchApp({
       <div className={styles.wrap}>
         {notice && <p className={styles.error}>{notice}</p>}
         {loaded && <p className={styles.loaded}>{loaded}</p>}
-        <form className={styles.card} onSubmit={deal === "rent" ? onRentSearch : onSearch} noValidate>
-          {/* 🔑 買房／租屋切換（2026-10-26）。開關沒開時不顯示，但 ?deal=rent 進來的人要能切回買房 */}
-          {(rentEnabled || deal === "rent") && (
-            <div className={styles.field}>
-              <div className={styles.label}>我想要</div>
-              <div className={styles.chips}>
-                <button type="button" className={`${styles.chip} ${deal === "sale" ? styles.chipOn : ""}`} aria-pressed={deal === "sale"} onClick={() => setDeal("sale")}>
-                  🏠 買房
-                </button>
-                <button type="button" className={`${styles.chip} ${deal === "rent" ? styles.chipOn : ""}`} aria-pressed={deal === "rent"} onClick={() => setDeal("rent")}>
-                  🔑 租屋
-                </button>
-              </div>
-            </div>
-          )}
-          {deal === "rent" ? (
-            <RentForm meta={rentMeta} value={rentQ} onChange={setRentQ} styles={styles} />
-          ) : (
-            <PreferenceForm meta={meta} value={pref} onChange={setPref} styles={styles} />
-          )}
+        <form className={styles.card} onSubmit={onSearch} noValidate>
+          {/* 「買房／租屋」切換在 PreferenceForm 最上面（代客建檔同一份表單） */}
+          <PreferenceForm meta={meta} value={pref} onChange={setPref} styles={styles} />
 
           {error && <p className={styles.error}>{error}</p>}
-          <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`} disabled={busy || (deal === "rent" ? !rentMeta : !meta)}>
-            {busy ? (deal === "rent" ? "查詢中…" : "配對中…") : deal === "rent" ? "開始找租屋" : "開始配對"}
+          <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`} disabled={busy || !meta}>
+            {busy ? "配對中…" : pref.deal === "rent" ? "開始找租屋" : "開始配對"}
           </button>
         </form>
       </div>

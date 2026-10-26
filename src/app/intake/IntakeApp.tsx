@@ -322,7 +322,7 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
             )}
             <span className={styles.vaddr}>
               {l.address || "（地址不詳）"}
-              {l.price > 0 ? ` · ${l.price.toLocaleString("zh-TW")} 萬` : ""}
+              {l.price > 0 ? ` · ${l.price.toLocaleString("zh-TW")} ${l.deal === "rent" ? "元／月" : "萬"}` : ""}
             </span>
           </div>
         ))}

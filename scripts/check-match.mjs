@@ -19,11 +19,11 @@ register("./stub-hooks.mjs", import.meta.url);
 // SITE_URL 是模組載入當下就決定的，要在 import line.ts 之前設好
 process.env.APPOINTMENT_BASE_URL = "https://weikaihouse.com";
 // pacific-parse.ts 用相對路徑 import 隔壁的 houseol-parse（沒副檔名），要靠上面的 hook 解，所以得在 register 之後動態載
-const { houseolIdFromPic, pacificFloor, pacificToListingUpsert, pacificUsageType } = await import("../src/lib/match/pacific-parse.ts");
+const { houseolIdFromPic, isReservedTitle, pacificFloor, pacificToListingUpsert, pacificUsageType } = await import("../src/lib/match/pacific-parse.ts");
 // colleague-link.ts 有 import "@/config/owner"（別名），一樣要在 register 之後動態載
 const { branchBookUrl, branchFiltersFromPreference, branchMatchUrl, colleagueIntakeUrl, lineUrlFromInput, parseItemIds } = await import("../src/lib/match/colleague-link.ts");
 // rent.ts 用相對路徑 import 隔壁的 matcher（沒副檔名），同樣要在 register 之後動態載
-const { describeRentQuery, formatDealPrice, formatRent, normalizeRentQuery, rentMeta, searchRentals } = await import("../src/lib/match/rent.ts");
+const { formatDealPrice, formatRent } = await import("../src/lib/match/rent.ts");
 import {
   AGE_OPTIONS,
   AGE_RANGES,
@@ -688,6 +688,32 @@ test("價格異動：解析壞掉把價格變成 0 時，不能判定成全店�
 
 const PS = await import("../src/app/match/preference-state.ts");
 
+test("表單換算：買房／租屋（2026-10-26）—— 租屋送出時屋齡樓層需求歸零、切換會清掉類型與預算、舊資料沒 deal 就是買房", () => {
+  assert.equal(PS.toPrefState({ city: "台中市" }).deal, "sale");
+  assert.equal(PS.toPrefState({ deal: "rent", budgetMax: 20000 }).budgetMax, "20000");
+  const rentState = { ...PS.EMPTY_PREF, deal: "rent", city: "台中市", districts: ["梧棲區"], budgetMax: "20000", types: ["整層(棟)住家"], ageMin: "3", ageMax: "10", floor: "mid", features: ["平面車位"] };
+  const api = PS.toApiPreference(rentState);
+  assert.equal(api.deal, "rent");
+  assert.equal(api.budgetMax, 20000);
+  assert.deepEqual(api.types, ["整層(棟)住家"]);
+  assert.equal(api.ageMin, 0);
+  assert.equal(api.ageMax, 0);
+  assert.equal(api.floor, "");
+  assert.deepEqual(api.features, []);
+  // 買房照舊：屋齡等都跟著送
+  const saleApi = PS.toApiPreference({ ...rentState, deal: "sale", types: ["電梯大樓"] });
+  assert.equal(saleApi.deal, "sale");
+  assert.equal(saleApi.ageMin, 3);
+  assert.equal(saleApi.floor, "mid");
+  // 切換：類型、預算清掉；其餘留著；同一邊再按一次不動
+  const switched = PS.setDealIn(rentState, "sale");
+  assert.equal(switched.deal, "sale");
+  assert.deepEqual(switched.types, []);
+  assert.equal(switched.budgetMax, "");
+  assert.deepEqual(switched.districts, ["梧棲區"]);
+  assert.equal(PS.setDealIn(rentState, "rent"), rentState);
+});
+
 test("表單換算：資料庫條件 → 表單 → API，繞一圈不會掉東西", () => {
   const stored = {
     city: "台中市",
@@ -1030,38 +1056,52 @@ test("官網出租物件 → 表：價格是元／月、來源 pacific_rent、�
   assert.equal(s.usageType, "電梯大廈");
 });
 
-test("租屋快搜：整理查詢、表單選項、只回符合的（租金低的在前）、租金寫法", () => {
+test("租屋的條件：deal=rent 的預算是元／月、類型比出租型態、不符合的不列、租金低的在前、摘要寫「租屋」", () => {
   assert.equal(formatRent(26000), "26,000 元／月");
   assert.equal(formatDealPrice(598, "sale"), "598 萬");
   assert.equal(formatDealPrice(26000, "rent"), "26,000 元／月");
-  const q = normalizeRentQuery({ rentMin: 30000, rentMax: 20000, roomsList: ["2", 9, 2], sizeMin: "50", sizeMax: "20", districts: ["梧棲區", "", "梧棲區"], rentTypes: ["整層(棟)住家"], junk: 1 });
-  assert.equal(q.rentMin, 20000);
-  assert.equal(q.rentMax, 30000);
-  assert.deepEqual(q.roomsList, [2]);
-  assert.equal(q.sizeMin, 20);
-  assert.equal(q.sizeMax, 50);
-  assert.deepEqual(q.districts, ["梧棲區"]);
+  assert.equal(normalizePreference({}).deal, "sale");
+  assert.equal(normalizePreference({ deal: "rent" }).deal, "rent");
+  assert.equal(normalizePreference({ deal: "whatever" }).deal, "sale");
+  const pref = { deal: "rent", city: "台中市", districts: ["梧棲區"], budgetMax: 30000, roomsList: [2], types: ["整層(棟)住家"] };
+  assert.equal(describePreference(pref), "租屋 · 台中市梧棲區 · 租金 30,000 元內 · 2 房 · 整層(棟)住家");
   const base = { city: "台中市", age: 0, features: [], floor: "10/14", landSize: 0 };
   const L = [
     { ...base, id: "R1", district: "梧棲區", price: 26000, rooms: 2, size: 22, type: "電梯大樓", usageType: "整層(棟)住家" },
     { ...base, id: "R2", district: "梧棲區", price: 18000, rooms: 2, size: 20, type: "華廈", usageType: "整層(棟)住家" },
     { ...base, id: "R3", district: "沙鹿區", price: 12000, rooms: 1, size: 10, type: "套房", usageType: "獨立套房" },
-    { ...base, id: "R4", district: "梧棲區", price: 42000, rooms: 0, size: 50, type: "店面", usageType: "店面商辦" },
+    { ...base, id: "R4", district: "梧棲區", price: 42000, rooms: 2, size: 50, type: "店面", usageType: "店面商辦" },
   ];
-  const meta = rentMeta(L);
-  assert.deepEqual(meta.cities, [{ city: "台中市", districts: ["梧棲區", "沙鹿區"] }]);
-  assert.deepEqual(meta.rentTypes, ["整層(棟)住家", "獨立套房", "店面商辦"]);
-  assert.equal(meta.total, 4);
-  // 梧棲區、租金 3 萬內、2 房、整層住家 → R2（便宜的在前）、R1；店面（沒房數）與沙鹿的套房不出現
-  const r = searchRentals({ districts: ["梧棲區"], rentMax: 30000, roomsList: [2], rentTypes: ["整層(棟)住家"] }, L);
-  assert.deepEqual(r.matches.map((m) => m.listing.id), ["R2", "R1"]);
-  assert.equal(r.matched, 2);
-  assert.equal(r.summary, "梧棲區 · 租金 30,000 元內 · 2 房 · 整層(棟)住家");
-  // 租金下限是先篩的（評分引擎沒有這一項）
-  assert.deepEqual(searchRentals({ rentMin: 20000 }, L).matches.map((m) => m.listing.id), ["R1", "R4"]);
+  // 梧棲區、租金 3 萬內、2 房、整層住家 → R2（便宜的在前）、R1；店面型態不符、沙鹿的套房區域不符
+  assert.deepEqual(rankListings(pref, L).map((m) => m.listing.id), ["R2", "R1"]);
+  assert.ok(scoreListing(pref, L[3]).misses.some((m) => m.includes("類型不符（店面商辦）")));
+  // 買房的條件比的還是 type，不會去看出租型態
+  assert.ok(!scoreListing({ types: ["電梯大樓"] }, L[0]).disqualified);
   // 什麼都不填：全部回來、租金低的在前
-  assert.deepEqual(searchRentals({}, L).matches.map((m) => m.listing.id), ["R3", "R2", "R1", "R4"]);
-  assert.equal(describeRentQuery({}), "不限條件");
+  assert.deepEqual(rankListings({ deal: "rent" }, L).map((m) => m.listing.id), ["R3", "R2", "R1", "R4"]);
+});
+
+test("租客的店官網連結（2026-10-26 店官網定的）：type=rent、priceMax 是元／月、attribut 是出租型態原字、不送屋齡；買客照舊", () => {
+  const rent = branchFiltersFromPreference({ deal: "rent", districts: ["梧棲區", "大甲區"], budgetMax: 20000, roomsList: [2], types: ["整層(棟)住家", "獨立套房"], ageMin: 3, ageMax: 10, features: ["平面車位"] });
+  assert.deepEqual(rent, { type: "rent", district: ["梧棲區"], attribut: ["整層(棟)住家", "獨立套房"], room: [2], priceMax: 20000, stall: "平面" });
+  const u = new URL(branchMatchUrl("https://weikaihouse.com/match/book?k=x", rent));
+  assert.equal(u.searchParams.get("type"), "rent");
+  assert.equal(u.searchParams.get("priceMax"), "20000");
+  assert.equal(u.searchParams.get("attribut"), "整層(棟)住家,獨立套房");
+  assert.equal(u.searchParams.get("ageMin"), null);
+  assert.equal(u.searchParams.get("ageMax"), null);
+  const sale = branchFiltersFromPreference({ districts: ["梧棲區"], budgetMax: 1500, types: ["透天厝"], ageMax: 10 });
+  assert.equal(sale.type, undefined);
+  assert.equal(new URL(branchMatchUrl("https://weikaihouse.com/match/book?k=x", sale)).searchParams.get("type"), null);
+});
+
+test("「(已收訂)」那種標題同步時直接不收（2026-10-26 他要的）", () => {
+  assert.equal(isReservedTitle("(已收訂)租-幸福成2房傢俱家電可談"), true);
+  assert.equal(isReservedTitle("已收定-好好窩2房"), true);
+  assert.equal(isReservedTitle("【已出租】童綜合全配2房"), true);
+  assert.equal(isReservedTitle("已成交｜梧棲三房"), true);
+  assert.equal(isReservedTitle("全新電梯套房｜獨洗獨曬｜收租聖品"), false);
+  assert.equal(isReservedTitle(null), false);
 });
 
 test("出租來源的下架只動自己寫的：買賣同步看不到 R 編號也不會把它下架", () => {

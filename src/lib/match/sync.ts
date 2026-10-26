@@ -38,7 +38,7 @@ import { listingCarousel, priceChangeCarousel, pushMessages, text, type LineMess
 import { rankListings } from "./matcher";
 import { isBaseline, listingsToHide, pickDueSource, planHouseolWrites, sameSourceSnapshot, SOURCE_LABEL, SOURCES, type Source } from "./merge";
 import { fetchPacificListings } from "./pacific-fetch";
-import { pacificToListingUpsert } from "./pacific-parse";
+import { isReservedTitle, pacificToListingUpsert } from "./pacific-parse";
 import { countLandPending, ensureMatchTables, getListingSnapshot, hideListings, listBuyersForNotify, upsertListings } from "./store";
 import { createBuyerToken } from "./token";
 
@@ -218,7 +218,8 @@ async function syncPacific(trigger: "auto" | "manual"): Promise<SyncSummary> {
     storeCodes: Object.keys(PACIFIC_STORES),
     budgetMs: FETCH_BUDGET_MS,
   });
-  const upserts = r.items.map((it) => pacificToListingUpsert(it, { phone: PACIFIC_STORES[it.storeID]?.phone }));
+  // 「(已收訂)」那種直接不收（2026-10-26 他要的）：不在 seen 裡 → 這次完整同步就標成下架，標籤拿掉會自己回來
+  const upserts = r.items.filter((it) => !isReservedTitle(it.objectName)).map((it) => pacificToListingUpsert(it, { phone: PACIFIC_STORES[it.storeID]?.phone }));
   const stores: Record<string, number> = {};
   for (const l of upserts) stores[l.storeId] = (stores[l.storeId] ?? 0) + 1;
 
@@ -239,7 +240,7 @@ async function syncPacificRent(trigger: "auto" | "manual"): Promise<SyncSummary>
     budgetMs: FETCH_BUDGET_MS,
     type: 2,
   });
-  const upserts = r.items.map((it) => pacificToListingUpsert(it, { phone: PACIFIC_STORES[it.storeID]?.phone, deal: "rent" }));
+  const upserts = r.items.filter((it) => !isReservedTitle(it.objectName)).map((it) => pacificToListingUpsert(it, { phone: PACIFIC_STORES[it.storeID]?.phone, deal: "rent" }));
   const stores: Record<string, number> = {};
   for (const l of upserts) stores[l.storeId] = (stores[l.storeId] ?? 0) + 1;
 
@@ -252,7 +253,7 @@ async function syncPacificRent(trigger: "auto" | "manual"): Promise<SyncSummary>
 async function syncHouseol(trigger: "auto" | "manual"): Promise<SyncSummary> {
   const r = await fetchAllListings(MATCH.houseolStoreId, { budgetMs: FETCH_BUDGET_MS, concurrency: 8 });
   const wanted = MATCH.houseolStoreCode ? r.items.filter((it) => it.storeCode === MATCH.houseolStoreCode) : r.items;
-  const all = wanted.map((raw) => toListingUpsert(raw, MATCH.houseolPacificStore));
+  const all = wanted.map((raw) => toListingUpsert(raw, MATCH.houseolPacificStore)).filter((l) => !isReservedTitle(l.title));
 
   // 快照要在 upsert 之前拿：寫下去之後舊價格就被蓋掉了
   const before = await getListingSnapshot();
@@ -335,6 +336,8 @@ async function notifyBuyers(fresh: ListingUpsert[], priceChanges: PriceChange[])
   for (const buyer of buyers) {
     if (count >= MATCH.maxNotifyBuyersPerSync) break;
     if (!buyer.lineUserId || !buyer.preference) continue;
+    // 租屋的客人（2026-10-26）不推：這裡的新物件是買賣的，而且他的預算是元／月，拿去比買賣的萬會全部「在預算內」
+    if (buyer.preference.deal === "rent") continue;
 
     const newMatches = fresh.length
       ? rankListings(buyer.preference, fresh, { threshold: MATCH.threshold, limit: MATCH.maxListingsPerNotify })
