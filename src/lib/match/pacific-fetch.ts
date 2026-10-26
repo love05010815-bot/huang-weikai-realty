@@ -37,10 +37,13 @@ export async function getPacificAuth(): Promise<string> {
   return auth;
 }
 
+/** 官網查詢的 Type：1 售、2 租（2026-10-26 起租也抓，見 lib/match/rent.ts） */
+export type PacificDealType = 1 | 2;
+
 /** 跟官網前端送的一模一樣（從它的請求抄下來的）；Type 1 是售、2 是租 */
-function searchBody(city: string, area: string, page: number) {
+function searchBody(city: string, area: string, page: number, type: PacificDealType = 1) {
   return {
-    Type: 1,
+    Type: type,
     CityID: city,
     AreaID: area,
     TotalPrice: "-|-",
@@ -77,13 +80,13 @@ async function post(auth: string, endpoint: string, body: unknown, label: string
 }
 
 /** 地圖模式：一個行政區一次回整份 */
-export async function fetchPacificDistrict(auth: string, city: string, area: string): Promise<{ total: number; items: PacificItem[] }> {
-  return post(auth, "SearchMapObject", searchBody(city, area, 1), `${area} 地圖模式`);
+export async function fetchPacificDistrict(auth: string, city: string, area: string, type: PacificDealType = 1): Promise<{ total: number; items: PacificItem[] }> {
+  return post(auth, "SearchMapObject", searchBody(city, area, 1, type), `${area}${type === 2 ? "（租）" : ""} 地圖模式`);
 }
 
 /** 列表模式：一頁 10 筆 */
-export async function fetchPacificPage(auth: string, city: string, area: string, page: number): Promise<{ total: number; items: PacificItem[] }> {
-  return post(auth, "SearchObject2", searchBody(city, area, page), `${area} 第 ${page} 頁`);
+export async function fetchPacificPage(auth: string, city: string, area: string, page: number, type: PacificDealType = 1): Promise<{ total: number; items: PacificItem[] }> {
+  return post(auth, "SearchObject2", searchBody(city, area, page, type), `${area}${type === 2 ? "（租）" : ""} 第 ${page} 頁`);
 }
 
 export type PacificFetchResult = {
@@ -113,6 +116,7 @@ export async function fetchPacificListings({
   budgetMs = 38_000,
   concurrency = 4,
   pageConcurrency = 12,
+  type = 1,
 }: {
   city: string;
   districts: readonly string[];
@@ -120,6 +124,8 @@ export async function fetchPacificListings({
   budgetMs?: number;
   concurrency?: number;
   pageConcurrency?: number;
+  /** 1 售（預設）、2 租 */
+  type?: PacificDealType;
 }): Promise<PacificFetchResult> {
   const startedAt = Date.now();
   const overBudget = () => Date.now() - startedAt > budgetMs;
@@ -141,7 +147,7 @@ export async function fetchPacificListings({
     const results = await Promise.all(
       batch.map(async (area) => {
         try {
-          const r = await fetchPacificDistrict(auth, city, area);
+          const r = await fetchPacificDistrict(auth, city, area, type);
           requests++;
           return { area, ...r, failed: false };
         } catch (e) {
@@ -168,7 +174,7 @@ export async function fetchPacificListings({
       // 地圖模式沒回齊（或壞了）→ 列表模式翻頁補
       if (!areaComplete && !overBudget()) {
         try {
-          const first = await fetchPacificPage(auth, city, r.area, 1);
+          const first = await fetchPacificPage(auth, city, r.area, 1, type);
           requests++;
           collect(first.items);
           areaTotal = first.total || Math.max(areaTotal, first.items.length);
@@ -180,7 +186,7 @@ export async function fetchPacificListings({
               break;
             }
             const pageBatch: Promise<{ total: number; items: PacificItem[] }>[] = [];
-            for (let p = page; p < page + pageConcurrency && p <= pages; p++) pageBatch.push(fetchPacificPage(auth, city, r.area, p));
+            for (let p = page; p < page + pageConcurrency && p <= pages; p++) pageBatch.push(fetchPacificPage(auth, city, r.area, p, type));
             const rs = await Promise.all(pageBatch);
             requests += rs.length;
             for (const x of rs) collect(x.items);

@@ -4,6 +4,9 @@
  * 2026-10-02 起物件有兩個來源（決定過程見 .claude/memory/project_buyer_match.md）：
  *   pacific  太平洋官網，海線的店（config/match.ts 的 PACIFIC_STORES 名單）的物件。**主來源**。
  *   houseol  愛屋店網（梧棲店 storeid 4817）。只用來補梧棲店「官網沒上架」的那幾筆（實測 262 筆少 39 筆）。
+ *   pacific_rent  太平洋官網同一支 API 的**出租**物件（查詢 Type 2；2026-10-26 他要的租屋快搜）。
+ *            編號是 R／P／C 開頭、跟買賣不會撞（2026-10-26 實測 814 筆售 × 142 筆租，重疊 0），
+ *            寫進同一張表、deal='rent'；下架只動自己寫的（規則 3 本來就是這樣），所以跟買賣互不干擾。
  * 兩邊同一間物件的主鍵都是官網的 S 編號，所以會落在同一筆。
  *
  * 規則（每一條都有測試，scripts/check-match.mjs）：
@@ -16,14 +19,15 @@
  * ⚠️ 這個檔刻意不 import 任何 "@/..." 的東西：scripts/check-match.mjs 用 node 直接載它跑測試。
  */
 
-export type Source = "pacific" | "houseol";
+export type Source = "pacific" | "houseol" | "pacific_rent";
 
-export const SOURCES: readonly Source[] = ["pacific", "houseol"];
+export const SOURCES: readonly Source[] = ["pacific", "houseol", "pacific_rent"];
 
 /** 給後台顯示用的名稱（放這裡而不是 sync.ts：那支會拖進資料庫與 LINE，client component 不能 import） */
 export const SOURCE_LABEL: Record<Source, string> = {
   pacific: "太平洋官網（海線各店）",
   houseol: "愛屋店網（梧棲店補洞）",
+  pacific_rent: "太平洋官網（海線各店・出租）",
 };
 
 /** 同步前的快照裡一筆的樣子（store.ts 的 getListingSnapshot） */

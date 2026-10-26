@@ -56,6 +56,8 @@ export type PacificItem = {
   videoLink?: string | null;
   vrLink?: string | null;
   lastUpdateDate?: string | null;
+  /** 出租物件才有意義：整層(棟)住家／獨立套房／店面商辦／商用／出租土地／廠房／其他（2026-10-26） */
+  rentTypeName?: string | null;
 };
 
 /**
@@ -140,8 +142,13 @@ export function pacificListingUrl(saleId: string): string {
   return `https://www.pacific.com.tw/Object/ObjectDetail/?saleID=${encodeURIComponent(String(saleId))}`;
 }
 
-/** 官網的一筆 → 資料表的一筆。phone 是店的電話（官網列表沒給，由呼叫端依店碼查 config 傳進來） */
-export function pacificToListingUpsert(it: PacificItem, opts: { phone?: string } = {}): ListingUpsert {
+/**
+ * 官網的一筆 → 資料表的一筆。phone 是店的電話（官網列表沒給，由呼叫端依店碼查 config 傳進來）。
+ * deal="rent"（2026-10-26）：同一支 API 查 Type 2 回來的出租物件 —— sellTotalPrice 就是**月租（元）**、
+ * 沒有第一次刊登價（降價那欄一律 null）、usageType 改存官網的出租型態（rentTypeName），來源寫 pacific_rent。
+ */
+export function pacificToListingUpsert(it: PacificItem, opts: { phone?: string; deal?: "sale" | "rent" } = {}): ListingUpsert {
+  const deal = opts.deal ?? "sale";
   // 官網寫「臺中市」，我們這邊從買方條件到縣市清單都是「台中市」，進來就統一
   const { city, district, address } = splitAddress(String(it.address ?? "").trim().replace(/^臺/, "台"));
   const kind = String(it.attributName ?? "").trim();
@@ -178,7 +185,7 @@ export function pacificToListingUpsert(it: PacificItem, opts: { phone?: string }
     size: size || land,
     landSize: land,
     type: typeKey ? PACIFIC_TYPE_MAP[typeKey] : kind || "其他",
-    usageType: pacificUsageType(kind, title),
+    usageType: deal === "rent" ? String(it.rentTypeName ?? "").trim().slice(0, 32) : pacificUsageType(kind, title),
     age: age > 0 ? Math.round(age * 10) / 10 : 0,
     floor: pacificFloor(it.onWhichFloor, it.buildingAboveFloor, it.maxFloor).slice(0, 32),
     features: [...features],
@@ -190,6 +197,7 @@ export function pacificToListingUpsert(it: PacificItem, opts: { phone?: string }
     houseolId: houseolIdFromPic(it.pic),
     lat: coord(it.y_POINT),
     lng: coord(it.x_POINT),
-    src: "pacific",
+    src: deal === "rent" ? "pacific_rent" : "pacific",
+    deal,
   };
 }

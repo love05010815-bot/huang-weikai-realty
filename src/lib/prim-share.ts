@@ -65,9 +65,11 @@ export function primApiUrl(code: string): string {
 /**
  * 太平洋官網的物件編號：分享 API 的 obj_no、官網物件頁的 saleID、match_listing 的主鍵都是它。
  * 2026-10-14 實測過的是 S 開頭（S2862747）；2026-10-15 他回報「P0000309 讀不到」才發現別墅／透天這類是 P 開頭
- * （P0000309＝山水豐晉沙鹿四房別墅）。目前只認過這兩種字母，之後再冒出別的字首要再補。
+ * （P0000309＝山水豐晉沙鹿四房別墅）。
+ * 2026-10-26 租屋快搜：出租物件是 R 開頭（R3162545）、少數 C 開頭，P 開頭售租都有（編號本身不會撞，實測 814 售 × 142 租重疊 0）。
+ * 之後再冒出別的字首要再補。
  */
-export const PACIFIC_SALE_ID = /^[SP]\d{5,}$/i;
+export const PACIFIC_SALE_ID = /^[SPRC]\d{5,}$/i;
 
 /** 他貼的是官網物件頁（www.pacific.com.tw/Object/ObjectDetail/?saleID=S…）或直接打 S 編號 → 編號；都不是 → null */
 export function pacificSaleIdFrom(input: string): string | null {

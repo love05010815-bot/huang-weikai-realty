@@ -53,7 +53,8 @@ const loadPage = cache(async (raw: string): Promise<PageData> => {
   } catch {
     row = null;
   }
-  if (!row) return null;
+  // 出租物件（deal='rent'，2026-10-26）各有各的頁 /rent/<編號>：這頁的價格寫法是「萬」，畫出租會變成「26,000 萬」
+  if (!row || row.deal === "rent") return null;
 
   const hit = attributeListing(INVENTORY_INDEX, sourceFromListing(row));
   const project = hit ? (PROJECTS.find((p) => p.id === hit.projectId) ?? null) : null;

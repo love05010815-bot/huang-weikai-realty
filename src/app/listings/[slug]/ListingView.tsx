@@ -26,6 +26,7 @@ import { OWNER, SITE_URL, SOCIAL } from "@/config/owner";
 import type { Listing } from "@/config/listings";
 import { formatWan } from "@/lib/houseol-price";
 import { QUICK_LOAN, quickLoanFromPrice } from "@/lib/loan";
+import { formatRent } from "@/lib/match/rent";
 import { resolvePhotoSrc } from "@/lib/photo-src";
 import type { ListingDetail } from "@/lib/listing-detail";
 import { detailFeatures, factGroups, keyStats, lifeChips, mapsUrl, priceDrop } from "@/lib/listing-facts";
@@ -64,6 +65,11 @@ export type ListingViewMode = {
   soldCtaLabel: string;
   /** 精選好案才有 ❤️ 收藏與瀏覽足跡（map_listing 刻意不收，見 lib/favorites.ts） */
   collectible: boolean;
+  /**
+   * 🔑 出租物件（/rent/<編號>，2026-10-26）：price 是「元／月」→ 價格寫「租金 X 元／月」、不畫房貸月付金（他說的「不用作貸款試算」）、
+   * 不畫降價、不給實價登錄連結、多一個「出租」標籤。不給就是買賣。
+   */
+  deal?: "sale" | "rent";
 };
 
 type Props = {
@@ -89,6 +95,7 @@ export default function ListingView({ item, status, detail, mode }: Props) {
   const shareUrl = `${SITE_URL}${m.pageHref}`;
   const displayName = `${item.area} ${item.title}`;
   const bookingHref = m.bookingHref;
+  const rent = m.deal === "rent";
 
   const d = detail?.detail ?? null;
   const share = detail?.share ?? null;
@@ -97,10 +104,10 @@ export default function ListingView({ item, status, detail, mode }: Props) {
   // 售價跟卡片同一條規則（lib/listings.ts 補的）；卡片抓不到才退回官網欄位
   const price = item.price ?? d?.price ?? null;
   /** 🏦 房貸月付金（2026-10-21 他要的「做到物件表裡面」）：售價 × 預設成數，條件跟 /tax 的起始值同一份（lib/loan.ts 的 QUICK_LOAN） */
-  const loan = price != null ? quickLoanFromPrice(price) : null;
+  const loan = !rent && price != null ? quickLoanFromPrice(price) : null;
   // 「已降價」只在官網現價跟卡片顯示的售價一致時才畫 —— 兩邊對不上就不要畫出矛盾的數字
   const dropRaw = d ? priceDrop(d) : null;
-  const drop = dropRaw && price !== null && dropRaw.to === price ? dropRaw : null;
+  const drop = !rent && dropRaw && price !== null && dropRaw.to === price ? dropRaw : null;
   const stats = d ? keyStats(d, share) : [];
   const groups = d ? factGroups(d, share) : [];
   const features = d ? detailFeatures(d) : [];
@@ -126,7 +133,8 @@ export default function ListingView({ item, status, detail, mode }: Props) {
           ? {
               offers: {
                 "@type": "Offer",
-                price: Math.round(price * 10000),
+                // 買賣的 price 是萬、出租是元／月
+                price: rent ? Math.round(price) : Math.round(price * 10000),
                 priceCurrency: "TWD",
                 availability: "https://schema.org/InStock",
                 url: shareUrl,
@@ -224,7 +232,7 @@ export default function ListingView({ item, status, detail, mode }: Props) {
                 <span className={styles.eyebrow}>OFF MARKET</span>
                 <h1>這戶已經下架了</h1>
                 <p>
-                  {item.area}「{item.title}」目前不在銷售中。台中海線還有其他正在推的物件；
+                  {item.area}「{item.title}」目前{rent ? "已不再出租" : "不在銷售中"}。台中海線還有其他正在推的物件；
                   也歡迎直接告訴我您的需求，有合適的第一時間通知您。
                 </p>
                 <div className={one.soldActions}>
@@ -246,6 +254,7 @@ export default function ListingView({ item, status, detail, mode }: Props) {
                     <div className={one.tagRow}>
                       <span className={`${one.tag} ${one.tagArea}`}>{item.area}</span>
                       {community && !item.area.includes(community) ? <span className={`${one.tag} ${one.tagSoft}`}>{community}</span> : null}
+                      {rent ? <span className={`${one.tag} ${one.tagSoft}`}>出租</span> : null}
                       {d?.kind.trim() ? <span className={`${one.tag} ${one.tagSoft}`}>{d.kind.trim()}</span> : null}
                     </div>
                     <h1 className={one.title}>{item.title}</h1>
@@ -254,8 +263,8 @@ export default function ListingView({ item, status, detail, mode }: Props) {
                     {/* 售價：跟卡片同一條規則，抓不到就整塊不出現；降過價才有畫掉的舊價 */}
                     {price != null ? (
                       <div className={one.priceBox}>
-                        <span className={one.priceLabel}>售價</span>
-                        <span className={one.priceNum}>{formatWan(price)}</span>
+                        <span className={one.priceLabel}>{rent ? "租金" : "售價"}</span>
+                        <span className={one.priceNum}>{rent ? formatRent(price) : formatWan(price)}</span>
                         {drop ? (
                           <>
                             <s className={one.priceWas}>{formatWan(drop.from)}</s>
@@ -405,7 +414,7 @@ export default function ListingView({ item, status, detail, mode }: Props) {
                           在 Google 地圖看位置 ↗
                         </a>
                       ) : null}
-                      {district ? (
+                      {district && !rent ? (
                         <Link className={one.btnAlt} href={`/lvr?area=${encodeURIComponent(district)}`}>
                           看{district}實價登錄
                         </Link>
@@ -457,8 +466,8 @@ export default function ListingView({ item, status, detail, mode }: Props) {
           <div className={one.stickyPrice}>
             {price != null ? (
               <>
-                <small>售價</small>
-                <b>{formatWan(price)}</b>
+                <small>{rent ? "租金" : "售價"}</small>
+                <b>{rent ? formatRent(price) : formatWan(price)}</b>
               </>
             ) : (
               <b className={one.stickyTitle}>{item.title}</b>

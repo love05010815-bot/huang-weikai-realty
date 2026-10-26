@@ -22,6 +22,8 @@ process.env.APPOINTMENT_BASE_URL = "https://weikaihouse.com";
 const { houseolIdFromPic, pacificFloor, pacificToListingUpsert, pacificUsageType } = await import("../src/lib/match/pacific-parse.ts");
 // colleague-link.ts 有 import "@/config/owner"（別名），一樣要在 register 之後動態載
 const { branchBookUrl, branchFiltersFromPreference, branchMatchUrl, colleagueIntakeUrl, lineUrlFromInput, parseItemIds } = await import("../src/lib/match/colleague-link.ts");
+// rent.ts 用相對路徑 import 隔壁的 matcher（沒副檔名），同樣要在 register 之後動態載
+const { describeRentQuery, formatDealPrice, formatRent, normalizeRentQuery, rentMeta, searchRentals } = await import("../src/lib/match/rent.ts");
 import {
   AGE_OPTIONS,
   AGE_RANGES,
@@ -517,12 +519,14 @@ test("輪流同步：都到期挑最久沒跑的、沒跑過的優先、都沒�
   const h = 60 * 60_000;
   const iv = 30 * 60_000;
   const ago = (ms) => new Date(now - ms).toISOString();
-  assert.equal(pickDueSource(now, { pacific: null, houseol: null }, iv), "pacific");
-  assert.equal(pickDueSource(now, { pacific: ago(h), houseol: null }, iv), "houseol");
-  assert.equal(pickDueSource(now, { pacific: ago(2 * h), houseol: ago(h) }, iv), "pacific");
-  assert.equal(pickDueSource(now, { pacific: ago(10 * 60_000), houseol: ago(2 * h) }, iv), "houseol");
-  assert.equal(pickDueSource(now, { pacific: ago(5 * 60_000), houseol: ago(6 * 60_000) }, iv), null);
-  assert.equal(pickDueSource(now, { pacific: "不是時間", houseol: ago(1) }, iv), "pacific");
+  // 2026-10-26 起三個來源（多了官網的出租 pacific_rent），輪替規則不變：都到期挑最久沒跑的
+  assert.equal(pickDueSource(now, { pacific: null, houseol: null, pacific_rent: null }, iv), "pacific");
+  assert.equal(pickDueSource(now, { pacific: ago(h), houseol: null, pacific_rent: ago(h) }, iv), "houseol");
+  assert.equal(pickDueSource(now, { pacific: ago(2 * h), houseol: ago(h), pacific_rent: ago(h) }, iv), "pacific");
+  assert.equal(pickDueSource(now, { pacific: ago(10 * 60_000), houseol: ago(2 * h), pacific_rent: ago(h) }, iv), "houseol");
+  assert.equal(pickDueSource(now, { pacific: ago(5 * 60_000), houseol: ago(6 * 60_000), pacific_rent: ago(7 * 60_000) }, iv), null);
+  assert.equal(pickDueSource(now, { pacific: "不是時間", houseol: ago(1), pacific_rent: ago(1) }, iv), "pacific");
+  assert.equal(pickDueSource(now, { pacific: ago(h), houseol: ago(h), pacific_rent: null }, iv), "pacific_rent");
 });
 
 test("店網只補洞：官網有而且在售的讓給官網，其他照寫", () => {
@@ -979,6 +983,97 @@ test("同事的客人連結：店官網預約模式，條件對成店官網的�
   assert.deepEqual(parseItemIds("S1,<script>,S2"), ["S1", "S2"]);
   assert.deepEqual(parseItemIds(null), []);
   assert.equal(parseItemIds(Array.from({ length: 15 }, (_, i) => "S" + i).join(",")).length, 10);
+});
+
+// ---------------------------------------------------------------- 租屋（2026-10-26：lib/match/rent.ts、pacific-parse 的 deal、merge 的第三個來源）
+test("官網出租物件 → 表：價格是元／月、來源 pacific_rent、出租型態存 usageType；沒給 deal 就是買賣", () => {
+  const it = {
+    saleID: "R3162545",
+    storeID: "CUK",
+    objectName: "租-昇祐One Plus商辦",
+    address: "臺中市梧棲區四維中路",
+    sellTotalPrice: 26000,
+    firstSellTotalPrice: 0,
+    layoutRoom: -1,
+    layoutHall: null,
+    layoutToilet: null,
+    totalArea: 22.77,
+    landArea: 0,
+    hasStall: 1,
+    ageYear: 0,
+    onWhichFloor: "10",
+    buildingAboveFloor: 14,
+    maxFloor: null,
+    attributName: "電梯大廈",
+    x_POINT: 120.53233,
+    y_POINT: 24.26184,
+    pic: "https://pacblob.blob.core.windows.net/prim-public/o/R3162545_00.jpg",
+    rentTypeName: "整層(棟)住家",
+  };
+  const l = pacificToListingUpsert(it, { phone: "04-26572100", deal: "rent" });
+  assert.equal(l.id, "R3162545");
+  assert.equal(l.deal, "rent");
+  assert.equal(l.src, "pacific_rent");
+  assert.equal(l.price, 26000);
+  assert.equal(l.originalPrice, null);
+  assert.equal(l.usageType, "整層(棟)住家");
+  assert.equal(l.type, "電梯大樓");
+  assert.equal(l.city, "台中市");
+  assert.equal(l.district, "梧棲區");
+  assert.equal(l.rooms, 0);
+  assert.equal(l.floor, "10/14");
+  assert.equal(l.houseolId, "");
+  assert.ok(l.features.includes("車位") && l.features.includes("電梯"));
+  const s = pacificToListingUpsert({ ...it, saleID: "S2966256", sellTotalPrice: 598, rentTypeName: null });
+  assert.equal(s.deal, "sale");
+  assert.equal(s.src, "pacific");
+  assert.equal(s.usageType, "電梯大廈");
+});
+
+test("租屋快搜：整理查詢、表單選項、只回符合的（租金低的在前）、租金寫法", () => {
+  assert.equal(formatRent(26000), "26,000 元／月");
+  assert.equal(formatDealPrice(598, "sale"), "598 萬");
+  assert.equal(formatDealPrice(26000, "rent"), "26,000 元／月");
+  const q = normalizeRentQuery({ rentMin: 30000, rentMax: 20000, roomsList: ["2", 9, 2], sizeMin: "50", sizeMax: "20", districts: ["梧棲區", "", "梧棲區"], rentTypes: ["整層(棟)住家"], junk: 1 });
+  assert.equal(q.rentMin, 20000);
+  assert.equal(q.rentMax, 30000);
+  assert.deepEqual(q.roomsList, [2]);
+  assert.equal(q.sizeMin, 20);
+  assert.equal(q.sizeMax, 50);
+  assert.deepEqual(q.districts, ["梧棲區"]);
+  const base = { city: "台中市", age: 0, features: [], floor: "10/14", landSize: 0 };
+  const L = [
+    { ...base, id: "R1", district: "梧棲區", price: 26000, rooms: 2, size: 22, type: "電梯大樓", usageType: "整層(棟)住家" },
+    { ...base, id: "R2", district: "梧棲區", price: 18000, rooms: 2, size: 20, type: "華廈", usageType: "整層(棟)住家" },
+    { ...base, id: "R3", district: "沙鹿區", price: 12000, rooms: 1, size: 10, type: "套房", usageType: "獨立套房" },
+    { ...base, id: "R4", district: "梧棲區", price: 42000, rooms: 0, size: 50, type: "店面", usageType: "店面商辦" },
+  ];
+  const meta = rentMeta(L);
+  assert.deepEqual(meta.cities, [{ city: "台中市", districts: ["梧棲區", "沙鹿區"] }]);
+  assert.deepEqual(meta.rentTypes, ["整層(棟)住家", "獨立套房", "店面商辦"]);
+  assert.equal(meta.total, 4);
+  // 梧棲區、租金 3 萬內、2 房、整層住家 → R2（便宜的在前）、R1；店面（沒房數）與沙鹿的套房不出現
+  const r = searchRentals({ districts: ["梧棲區"], rentMax: 30000, roomsList: [2], rentTypes: ["整層(棟)住家"] }, L);
+  assert.deepEqual(r.matches.map((m) => m.listing.id), ["R2", "R1"]);
+  assert.equal(r.matched, 2);
+  assert.equal(r.summary, "梧棲區 · 租金 30,000 元內 · 2 房 · 整層(棟)住家");
+  // 租金下限是先篩的（評分引擎沒有這一項）
+  assert.deepEqual(searchRentals({ rentMin: 20000 }, L).matches.map((m) => m.listing.id), ["R1", "R4"]);
+  // 什麼都不填：全部回來、租金低的在前
+  assert.deepEqual(searchRentals({}, L).matches.map((m) => m.listing.id), ["R3", "R2", "R1", "R4"]);
+  assert.equal(describeRentQuery({}), "不限條件");
+});
+
+test("出租來源的下架只動自己寫的：買賣同步看不到 R 編號也不會把它下架", () => {
+  const before = new Map([
+    ["S1", { status: "available", price: 598, src: "pacific" }],
+    ["R1", { status: "available", price: 26000, src: "pacific_rent" }],
+  ]);
+  assert.deepEqual(listingsToHide(before, new Set(["S1"]), "pacific"), []);
+  assert.deepEqual(listingsToHide(before, new Set(), "pacific"), ["S1"]);
+  assert.deepEqual(listingsToHide(before, new Set(), "pacific_rent"), ["R1"]);
+  assert.equal(isBaseline(before, "pacific_rent"), false);
+  assert.equal(isBaseline(new Map([["S1", { status: "available", price: 1, src: "pacific" }]]), "pacific_rent"), true);
 });
 
 if (process.exitCode) {

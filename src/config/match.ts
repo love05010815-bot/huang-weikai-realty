@@ -58,6 +58,12 @@ export const MATCH = {
    * 沒這道閘門就會一次把幾百則錯誤推播送出去，額度燒光又要跟客戶道歉。
    */
   maxPriceChangesPerSync: 30,
+  /**
+   * 🔑 租屋快搜（2026-10-26）要不要對外：true 時 /match 的表單上面有「買房／租屋」切換；
+   * false 時切換不出現，但 /match?deal=rent 與 /rent/<編號> 照樣能開（給他先看、先驗）。
+   * 出租物件的同步（lib/match/sync.ts 的 pacific_rent）不看這個開關，一直在跑。
+   */
+  rentPublic: false,
 } as const;
 
 /**

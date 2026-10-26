@@ -5,6 +5,8 @@
  *   pacific  太平洋官網 www.pacific.com.tw 的查詢 API，海線的店（config/match.ts 的 PACIFIC_STORES；2026-10-20 起六家，沙鹿幸福領航拿掉）。主來源。
  *            店名單改了不用動資料庫：被拿掉的店已同步進來的物件，下一次完整同步時 listingsToHide 會把它們標成下架。
  *   houseol  愛屋店網 storeid 4817 的公開頁，只補梧棲店「官網沒上架」的那幾筆。
+ *   pacific_rent  太平洋官網同一支 API 的**出租**物件（Type 2；2026-10-26 他要的租屋快搜，lib/match/rent.ts）。
+ *            寫進同一張表、deal='rent'；**不推播**（買方條件是買房的，預算單位也不同）。
  *
  * 誰來觸發：
  *   - keep-warm 排程每 10 分鐘敲 /api/match/sync。這裡自己判斷哪個來源「距上次成功超過 30 分鐘」，
@@ -110,8 +112,13 @@ export async function getLastSyncResult(job: SyncJob): Promise<SyncSummary | nul
 
 /** 後台用：兩個來源與補土地類別，各自最近一次的結果 */
 export async function getLastSyncResults(): Promise<Record<SyncJob, SyncSummary | null>> {
-  const [pacific, houseol, land] = await Promise.all([getLastSyncResult("pacific"), getLastSyncResult("houseol"), getLastSyncResult("land")]);
-  return { pacific, houseol, land };
+  const [pacific, houseol, pacificRent, land] = await Promise.all([
+    getLastSyncResult("pacific"),
+    getLastSyncResult("houseol"),
+    getLastSyncResult("pacific_rent"),
+    getLastSyncResult("land"),
+  ]);
+  return { pacific, houseol, pacific_rent: pacificRent, land };
 }
 
 export function isSource(v: unknown): v is Source {
@@ -138,7 +145,11 @@ export async function runListingSync({
 
   let picked: Source | null = source ?? null;
   if (!picked || !force) {
-    const lastOk = { pacific: await getConfig(keyLastOk("pacific")), houseol: await getConfig(keyLastOk("houseol")) };
+    const lastOk = {
+      pacific: await getConfig(keyLastOk("pacific")),
+      houseol: await getConfig(keyLastOk("houseol")),
+      pacific_rent: await getConfig(keyLastOk("pacific_rent")),
+    };
     const due = pickDueSource(Date.now(), lastOk, MATCH.syncIntervalMin * 60_000);
     if (picked) {
       // 指定了來源但沒 force：還沒到期就不跑
@@ -150,7 +161,7 @@ export async function runListingSync({
       if (!due) {
         // 兩個來源都不用跑的這一次，拿來補土地的類別（愛屋物件頁一筆一頁，慢慢補）
         if ((await countLandPending()) > 0) return runLand(trigger, startedAt, { limit: 20, budgetMs: 30_000 });
-        return { ran: false, ok: true, reason: `兩個來源都在 ${MATCH.syncIntervalMin} 分鐘內同步過` };
+        return { ran: false, ok: true, reason: `各來源都在 ${MATCH.syncIntervalMin} 分鐘內同步過` };
       }
       picked = due;
     }
@@ -164,7 +175,7 @@ export async function runListingSync({
 
   let summary: SyncSummary;
   try {
-    summary = picked === "pacific" ? await syncPacific(trigger) : await syncHouseol(trigger);
+    summary = picked === "pacific" ? await syncPacific(trigger) : picked === "pacific_rent" ? await syncPacificRent(trigger) : await syncHouseol(trigger);
   } catch (e) {
     summary = { ran: true, ok: false, source: picked, trigger, at: new Date().toISOString(), reason: e instanceof Error ? e.message : String(e) };
     console.error(`[match/sync] ${picked} 同步失敗:`, e);
@@ -214,6 +225,27 @@ async function syncPacific(trigger: "auto" | "manual"): Promise<SyncSummary> {
   const seen = new Set(upserts.map((l) => l.id));
   const out = await writeAndNotify("pacific", trigger, upserts, seen, r.complete);
   return { ...out, storeName: SOURCE_LABEL.pacific, total: r.total, fetched: upserts.length, stores };
+}
+
+/**
+ * 太平洋官網的出租物件（2026-10-26）：同一支 API 查 Type 2、同樣八區、同樣只留名單上的店；寫進同一張表、deal='rent'。
+ * 下架只動 pacific_rent 自己寫的（merge.ts 規則 3），所以買賣那邊的下架判斷完全不受影響。
+ */
+async function syncPacificRent(trigger: "auto" | "manual"): Promise<SyncSummary> {
+  const r = await fetchPacificListings({
+    city: PACIFIC_CITY,
+    districts: PACIFIC_DISTRICTS,
+    storeCodes: Object.keys(PACIFIC_STORES),
+    budgetMs: FETCH_BUDGET_MS,
+    type: 2,
+  });
+  const upserts = r.items.map((it) => pacificToListingUpsert(it, { phone: PACIFIC_STORES[it.storeID]?.phone, deal: "rent" }));
+  const stores: Record<string, number> = {};
+  for (const l of upserts) stores[l.storeId] = (stores[l.storeId] ?? 0) + 1;
+
+  const seen = new Set(upserts.map((l) => l.id));
+  const out = await writeAndNotify("pacific_rent", trigger, upserts, seen, r.complete);
+  return { ...out, storeName: SOURCE_LABEL.pacific_rent, total: r.total, fetched: upserts.length, stores };
 }
 
 /** 愛屋店網：梧棲店整份抓，官網已經有的讓給官網 */
@@ -267,7 +299,9 @@ async function writeAndNotify(
   }
   const toNotifyPrice = priceChangeSkipped ? [] : priceChanges;
 
-  const notifiedBuyers = baseline || (fresh.length === 0 && toNotifyPrice.length === 0) ? 0 : await notifyBuyers(fresh, toNotifyPrice);
+  // 出租物件不推播（2026-10-26）：買方留的是買房條件、預算單位是萬，拿租金去比會亂配；租屋只在 /match 的租屋模式出現
+  const notifiedBuyers =
+    baseline || source === "pacific_rent" || (fresh.length === 0 && toNotifyPrice.length === 0) ? 0 : await notifyBuyers(fresh, toNotifyPrice);
 
   return {
     ran: true,

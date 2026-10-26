@@ -44,7 +44,9 @@ type Row = {
 
 /** 只撈畫面與對照要用的欄位 —— features／description 那些 TEXT 不要跟著 800 多筆一起進記憶體 */
 const SELECT_AVAILABLE =
-  "SELECT id, title, district, price, rooms, halls, baths, `size`, `type`, age, `floor`, images, lat, lng FROM match_listing WHERE status = 'available'";
+  // 2026-10-26 起同一張表也有出租物件（src = pacific_rent、價格是元／月），這裡是「在售」清單，不收。
+  // 用 src 而不是 deal 欄來排除：deal 欄是同一天加的、靠 ensureMatchTables() 補，這支查詢不經過那裡。
+  "SELECT id, title, district, price, rooms, halls, baths, `size`, `type`, age, `floor`, images, lat, lng FROM match_listing WHERE status = 'available' AND src <> 'pacific_rent'";
 
 const num = (v: unknown): number => {
   const n = Number(v);

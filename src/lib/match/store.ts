@@ -75,6 +75,8 @@ export async function ensureMatchTables(): Promise<void> {
     ["lng", "ALTER TABLE match_listing ADD COLUMN lng DOUBLE NULL AFTER lat"],
     // 土地的類別改用愛屋物件頁補（lib/match/land-enrich.ts）：查過就記時間，官網同步不再蓋掉補好的欄位
     ["houseol_checked_at", "ALTER TABLE match_listing ADD COLUMN houseol_checked_at DATETIME NULL AFTER lng"],
+    // 2026-10-26 租屋快搜：買賣／出租寫在同一張表，用這欄分。舊資料全是買賣，所以預設 'sale'
+    ["deal", "ALTER TABLE match_listing ADD COLUMN deal VARCHAR(8) NOT NULL DEFAULT 'sale' AFTER src"],
   ] as const) {
     const has = await db.$queryRawUnsafe<unknown[]>(`SHOW COLUMNS FROM match_listing LIKE '${col}'`);
     if (has.length === 0) await db.$executeRawUnsafe(ddl);
@@ -257,13 +259,14 @@ type ListingRow = {
   first_seen_at: Date | null;
   synced_at: Date | null;
   src: string;
+  deal: string | null;
   houseol_id: string;
   lat: number | null;
   lng: number | null;
 };
 
 const LISTING_COLS =
-  "id, store_id, store_code, title, city, district, address, price, original_price, unit_price, rooms, halls, baths, `size`, land_size, `type`, usage_type, age, `floor`, features, images, video, description, phone, source_url, status, first_seen_at, synced_at, src, houseol_id, lat, lng";
+  "id, store_id, store_code, title, city, district, address, price, original_price, unit_price, rooms, halls, baths, `size`, land_size, `type`, usage_type, age, `floor`, features, images, video, description, phone, source_url, status, first_seen_at, synced_at, src, deal, houseol_id, lat, lng";
 
 function toListing(row: ListingRow): MatchListing {
   return {
@@ -296,7 +299,8 @@ function toListing(row: ListingRow): MatchListing {
     lat: row.lat == null ? null : n(row.lat),
     lng: row.lng == null ? null : n(row.lng),
     // 2026-10-02 之前的舊資料沒有 src，它們都是店網來的
-    src: row.src === "pacific" ? "pacific" : "houseol",
+    src: row.src === "pacific" ? "pacific" : row.src === "pacific_rent" ? "pacific_rent" : "houseol",
+    deal: row.deal === "rent" ? "rent" : "sale",
     status: row.status === "hidden" ? "hidden" : "available",
     firstSeenAt: row.first_seen_at,
     syncedAt: row.synced_at,
@@ -322,10 +326,15 @@ export async function getListings(ids: string[]): Promise<MatchListing[]> {
   return clean.map((id) => byId.get(id)).filter((l): l is MatchListing => Boolean(l));
 }
 
-export async function listAvailableListings(): Promise<MatchListing[]> {
+/**
+ * 對外用：只回在售的物件。**預設只給買賣**（配對、推播、同事建檔、LINE「最新物件」都是）；
+ * 租屋快搜另外傳 "rent"（2026-10-26）—— 出租的價格是元／月，混進買賣的配對會把預算比對弄壞。
+ */
+export async function listAvailableListings(deal: "sale" | "rent" = "sale"): Promise<MatchListing[]> {
   await ensureMatchTables();
   const rows = await db.$queryRawUnsafe<ListingRow[]>(
-    `SELECT ${LISTING_COLS} FROM match_listing WHERE status = 'available' ORDER BY first_seen_at DESC`,
+    `SELECT ${LISTING_COLS} FROM match_listing WHERE status = 'available' AND deal = ? ORDER BY first_seen_at DESC`,
+    deal,
   );
   return rows.map(toListing);
 }
@@ -391,7 +400,8 @@ export async function upsertListings(items: ListingUpsert[]): Promise<void> {
   const CHUNK = 50;
   for (let i = 0; i < items.length; i += CHUNK) {
     const chunk = items.slice(i, i + CHUNK);
-    const placeholders = chunk.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'available', NOW(), NULL)").join(",\n");
+    // 30 個問號＝下面 values 的 30 個欄位（id … lng，含 2026-10-26 加的 deal）；多一欄記得兩邊一起改
+    const placeholders = chunk.map(() => "(" + Array(30).fill("?").join(", ") + ", 'available', NOW(), NULL)").join(",\n");
     const values = chunk.flatMap((l) => [
       l.id,
       l.storeId,
@@ -419,6 +429,7 @@ export async function upsertListings(items: ListingUpsert[]): Promise<void> {
       l.phone,
       l.sourceUrl,
       l.src,
+      l.deal,
       l.houseolId,
       l.lat,
       l.lng,
@@ -427,10 +438,10 @@ export async function upsertListings(items: ListingUpsert[]): Promise<void> {
       `INSERT INTO match_listing
          (id, store_id, store_code, title, city, district, address, price, original_price, unit_price,
           rooms, halls, baths, \`size\`, land_size, \`type\`, usage_type, age, \`floor\`, features, images, video, description,
-          phone, source_url, src, houseol_id, lat, lng, status, synced_at, hidden_at)
+          phone, source_url, src, deal, houseol_id, lat, lng, status, synced_at, hidden_at)
        VALUES ${placeholders}
        ON DUPLICATE KEY UPDATE
-         store_id = VALUES(store_id), store_code = VALUES(store_code), src = VALUES(src),
+         store_id = VALUES(store_id), store_code = VALUES(store_code), src = VALUES(src), deal = VALUES(deal),
          houseol_id = IF(VALUES(houseol_id) <> '', VALUES(houseol_id), houseol_id),
          lat = VALUES(lat), lng = VALUES(lng),
          title = VALUES(title), city = VALUES(city), district = VALUES(district),
@@ -526,15 +537,17 @@ export async function saveLandDetail(
   );
 }
 
-export async function countListings(): Promise<{ available: number; hidden: number }> {
+/** 後台的數字：在售（買賣）、已下架（買賣＋出租）、出租中 */
+export async function countListings(): Promise<{ available: number; hidden: number; rentAvailable: number }> {
   await ensureMatchTables();
-  const rows = await db.$queryRawUnsafe<{ status: string; c: bigint | number }[]>(
-    `SELECT status, COUNT(*) AS c FROM match_listing GROUP BY status`,
+  const rows = await db.$queryRawUnsafe<{ status: string; deal: string | null; c: bigint | number }[]>(
+    `SELECT status, deal, COUNT(*) AS c FROM match_listing GROUP BY status, deal`,
   );
-  const out = { available: 0, hidden: 0 };
+  const out = { available: 0, hidden: 0, rentAvailable: 0 };
   for (const r of rows) {
-    if (r.status === "available") out.available = Number(r.c);
-    else if (r.status === "hidden") out.hidden = Number(r.c);
+    if (r.status === "available" && r.deal === "rent") out.rentAvailable += Number(r.c);
+    else if (r.status === "available") out.available += Number(r.c);
+    else if (r.status === "hidden") out.hidden += Number(r.c);
   }
   return out;
 }
@@ -544,7 +557,7 @@ export async function getMatchMeta(): Promise<{ cities: { city: string; district
   await ensureMatchTables();
   const rows = await db.$queryRawUnsafe<{ city: string; district: string; c: bigint | number }[]>(
     `SELECT city, district, COUNT(*) AS c FROM match_listing
-      WHERE status = 'available' AND city <> '' GROUP BY city, district ORDER BY c DESC`,
+      WHERE status = 'available' AND deal = 'sale' AND city <> '' GROUP BY city, district ORDER BY c DESC`,
   );
   const map = new Map<string, string[]>();
   for (const r of rows) {
@@ -1023,6 +1036,8 @@ export type ViewingWithListing = Viewing & {
   listingCity: string;
   listingDistrict: string;
   listingPrice: number;
+  /** 第一間是買賣還是出租（2026-10-26）：後台列表的價格要寫「萬」還是「元／月」 */
+  listingDeal: "sale" | "rent";
   buyerDisplayName: string | null;
 };
 
@@ -1032,9 +1047,9 @@ export type ViewingWithListing = Viewing & {
  */
 export async function listViewingsForAdmin(limit = 300, colleagueId: string | null = null): Promise<ViewingWithListing[]> {
   await ensureMatchTables();
-  const rows = await db.$queryRawUnsafe<(ViewingRow & { listing_title: string | null; listing_city: string | null; listing_district: string | null; listing_price: number | null; buyer_display_name: string | null })[]>(
+  const rows = await db.$queryRawUnsafe<(ViewingRow & { listing_title: string | null; listing_city: string | null; listing_district: string | null; listing_price: number | null; listing_deal: string | null; buyer_display_name: string | null })[]>(
     `SELECT v.id, v.code, v.listing_id, v.listing_ids, v.buyer_id, v.line_user_id, v.name, v.phone, v.preferred_at, v.note, v.status, v.agent_note, v.linked_at, v.created_at, v.updated_at,
-            l.title AS listing_title, l.city AS listing_city, l.district AS listing_district, l.price AS listing_price,
+            l.title AS listing_title, l.city AS listing_city, l.district AS listing_district, l.price AS listing_price, l.deal AS listing_deal,
             b.display_name AS buyer_display_name
        FROM match_viewing v
        LEFT JOIN match_listing l ON l.id = v.listing_id
@@ -1049,6 +1064,7 @@ export async function listViewingsForAdmin(limit = 300, colleagueId: string | nu
     listingCity: row.listing_city ?? "",
     listingDistrict: row.listing_district ?? "",
     listingPrice: n(row.listing_price),
+    listingDeal: row.listing_deal === "rent" ? "rent" : "sale",
     buyerDisplayName: row.buyer_display_name,
   }));
 }

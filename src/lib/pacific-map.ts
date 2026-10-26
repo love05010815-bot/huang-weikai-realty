@@ -84,6 +84,8 @@ export type PacificDetail = {
   feature: string;
   lat: number | null;
   lng: number | null;
+  /** 出租型態（官網 rentTypeName：整層(棟)住家／獨立套房／店面商辦…）；買賣物件多半是空字串（2026-10-26） */
+  rentType: string;
   /** 沒有售價就當出租 */
   isRent: boolean;
 };
@@ -169,6 +171,7 @@ export function sanitizeDetail(raw: unknown): PacificDetail | null {
     feature: str(r.objFeature1),
     lat: num(r.y_POINT),
     lng: num(r.x_POINT),
+    rentType: str(r.rentTypeName),
     isRent: price === null,
   };
 }
@@ -217,6 +220,7 @@ export function detailFromShare(it: PrimShareItem): PacificDetail {
     feature: "",
     lat: null,
     lng: null,
+    rentType: "",
     isRent: it.isRent,
   };
 }

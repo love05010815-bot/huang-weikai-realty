@@ -30,5 +30,8 @@ export function publicListing(l: MatchListing) {
     images: l.images.slice(0, 8),
     video: l.video,
     sourceUrl: l.sourceUrl,
+    /** 買賣／出租（2026-10-26）：出租的 price 是元／月，畫面照這個決定寫法；出租型態只有出租才給 */
+    deal: l.deal,
+    rentType: l.deal === "rent" ? l.usageType : "",
   };
 }

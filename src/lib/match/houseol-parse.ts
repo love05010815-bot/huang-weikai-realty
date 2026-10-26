@@ -220,8 +220,10 @@ export type ListingUpsert = {
   /** 座標（官網才有；店網沒給就 null） */
   lat: number | null;
   lng: number | null;
-  /** 這筆是哪個來源寫的（lib/match/merge.ts 的規則靠它） */
-  src: "pacific" | "houseol";
+  /** 這筆是哪個來源寫的（lib/match/merge.ts 的規則靠它）。pacific_rent ＝ 官網的出租物件（2026-10-26） */
+  src: "pacific" | "houseol" | "pacific_rent";
+  /** 買賣還是出租（2026-10-26 加的）。出租的 price 是「元／月」、usageType 是出租型態；配對、地圖、推播一律只看 sale */
+  deal: "sale" | "rent";
 };
 
 /**
@@ -285,5 +287,6 @@ export function toListingUpsert(raw: RawHouseolItem, storeId: string): ListingUp
     lat: null,
     lng: null,
     src: "houseol",
+    deal: "sale",
   };
 }

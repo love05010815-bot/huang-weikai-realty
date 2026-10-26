@@ -96,6 +96,8 @@ export function factGroups(d: PacificDetail, share: PrimShareItem | null): FactG
       rows: [
         { label: "社區", value: d.community },
         { label: "型態", value: d.kind.trim() },
+        // 出租物件才有（/rent/<編號>）：整層(棟)住家／獨立套房／店面商辦…；買賣物件這格是空的就不出現
+        { label: "出租型態", value: String(d.rentType ?? "") },
         { label: "地址", value: stripCity(d.addressRoad) },
         { label: "格局", value: layoutText(d.rooms, d.halls, d.baths) },
         { label: "樓層", value: floorText(d) },

@@ -38,8 +38,8 @@ export default async function MatchAdminPage() {
   let buyers: AdminBuyer[] = [];
   let colleagues: IntakeColleagueRow[] = [];
   let listings: AdminListing[] = [];
-  let counts = { available: 0, hidden: 0 };
-  let lastSync: Record<SyncJob, SyncSummary | null> = { pacific: null, houseol: null, land: null };
+  let counts = { available: 0, hidden: 0, rentAvailable: 0 };
+  let lastSync: Record<SyncJob, SyncSummary | null> = { pacific: null, houseol: null, pacific_rent: null, land: null };
   let intake = "";
   let loadError: string | null = null;
   try {
@@ -56,6 +56,7 @@ export default async function MatchAdminPage() {
       listingTitles: v.listingIds.map((id) => titleById.get(id) ?? id),
       listingArea: `${v.listingCity}${v.listingDistrict}`,
       listingPrice: v.listingPrice,
+      listingDeal: v.listingDeal,
       name: v.name,
       phone: v.phone,
       preferredAt: v.preferredAt,
@@ -91,6 +92,7 @@ export default async function MatchAdminPage() {
       type: l.type,
       status: l.status,
       sourceUrl: l.sourceUrl,
+      deal: l.deal,
       syncedAt: iso(l.syncedAt),
     }));
     counts = await countListings();

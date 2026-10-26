@@ -27,7 +27,7 @@ export type LineMessage = { type: string; [key: string]: unknown };
 export type ListingLike = Pick<
   ListingUpsert,
   "id" | "title" | "city" | "district" | "address" | "price" | "rooms" | "size" | "landSize" | "type" | "age" | "images"
->;
+> & { deal?: "sale" | "rent" };
 
 async function send(endpoint: string, body: unknown): Promise<boolean> {
   const token = getLineBotToken();
@@ -97,6 +97,9 @@ export const matchPageUrl = (listingId?: string, token?: string | null, opts: { 
 export const text = (t: string): LineMessage => ({ type: "text", text: String(t).slice(0, 4800) });
 
 export const fmtWan = (price: number): string => `${Number(price).toLocaleString("zh-TW")} 萬`;
+/** 買賣寫「萬」、出租寫「元／月」（2026-10-26 租屋也能預約看屋，通知裡的價格要對） */
+export const fmtPrice = (l: { price: number; deal?: "sale" | "rent" }): string =>
+  l.deal === "rent" ? `${Math.round(Number(l.price)).toLocaleString("zh-TW")} 元／月` : fmtWan(l.price);
 
 /** 屋齡 0 = 店網沒給（土地就沒有屋齡），不顯示；未滿一年在解析時記成 0.5 → 新成屋 */
 const ageText = (age: number): string => (Number(age) <= 0 ? "" : Number(age) < 1 ? "新成屋" : `屋齡 ${age} 年`);
@@ -154,7 +157,7 @@ export function listingBubble(
       contents: [
         opts.score != null ? { type: "text", text: `配對度 ${opts.score}%`, size: "xs", color: GREEN, weight: "bold" } : null,
         { type: "text", text: safe(listing.title, "物件"), weight: "bold", size: "lg", wrap: true },
-        { type: "text", text: fmtWan(listing.price), size: "xl", weight: "bold", color: "#E8590C" },
+        { type: "text", text: fmtPrice(listing), size: "xl", weight: "bold", color: "#E8590C" },
         opts.priceFrom && opts.priceFrom !== listing.price ? priceChangeLine(opts.priceFrom, listing.price) : null,
         { type: "text", text: safe(metaLine(listing)), size: "sm", color: "#666666", wrap: true },
         opts.reasons?.length ? { type: "text", text: `✔ ${opts.reasons.slice(0, 3).join("、")}`, size: "xs", color: "#888888", wrap: true } : null,
@@ -216,7 +219,7 @@ export function viewingConfirmFlex(
         { type: "text", text: `共 ${listings.length} 間`, weight: "bold", size: "md" },
         ...listings.slice(0, 5).map((l, i) => ({
           type: "text",
-          text: `${i + 1}. ${safe(l.title, "物件")}｜${fmtWan(l.price)}`,
+          text: `${i + 1}. ${safe(l.title, "物件")}｜${fmtPrice(l)}`,
           size: "sm",
           color: "#333333",
           wrap: true,
@@ -510,7 +513,7 @@ export function viewingNotifyText(
     // 一次預約多間時只給一個編號，間數寫在這一行；下面再把每一間列出來
     multi ? `物件：共 ${listings.length} 間` : `物件：${first?.title ?? viewing.listingId}`,
     ...(multi
-      ? listings.map((l, i) => `　${i + 1}. ${l.title}｜${l.city}${l.district}｜${fmtWan(l.price)}`)
+      ? listings.map((l, i) => `　${i + 1}. ${l.title}｜${l.city}${l.district}｜${fmtPrice(l)}`)
       : where
         ? [`地點：${where}`]
         : []),

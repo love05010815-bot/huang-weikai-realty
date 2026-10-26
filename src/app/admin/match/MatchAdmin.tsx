@@ -3,7 +3,7 @@
  * 買方配對後台的操作介面：三個分頁（預約看屋／買方／物件同步）。
  *
  * 改狀態走 server action，改完 router.refresh() 重讀 —— 畫面上看到的一律是資料庫真的有的東西。
- * 「立即同步」打 /api/match/sync?force=1&source=…，兩個來源各打一次（官網約 10 秒、店網約 30–40 秒；那支的函式上限 60 秒，
+ * 「立即同步」打 /api/match/sync?force=1&source=…，三個來源各打一次（官網買賣約 10 秒、官網出租約 10 秒、店網約 30–40 秒；那支的函式上限 60 秒，
  * 所以不能一次跑兩個），跑完也 refresh。
  */
 import Link from "next/link";
@@ -28,6 +28,8 @@ export type AdminViewing = {
   listingTitles: string[];
   listingArea: string;
   listingPrice: number;
+  /** 第一間是買賣還是出租（2026-10-26）：價格寫「萬」還是「元／月」 */
+  listingDeal: "sale" | "rent";
   name: string;
   phone: string;
   preferredAt: string;
@@ -68,6 +70,8 @@ export type AdminListing = {
   type: string;
   status: "available" | "hidden";
   sourceUrl: string;
+  /** 買賣／出租（2026-10-26）：出租的 price 是元／月 */
+  deal: "sale" | "rent";
   syncedAt: string | null;
 };
 
@@ -134,7 +138,7 @@ export default function MatchAdmin({
   /** 同事名單（跟本人建檔頁的「同事」同一份；2026-10-20 他說要同步到後台） */
   colleagues: IntakeColleagueRow[];
   listings: AdminListing[];
-  counts: { available: number; hidden: number };
+  counts: { available: number; hidden: number; rentAvailable: number };
   /** 兩個來源與補土地類別，各自最近一次的結果 */
   lastSync: Record<SyncJob, SyncSummary | null>;
   /** 手機快速建檔連結（不用登入；見 lib/match/intake-key.ts） */
@@ -171,8 +175,8 @@ export default function MatchAdmin({
     setSyncing(true);
     setMsg(null);
     try {
-      // 兩個來源各跑一次（各 30–40 秒）；一起跑會撞到函式 60 秒的上限。最後再補一次土地類別。
-      for (const source of ["pacific", "houseol"] as const) {
+      // 三個來源各跑一次（官網兩種各約 10 秒、店網 30–40 秒）；一起跑會撞到函式 60 秒的上限。最後再補一次土地類別。
+      for (const source of ["pacific", "pacific_rent", "houseol"] as const) {
         setSyncingSource(source);
         const res = await fetch(`/api/match/sync?force=1&source=${source}`, { cache: "no-store" });
         const data = (await res.json()) as SyncSummary;
@@ -301,7 +305,7 @@ export default function MatchAdmin({
                         {v.listingTitle}
                         <div style={{ color: CIS.textMute, fontSize: 12 }}>
                           {v.listingArea}
-                          {v.listingPrice ? ` · ${v.listingPrice.toLocaleString("zh-TW")} 萬` : ""}
+                          {v.listingPrice ? ` · ${v.listingPrice.toLocaleString("zh-TW")} ${v.listingDeal === "rent" ? "元／月" : "萬"}` : ""}
                         </div>
                       </>
                     )}
@@ -435,13 +439,14 @@ export default function MatchAdmin({
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700 }}>
-                  在售 {counts.available} 戶 · 已下架 {counts.hidden} 戶
+                  在售 {counts.available} 戶 · 出租中 {counts.rentAvailable} 戶 · 已下架 {counts.hidden} 戶
                 </div>
                 <div style={{ color: CIS.textMute, fontSize: 12, marginTop: 4 }}>
-                  來源：太平洋官網海線 {Object.keys(PACIFIC_STORES).length} 家店（{Object.values(PACIFIC_STORES).map((s) => s.name).join("、")}）＋ 愛屋店網 storeid {MATCH.houseolStoreId}
-                  （只補梧棲店官網沒上架的）。兩個來源輪流、各每 {MATCH.syncIntervalMin} 分鐘自動同步一次。
+                  來源：太平洋官網海線 {Object.keys(PACIFIC_STORES).length} 家店（{Object.values(PACIFIC_STORES).map((s) => s.name).join("、")}）的買賣與出租物件
+                  ＋ 愛屋店網 storeid {MATCH.houseolStoreId}（只補梧棲店官網沒上架的）。三個來源輪流、各每 {MATCH.syncIntervalMin} 分鐘自動同步一次。
+                  出租物件只在租屋快搜（/match?deal=rent）與 /rent/編號 出現，不配對給買方、不推播。
                 </div>
-                {(["pacific", "houseol"] as const).map((source) => {
+                {(["pacific", "pacific_rent", "houseol"] as const).map((source) => {
                   const s = syncResult[source] ?? lastSync[source];
                   return (
                     <div key={source} style={{ color: CIS.textSub, fontSize: 13, marginTop: 8 }}>
@@ -466,7 +471,7 @@ export default function MatchAdmin({
               >
                 {syncing
                   ? `同步中（${syncingSource === "land" ? "補土地類別" : syncingSource ? SOURCE_LABEL[syncingSource] : ""}…官網約 25 秒、店網約 30–40 秒、土地約 20 秒）`
-                  : "立即同步（兩個來源＋土地類別）"}
+                  : "立即同步（三個來源＋土地類別）"}
               </button>
             </div>
           </div>
@@ -479,7 +484,7 @@ export default function MatchAdmin({
                   <th>物件</th>
                   <th>區域</th>
                   <th>店</th>
-                  <th>總價</th>
+                  <th>總價／租金</th>
                   <th>格局</th>
                   <th>狀態</th>
                   <th>同步</th>
@@ -496,11 +501,11 @@ export default function MatchAdmin({
                     <td>{l.title}</td>
                     <td>{l.area}</td>
                     <td style={{ whiteSpace: "nowrap", fontSize: 12 }}>{l.store}</td>
-                    <td>{l.price.toLocaleString("zh-TW")} 萬</td>
+                    <td style={{ whiteSpace: "nowrap" }}>{l.price.toLocaleString("zh-TW")} {l.deal === "rent" ? "元／月" : "萬"}</td>
                     <td>
                       {l.rooms} 房 {l.size} 坪 {l.type}
                     </td>
-                    <td>{l.status === "available" ? <Chip tone="success">在售</Chip> : <Chip tone="neutral">已下架</Chip>}</td>
+                    <td>{l.status === "available" ? <Chip tone="success">{l.deal === "rent" ? "出租中" : "在售"}</Chip> : <Chip tone="neutral">已下架</Chip>}</td>
                     <td style={{ color: CIS.textMute, fontSize: 12, whiteSpace: "nowrap" }}>{fmt(l.syncedAt)}</td>
                   </tr>
                 ))}
