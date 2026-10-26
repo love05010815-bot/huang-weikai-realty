@@ -142,6 +142,25 @@
   border-radius: 999px;
 }
 
+/* ↩️ 麵包屑下面那顆「返回物件列表」（2026-10-26）：跟最下面的 .backLink 同一個去處，上面也放一顆才不用捲到底 */
+.topBack {
+  display: inline-block;
+  margin: 0 0 14px;
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--primary);
+  font-size: 13.5px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+
+.topBack:hover {
+  border-color: var(--primary);
+}
+
 /* 四格一眼看：建坪／格局／樓層／屋齡 */
 .stats {
   display: grid;

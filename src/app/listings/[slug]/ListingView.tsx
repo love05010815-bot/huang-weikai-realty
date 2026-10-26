@@ -224,6 +224,11 @@ export default function ListingView({ item, status, detail, mode }: Props) {
               <span>{item.area}</span>
             </nav>
 
+            {/* ↩️ 回上一頁的物件列表（2026-10-26 他要的：點「看這戶」進來後要能回到剛才那整頁物件）；跟最下面那顆同一個去處 */}
+            <Link href={m.backHref} className={one.topBack}>
+              {m.backLabel}
+            </Link>
+
             {sold ? (
               /* 下架後的頁面 —— 2026-09-08 系統擁有者拍板用「已下架，看看其他好案」，不能 404。
                  後台狀態只有 active／sold 兩種、分不出「成交」跟「暫時下架」，

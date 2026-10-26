@@ -29,7 +29,7 @@ import ShareButton from "@/app/_ui/ShareButton";
 import share from "@/app/_ui/ShareButton.module.css";
 import type { ColleagueContact } from "@/lib/match/colleague-link";
 import { formatDealPrice, type Deal } from "@/lib/match/rent";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./match.module.css";
 import PreferenceForm from "./PreferenceForm";
 import { EMPTY_META, EMPTY_PREF, setDealIn, toApiPreference, toPrefState, type ApiPreference, type MatchMeta, type PrefState } from "./preference-state";
@@ -93,6 +93,13 @@ type Booking = {
 type Step = "form" | "results" | "booking" | "success";
 
 /**
+ * ↩️ 離開結果頁時存在 sessionStorage 的東西（2026-10-26 他要的「點看這戶進去，下個分頁要有返回上一頁所有物件的列表」）：
+ * 單戶頁的「返回物件列表」（?back=1）、瀏覽器的上一頁、單戶頁的「預約看這戶」（?book=）回來時整頁接回來，客人不用重找。
+ * 只在這個分頁有效、30 分鐘內有效；專屬連結（k）與伺服器先配好的（initial）優先，不接。
+ */
+type LastState = { pref: PrefState; result: SearchResult; picked: Listing[]; scrollY: number; at: number };
+
+/**
  * 伺服器端先算好、跟著 HTML 一起送來的東西（只有 ?k=…&go=1 那條路會有）。
  *   undefined → 伺服器沒處理（一般訪客、或官方帳號「修改條件」那種只帶 k 的連結），照原本在瀏覽器裡跑
  *   null      → 伺服器處理了但識別碼不認，當一般訪客
@@ -109,6 +116,8 @@ export type MatchInitial = {
 
 const SLOTS = ["上午 10:00–12:00", "下午 14:00–17:00", "晚上 18:00–20:00"];
 const BUYER_KEY = "match_buyer_id";
+const LAST_KEY = "match_last_results";
+const LAST_TTL_MS = 30 * 60_000;
 
 const money = (n: number) => `${Number(n).toLocaleString("zh-TW")} 萬`;
 /** 買賣寫「萬」、出租寫「元／月」 */
@@ -148,6 +157,27 @@ function writeBuyerId(id: string | null): void {
     localStorage.setItem(BUYER_KEY, id);
   } catch {
     // 私密瀏覽等情況存不了，沒關係
+  }
+}
+
+function saveLast(s: Omit<LastState, "at">): void {
+  try {
+    sessionStorage.setItem(LAST_KEY, JSON.stringify({ ...s, at: Date.now() }));
+  } catch {
+    // 存不了就算了，回來時會是空表單
+  }
+}
+
+function readLast(): LastState | null {
+  try {
+    const raw = sessionStorage.getItem(LAST_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw) as Partial<LastState>;
+    if (!s || typeof s !== "object" || !s.result || !Array.isArray(s.result.matches) || !s.pref || typeof s.pref !== "object") return null;
+    if (!Number.isFinite(Number(s.at)) || Date.now() - Number(s.at) > LAST_TTL_MS) return null;
+    return { pref: s.pref as PrefState, result: s.result as SearchResult, picked: Array.isArray(s.picked) ? (s.picked as Listing[]) : [], scrollY: Number(s.scrollY) || 0, at: Number(s.at) };
+  } catch {
+    return null;
   }
 }
 
@@ -191,6 +221,19 @@ export default function MatchApp({ initial, colleague: colleagueProp = null }: {
    * 所以電腦上要改成請他用手機掃 QR。用 pointer:coarse 判斷比看 UA 可靠。
    */
   const [isDesktop, setIsDesktop] = useState(false);
+  /** ↩️ 從單戶頁回來時要捲回剛才的位置（readLast 給的）；用掉就清 */
+  const [restoreScroll, setRestoreScroll] = useState<number | null>(null);
+  /** 離開這一頁時要存的最新狀態（事件 handler 拿不到最新的 state，所以放 ref） */
+  const latest = useRef({ pref, result, picked });
+  latest.current = { pref, result, picked };
+  /** 上一次 saveLast 的時間：點「看這戶」當下存的那份有正確的捲動位置，卸載時（瀏覽器已經捲到頂）不要再蓋掉它 */
+  const savedAt = useRef(0);
+  const rememberList = useCallback(() => {
+    const { pref: p, result: r, picked: pk } = latest.current;
+    if (!r) return;
+    saveLast({ pref: p, result: r, picked: pk, scrollY: window.scrollY });
+    savedAt.current = Date.now();
+  }, []);
 
   const go = useCallback((next: Step) => {
     setStep(next);
@@ -212,6 +255,26 @@ export default function MatchApp({ initial, colleague: colleagueProp = null }: {
 
     // 🔑 ?deal=rent：從租屋單戶頁「回租屋快搜」回來、或分享出去的租屋連結 → 直接開在租屋模式（2026-10-26）
     if (params.get("deal") === "rent") setPref((p) => setDealIn(p, "rent"));
+
+    // ↩️ 從單戶頁「返回物件列表」回來（?back=1）、按瀏覽器的上一頁、或從單戶頁按「預約看這戶」（?book=）回來：
+    //    把剛才那一頁的結果（條件、物件、已勾的）接回來，客人不用重找一次（2026-10-26 他要的）。
+    const navType = (performance.getEntriesByType?.("navigation")?.[0] as PerformanceNavigationTiming | undefined)?.type;
+    const wantRestore = params.get("back") === "1" || navType === "back_forward" || params.has("book");
+    const last = wantRestore && initial === undefined && !params.get("k") ? readLast() : null;
+    if (last) {
+      setPref(last.pref);
+      setResult(last.result);
+      setPicked(last.picked);
+      if (!params.has("book")) {
+        setStep("results");
+        setRestoreScroll(last.scrollY);
+      }
+    }
+    if (params.has("back")) {
+      params.delete("back");
+      const rest = params.toString();
+      window.history.replaceState(null, "", rest ? `${window.location.pathname}?${rest}` : window.location.pathname);
+    }
 
     // 從官方帳號的連結進來：帶回他目前設定的條件與聯絡方式，然後立刻把識別碼從網址上拿掉
     // —— 網址會被截圖、被轉貼，留著等於把他的資料給別人。識別碼過期就當沒帶，照原本流程走。
@@ -254,12 +317,35 @@ export default function MatchApp({ initial, colleague: colleagueProp = null }: {
     if (bookId) {
       api<Listing>(`/api/match/listing/${encodeURIComponent(bookId)}`)
         .then((listing) => {
-          setPicked([listing]);
+          // 已經勾在列表裡的保留（從單戶頁按「預約看這戶」回來時，剛才勾的也要一起預約）
+          setPicked((list) => (list.some((p) => p.id === listing.id) ? list : [...list, listing]));
           setStep("booking");
         })
         .catch((e: Error) => setNotice(e.message));
     }
   }, []);
+
+  // ↩️ 離開結果頁時把目前的結果存起來：點「看這戶」在連結的 onClick 存（那時捲動位置還是對的）；
+  //    其他離開方式（上一頁、關分頁、分享連結）靠 pagehide 與卸載補存，但剛存過 1.5 秒內的不蓋（瀏覽器那時已經捲到頂）
+  useEffect(() => {
+    const save = () => {
+      if (Date.now() - savedAt.current < 1500) return;
+      rememberList();
+    };
+    window.addEventListener("pagehide", save);
+    return () => {
+      window.removeEventListener("pagehide", save);
+      save();
+    };
+  }, [rememberList]);
+
+  // 接回來之後捲到剛才看的位置（結果畫好才捲，不然還沒有高度）
+  useEffect(() => {
+    if (restoreScroll === null || step !== "results") return;
+    const y = restoreScroll;
+    setRestoreScroll(null);
+    window.setTimeout(() => window.scrollTo({ top: y }), 60);
+  }, [restoreScroll, step]);
 
   async function onSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -282,6 +368,7 @@ export default function MatchApp({ initial, colleague: colleagueProp = null }: {
         writeBuyerId(data.buyerId);
       }
       setResult(data);
+      saveLast({ pref: p, result: data, picked: latest.current.picked, scrollY: 0 });
       go("results");
     } catch (err) {
       setError(err instanceof Error ? err.message : "配對失敗，請稍後再試");
@@ -405,7 +492,7 @@ export default function MatchApp({ initial, colleague: colleagueProp = null }: {
             </button>
             {rent ? (
               /* 出租物件的資料頁在站內（他要的「不導入外部連結」），/rent/<編號> 跟買賣單戶頁同一套版面 */
-              <Link className={styles.detail} href={`/rent/${encodeURIComponent(m.id)}`}>
+              <Link className={styles.detail} href={`/rent/${encodeURIComponent(m.id)}`} onClick={rememberList}>
                 看這戶 →
               </Link>
             ) : (

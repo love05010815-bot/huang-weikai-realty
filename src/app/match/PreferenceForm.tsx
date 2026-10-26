@@ -47,7 +47,18 @@ export default function PreferenceForm({
           <button type="button" className={chipClass(!rent)} aria-pressed={!rent} onClick={() => onChange((p) => setDealIn(p, "sale"))}>
             🏠 買房
           </button>
-          <button type="button" className={chipClass(rent)} aria-pressed={rent} onClick={() => onChange((p) => setDealIn(p, "rent"))}>
+          {/* 切到租屋時縣市先帶第一個（目前只有台中市），行政區的選項才會立刻出現，客人不用先去點縣市 */}
+          <button
+            type="button"
+            className={chipClass(rent)}
+            aria-pressed={rent}
+            onClick={() =>
+              onChange((p) => {
+                const next = setDealIn(p, "rent");
+                return next.city ? next : { ...next, city: meta?.cities[0]?.city ?? "" };
+              })
+            }
+          >
             🔑 租屋
           </button>
         </div>

@@ -84,8 +84,9 @@ function modeFor(saleId: string, active: boolean): ListingViewMode {
   return {
     pageHref: `/rent/${saleId}`,
     crumbs: [{ name: "租屋快搜", href: "/match?deal=rent" }],
-    backHref: "/match?deal=rent",
-    backLabel: "← 回租屋快搜",
+    // back=1：/match 會把剛才那一頁的結果從 sessionStorage 接回來（MatchApp 的 readLast），客人不用重找
+    backHref: "/match?deal=rent&back=1",
+    backLabel: "← 返回物件列表",
     bookingHref: active ? `/match?book=${encodeURIComponent(saleId)}` : "/match?deal=rent",
     soldCtaLabel: "看其他出租物件",
     collectible: false,
