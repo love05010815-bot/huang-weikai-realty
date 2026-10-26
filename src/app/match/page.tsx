@@ -29,7 +29,7 @@ import matchStyles from "./match.module.css";
 import MatchApp, { type MatchInitial } from "./MatchApp";
 
 const TITLE = `自動配對找房｜台中海線房仲${OWNER.name}｜沙鹿梧棲清水龍井`;
-const DESCRIPTION = `告訴${OWNER.alias}您的購屋條件（區域、預算、房數、坪數、類型），系統從目前在售的台中海線物件自動配對，看中意可直接預約看屋，並在 LINE 收到確認與新物件通知。`;
+const DESCRIPTION = `買房或租屋都可以：告訴${OWNER.alias}您的條件（區域、預算或租金、房數、坪數、類型），系統從目前在售、出租中的台中海線物件自動配對，看中意可直接預約看屋，並在 LINE 收到確認與新物件通知。`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -143,7 +143,7 @@ export default async function MatchPage({ searchParams }: { searchParams: Promis
           </div>
           <div className={`${styles.container} ${styles.center}`}>
             <p className={styles.sectionDesc}>
-              告訴我們您的購屋條件，系統會從目前在售的物件裡自動配對，看中意可以直接預約看屋。
+              想買房或租屋，先選一個，再告訴我們您的條件，系統會從目前在售、出租中的物件裡自動配對，看中意可以直接預約看屋。
               {colleague ? `預約送出後，${colleague.name}會與您聯繫。` : "預約完成後在官方 LINE 收到確認，之後有符合條件的新物件也會第一時間通知您。"}
             </p>
           </div>
