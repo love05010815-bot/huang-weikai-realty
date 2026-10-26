@@ -179,15 +179,17 @@
   color: var(--muted);
 }
 
+/* 每坪單價那行：2026-10-26 系統擁有者「以總價金額為主，單坪金額改小」，所以比大字小很多 */
 .ptTotal {
   margin-top: 6px;
-  font-size: 13.5px;
-  color: var(--ink);
+  font-size: 12.5px;
+  color: var(--muted);
 }
 
 .ptTotal strong {
-  font-size: 17px;
-  font-weight: 900;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ink);
 }
 
 .ptRef {

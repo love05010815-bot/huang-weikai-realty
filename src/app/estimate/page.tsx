@@ -172,7 +172,7 @@ export default async function EstimatePage({ searchParams }: { searchParams: Pro
           <div className={`${styles.container} ${styles.center}`}>
             <p className={styles.sectionDesc}>
               填行政區、建物型態、權狀坪數、屋齡，從內政部實價登錄裡挑出條件相近的成屋成交，
-              算出每坪最低、中價位、最高，再換算成您這間的總價區間；比對用的每一筆成交都列給您看，不是憑空一個數字。
+              算出您這間的最低、中價位、最高總價（每坪單價一起附上）；比對用的每一筆成交都列給您看，不是憑空一個數字。
             </p>
           </div>
 
@@ -267,13 +267,14 @@ function ResultView({ result }: { result: EstimateResult }) {
   return (
     <div className={tax.result} role="status" aria-live="polite">
       <div className={tax.resultHead}>
-        <div className={tax.resultLabel}>{yourHouse}・中價位每坪約</div>
+        {/* 2026-10-26 系統擁有者：「以總價金額為主，單坪金額改小」—— 大字是推算總價，每坪單價退成副標 */}
+        <div className={tax.resultLabel}>{yourHouse}・中價位推算總價約</div>
         <div className={tax.resultBig}>
-          {stats.median}
-          <span className={tax.resultUnit}>萬／坪</span>
+          {fmtWan(stats.totalMedian)}
+          <span className={tax.resultUnit}>萬</span>
         </div>
         <div className={tax.resultSub}>
-          以您的 {input.ping} 坪推算總價約 <strong>{fmtWan(stats.totalMedian)} 萬</strong>（不含車位）
+          每坪約 <strong>{stats.median} 萬／坪</strong> × 您的 {input.ping} 坪（不含車位）
         </div>
         <div className={tax.resultFacts}>
           <span className={tax.fact}>比對 {stats.sample} 筆成交</span>
@@ -317,8 +318,8 @@ function ResultView({ result }: { result: EstimateResult }) {
 
         <div className={css.rangeLines}>
           <div>
-            多數成交落在 <strong>{stats.p25}～{stats.p75} 萬／坪</strong>
-            <small>（第 25～75 百分位；以您的坪數推算約 {fmtWan(stats.p25 * input.ping)}～{fmtWan(stats.p75 * input.ping)} 萬）</small>
+            多數成交換算成您的坪數約 <strong>{fmtWan(stats.p25 * input.ping)}～{fmtWan(stats.p75 * input.ping)} 萬</strong>
+            <small>（第 25～75 百分位，每坪 {stats.p25}～{stats.p75} 萬／坪）</small>
           </div>
           <div>
             這 {stats.sample} 筆成交的實際總價：最低 <strong>{fmtWan(stats.dealTotalLow)} 萬</strong>・中位{" "}
@@ -374,12 +375,13 @@ function PricePointCard({
   return (
     <div className={`${css.pt} ${mid ? css.ptMid : ""}`}>
       <div className={css.ptLabel}>{label}</div>
+      {/* 總價大字、每坪單價小字（2026-10-26 系統擁有者指定） */}
       <div className={css.ptUnit}>
-        {unit}
-        <small>萬／坪</small>
+        {fmtWan(total)}
+        <small>萬</small>
       </div>
       <div className={css.ptTotal}>
-        推算總價 <strong>{fmtWan(total)}</strong> 萬
+        每坪約 <strong>{unit}</strong> 萬／坪
       </div>
       {comp && district ? (
         <div className={css.ptRef}>
