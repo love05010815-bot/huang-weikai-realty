@@ -337,7 +337,7 @@ function ResultView({ result }: { result: EstimateResult }) {
           comps={result.comps}
           district={input.district}
           type={input.type}
-          title={`拿來比的成交（${result.comps.length < stats.sample ? `最新 ${result.comps.length} 筆，共 ${stats.sample} 筆` : `${stats.sample} 筆`}）`}
+          title={`拿來比的 ${stats.sample} 筆成交${result.comps.length < stats.sample ? `（頁面只列最新 ${result.comps.length} 筆）` : ""}`}
         />
 
         <div className={tax.cta}>
@@ -430,6 +430,8 @@ function CompsTable({ comps, district, type, title }: { comps: EstimateComp[]; d
                       {x}
                     </span>
                   ))}
+                  {/* 備註原文直接印、不收成 details（2026-10-26 系統擁有者：細項不用點開就直接列出） */}
+                  {c.note ? <span className={css.compNote}>{c.note}</span> : null}
                 </td>
                 <td data-label="成交日">
                   <span className={lvr.date}>{isoToRoc(c.dealDate)}</span>

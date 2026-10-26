@@ -203,6 +203,8 @@ export type EstimateComp = {
   parkingWan: number;
   /** 備註標籤（含沒被排除的，例如「預售轉售」「含增建」，表格要標出來） */
   flags: string[];
+  /** 官方備註原文（2026-10-26 系統擁有者：成交細項直接列出、不要收起來，表格印在門牌底下） */
+  note: string;
 };
 
 /** 成交當時屋齡：完成年月到交易日的年數。交易早於完工（預售簽約）當 0。 */
@@ -249,6 +251,7 @@ export function toComp(row: EstimatePoolRow): { comp: EstimateComp | null; exclu
       parkingType: row.parkingType,
       parkingWan: Math.round(row.parkingPrice / 10_000),
       flags,
+      note: (row.note || "").trim(),
     },
     excludedBy: null,
   };
@@ -286,8 +289,12 @@ export const MIN_SAMPLES = 8;
 export const MIN_SHOW = 3;
 /** 資料池最遠回看幾個月（lvr.ts 撈資料用，要 ≥ TIERS 最大的 months） */
 export const POOL_MONTHS = Math.max(...TIERS.map((t) => t.months));
-/** 表格最多列幾筆 */
-export const MAX_COMPS_SHOWN = 30;
+/**
+ * 表格最多列幾筆。2026-10-26 系統擁有者：「拿出來比較的成交細項不用點開就直接列出」——
+ * 原本只列最新 30 筆、其餘要點去 /lvr，現在**拿來算的全部列出**；這個上限只是最後一階（近 3 年、±50% 坪）
+ * 在梧棲大樓那種幾百筆的區保護頁面長度，一般第一階 8～60 筆根本碰不到。
+ */
+export const MAX_COMPS_SHOWN = 200;
 
 export function monthsBefore(todayIso: string, months: number): string {
   const d = new Date(Date.parse(`${todayIso}T00:00:00Z`));

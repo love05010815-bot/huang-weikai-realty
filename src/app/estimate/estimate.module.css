@@ -252,6 +252,23 @@
   text-decoration: underline;
 }
 
+/* 成交表裡的備註原文：直接印在門牌底下，不做 details 收合 */
+.compNote {
+  display: block;
+  margin-top: 4px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted);
+  white-space: pre-wrap;
+  max-width: 320px;
+}
+
+@media (max-width: 720px) {
+  .compNote {
+    max-width: none;
+  }
+}
+
 /* 樣本不足那塊 */
 .noResult {
   margin-top: 22px;

@@ -128,7 +128,11 @@ eq("剛好 3 筆 → 放到最後一階給數字", [res.ok, res.tierIndex, res.s
 eq("空資料池", E.estimate(input, [], TODAY).ok, false);
 pool = [...Array(40)].map((_, i) => mk({ date: `2026-0${(i % 9) + 1}-${String((i % 27) + 1).padStart(2, "0")}`, unit: 20 + (i % 10) }));
 res = E.estimate(input, pool, TODAY);
-eq("40 筆算全部、表格只列 30", [res.stats.sample, res.comps.length], [40, E.MAX_COMPS_SHOWN]);
+eq("40 筆算全部、表格也全部列出（不再只列 30）", [res.stats.sample, res.comps.length], [40, 40]);
+eq("備註原文帶進表格", E.toComp(mk({ date: "2026-05-01", note: "陽台外推；" })).comp.note, "陽台外推；");
+pool = [...Array(E.MAX_COMPS_SHOWN + 10)].map((_, i) => mk({ date: `2026-0${(i % 9) + 1}-${String((i % 27) + 1).padStart(2, "0")}`, unit: 20 + (i % 10) }));
+res = E.estimate(input, pool, TODAY);
+eq("超過上限才截斷", [res.stats.sample, res.comps.length], [E.MAX_COMPS_SHOWN + 10, E.MAX_COMPS_SHOWN]);
 // 排除的那幾筆如果條件也像，要算進「另有 N 筆不列入」
 pool = [
   ...[21, 22, 23, 24, 25, 26, 27, 28].map((u) => mk({ date: "2026-05-01", unit: u })),
