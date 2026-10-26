@@ -35,6 +35,21 @@
   border-color: var(--primary, #2fa894);
 }
 
+/* 剛好 4 顆（買方頁）排 2×2：照上面 320px 的基準會排成 3＋1、最後一顆孤單置中。
+   基準拉到 360px 讓 1080px 的容器塞不下三顆（3×360＋40＞1080）、只能兩顆一排，
+   760px 還塞得下兩顆（2×360＋20≤760）。RolePage.tsx 依 tools.length===4 加這個 class。 */
+.twoUp .card {
+  flex-basis: 360px;
+  max-width: 500px;
+}
+
+@media (max-width: 860px) {
+  /* 平板：800px 視窗的內容寬只有 729px、塞不下 2×360＋20，基準退到 300px 才能維持兩顆一排 */
+  .twoUp .card {
+    flex-basis: 300px;
+  }
+}
+
 .icon {
   width: 52px;
   height: 52px;

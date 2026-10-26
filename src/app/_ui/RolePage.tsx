@@ -3,8 +3,8 @@
  *
  * 2026-10-26 系統擁有者：首頁 hero 的「我是屋主／我是買方」點進去要「產生另一個分頁，顯示這兩個紅框的按鈕」
  * —— 他在免費小工具的下拉選單上各圈了兩項（屋主：房地合一稅試算、我的房子行情多少；
- * 買方：房貸月付金試算、新青安 3.0 資格檢測）。頁面就是標題＋一句說明＋那兩顆大按鈕，
- * 兩頁長得一模一樣，所以畫面只寫一份，內容全部從 config/roles.ts 來。
+ * 買方：房貸月付金試算、新青安 3.0 資格檢測），同日再加屋主的「賣房流程」、買方的「買房流程」「實價登錄」。
+ * 頁面就是標題＋一句說明＋幾顆大按鈕，兩頁長得一模一樣，所以畫面只寫一份，內容全部從 config/roles.ts 來。
  *
  * 外殼（header／導覽列／社群／黏住的標題／footer）照 /area 那幾頁的寫法一字不差，
  * 那些為什麼這樣排的理由請看 app/area/page.tsx 與 home.module.css，這裡不再抄一次。
@@ -87,8 +87,8 @@ export default function RolePage({ role }: { role: Role }) {
           </div>
 
           <div className={styles.container}>
-            {/* 兩顆大按鈕：整張卡就是連結，點哪裡都會過去 */}
-            <div className={rp.grid}>
+            {/* 大按鈕：整張卡就是連結，點哪裡都會過去。2～3 顆一排，剛好 4 顆排 2×2（見 RolePage.module.css 的 .twoUp） */}
+            <div className={`${rp.grid} ${role.tools.length === 4 ? rp.twoUp : ""}`}>
               {role.tools.map((t) => (
                 <Link key={t.href} href={t.href} className={rp.card}>
                   <span className={rp.icon} aria-hidden="true">
