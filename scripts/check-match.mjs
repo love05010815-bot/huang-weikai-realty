@@ -20,6 +20,7 @@ register("./stub-hooks.mjs", import.meta.url);
 process.env.APPOINTMENT_BASE_URL = "https://weikaihouse.com";
 // pacific-parse.ts 用相對路徑 import 隔壁的 houseol-parse（沒副檔名），要靠上面的 hook 解，所以得在 register 之後動態載
 const { houseolIdFromPic, isReservedTitle, pacificFloor, pacificToListingUpsert, pacificUsageType } = await import("../src/lib/match/pacific-parse.ts");
+const { MATCH_TYPES } = await import("../src/config/match.ts");
 // colleague-link.ts 有 import "@/config/owner"（別名），一樣要在 register 之後動態載
 const { branchBookUrl, branchFiltersFromPreference, branchMatchUrl, colleagueIntakeUrl, lineUrlFromInput, parseItemIds } = await import("../src/lib/match/colleague-link.ts");
 // rent.ts 用相對路徑 import 隔壁的 matcher（沒副檔名），同樣要在 register 之後動態載
@@ -139,7 +140,8 @@ test("toListingUpsert：轉成資料表格式並對應類型／需求標籤", ()
   assert.equal(l.rooms, 6);
   assert.equal(l.halls, 3);
   assert.equal(l.baths, 3);
-  assert.equal(l.type, "透天厝");
+  // 店面（2026-10-27 他說「店面兩邊加」）：愛屋把店面放在「類別」、型態寫透天；跟官網一樣收成 type 店面，勾「店面」才找得到
+  assert.equal(l.type, "店面");
   assert.equal(l.usageType, "店面");
   assert.ok(l.features.includes("學區"));
   assert.ok(l.features.includes("近公園"));
@@ -1043,6 +1045,9 @@ test("官網出租物件 → 表：價格是元／月、來源 pacific_rent、�
   assert.equal(l.price, 26000);
   assert.equal(l.originalPrice, null);
   assert.equal(l.usageType, "整層(棟)住家");
+  // 店面（2026-10-27 他說「店面兩邊加」）：官網型態「店面」直接是 type 店面，租的、買的都一樣
+  assert.equal(pacificToListingUpsert({ ...it, attributName: "店面" }, { deal: "rent" }).type, "店面");
+  assert.equal(pacificToListingUpsert({ ...it, attributName: "店面(店鋪)" }, {}).type, "店面");
   assert.equal(l.type, "電梯大樓");
   assert.equal(l.city, "台中市");
   assert.equal(l.district, "梧棲區");
@@ -1081,6 +1086,16 @@ test("租屋的條件：deal=rent 的預算是元／月、類型比出租型態�
   assert.ok(!scoreListing({ types: ["電梯大樓"] }, L[0]).disqualified);
   // 什麼都不填：全部回來、租金低的在前
   assert.deepEqual(rankListings({ deal: "rent" }, L).map((m) => m.listing.id), ["R3", "R2", "R1", "R4"]);
+});
+
+test("店面兩邊都有（2026-10-27 他說「店面兩邊加」）：選項有店面、土地留在最後；配對比得到；店官網連結買客送店面、租客送店面商辦", () => {
+  assert.ok(MATCH_TYPES.includes("店面"));
+  assert.equal(MATCH_TYPES[MATCH_TYPES.length - 1], "土地", "土地留在最後（勾了才展開土地那組）");
+  assert.ok(!scoreListing({ types: ["店面"] }, listing({ type: "店面" })).disqualified);
+  assert.ok(scoreListing({ types: ["店面"] }, listing({ type: "透天厝" })).disqualified);
+  assert.ok(!scoreListing({ deal: "rent", types: ["店面"] }, listing({ type: "店面" })).disqualified);
+  assert.deepEqual(branchFiltersFromPreference({ types: ["店面"] }), { attribut: ["店面"] });
+  assert.deepEqual(branchFiltersFromPreference({ deal: "rent", types: ["店面"] }), { type: "rent", attribut: ["店面商辦"] });
 });
 
 test("租客的店官網連結（2026-10-26 店官網定的）：type=rent、priceMax 是元／月、attribut 換算成出租型態字（2026-10-27 型態跟買賣同一組）、不送屋齡；買客照舊", () => {

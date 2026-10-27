@@ -87,8 +87,11 @@ export const PACIFIC_CITY = "臺中市";
  */
 export const PACIFIC_DISTRICTS = ["梧棲區", "沙鹿區", "清水區", "龍井區", "大肚區", "大甲區", "大安區", "外埔區"] as const;
 
-/** 表單「類型」選項。店網與官網的型態都會對應到這幾個（見 houseol-parse.ts 的 TYPE_MAP、pacific-parse.ts 的 PACIFIC_TYPE_MAP） */
-export const MATCH_TYPES = ["電梯大樓", "華廈", "公寓", "透天厝", "套房", "土地"] as const;
+/**
+ * 表單「類型」選項。店網與官網的型態都會對應到這幾個（見 houseol-parse.ts 的 TYPE_MAP、pacific-parse.ts 的 PACIFIC_TYPE_MAP）。
+ * 2026-10-27 他說「店面兩邊加」：店面進來（買房、租屋同一組）。「土地」留在最後 —— 勾了才展開土地類別／地坪那組。
+ */
+export const MATCH_TYPES = ["電梯大樓", "華廈", "公寓", "透天厝", "套房", "店面", "土地"] as const;
 
 /**
  * 租屋模式的「類型」選項（2026-10-27 他說「出租型態改跟買賣一樣」）就是上面的 MATCH_TYPES —— 官網出租物件也有型態（attributName），

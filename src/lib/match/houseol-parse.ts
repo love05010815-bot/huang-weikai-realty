@@ -59,6 +59,7 @@ export const TYPE_MAP: Record<string, string> = {
   透天: "透天厝",
   別墅: "透天厝",
   套房: "套房",
+  店面: "店面",
   土地: "土地",
   農舍: "農舍",
 };
@@ -273,7 +274,8 @@ export function toListingUpsert(raw: RawHouseolItem, storeId: string): ListingUp
     baths: layout ? Number(layout[3]) : 0,
     size: raw.size || raw.landSize,
     landSize: raw.landSize,
-    type: typeKey ? TYPE_MAP[typeKey] : raw.kind || "其他",
+    // 店面（2026-10-27 他說「店面兩邊加」）：愛屋把店面放在「類別」（型態照寫透天／大樓），跟官網一樣收成 type 店面，勾「店面」才找得到
+    type: /店面/.test(raw.usage) ? "店面" : typeKey ? TYPE_MAP[typeKey] : raw.kind || "其他",
     usageType: raw.usage,
     age: raw.age,
     floor: raw.floor.slice(0, 32),
