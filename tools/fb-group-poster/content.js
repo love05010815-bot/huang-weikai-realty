@@ -233,8 +233,18 @@
 
     /** 自動模式：替他按「發佈」、確認發出去、等一下、換下一個。任何不確定都退回半自動停著等他。 */
     async function autoPost(dialog, photos) {
+      // 🔴 商品拍賣（runSell 來的）：他 2026-10-27 錄影——按了「發佈」之後「分享到更多地方」視窗一直不關，外掛停著等他按，
+      //    整批就卡在那個社團。他說「遇到這種狀況，若超過 5 秒沒回應直接跳過這則」→ 這條流程在前景時不停下來問：
+      //    「發佈」鈕等不到、按了「發佈」5 秒沒看到結果，都標成跳過換下一個（紀錄寫清楚原因，事後抽查）。
+      //    分頁在背景時 FB 本來就不更新畫面、看不到結果是常態，照舊走下面的「背景未確認」，不然背景跑的商品貼文會整批被跳掉。
+      //    一般發文框那條完全不變：前景照舊停下來問他、背景 75 秒當作發出去。
+      const sellFlow = !!postVia;
       log("自動發佈：等「發佈」鈕可以按（照片還在傳的時候 FB 會先鎖住）…", "");
-      const btn = await waitPostButton(dialog, L, 90000);
+      const btn = await waitPostButton(dialog, L, sellFlow ? 15000 : 90000);
+      if (!btn && sellFlow) {
+        log("⚠ 「分享到更多地方」裡等了 15 秒都沒有可以按的「發佈」鈕，這則不等了。", "fbq-bad");
+        return await autoSkip("商品拍賣的「發佈」鈕 15 秒內按不了");
+      }
       if (!btn) {
         log("⚠ 找不到可以按的「發佈」鈕（圖片可能還在上傳，或 Facebook 改版）。請你自己按。", "fbq-bad");
         await report("ready", "自動發佈沒做：找不到可按的發佈鈕，等你自己按");
@@ -255,8 +265,8 @@
           break;
         }
         press.click();
-        log(attempt === 1 ? "已替你按下「發佈」，等 Facebook 回應…" : "再按一次「發佈」…", "");
-        outcome = await waitPostOutcome(dialog, L, 30000, base, snippet);
+        log(attempt === 1 ? "已替你按下「發佈」，等 Facebook 回應…" + (sellFlow ? "（商品拍賣：最多等 5 秒）" : "") : "再按一次「發佈」…", "");
+        outcome = await waitPostOutcome(dialog, L, sellFlow ? 5000 : 30000, base, snippet);
         if (outcome === "unknown" && document.visibilityState === "hidden") {
           // 分頁在背景：FB 的畫面更新會慢，再多等一陣子（動態牆那篇或審核訊息出現就算）
           log("分頁在背景，Facebook 的畫面更新會慢一點，再等最多 45 秒看結果…", "");
@@ -316,6 +326,10 @@
         await report("failed", "自動發佈：Facebook 拒絕");
         controls(false);
         return;
+      }
+      if (outcome === "unknown" && sellFlow) {
+        log("⚠ 按了「發佈」5 秒內沒看到視窗關掉、也沒看到任何訊息。商品拍賣這種不等了，標成跳過換下一個；事後到發佈紀錄抽查，萬一其實有刊登成功就不要補發。", "fbq-bad");
+        return await autoSkip("商品拍賣按了「發佈」5 秒沒回應");
       }
       if (outcome === "unknown") {
         log("⚠ 按了「發佈」但沒看到視窗關掉，不確定有沒有發出去。請你自己看一下，再按下面。", "fbq-bad");
