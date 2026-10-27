@@ -175,7 +175,7 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
     }
     setRows((cur) => (cur ?? []).filter((x) => x.id !== r.id));
     if (saved?.buyer.id === r.id) setSaved(null);
-    setFlash(`已刪掉「${r.name || r.phone}」`);
+    setFlash(`已刪掉「${r.name || r.phone || "這一位"}」`);
   }
 
   /** 預約卡上的「已完成」／「恢復」。完成要先問一聲（按錯了底下「顯示已完成」還找得到、可以恢復） */
@@ -511,7 +511,7 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
                   <button type="button" className={styles.row} onClick={() => open(r.id)} disabled={opening === r.id}>
                     <div className={styles.rowTop}>
                       <span className={styles.rowName}>{r.name || "（未填姓名）"}</span>
-                      <span className={styles.rowPhone}>{r.phone}</span>
+                      {r.phone ? <span className={styles.rowPhone}>{r.phone}</span> : <span className={styles.rowNoPhone}>沒填電話</span>}
                     </div>
                     <p className={styles.rowSummary}>{r.summary ?? "還沒填條件"}</p>
                     <div className={styles.rowMeta}>
@@ -534,9 +534,13 @@ export default function IntakeApp({ intakeKey, meta, who, initialView }: { intak
 
           <div className={styles.card}>
             <h2 className={styles.name}>{saved.buyer.name || "（未填姓名）"}</h2>
-            <a className={styles.phone} href={`tel:${saved.buyer.phone}`}>
-              {saved.buyer.phone}
-            </a>
+            {saved.buyer.phone ? (
+              <a className={styles.phone} href={`tel:${saved.buyer.phone}`}>
+                {saved.buyer.phone}
+              </a>
+            ) : (
+              <p className={styles.noPhone}>沒填電話</p>
+            )}
             {lineText(saved.buyer.lineVia, saved.buyer.lineName) && <p className={styles.lineInfo}>💬 {lineText(saved.buyer.lineVia, saved.buyer.lineName)}</p>}
             {saved.buyer.note && <p className={styles.note}>{saved.buyer.note}</p>}
             <p className={styles.sectionTitle} style={{ marginTop: 14 }}>

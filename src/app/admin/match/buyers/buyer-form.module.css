@@ -184,6 +184,12 @@
   font-weight: 800;
   color: #f8f4f3;
 }
+/* 沒填電話（2026-10-27 代客建檔的電話改選填）：淡字，不畫空的撥號連結 */
+.noPhone {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #8a8f94;
+}
 .phone {
   display: inline-block;
   margin: 0 0 8px;

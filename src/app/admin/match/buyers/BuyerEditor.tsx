@@ -113,7 +113,7 @@ export default function BuyerEditor<R extends { ok: boolean; error?: string }>({
           </div>
         </div>
         <label className={styles.field}>
-          電話
+          電話（可先空著）
           <input className={styles.input} type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0912345678" autoComplete="off" />
         </label>
         <label className={styles.field}>

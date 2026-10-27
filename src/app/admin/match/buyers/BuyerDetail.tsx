@@ -90,9 +90,13 @@ export default function BuyerDetail({ buyer, brief, meta }: { buyer: DetailBuyer
         <>
           <div className={styles.card}>
             <h1 className={styles.name}>{buyer.name}</h1>
-            <a className={styles.phone} href={`tel:${buyer.phone}`}>
-              {buyer.phone}
-            </a>
+            {buyer.phone ? (
+              <a className={styles.phone} href={`tel:${buyer.phone}`}>
+                {buyer.phone}
+              </a>
+            ) : (
+              <p className={styles.noPhone}>沒填電話</p>
+            )}
             <div className={styles.chipRow}>
               {buyer.linked ? <Chip tone={buyer.followed ? "success" : "warn"}>✔ LINE {buyer.displayName ?? "已綁定"}</Chip> : <Chip tone="neutral">未綁定 LINE</Chip>}
               {buyer.linked && !buyer.followed && <Chip tone="warn">已封鎖</Chip>}

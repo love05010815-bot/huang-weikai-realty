@@ -55,6 +55,8 @@ export function buyerOwnedBy(buyer: Buyer, colleagueId: string | null): boolean 
  * 存買方。id 為 null = 新建。
  * 新建時用電話查重 —— 同一個人打第二次電話、或他之前自己在 /match 留過條件，
  * 都不該變成兩筆；找到就更新那一筆，回 merged = true 讓畫面提醒一聲。
+ * 電話是選填（2026-10-27 他說「代客建檔不一定要輸入電話才可以存檔」）：沒填就不查重、存成空；
+ * 改既有那一筆時把電話清掉也會真的清掉（upsertBuyer 的 "" = 清掉）。
  * colleagueId：這份名單是誰的（null = 本人）。查重只在同一份名單裡查，改既有的也只能改自己的。
  */
 export async function saveBuyerFromForm(id: string | null, input: BuyerFormInput, colleagueId: string | null = null): Promise<SaveResult> {
@@ -64,7 +66,8 @@ export async function saveBuyerFromForm(id: string | null, input: BuyerFormInput
   const lineVia = normalizeLineVia(input.lineVia);
   const lineName = String(input.lineName ?? "").trim().slice(0, 80);
   if (!name) return { ok: false, error: "請填怎麼稱呼（例如「王先生」）" };
-  if (phone.length < 8) return { ok: false, error: "電話至少 8 碼" };
+  // 有填才檢查（擋打錯）；空的放行
+  if (phone && phone.length < 8) return { ok: false, error: "電話至少 8 碼；還不知道可以先空著" };
   const preference = normalizePreference(input.preference);
 
   let targetId = id;
@@ -73,7 +76,8 @@ export async function saveBuyerFromForm(id: string | null, input: BuyerFormInput
     const existing = await getBuyer(targetId);
     if (!existing || !buyerOwnedBy(existing, colleagueId)) return { ok: false, error: NOT_YOURS };
   } else {
-    const existing = await getBuyerByPhone(phone, colleagueId);
+    // 沒填電話就沒得查重：每一位各一筆，不會把所有沒電話的客人併成同一個
+    const existing = phone ? await getBuyerByPhone(phone, colleagueId) : null;
     if (existing) {
       targetId = existing.id;
       merged = true;

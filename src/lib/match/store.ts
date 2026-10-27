@@ -694,6 +694,7 @@ export type BuyerUpsertInput = {
   lineUserId?: string | null;
   displayName?: string | null;
   name?: string | null;
+  /** 傳 undefined = 不動原本的；傳 "" = 清掉（2026-10-27 代客建檔的電話改成選填，編輯時清掉要真的清掉） */
   phone?: string | null;
   preference?: Preference | null;
   /** 傳 undefined = 不動原本的；傳 "" = 清掉 */
@@ -754,7 +755,7 @@ export async function upsertBuyer(input: BuyerUpsertInput): Promise<Buyer> {
     lineUserId: input.lineUserId ?? target?.lineUserId ?? null,
     displayName: input.displayName || target?.displayName || null,
     name: input.name || target?.name || null,
-    phone: input.phone || target?.phone || null,
+    phone: (input.phone !== undefined ? input.phone : target?.phone) || null,
     preference: input.preference ?? target?.preference ?? null,
     note: (input.note !== undefined ? input.note : target?.note) || null,
     lineVia: (input.lineVia !== undefined ? input.lineVia : target?.lineVia) || null,
