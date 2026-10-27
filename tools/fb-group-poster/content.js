@@ -692,7 +692,16 @@
       // 6. 自動模式：替他按「發佈」；條件不齊就退回半自動
       if (job.autoPost) {
         if (fillOk && imagesOk) return await autoPost(dialog, photos);
-        log("⚠ 自動發佈先不做：" + (!fillOk ? "文案沒完整填進去" : "照片沒傳完") + "。請你自己核對後按「發佈」。", "fbq-bad");
+        if (!imagesOk) {
+          // 🔴 照片沒傳完（Facebook 上傳回 500、或縮圖張數對不上）：他 2026-10-27 截圖——第 62／100 個停在
+          //    「自動發佈先不做：照片沒傳完，請你自己核對後按發佈」等他，整批卡住。他說「遇到這種情況超過 5 秒也直接跳過下則」
+          //    → 自動模式不停了：標成跳過換下一個，紀錄帶探針看到的原因；之後在後台「勾選未發佈的」補發。半自動照舊停著等他補。
+          const why = photos ? "照片只進去 " + photos.got + "／" + photos.want + " 張" : "照片沒傳成功";
+          const net = String(imgNote || netSummary(lastUploadT0) || "").slice(0, 200);
+          log("⚠ " + why + (fillOk ? "" : "、文案也沒完整填進去") + "。自動模式不等你補，這則跳過換下一個；之後在後台按「勾選未發佈的」補發。", "fbq-bad");
+          return await autoSkip(why + (net ? "（" + net + "）" : ""));
+        }
+        log("⚠ 自動發佈先不做：文案沒完整填進去。請你自己核對後按「發佈」。", "fbq-bad");
       }
 
       // 6'. 半自動：交給使用者按發佈
