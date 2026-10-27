@@ -5,7 +5,7 @@
  *
  * 租屋跟買賣走同一張 match_listing（deal 欄：sale／rent）、同一支官網查詢 API（Type 2 是租）、同一套評分引擎、
  * 同一張條件表單（Preference.deal；lib/match/matcher.ts）—— 只是價格的單位是「元／月」，「類型」是出租型態
- * （官網的 rentTypeName，存在 usage_type；選項在 config/match.ts 的 RENT_TYPES），不看屋齡樓層車位。
+ * （官網的 rentTypeName，存在 usage_type，只拿來顯示；「類型」跟買房同一組，2026-10-27 起），不看屋齡樓層車位。
  * 這裡只剩價格的寫法；純函式，check:match 直接載來測。
  */
 

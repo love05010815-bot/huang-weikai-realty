@@ -91,11 +91,10 @@ export const PACIFIC_DISTRICTS = ["梧棲區", "沙鹿區", "清水區", "龍井
 export const MATCH_TYPES = ["電梯大樓", "華廈", "公寓", "透天厝", "套房", "土地"] as const;
 
 /**
- * 租屋模式的「類型」選項（2026-10-26）：太平洋官網出租物件的「出租型態」原字（rentTypeName），六家店 142 筆實測只有這七種。
- * 同一組字也是店官網 type=rent 時 attribut= 吃的值（店官網 2026-10-26 定的契約），**不要改字**。
- * 物件那邊存在 match_listing.usage_type（lib/match/pacific-parse.ts），配對時跟它比。
+ * 租屋模式的「類型」選項（2026-10-27 他說「出租型態改跟買賣一樣」）就是上面的 MATCH_TYPES —— 官網出租物件也有型態（attributName），
+ * 同樣經 PACIFIC_TYPE_MAP 收成這幾種，配對時比 type。官網的「出租型態」原字（整層(棟)住家／獨立套房…）仍存在 usage_type，
+ * 只拿來顯示（物件頁「出租型態」那一列、配對結果的小字）與換算店官網連結的 attribut（lib/match/colleague-link.ts 的 RENT_ATTRIBUT）。
  */
-export const RENT_TYPES = ["整層(棟)住家", "獨立套房", "店面商辦", "商用", "出租土地", "廠房", "其他"] as const;
 
 /**
  * 表單「其他需求」選項。

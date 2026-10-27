@@ -691,11 +691,11 @@ const PS = await import("../src/app/match/preference-state.ts");
 test("表單換算：買房／租屋（2026-10-26）—— 租屋送出時屋齡樓層需求歸零、切換會清掉類型與預算、舊資料沒 deal 就是買房", () => {
   assert.equal(PS.toPrefState({ city: "台中市" }).deal, "sale");
   assert.equal(PS.toPrefState({ deal: "rent", budgetMax: 20000 }).budgetMax, "20000");
-  const rentState = { ...PS.EMPTY_PREF, deal: "rent", city: "台中市", districts: ["梧棲區"], budgetMax: "20000", types: ["整層(棟)住家"], ageMin: "3", ageMax: "10", floor: "mid", features: ["平面車位"] };
+  const rentState = { ...PS.EMPTY_PREF, deal: "rent", city: "台中市", districts: ["梧棲區"], budgetMax: "20000", types: ["電梯大樓"], ageMin: "3", ageMax: "10", floor: "mid", features: ["平面車位"] };
   const api = PS.toApiPreference(rentState);
   assert.equal(api.deal, "rent");
   assert.equal(api.budgetMax, 20000);
-  assert.deepEqual(api.types, ["整層(棟)住家"]);
+  assert.deepEqual(api.types, ["電梯大樓"]);
   assert.equal(api.ageMin, 0);
   assert.equal(api.ageMax, 0);
   assert.equal(api.floor, "");
@@ -705,10 +705,10 @@ test("表單換算：買房／租屋（2026-10-26）—— 租屋送出時屋齡
   assert.equal(saleApi.deal, "sale");
   assert.equal(saleApi.ageMin, 3);
   assert.equal(saleApi.floor, "mid");
-  // 切換：類型、預算清掉；其餘留著；同一邊再按一次不動
+  // 切換：預算清掉；類型兩邊同一組（2026-10-27 他說「出租型態改跟買賣一樣」）勾好的留著；其餘留著；同一邊再按一次不動
   const switched = PS.setDealIn(rentState, "sale");
   assert.equal(switched.deal, "sale");
-  assert.deepEqual(switched.types, []);
+  assert.deepEqual(switched.types, rentState.types);
   assert.equal(switched.budgetMax, "");
   assert.deepEqual(switched.districts, ["梧棲區"]);
   assert.equal(PS.setDealIn(rentState, "rent"), rentState);
@@ -1063,8 +1063,8 @@ test("租屋的條件：deal=rent 的預算是元／月、類型比出租型態�
   assert.equal(normalizePreference({}).deal, "sale");
   assert.equal(normalizePreference({ deal: "rent" }).deal, "rent");
   assert.equal(normalizePreference({ deal: "whatever" }).deal, "sale");
-  const pref = { deal: "rent", city: "台中市", districts: ["梧棲區"], budgetMax: 30000, roomsList: [2], types: ["整層(棟)住家"] };
-  assert.equal(describePreference(pref), "租屋 · 台中市梧棲區 · 租金 30,000 元內 · 2 房 · 整層(棟)住家");
+  const pref = { deal: "rent", city: "台中市", districts: ["梧棲區"], budgetMax: 30000, roomsList: [2], types: ["電梯大樓", "華廈"] };
+  assert.equal(describePreference(pref), "租屋 · 台中市梧棲區 · 租金 30,000 元內 · 2 房 · 電梯大樓/華廈");
   const base = { city: "台中市", age: 0, features: [], floor: "10/14", landSize: 0 };
   const L = [
     { ...base, id: "R1", district: "梧棲區", price: 26000, rooms: 2, size: 22, type: "電梯大樓", usageType: "整層(棟)住家" },
@@ -1072,17 +1072,19 @@ test("租屋的條件：deal=rent 的預算是元／月、類型比出租型態�
     { ...base, id: "R3", district: "沙鹿區", price: 12000, rooms: 1, size: 10, type: "套房", usageType: "獨立套房" },
     { ...base, id: "R4", district: "梧棲區", price: 42000, rooms: 2, size: 50, type: "店面", usageType: "店面商辦" },
   ];
-  // 梧棲區、租金 3 萬內、2 房、整層住家 → R2（便宜的在前）、R1；店面型態不符、沙鹿的套房區域不符
+  // 梧棲區、租金 3 萬內、2 房、電梯大樓／華廈 → R2（便宜的在前）、R1；店面型態不符、沙鹿的套房區域不符
   assert.deepEqual(rankListings(pref, L).map((m) => m.listing.id), ["R2", "R1"]);
-  assert.ok(scoreListing(pref, L[3]).misses.some((m) => m.includes("類型不符（店面商辦）")));
-  // 買房的條件比的還是 type，不會去看出租型態
+  assert.ok(scoreListing(pref, L[3]).misses.some((m) => m.includes("類型不符（店面）")));
+  // 租屋的「類型」跟買房同一組字、比的是 type（2026-10-27 他說「出租型態改跟買賣一樣」）：出租型態原字不再拿來配對
+  assert.ok(scoreListing({ deal: "rent", types: ["整層(棟)住家"] }, L[0]).disqualified);
+  assert.ok(!scoreListing({ deal: "rent", types: ["套房"] }, L[2]).disqualified);
   assert.ok(!scoreListing({ types: ["電梯大樓"] }, L[0]).disqualified);
   // 什麼都不填：全部回來、租金低的在前
   assert.deepEqual(rankListings({ deal: "rent" }, L).map((m) => m.listing.id), ["R3", "R2", "R1", "R4"]);
 });
 
-test("租客的店官網連結（2026-10-26 店官網定的）：type=rent、priceMax 是元／月、attribut 是出租型態原字、不送屋齡；買客照舊", () => {
-  const rent = branchFiltersFromPreference({ deal: "rent", districts: ["梧棲區", "大甲區"], budgetMax: 20000, roomsList: [2], types: ["整層(棟)住家", "獨立套房"], ageMin: 3, ageMax: 10, features: ["平面車位"] });
+test("租客的店官網連結（2026-10-26 店官網定的）：type=rent、priceMax 是元／月、attribut 換算成出租型態字（2026-10-27 型態跟買賣同一組）、不送屋齡；買客照舊", () => {
+  const rent = branchFiltersFromPreference({ deal: "rent", districts: ["梧棲區", "大甲區"], budgetMax: 20000, roomsList: [2], types: ["電梯大樓", "華廈", "套房"], ageMin: 3, ageMax: 10, features: ["平面車位"] });
   assert.deepEqual(rent, { type: "rent", district: ["梧棲區"], attribut: ["整層(棟)住家", "獨立套房"], room: [2], priceMax: 20000, stall: "平面" });
   const u = new URL(branchMatchUrl("https://weikaihouse.com/match/book?k=x", rent));
   assert.equal(u.searchParams.get("type"), "rent");

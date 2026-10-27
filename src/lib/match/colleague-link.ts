@@ -44,7 +44,8 @@ export function branchBookUrl(token: string): string {
 export type BranchFilters = {
   /**
    * 租客（2026-10-26 店官網定的）：帶 type=rent，店官網直接開租屋物件。
-   * 租屋時 priceMax 是**元／月**、attribut 是出租型態（整層(棟)住家、店面商辦、獨立套房、出租土地、商用、其他、廠房）、
+   * 租屋時 priceMax 是**元／月**、attribut 是出租型態（整層(棟)住家、店面商辦、獨立套房、出租土地、商用、其他、廠房；
+   * 店官網的出租物件只認這組字，我們的型態用 RENT_ATTRIBUT 換算過去）、
    * 不送 ageMin/ageMax（出租物件多半沒屋齡，送了會被整批排除）。買客不帶（店官網預設買賣）。
    */
   type?: "rent";
@@ -79,16 +80,30 @@ const BRANCH_ATTRIBUT: Record<string, string[]> = {
   土地: ["土地"],
 };
 
+/**
+ * 租客：我們的型態 → 店官網出租物件的「出租型態」字。2026-10-27 他說「出租型態改跟買賣一樣」之後租屋也勾型態（電梯大樓／華廈…），
+ * 但店官網的出租物件只認出租型態（它的 attribut 篩選是整個字相等），所以換算過去：住宅類都是整層(棟)住家、套房是獨立套房、土地是出租土地。
+ * 店官網拿到後當預設篩選，客人到了那邊還能自己改。
+ */
+const RENT_ATTRIBUT: Record<string, string[]> = {
+  電梯大樓: ["整層(棟)住家"],
+  華廈: ["整層(棟)住家"],
+  公寓: ["整層(棟)住家"],
+  透天厝: ["整層(棟)住家"],
+  套房: ["獨立套房"],
+  土地: ["出租土地"],
+};
+
 /** 客人在我們這邊存的購屋條件 → 店官網的篩選參數（對不上的欄位就不送） */
 export function branchFiltersFromPreference(input: unknown): BranchFilters {
   const p = normalizePreference(input);
   const f: BranchFilters = {};
-  // 租客（2026-10-26）：type=rent；出租型態的字兩邊一樣（config/match.ts 的 RENT_TYPES）直接送；租金就是 priceMax（元／月）；不送屋齡
+  // 租客（2026-10-26）：type=rent；型態換成店官網出租物件認的出租型態字（RENT_ATTRIBUT）；租金就是 priceMax（元／月）；不送屋齡
   const rent = p.deal === "rent";
   if (rent) f.type = "rent";
   const district = p.districts.filter((d) => BRANCH_DISTRICTS.includes(d));
   if (district.length) f.district = district;
-  const attribut = rent ? [...new Set(p.types)] : [...new Set(p.types.flatMap((t) => BRANCH_ATTRIBUT[t] ?? []))];
+  const attribut = [...new Set(p.types.flatMap((t) => (rent ? RENT_ATTRIBUT : BRANCH_ATTRIBUT)[t] ?? []))];
   if (attribut.length) f.attribut = attribut;
   if (p.roomsList.length) f.room = p.roomsList;
   if (p.budgetMax > 0) f.priceMax = p.budgetMax;

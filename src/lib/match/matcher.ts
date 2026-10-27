@@ -127,7 +127,7 @@ export const OTHER_CITY_CAP = 45;
 export type Preference = {
   /**
    * 買房還是租屋（2026-10-26 他要的：客人自己填跟代客建檔都要分）。
-   * 租屋：budgetMax 是「元／月」、types 是出租型態（整層(棟)住家／獨立套房…，比物件的 usageType）、不看屋齡樓層車位。
+   * 租屋：budgetMax 是「元／月」、不看屋齡樓層車位、沒有土地那組；types 跟買房同一組型態（2026-10-27 起，比物件的 type）。
    * 舊資料沒有這欄 → 買房。
    */
   deal: "sale" | "rent";
@@ -345,8 +345,9 @@ export function scoreListing(prefInput: Preference | unknown, listing: Matchable
   // 他要的是「農地」，一塊建地就算同樣是土地也不該拿滿分。
   const wantCategory = pref.landCategories.length > 0;
   const typeWeight = wantCategory ? Math.round(WEIGHTS.type / 2) : WEIGHTS.type;
-  // 租屋（2026-10-26）：「類型」是出租型態（整層(棟)住家／獨立套房…），存在物件的 usageType；買賣照舊比 type
-  const listingType = pref.deal === "rent" ? listing.usageType : listing.type;
+  // 買房、租屋都比物件的 type（2026-10-27 他說「出租型態改跟買賣一樣」；官網出租物件的 attributName 也經 PACIFIC_TYPE_MAP 收成同一組字）。
+  // 出租型態原字（整層(棟)住家…）留在 usageType，只拿來顯示，不再拿來配對。
+  const listingType = listing.type;
   if (pref.types.length) {
     if (pref.types.includes(listingType)) {
       score += typeWeight;

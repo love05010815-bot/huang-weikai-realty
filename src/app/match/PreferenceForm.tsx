@@ -5,8 +5,8 @@
  * 只負責畫欄位、把改動丟回去；**不包 <form>、不放送出按鈕**，外面自己決定怎麼送。
  *
  * 🔑 最上面是「買房／租屋」切換（2026-10-26 他要的：客人自己填跟代客建檔都要分）。租屋時：預算欄變「租金上限（元／月）」、
- *    類型的選項變出租型態（meta.rentTypes，跟店官網 type=rent 的 attribut 同一組字）、屋齡／樓層／其他需求整段不出現
- *    （官網的出租物件多半沒填這些；送出時 toApiPreference 也會把它們歸零）。
+ *    屋齡／樓層／其他需求／土地那組整段不出現（官網的出租物件多半沒填這些；送出時 toApiPreference 也會把它們歸零）。
+ *    「類型」兩邊同一組（2026-10-27 他說「出租型態改跟買賣一樣」）。
  * 樣式用 styles 傳進來：前台是淺色（match.module.css），後台是深色（admin 那邊的 module），
  * 兩份 CSS 的 class 名字一樣、顏色不一樣。用到的 class：
  *   field / label / two / chips / chip / chipOn / hint / input / select / rangeRow / rangeSep
@@ -129,9 +129,9 @@ export default function PreferenceForm({
       </div>
 
       <div className={styles.field}>
-        <div className={styles.label}>{rent ? "出租型態（可複選）" : "類型（可複選）"}</div>
+        <div className={styles.label}>類型（可複選）</div>
         <div className={styles.chips}>
-          {(rent ? (meta?.rentTypes ?? []) : (meta?.types ?? [])).map((t) => (
+          {(meta?.types ?? []).map((t) => (
             <button key={t} type="button" className={chipClass(pref.types.includes(t))} onClick={() => onChange((p) => toggleTypeIn(p, t))}>
               {t}
             </button>
@@ -139,9 +139,9 @@ export default function PreferenceForm({
         </div>
       </div>
 
-      {/* 土地專屬的兩項，只有勾了「土地」才出現 —— 買公寓的人不需要看到農地建地。
+      {/* 土地專屬的兩項，只有買房勾了「土地」才出現 —— 買公寓的人不需要看到農地建地；出租物件沒有這種細分，租屋不出現。
           店網只有土地物件會給地坪（透天那些都是 0），所以土地坪數也放在這裡。 */}
-      {wantsLand && (
+      {wantsLand && !rent && (
         <>
           <div className={styles.field}>
             <div className={styles.label}>土地類別（可複選）</div>

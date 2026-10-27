@@ -42,7 +42,7 @@ export type ApiPreference = {
 
 /** 表單狀態。數字欄位是字串，空字串 = 不限 */
 export type PrefState = {
-  /** 買房／租屋（2026-10-26）。租屋：budgetMax 是元／月、types 是出租型態（RENT_TYPES） */
+  /** 買房／租屋（2026-10-26）。租屋：budgetMax 是元／月；types 跟買房同一組型態（2026-10-27 起） */
   deal: "sale" | "rent";
   city: string;
   districts: string[];
@@ -98,7 +98,6 @@ export const EMPTY_META: MatchMeta = {
   cities: [],
   rooms: ROOMS_FALLBACK,
   types: [],
-  rentTypes: [],
   features: [],
   floors: [],
   ages: AGES_FALLBACK,
@@ -123,12 +122,12 @@ export function toggleTypeIn(p: PrefState, t: string): PrefState {
 export const wantsLand = (p: PrefState): boolean => p.types.includes(LAND_TYPE);
 
 /**
- * 切換買房／租屋（2026-10-26）。兩邊的「類型」選項不同（型態 vs 出租型態）、預算單位不同（萬 vs 元／月），
- * 切換時這兩項清掉，免得帶著錯的單位、對不上的字送出去；土地那組也一併清（租屋沒有）。
+ * 切換買房／租屋（2026-10-26）。預算單位不同（萬 vs 元／月），切換時清掉，免得帶著錯的單位送出去；
+ * 土地類別／地坪那組也清（租屋沒有這組，欄位藏起來）。「類型」兩邊同一組（2026-10-27 起），勾好的留著。
  */
 export function setDealIn(p: PrefState, deal: "sale" | "rent"): PrefState {
   if (p.deal === deal) return p;
-  return { ...p, deal, types: [], budgetMax: "", landCategories: [], landMin: "", landMax: "" };
+  return { ...p, deal, budgetMax: "", landCategories: [], landMin: "", landMax: "" };
 }
 
 /** 2026-09-18～10-02 的固定五段，舊買方的條件還存著這些 key；進表單時換成上下限（0 = 不限） */
@@ -170,9 +169,10 @@ export function toPrefState(p: ApiPreference | null | undefined): PrefState {
 
 /** 表單狀態 → 要送給 /api/match/search 或存進資料庫的條件 */
 export function toApiPreference(p: PrefState): Required<ApiPreference> {
-  const land = wantsLand(p);
   // 租屋（2026-10-26）不看屋齡、樓層、其他需求：欄位藏起來了，值不能跟著送（店官網 type=rent 吃到 ageMin 會整批排除）
   const rent = p.deal === "rent";
+  // 土地類別／地坪只有買房勾了「土地」才送：租屋那組欄位藏起來（出租物件的 usageType 是出租型態，沒有農地建地那種細分）
+  const land = wantsLand(p) && !rent;
   return {
     deal: p.deal,
     city: p.city,
