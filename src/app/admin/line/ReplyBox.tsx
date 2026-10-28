@@ -56,7 +56,7 @@ export default function ReplyBox({
     <div className={styles.replyBox} style={{ borderColor: CIS.divider }}>
       <textarea
         className={styles.replyInput}
-        style={{ background: "#141414", borderColor: CIS.cardBorder, color: CIS.text }}
+        style={{ background: "var(--adm-input)", borderColor: CIS.cardBorder, color: CIS.text }}
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
@@ -79,7 +79,7 @@ export default function ReplyBox({
       <div className={styles.replyBar}>
         <span
           className={styles.replyHint}
-          style={{ color: tooLong ? "#fb7185" : CIS.textMute }}
+          style={{ color: tooLong ? "var(--adm-danger)" : CIS.textMute }}
         >
           {tooLong
             ? `太長了 ${text.length}／${MAX} 字，分兩則送`
@@ -102,7 +102,7 @@ export default function ReplyBox({
       </div>
 
       {msg ? (
-        <div className={styles.replyMsg} style={{ color: msg.ok ? "#4ade80" : "#fb7185" }}>
+        <div className={styles.replyMsg} style={{ color: msg.ok ? "var(--adm-success)" : "var(--adm-danger)" }}>
           {msg.text}
         </div>
       ) : null}

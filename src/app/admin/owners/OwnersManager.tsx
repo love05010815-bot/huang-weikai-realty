@@ -964,7 +964,7 @@ export default function OwnersManager({
             <label>
               <span>合約迄日</span>
               <RocDateInput value={propDraft.contractEnd} onChange={(iso) => setPropField("contractEnd", iso)} />
-              <small style={{ color: "#a69a97", fontSize: 11.5 }}>到期前 {CONTRACT_REMIND_DAYS} 天會推 LINE 提醒你</small>
+              <small style={{ color: "var(--adm-text-mute)", fontSize: 11.5 }}>到期前 {CONTRACT_REMIND_DAYS} 天會推 LINE 提醒你</small>
             </label>
             <label style={{ gridColumn: "1 / -1" }}>
               <span>備註</span>
@@ -1204,7 +1204,7 @@ export default function OwnersManager({
                     {p.status !== "delisted" && <ContractBadge end={p.contractEnd} today={today} soonBy={contractSoonBy} />}
                   </div>
                 ))}
-                {!open && o.properties.length > 2 && <div style={{ color: "#a69a97" }}>…還有 {o.properties.length - 2} 間，點開看</div>}
+                {!open && o.properties.length > 2 && <div style={{ color: "var(--adm-text-mute)" }}>…還有 {o.properties.length - 2} 間，點開看</div>}
               </div>
             )}
           </div>

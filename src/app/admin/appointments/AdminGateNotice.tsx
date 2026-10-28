@@ -94,7 +94,7 @@ export default function AdminGateNotice(props: Props) {
 }
 
 const code: React.CSSProperties = {
-  background: "rgba(255,255,255,0.07)",
+  background: "rgba(var(--adm-ink-rgb), 0.07)",
   padding: "2px 6px",
   borderRadius: 5,
   fontSize: 13,

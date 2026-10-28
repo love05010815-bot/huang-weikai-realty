@@ -15,7 +15,7 @@ const fmtWhen = (iso: string | null) =>
 
 const btn: React.CSSProperties = { padding: "7px 12px", borderRadius: 10, border: `1px solid ${CIS.cardBorder}`, background: "transparent", color: CIS.text, fontSize: 13, cursor: "pointer" };
 const btnPrimary: React.CSSProperties = { ...btn, background: CIS.blue, borderColor: CIS.blue, color: "#fff", fontWeight: 700 };
-const input: React.CSSProperties = { display: "block", width: "100%", boxSizing: "border-box", marginTop: 4, padding: "8px 10px", borderRadius: 8, border: `1px solid ${CIS.cardBorder}`, background: "rgba(255,255,255,0.04)", color: CIS.text, fontSize: 14 };
+const input: React.CSSProperties = { display: "block", width: "100%", boxSizing: "border-box", marginTop: 4, padding: "8px 10px", borderRadius: 8, border: `1px solid ${CIS.cardBorder}`, background: "rgba(var(--adm-ink-rgb), 0.04)", color: CIS.text, fontSize: 14 };
 const label: React.CSSProperties = { display: "block", fontSize: 12, color: CIS.textSub, marginBottom: 10 };
 
 function Tag({ tone, children }: { tone: keyof typeof CHIP; children: React.ReactNode }) {
@@ -93,7 +93,7 @@ export default function ColleaguesAdmin({ initial }: { initial: IntakeColleagueR
       <p style={{ margin: "0 0 12px", color: CIS.textMute, fontSize: 12 }}>
         每位同事一條自己的連結（等同密碼，只私訊給本人）。這裡跟你手機建檔頁的「同事」是同一份資料，兩邊改都會同步。
       </p>
-      {msg && <p style={{ margin: "0 0 12px", padding: "10px 12px", borderRadius: 10, background: "rgba(242,102,102,0.12)", border: `1px solid ${CIS.cardBorder}`, fontSize: 13 }}>{msg}</p>}
+      {msg && <p style={{ margin: "0 0 12px", padding: "10px 12px", borderRadius: 10, background: "rgba(var(--adm-brand-rgb), 0.12)", border: `1px solid ${CIS.cardBorder}`, fontSize: 13 }}>{msg}</p>}
 
       <form onSubmit={add} noValidate style={{ ...cisCard, padding: 16, marginBottom: 14 }}>
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>新增同事</div>

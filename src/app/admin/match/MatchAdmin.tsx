@@ -231,7 +231,7 @@ export default function MatchAdmin({
         padding: "8px 14px",
         borderRadius: 999,
         border: `1px solid ${tab === key ? CIS.blue : CIS.cardBorder}`,
-        background: tab === key ? "rgba(242,102,102,0.16)" : "transparent",
+        background: tab === key ? "rgba(var(--adm-brand-rgb), 0.16)" : "transparent",
         color: tab === key ? CIS.text : CIS.textSub,
         fontWeight: 600,
         fontSize: 13,

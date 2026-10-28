@@ -96,7 +96,7 @@ export default async function ReportsAdminPage({ searchParams }: { searchParams:
       </p>
 
       {loadError ? (
-        <p className={styles.msg} style={{ color: "#fb7185" }}>
+        <p className={styles.msg} style={{ color: "var(--adm-danger)" }}>
           讀不到資料庫：{loadError}
           <br />
           先確認 <code>DATABASE_URL</code> 有沒有設，以及 TiDB 是不是在睡。

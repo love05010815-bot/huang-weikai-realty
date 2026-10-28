@@ -69,7 +69,7 @@ export default async function PostsAdminPage({ searchParams }: { searchParams: P
         {loadError ? (
           <div
             className={styles.notice}
-            style={{ borderColor: "rgba(244,63,94,.35)", color: "#fb7185", marginBottom: 14 }}
+            style={{ borderColor: "rgba(var(--adm-danger-rgb), .35)", color: "var(--adm-danger)", marginBottom: 14 }}
           >
             ⚠️ 讀不到文章（資料庫）：{loadError}
           </div>

@@ -57,12 +57,12 @@ export default function CalendarDisplayPanel({
   return (
     <section
       className="rounded-xl"
-      style={{ background: "#0e0e0e", border: `1px solid ${borderColor}`, padding: open ? "14px 16px" : "10px 16px", marginBottom: 14 }}
+      style={{ background: "var(--adm-bg-soft)", border: `1px solid ${borderColor}`, padding: open ? "14px 16px" : "10px 16px", marginBottom: 14 }}
     >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        style={{ background: "none", border: 0, color: "#7dd3fc", fontWeight: 800, fontSize: 16, cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 8 }}
+        style={{ background: "none", border: 0, color: "var(--adm-info-blue)", fontWeight: 800, fontSize: 16, cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 8 }}
       >
         🗓️ 日曆事件的標題與顏色
         <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: activeColor.hex }} />
@@ -75,24 +75,24 @@ export default function CalendarDisplayPanel({
         <div style={{ marginTop: 14, display: "grid", gap: 14 }}>
           {/* 標題樣板 */}
           <div>
-            <label style={{ display: "block", color: "#9aa0a6", fontSize: 14, marginBottom: 6 }}>
+            <label style={{ display: "block", color: "var(--adm-neutral)", fontSize: 14, marginBottom: 6 }}>
               事件標題（在 Google 日曆上看到的那一行字）
             </label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={DEFAULT_CALENDAR_TITLE_TEMPLATE}
-              style={{ width: "100%", background: "#141414", border: "1px solid #2a2a2a", borderRadius: 8, color: "#ededed", padding: "10px 12px", fontSize: 16 }}
+              style={{ width: "100%", background: "var(--adm-input)", border: "1px solid var(--adm-card-border-strong)", borderRadius: 8, color: "var(--adm-text)", padding: "10px 12px", fontSize: 16 }}
             />
             <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-              <span style={{ color: "#6b7684", fontSize: 14 }}>點一下插入：</span>
+              <span style={{ color: "var(--adm-text-mute)", fontSize: 14 }}>點一下插入：</span>
               {CALENDAR_TITLE_TOKENS.map((t) => (
                 <button
                   key={t.token}
                   type="button"
                   onClick={() => setTitle((v) => v + t.token)}
                   title={`${t.desc}（例：${t.sample}）`}
-                  style={{ background: "#15304d", border: "1px solid #2b5580", borderRadius: 6, color: "#7dd3fc", fontSize: 14, padding: "4px 9px", cursor: "pointer" }}
+                  style={{ background: "#15304d", border: "1px solid #2b5580", borderRadius: 6, color: "var(--adm-info-blue)", fontSize: 14, padding: "4px 9px", cursor: "pointer" }}
                 >
                   {t.token}
                 </button>
@@ -100,7 +100,7 @@ export default function CalendarDisplayPanel({
               <button
                 type="button"
                 onClick={() => setTitle(DEFAULT_CALENDAR_TITLE_TEMPLATE)}
-                style={{ background: "none", border: "1px solid #2a2a2a", borderRadius: 6, color: "#6b7684", fontSize: 14, padding: "4px 9px", cursor: "pointer", marginLeft: "auto" }}
+                style={{ background: "none", border: "1px solid var(--adm-card-border-strong)", borderRadius: 6, color: "var(--adm-text-mute)", fontSize: 14, padding: "4px 9px", cursor: "pointer", marginLeft: "auto" }}
               >
                 回到預設
               </button>
@@ -109,7 +109,7 @@ export default function CalendarDisplayPanel({
 
           {/* 顏色 */}
           <div>
-            <label style={{ display: "block", color: "#9aa0a6", fontSize: 14, marginBottom: 6 }}>
+            <label style={{ display: "block", color: "var(--adm-neutral)", fontSize: 14, marginBottom: 6 }}>
               事件顏色（Google 日曆只有這 11 色可選）
             </label>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -123,10 +123,10 @@ export default function CalendarDisplayPanel({
                     title={c.name}
                     style={{
                       display: "flex", alignItems: "center", gap: 6,
-                      background: on ? "#1b2a3a" : "#141414",
-                      border: `1.5px solid ${on ? c.hex : "#2a2a2a"}`,
+                      background: on ? "var(--adm-card-hover)" : "var(--adm-input)",
+                      border: `1.5px solid ${on ? c.hex : "var(--adm-card-border-strong)"}`,
                       borderRadius: 8, padding: "6px 10px", cursor: "pointer",
-                      color: on ? "#ededed" : "#8b93a1", fontSize: 14.5, whiteSpace: "nowrap",
+                      color: on ? "var(--adm-text)" : "#8b93a1", fontSize: 14.5, whiteSpace: "nowrap",
                     }}
                   >
                     <span style={{ width: 13, height: 13, borderRadius: 3, background: c.hex, flex: "none" }} />
@@ -140,7 +140,7 @@ export default function CalendarDisplayPanel({
 
           {/* 預覽：模擬日曆上那一格 */}
           <div>
-            <label style={{ display: "block", color: "#9aa0a6", fontSize: 14, marginBottom: 6 }}>
+            <label style={{ display: "block", color: "var(--adm-neutral)", fontSize: 14, marginBottom: 6 }}>
               預覽（拿假資料「黃瑋凱·0912345678·公司面談·房仲服務·賣房」套進去）
             </label>
             <div
@@ -161,20 +161,20 @@ export default function CalendarDisplayPanel({
               onClick={save}
               disabled={busy || !dirty}
               style={{
-                background: dirty ? "#16a34a" : "#333", border: 0, borderRadius: 8, color: "#fff",
+                background: dirty ? "#16a34a" : "var(--adm-btn-muted)", border: 0, borderRadius: 8, color: "#fff",
                 padding: "9px 20px", fontSize: 15.5, fontWeight: 700,
                 cursor: busy ? "wait" : dirty ? "pointer" : "not-allowed",
               }}
             >
               {busy ? "儲存中⋯" : dirty ? "儲存設定" : "沒有變更"}
             </button>
-            <span style={{ color: "#6b7684", fontSize: 14, lineHeight: 1.7 }}>
-              只影響<b style={{ color: "#9aa0a6" }}>之後</b>建立的預約。已經在日曆上的舊事件不會跟著變（改期時會順手更新）。
+            <span style={{ color: "var(--adm-text-mute)", fontSize: 14, lineHeight: 1.7 }}>
+              只影響<b style={{ color: "var(--adm-neutral)" }}>之後</b>建立的預約。已經在日曆上的舊事件不會跟著變（改期時會順手更新）。
             </span>
           </div>
 
           {msg && (
-            <div style={{ color: msg.ok ? "#86efac" : "#f0705c", fontSize: 14.5, lineHeight: 1.8 }}>{msg.text}</div>
+            <div style={{ color: msg.ok ? "var(--adm-success)" : "#f0705c", fontSize: 14.5, lineHeight: 1.8 }}>{msg.text}</div>
           )}
         </div>
       )}

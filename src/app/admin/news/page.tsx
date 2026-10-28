@@ -71,7 +71,7 @@ export default async function NewsAdminPage({ searchParams }: { searchParams: Pr
         </div>
 
         {loadError && (
-          <div className={styles.notice} style={{ borderColor: "rgba(244,63,94,0.4)", color: "#fb7185" }}>
+          <div className={styles.notice} style={{ borderColor: "rgba(var(--adm-danger-rgb), 0.4)", color: "var(--adm-danger)" }}>
             讀不到資料庫：{loadError}
           </div>
         )}

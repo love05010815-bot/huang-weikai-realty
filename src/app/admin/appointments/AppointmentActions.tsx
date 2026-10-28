@@ -122,10 +122,10 @@ export default function AppointmentActions(props: Props) {
   const buttonStyle = (tone: "primary" | "success" | "warning" | "danger" | "neutral") => {
     const palette = {
       primary: { background: CIS.blue, color: "#fff" },
-      success: { background: "rgba(34,197,94,0.13)", color: "#4ade80" },
-      warning: { background: "rgba(245,169,29,0.13)", color: "#fbbf24" },
-      danger: { background: "rgba(244,63,94,0.12)", color: "#fb7185" },
-      neutral: { background: "rgba(255,255,255,0.05)", color: CIS.textSub },
+      success: { background: "rgba(var(--adm-success-rgb), 0.13)", color: "var(--adm-success)" },
+      warning: { background: "rgba(var(--adm-warn-rgb), 0.13)", color: "var(--adm-warn)" },
+      danger: { background: "rgba(var(--adm-danger-rgb), 0.12)", color: "var(--adm-danger)" },
+      neutral: { background: "rgba(var(--adm-ink-rgb), 0.05)", color: CIS.textSub },
     }[tone];
     return {
       minHeight: 40,
@@ -461,7 +461,7 @@ export default function AppointmentActions(props: Props) {
           role="status"
           style={{
             marginTop: 11,
-            color: notice.tone === "success" ? "#4ade80" : notice.tone === "warning" ? "#fbbf24" : "#fb7185",
+            color: notice.tone === "success" ? "var(--adm-success)" : notice.tone === "warning" ? "var(--adm-warn)" : "var(--adm-danger)",
             fontSize: 15,
             fontWeight: 800,
           }}

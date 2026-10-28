@@ -710,7 +710,7 @@ export default function PostsManager({ initial, focus, viewStats }: Props) {
                         </div>
                         <div
                           className={styles.clickValue}
-                          style={{ color: total > 0 ? "#60a5fa" : CIS.textMute }}
+                          style={{ color: total > 0 ? "var(--adm-info-blue)" : CIS.textMute }}
                         >
                           {total}
                           <span className={styles.clickUnit}>人次</span>

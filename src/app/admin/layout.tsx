@@ -25,7 +25,27 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/**
+ * 主題（明亮／深色）在畫面畫出來前就掛到 <html data-adm-theme>，不會先閃一下另一個顏色。
+ * 預設明亮（2026-10-28 他說黑的太暗）；色票在 _ui/adminShell.module.css，切換鈕在 AdminShell。
+ * 擋門頁（沒權限）也跑這段，所以沒外殼也有正確的底色。
+ */
+const THEME_BOOT = `(function(){var t="light";try{var s=localStorage.getItem("adm-theme");if(s==="dark"||s==="light")t=s;}catch(e){}document.documentElement.setAttribute("data-adm-theme",t);})();`;
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  if (!(await isCurrentUserAdmin())) return <>{children}</>;
-  return <AdminShell ownerName={OWNER.name}>{children}</AdminShell>;
+  const boot = <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />;
+  if (!(await isCurrentUserAdmin())) {
+    return (
+      <>
+        {boot}
+        {children}
+      </>
+    );
+  }
+  return (
+    <>
+      {boot}
+      <AdminShell ownerName={OWNER.name}>{children}</AdminShell>
+    </>
+  );
 }

@@ -340,7 +340,7 @@
 .filterCount {
   padding: 1px 7px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--adm-ink-rgb), 0.08);
   font-size: 12px;
 }
 

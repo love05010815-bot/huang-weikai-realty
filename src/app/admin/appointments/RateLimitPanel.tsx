@@ -17,10 +17,10 @@ import {
 } from "@/lib/appointment-rate-limit-settings";
 
 const numInput: React.CSSProperties = {
-  width: "100%", background: "#141414", border: "1px solid #2a2a2a", borderRadius: 8,
-  color: "#ededed", padding: "8px 10px", fontSize: 16,
+  width: "100%", background: "var(--adm-input)", border: "1px solid var(--adm-card-border-strong)", borderRadius: 8,
+  color: "var(--adm-text)", padding: "8px 10px", fontSize: 16,
 };
-const lbl: React.CSSProperties = { display: "block", color: "#9aa0a6", fontSize: 14, marginBottom: 5 };
+const lbl: React.CSSProperties = { display: "block", color: "var(--adm-neutral)", fontSize: 14, marginBottom: 5 };
 
 export default function RateLimitPanel({
   initial,
@@ -86,16 +86,16 @@ export default function RateLimitPanel({
   return (
     <section
       className="rounded-xl"
-      style={{ background: "#0e0e0e", border: `1px solid ${borderColor}`, padding: open ? "14px 16px" : "10px 16px", marginBottom: 14 }}
+      style={{ background: "var(--adm-bg-soft)", border: `1px solid ${borderColor}`, padding: open ? "14px 16px" : "10px 16px", marginBottom: 14 }}
     >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        style={{ background: "none", border: 0, color: "#7dd3fc", fontWeight: 800, fontSize: 16, cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}
+        style={{ background: "none", border: 0, color: "var(--adm-info-blue)", fontWeight: 800, fontSize: 16, cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}
       >
         🚦 送出頻率限制（防灌爆）
         {liveBlockedCreateBuckets > 0 && (
-          <span style={{ background: "rgba(251,191,36,.14)", color: "#fbbf24", borderRadius: 999, padding: "2px 9px", fontSize: 13.5, fontWeight: 800 }}>
+          <span style={{ background: "rgba(var(--adm-warn-rgb), .14)", color: "var(--adm-warn)", borderRadius: 999, padding: "2px 9px", fontSize: 13.5, fontWeight: 800 }}>
             現在有 {liveBlockedCreateBuckets} 個送出限制正在阻擋
           </span>
         )}
@@ -111,8 +111,8 @@ export default function RateLimitPanel({
             style={{ background: "rgba(125,211,252,.06)", border: "1px solid #23303f", borderRadius: 8, padding: "9px 11px", color: "#9fc7e8", fontSize: 14.5, lineHeight: 1.9 }}
           >
             {preview.map((line, i) => <div key={i}>・{line}</div>)}
-            <div style={{ color: "#6b7684", marginTop: 4 }}>次數填 <b>0</b> = 這一道完全關掉。</div>
-            <div style={{ color: "#6b7684" }}>
+            <div style={{ color: "var(--adm-text-mute)", marginTop: 4 }}>次數填 <b>0</b> = 這一道完全關掉。</div>
+            <div style={{ color: "var(--adm-text-mute)" }}>
               目前另有 <b>{liveActiveBuckets}</b> 個未清理計數桶（含時段查詢、追蹤與管理 API；不代表有人被擋）。
             </div>
           </div>
@@ -144,14 +144,14 @@ export default function RateLimitPanel({
             <button
               type="button"
               onClick={() => setS(TESTING_RATE_LIMIT_SETTINGS)}
-              style={{ background: "#15304d", border: "1px solid #2b5580", borderRadius: 7, color: "#7dd3fc", fontSize: 14.5, padding: "6px 12px", cursor: "pointer" }}
+              style={{ background: "#15304d", border: "1px solid #2b5580", borderRadius: 7, color: "var(--adm-info-blue)", fontSize: 14.5, padding: "6px 12px", cursor: "pointer" }}
             >
               🧪 套用「我要自己測試」的寬鬆設定
             </button>
             <button
               type="button"
               onClick={() => setS(DEFAULT_RATE_LIMIT_SETTINGS)}
-              style={{ background: "none", border: "1px solid #2a2a2a", borderRadius: 7, color: "#6b7684", fontSize: 14.5, padding: "6px 12px", cursor: "pointer" }}
+              style={{ background: "none", border: "1px solid var(--adm-card-border-strong)", borderRadius: 7, color: "var(--adm-text-mute)", fontSize: 14.5, padding: "6px 12px", cursor: "pointer" }}
             >
               回到預設（8/10 分・3/60 分・重複 10 分）
             </button>
@@ -163,7 +163,7 @@ export default function RateLimitPanel({
               onClick={save}
               disabled={busy || !dirty}
               style={{
-                background: dirty ? "#16a34a" : "#333", border: 0, borderRadius: 8, color: "#fff",
+                background: dirty ? "#16a34a" : "var(--adm-btn-muted)", border: 0, borderRadius: 8, color: "#fff",
                 padding: "9px 20px", fontSize: 15.5, fontWeight: 700,
                 cursor: busy ? "wait" : dirty ? "pointer" : "not-allowed",
               }}
@@ -175,18 +175,18 @@ export default function RateLimitPanel({
               onClick={clear}
               disabled={clearing}
               style={{
-                background: "#4a3a12", border: "1px solid #6b5316", borderRadius: 8, color: "#fbbf24",
+                background: "#4a3a12", border: "1px solid #6b5316", borderRadius: 8, color: "var(--adm-warn)",
                 padding: "9px 18px", fontSize: 15.5, fontWeight: 700, cursor: clearing ? "wait" : "pointer",
               }}
             >
               {clearing ? "解除中⋯" : "🔓 立刻解除目前所有限制"}
             </button>
-            <span style={{ color: "#6b7684", fontSize: 14, lineHeight: 1.7 }}>
-              被自己卡住時按右邊那顆，<b style={{ color: "#9aa0a6" }}>清計數、留稽核、不動預約資料</b>。
+            <span style={{ color: "var(--adm-text-mute)", fontSize: 14, lineHeight: 1.7 }}>
+              被自己卡住時按右邊那顆，<b style={{ color: "var(--adm-neutral)" }}>清計數、留稽核、不動預約資料</b>。
             </span>
           </div>
 
-          {msg && <div style={{ color: msg.ok ? "#86efac" : "#f0705c", fontSize: 14.5, lineHeight: 1.8 }}>{msg.text}</div>}
+          {msg && <div style={{ color: msg.ok ? "var(--adm-success)" : "#f0705c", fontSize: 14.5, lineHeight: 1.8 }}>{msg.text}</div>}
         </div>
       )}
     </section>

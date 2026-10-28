@@ -433,7 +433,7 @@ export default function VideosManager({
                   className={styles.btn}
                   style={
                     form.source === value
-                      ? { borderColor: CIS.blueSoft, color: CIS.text, background: "rgba(238,130,138,.12)" }
+                      ? { borderColor: CIS.blueSoft, color: CIS.text, background: "rgba(var(--adm-brand-rgb), .12)" }
                       : { borderColor: CIS.cardBorder, color: CIS.textMute }
                   }
                   disabled={uploading}
@@ -470,11 +470,11 @@ export default function VideosManager({
                 {form.url.trim() === "" ? (
                   "YouTube 的 watch、youtu.be、Shorts 三種網址都認得。FB／IG 的也可以貼。"
                 ) : previewId ? (
-                  <span style={{ color: "#4ade80" }}>
+                  <span style={{ color: "var(--adm-success)" }}>
                     ✓ 認出 YouTube 影片（{previewId}），前台可以直接播，縮圖自動有
                   </span>
                 ) : (
-                  <span style={{ color: "#fbbf24" }}>
+                  <span style={{ color: "var(--adm-warn)" }}>
                     ⚠️ 不是 YouTube 網址（或格式不對）。還是可以存，但前台嵌不進來 ——
                     卡片會變成「點了開新分頁」，也沒有縮圖。
                   </span>
@@ -502,13 +502,13 @@ export default function VideosManager({
                 </div>
               ) : null}
               {uploadNote ? (
-                <div className={styles.hint} style={{ color: uploadNote.ok ? "#4ade80" : "#fbbf24" }}>
+                <div className={styles.hint} style={{ color: uploadNote.ok ? "var(--adm-success)" : "var(--adm-warn)" }}>
                   {uploadNote.ok ? "✓ " : "⚠️ "}
                   {uploadNote.text}
                 </div>
               ) : null}
               {!uploading && !uploadNote && form.url ? (
-                <div className={styles.hint} style={{ color: "#4ade80" }}>
+                <div className={styles.hint} style={{ color: "var(--adm-success)" }}>
                   ✓ 已經有影片檔了{form.bytes ? `（${formatBytes(form.bytes)}）` : ""}。
                   要換一支就重新選檔案。
                 </div>
@@ -593,8 +593,8 @@ export default function VideosManager({
           className={styles.msg}
           style={
             msg.ok
-              ? { background: "rgba(34,197,94,.12)", borderColor: "rgba(34,197,94,.35)", color: "#4ade80" }
-              : { background: "rgba(244,63,94,.1)", borderColor: "rgba(244,63,94,.35)", color: "#fb7185" }
+              ? { background: "rgba(var(--adm-success-rgb), .12)", borderColor: "rgba(var(--adm-success-rgb), .35)", color: "var(--adm-success)" }
+              : { background: "rgba(var(--adm-danger-rgb), .1)", borderColor: "rgba(var(--adm-danger-rgb), .35)", color: "var(--adm-danger)" }
           }
         >
           {msg.text}
@@ -675,7 +675,7 @@ export default function VideosManager({
                         {row.pinned ? (
                           <span
                             className={styles.chip}
-                            style={{ background: "rgba(245,158,11,.15)", borderColor: "rgba(245,158,11,.4)", color: "#fbbf24" }}
+                            style={{ background: "rgba(var(--adm-warn-rgb), .15)", borderColor: "rgba(var(--adm-warn-rgb), .4)", color: "var(--adm-warn)" }}
                           >
                             📌 置頂
                           </span>
@@ -683,7 +683,7 @@ export default function VideosManager({
                         {hidden ? (
                           <span
                             className={styles.chip}
-                            style={{ background: "rgba(255,255,255,.06)", borderColor: CIS.cardBorder, color: CIS.textMute }}
+                            style={{ background: "rgba(var(--adm-ink-rgb), .06)", borderColor: CIS.cardBorder, color: CIS.textMute }}
                           >
                             隱藏中
                           </span>
@@ -691,14 +691,14 @@ export default function VideosManager({
                         {row.source === "upload" ? (
                           <span
                             className={styles.chip}
-                            style={{ background: "rgba(238,130,138,.16)", borderColor: "rgba(238,130,138,.4)", color: CIS.blueSoft }}
+                            style={{ background: "rgba(var(--adm-brand-rgb), .16)", borderColor: "rgba(var(--adm-brand-rgb), .4)", color: CIS.blueSoft }}
                           >
                             自行上傳{row.bytes ? ` ${formatBytes(row.bytes)}` : ""}
                           </span>
                         ) : !row.videoId ? (
                           <span
                             className={styles.chip}
-                            style={{ background: "rgba(245,158,11,.15)", borderColor: "rgba(245,158,11,.35)", color: "#fbbf24" }}
+                            style={{ background: "rgba(var(--adm-warn-rgb), .15)", borderColor: "rgba(var(--adm-warn-rgb), .35)", color: "var(--adm-warn)" }}
                           >
                             只能連出去
                           </span>
@@ -732,7 +732,7 @@ export default function VideosManager({
                               </div>
                               <div
                                 className={styles.clickValue}
-                                style={{ color: total > 0 ? "#60a5fa" : CIS.textMute }}
+                                style={{ color: total > 0 ? "var(--adm-info-blue)" : CIS.textMute }}
                               >
                                 {total}
                                 <span className={styles.clickUnit}>人次</span>
@@ -786,7 +786,7 @@ export default function VideosManager({
                           className={styles.btn}
                           style={
                             row.pinned
-                              ? { borderColor: "rgba(245,158,11,.4)", color: "#fbbf24" }
+                              ? { borderColor: "rgba(var(--adm-warn-rgb), .4)", color: "var(--adm-warn)" }
                               : { borderColor: CIS.cardBorder, color: CIS.textSub }
                           }
                           disabled={busy === `pin-${row.id}`}
@@ -811,7 +811,7 @@ export default function VideosManager({
                         <button
                           type="button"
                           className={styles.btnIcon}
-                          style={{ borderColor: "rgba(244,63,94,.35)", color: "#fb7185" }}
+                          style={{ borderColor: "rgba(var(--adm-danger-rgb), .35)", color: "var(--adm-danger)" }}
                           aria-label="刪除"
                           disabled={busy === `del-${row.id}`}
                           onClick={() => {

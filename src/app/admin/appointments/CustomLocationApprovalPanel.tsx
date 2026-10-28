@@ -52,8 +52,8 @@ function toLocalInput(date: Date): string {
 }
 
 function approvalStatus(item: ApprovalListItem): { label: string; color: string } {
-  if (item.revokedAt) return { label: "已撤銷", color: "#fb7185" };
-  if (item.usedAt) return { label: "已使用", color: "#4ade80" };
+  if (item.revokedAt) return { label: "已撤銷", color: "var(--adm-danger)" };
+  if (item.usedAt) return { label: "已使用", color: "var(--adm-success)" };
   if (new Date(item.expiresAt).getTime() <= Date.now()) return { label: "已到期", color: CIS.textMute };
   return { label: "有效", color: "#7eb0ef" };
 }
@@ -304,11 +304,11 @@ export default function CustomLocationApprovalPanel() {
             {busy ? "處理中" : "建立一次性核准連結"}
           </button>
 
-          {error ? <div role="alert" style={{ marginTop: 10, color: "#fb7185", fontSize: 15, fontWeight: 800 }}>{error}</div> : null}
+          {error ? <div role="alert" style={{ marginTop: 10, color: "var(--adm-danger)", fontSize: 15, fontWeight: 800 }}>{error}</div> : null}
 
           {result ? (
             <div style={{ marginTop: 13, paddingTop: 12, borderTop: `1px solid ${CIS.cardBorder}` }}>
-              <div style={{ color: "#4ade80", fontSize: 15, fontWeight: 900 }}>
+              <div style={{ color: "var(--adm-success)", fontSize: 15, fontWeight: 900 }}>
                 核准已建立{copied === "link" ? "，連結已複製" : ""}
               </div>
               <input readOnly value={result.url} onFocus={(event) => event.currentTarget.select()} style={{ ...fieldStyle, marginTop: 8 }} />
@@ -365,7 +365,7 @@ export default function CustomLocationApprovalPanel() {
                           {item.customerHint ? `備註：${item.customerHint}；` : ""}
                           綁定：{item.boundPhone ? "電話" : ""}{item.boundPhone && item.boundEmail ? "＋" : ""}{item.boundEmail ? "Email" : ""}{!item.boundPhone && !item.boundEmail ? "無" : ""}
                         </div>
-                        {item.revokeReason ? <div style={{ color: "#fb7185" }}>撤銷原因：{item.revokeReason}</div> : null}
+                        {item.revokeReason ? <div style={{ color: "var(--adm-danger)" }}>撤銷原因：{item.revokeReason}</div> : null}
                       </div>
                       {state.label === "有效" ? (
                         <button
@@ -378,9 +378,9 @@ export default function CustomLocationApprovalPanel() {
                             minHeight: 38,
                             padding: "7px 10px",
                             borderRadius: 7,
-                            border: "1px solid rgba(244,63,94,0.35)",
-                            background: "rgba(244,63,94,0.1)",
-                            color: "#fb7185",
+                            border: "1px solid rgba(var(--adm-danger-rgb), 0.35)",
+                            background: "rgba(var(--adm-danger-rgb), 0.1)",
+                            color: "var(--adm-danger)",
                             font: "inherit",
                             fontSize: 14,
                             fontWeight: 900,

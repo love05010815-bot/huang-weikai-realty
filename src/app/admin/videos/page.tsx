@@ -86,7 +86,7 @@ export default async function VideosAdminPage() {
         {loadError ? (
           <div
             className={styles.notice}
-            style={{ background: "rgba(244,63,94,.1)", borderColor: "rgba(244,63,94,.35)", color: "#fb7185" }}
+            style={{ background: "rgba(var(--adm-danger-rgb), .1)", borderColor: "rgba(var(--adm-danger-rgb), .35)", color: "var(--adm-danger)" }}
           >
             <b>讀不到資料庫，這一頁現在是空的（不是影片被刪光了）。</b>
             <br />
@@ -96,10 +96,10 @@ export default async function VideosAdminPage() {
 
         <div className={styles.summaryRow}>
           {([
-            ["上架中", activeCount, "#4ade80"],
+            ["上架中", activeCount, "var(--adm-success)"],
             ...perCategory,
-            ["置頂中", pinnedCount, pinnedCount > 0 ? "#fbbf24" : CIS.textMute],
-            ["總播放", totalViews, totalViews > 0 ? "#60a5fa" : CIS.textMute],
+            ["置頂中", pinnedCount, pinnedCount > 0 ? "var(--adm-warn)" : CIS.textMute],
+            ["總播放", totalViews, totalViews > 0 ? "var(--adm-info-blue)" : CIS.textMute],
           ] as [string, number, string][]).map(([label, value, color]) => (
             <div
               key={String(label)}

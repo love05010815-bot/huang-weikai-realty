@@ -25,7 +25,7 @@ import {
   BookOpen, Settings, Wrench, Video, Play, Gem, Star, Lock, Key, Shield, Rocket,
   FlaskConical, Ban, Home, Building2, Landmark, HelpCircle, Palette, Plus, PartyPopper,
   Radar, Image as ImageIcon, Camera, Download, Upload, Megaphone, Package, Paperclip, FolderOpen,
-  Stethoscope, Eye, Gift, Zap, Hand, Tag, PauseCircle, Ticket, Plug, Moon, Swords,
+  Stethoscope, Eye, Gift, Zap, Hand, Tag, PauseCircle, Ticket, Plug, Moon, Sun, Swords,
   Crosshair, HeartCrack, Heart, ToggleLeft, Cake, ShoppingCart, Mic, Type, Shuffle, Car,
   Sunrise, Dna, Share2, Construction, LifeBuoy, Printer, VenetianMask, GitBranch,
   Newspaper, MousePointerClick, CornerUpLeft, StopCircle, Frown, PanelBottom, Handshake,
@@ -84,7 +84,7 @@ export const ICONS = {
   hot: Flame, rocket: Rocket, premium: Gem, star: Star, trophy: Trophy, medal: Medal,
   gift: Gift, celebrate: PartyPopper, zap: Zap, test: FlaskConical,
   // 其他語意
-  health: Stethoscope, moon: Moon, versus: Swords, competitor: Crosshair, churn: HeartCrack,
+  health: Stethoscope, moon: Moon, sun: Sun, versus: Swords, competitor: Crosshair, churn: HeartCrack,
   heart: Heart, birthday: Cake, shuffle: Shuffle, dna: Dna, construction: Construction,
   lifebuoy: LifeBuoy, frown: Frown, smile: Smile, footer: PanelBottom, work: Briefcase,
   infinity: InfinityIcon,
@@ -110,9 +110,9 @@ export function Icon({ name, size = 16, className, color, strokeWidth, style, "a
     <Cmp
       size={size}
       className={className}
-      color={color}
+      // color 走 style 不走 SVG 屬性：CIS 的顏色現在是 var(--adm-*)，放在 stroke 屬性裡有些瀏覽器不解析
       strokeWidth={strokeWidth}
-      style={{ flexShrink: 0, verticalAlign: "text-bottom", ...style }}
+      style={{ flexShrink: 0, verticalAlign: "text-bottom", color, ...style }}
       aria-label={ariaLabel}
       aria-hidden={ariaLabel ? undefined : true}
     />

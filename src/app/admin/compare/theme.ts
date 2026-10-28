@@ -26,13 +26,13 @@ export const COMPARE_THEME = {
   "--cmp-ink": CIS.bg,
   // 底色用的淡色塊：CIS.yellow(#F5C0C4) 與 CIS.blue(#F26666) 的低透明度版本。
   // CSS 沒辦法對 hex 變數加 alpha，所以在這裡先調好再傳下去 —— 這樣 CSS 就零色碼。
-  "--cmp-highlight-bg": "rgba(245,192,196,0.10)",
-  "--cmp-highlight-bg-strong": "rgba(245,192,196,0.18)",
-  "--cmp-accent-bg": "rgba(242,102,102,0.10)",
+  "--cmp-highlight-bg": "rgba(var(--adm-accent-rgb), 0.10)",
+  "--cmp-highlight-bg-strong": "rgba(var(--adm-accent-rgb), 0.18)",
+  "--cmp-accent-bg": "rgba(var(--adm-brand-rgb), 0.10)",
   "--cmp-hover": CIS.cardHover,
   // 輸入欄位要比卡片更暗，才看得出是「可以打字的凹槽」
-  "--cmp-input": "rgba(0,0,0,0.30)",
-  "--cmp-input-focus": "rgba(0,0,0,0.45)",
+  "--cmp-input": "var(--adm-input)",
+  "--cmp-input-focus": "var(--adm-input-focus)",
   "--cmp-ok-bg": CHIP.success.bg,
   "--cmp-ok-bd": CHIP.success.border,
   "--cmp-ok-fg": CHIP.success.color,

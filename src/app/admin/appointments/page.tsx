@@ -414,7 +414,7 @@ export default async function AppointmentsAdminPage({
               先處理逾時與異常，再追蹤到場、結果及實際成交。
             </p>
           </div>
-          <div style={{ color: googleBound ? "#4ade80" : "#fbbf24", fontSize: 15, fontWeight: 800 }}>
+          <div style={{ color: googleBound ? "var(--adm-success)" : "var(--adm-warn)", fontSize: 15, fontWeight: 800 }}>
             <StatusDot tone={googleBound ? "green" : "yellow"} title={googleBound ? "已綁定" : "未綁定"} />
             {" "}
             {googleBound
@@ -426,19 +426,19 @@ export default async function AppointmentsAdminPage({
         </div>
 
         {sp.google === "bound" ? (
-          <div style={{ color: "#4ade80", marginBottom: 12, fontSize: 15 }}>Google 日曆綁定成功。</div>
+          <div style={{ color: "var(--adm-success)", marginBottom: 12, fontSize: 15 }}>Google 日曆綁定成功。</div>
         ) : null}
         {sp.google === "fail" ? (
-          <div style={{ color: "#fb7185", marginBottom: 12, fontSize: 15 }}>
+          <div style={{ color: "var(--adm-danger)", marginBottom: 12, fontSize: 15 }}>
             Google 日曆綁定失敗：{googleFailText(sp.why)}
             {sp.why ? (
-              <span style={{ color: "#9ca3af", fontSize: 13 }}>（代碼 {sp.why}）</span>
+              <span style={{ color: "var(--adm-text-mute)", fontSize: 13 }}>（代碼 {sp.why}）</span>
             ) : null}
           </div>
         ) : null}
         {/* 2026-08-27：state 對不上本來完全不顯示，畫面跟「沒按過」一模一樣 */}
         {sp.google === "state_invalid" ? (
-          <div style={{ color: "#fb7185", marginBottom: 12, fontSize: 15 }}>
+          <div style={{ color: "var(--adm-danger)", marginBottom: 12, fontSize: 15 }}>
             Google 日曆綁定失敗：授權過程被中斷（state 對不上）。多半是中途重整、用了舊分頁，
             或授權花太久超過 10 分鐘。請重新按一次綁定，全程用同一個分頁走完。
           </div>
@@ -449,7 +449,7 @@ export default async function AppointmentsAdminPage({
           <div
             style={{
               background: "rgba(251,146,60,.1)", border: "1px solid #7c4a12", borderRadius: 10,
-              padding: "10px 14px", marginBottom: 14, color: "#fdba74", fontSize: 15, lineHeight: 1.85,
+              padding: "10px 14px", marginBottom: 14, color: "var(--adm-orange)", fontSize: 15, lineHeight: 1.85,
             }}
           >
             ⚠️ 有 <b>{orphanedCalendarIds.size}</b> 筆預約的 Google 日曆事件已經不存在了（多半是直接在日曆上刪掉的）。
@@ -491,9 +491,9 @@ export default async function AppointmentsAdminPage({
 
         <div className={styles.summaryGrid}>
           {[
-            ["待客戶確認", pendingCount, "#fbbf24"],
-            ["首次聯絡逾時", overdueCount, "#fb7185"],
-            ["同步／通知異常", failureCount, "#fb7185"],
+            ["待客戶確認", pendingCount, "var(--adm-warn)"],
+            ["首次聯絡逾時", overdueCount, "var(--adm-danger)"],
+            ["同步／通知異常", failureCount, "var(--adm-danger)"],
             ["會後結果待填", outcomePendingCount, "#7eb0ef"],
           ].map(([label, value, color]) => (
             <div
@@ -556,7 +556,7 @@ export default async function AppointmentsAdminPage({
                 {item.label}
                 <span
                   className={styles.count}
-                  style={{ background: active ? "rgba(255,255,255,0.18)" : CIS.bgSoft }}
+                  style={{ background: active ? "rgba(var(--adm-ink-rgb), 0.18)" : CIS.bgSoft }}
                 >
                   {queueCounts[item.key]}
                 </span>
@@ -642,13 +642,13 @@ export default async function AppointmentsAdminPage({
                         <div
                           style={{
                             marginTop: 6, background: "rgba(251,146,60,.12)", border: "1px solid #7c4a12",
-                            borderRadius: 8, padding: "7px 10px", color: "#fdba74", fontSize: 14, lineHeight: 1.8, maxWidth: 560,
+                            borderRadius: 8, padding: "7px 10px", color: "var(--adm-orange)", fontSize: 14, lineHeight: 1.8, maxWidth: 560,
                           }}
                         >
                           ⚠️ <b>這筆的 Google 日曆事件已經不存在了</b>（多半是直接在日曆上刪掉的）。
                           <br />
                           資料庫這邊還算它有效，<b>時段會一直被佔住</b>。請按下面的
-                          <b style={{ color: "#fca5a5" }}>「取消預約」</b>
+                          <b style={{ color: "var(--adm-danger)" }}>「取消預約」</b>
                           正式收掉 —— 那會釋放時段並通知客戶，兩邊才會乾淨。
                         </div>
                       ) : null}
@@ -745,7 +745,7 @@ export default async function AppointmentsAdminPage({
                         <div style={{ color: CIS.textMute }}>
                           {calendarTruth.detail}
                           {calendarTruth.error || row.calendar_sync_error ? (
-                            <div className={styles.syncError} style={{ color: "#fb7185" }}>
+                            <div className={styles.syncError} style={{ color: "var(--adm-danger)" }}>
                               {calendarTruth.error || row.calendar_sync_error}
                             </div>
                           ) : null}
@@ -757,7 +757,7 @@ export default async function AppointmentsAdminPage({
                           {notificationTruth.detail}
                           {notificationCounts[row.id] ? `，共 ${notificationCounts[row.id]} 筆紀錄` : ""}
                           {notificationTruth.error || row.last_notify_error ? (
-                            <div className={styles.syncError} style={{ color: "#fb7185" }}>
+                            <div className={styles.syncError} style={{ color: "var(--adm-danger)" }}>
                               {notificationTruth.error || row.last_notify_error}
                             </div>
                           ) : null}

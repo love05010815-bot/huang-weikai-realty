@@ -45,6 +45,25 @@ export default function AdminShell({
       (item) => !item.external && isNavItemActive(pathname, item.href),
     )?.label || "後台";
 
+  // 明亮／深色（2026-10-28 他要的；預設明亮）。真正生效的是 <html data-adm-theme>，
+  // layout.tsx 的 inline script 在畫面出來前就掛好了，這裡只是把它讀回來給按鈕顯示用。
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  useEffect(() => {
+    setTheme(document.documentElement.getAttribute("data-adm-theme") === "dark" ? "dark" : "light");
+  }, []);
+  function toggleTheme() {
+    const next = theme === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-adm-theme", next);
+    try {
+      localStorage.setItem("adm-theme", next);
+    } catch {
+      /* 無痕模式存不了就只影響這一次 */
+    }
+    setTheme(next);
+  }
+  const themeLabel = theme === "dark" ? "切成明亮版" : "切成深色版";
+  const themeIcon = theme === "dark" ? "sun" : "moon";
+
   return (
     <div className={styles.shell} style={{ background: CIS.bg, color: CIS.text, fontFamily: CIS.font }}>
       {/* 手機才看得到的頂欄。放在文件流裡（不是浮動的），才不會蓋住頁面標題。 */}
@@ -63,6 +82,9 @@ export default function AdminShell({
           <Icon name="menu" size={20} />
         </button>
         <div className={styles.topbarTitle}>{currentLabel}</div>
+        <button type="button" className={styles.themeBtnTop} onClick={toggleTheme} aria-label={themeLabel} title={themeLabel}>
+          <Icon name={themeIcon} size={18} />
+        </button>
       </div>
 
       {open ? (
@@ -117,6 +139,10 @@ export default function AdminShell({
         <div className={styles.spacer} />
 
         <div className={styles.footer} style={{ borderTopColor: CIS.divider }}>
+          <button type="button" className={styles.themeBtn} onClick={toggleTheme} aria-label={themeLabel}>
+            <Icon name={themeIcon} size={18} />
+            <span className={styles.itemLabel}>{themeLabel}</span>
+          </button>
           <a
             className={styles.item}
             href="/api/auth/signout?callbackUrl=%2F"
@@ -136,7 +162,7 @@ export default function AdminShell({
 function NavLink({ item, active }: { item: AdminNavItem; active: boolean }) {
   const className = `${styles.item}${active ? ` ${styles.itemActive}` : ""}`;
   const style: React.CSSProperties = active
-    ? { background: "rgba(242,102,102,0.14)", color: CIS.blue }
+    ? { background: "rgba(var(--adm-brand-rgb), 0.14)", color: CIS.blue }
     : { color: CIS.textSub };
 
   const inner = (
@@ -146,7 +172,7 @@ function NavLink({ item, active }: { item: AdminNavItem; active: boolean }) {
       {item.badge ? (
         <span
           className={styles.badge}
-          style={{ background: "rgba(255,255,255,0.06)", borderColor: CIS.cardBorder, color: CIS.textMute }}
+          style={{ background: "rgba(var(--adm-ink-rgb), 0.06)", borderColor: CIS.cardBorder, color: CIS.textMute }}
         >
           {item.badge}
         </span>

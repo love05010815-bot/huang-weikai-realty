@@ -263,7 +263,7 @@ export default async function InboxPage({
               )}
               <span style={{ color: CIS.textMute, fontSize: 14 }}>
                 待回覆{" "}
-                <b style={{ color: snapshot.waiting.length > 0 ? "#fbbf24" : CIS.textMute }}>
+                <b style={{ color: snapshot.waiting.length > 0 ? "var(--adm-warn)" : CIS.textMute }}>
                   {snapshot.waiting.length}
                 </b>
               </span>
@@ -296,7 +296,7 @@ export default async function InboxPage({
                       ) : (
                         <div
                           className={`${styles.avatar} ${styles.avatarFallback}`}
-                          style={{ background: "rgba(255,255,255,.06)", color: PLATFORM_COLOR[c.platform] }}
+                          style={{ background: "rgba(var(--adm-ink-rgb), .06)", color: PLATFORM_COLOR[c.platform] }}
                         >
                           <Icon name={PLATFORM_ICON[c.platform]} size={16} />
                         </div>
@@ -380,7 +380,7 @@ export default async function InboxPage({
                           <div key={i} className={styles.replyItem}>
                             <span
                               className={styles.replyAuthor}
-                              style={{ color: r.byOwner ? "#4ade80" : CIS.textMute }}
+                              style={{ color: r.byOwner ? "var(--adm-success)" : CIS.textMute }}
                             >
                               {r.byOwner ? "你回的" : r.author}
                             </span>
@@ -431,7 +431,7 @@ function FilterTab({
       href={href}
       style={
         active
-          ? { background: "rgba(255,255,255,.09)", borderColor: color || CIS.blue, color: CIS.text }
+          ? { background: "rgba(var(--adm-ink-rgb), .09)", borderColor: color || CIS.blue, color: CIS.text }
           : { borderColor: CIS.cardBorder, color: CIS.textMute }
       }
     >
@@ -497,7 +497,7 @@ function SourceCard({
             </div>
           ) : null}
           {error ? (
-            <p className={styles.sourceDetail} style={{ color: "#fdba74" }}>
+            <p className={styles.sourceDetail} style={{ color: "var(--adm-orange)" }}>
               {error}
             </p>
           ) : null}
@@ -508,7 +508,7 @@ function SourceCard({
           ) : null}
         </>
       ) : !configured ? (
-        <p className={styles.sourceDetail} style={{ color: "#fb7185" }}>
+        <p className={styles.sourceDetail} style={{ color: "var(--adm-danger)" }}>
           缺環境變數 <code>{missingEnv}</code>，設好並重新部署才接得起來。
         </p>
       ) : sameAsFacebook ? (

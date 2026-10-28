@@ -89,7 +89,7 @@ export default async function ListingsAdminPage() {
         {loadError ? (
           <div
             className={styles.notice}
-            style={{ background: "rgba(244,63,94,.1)", borderColor: "rgba(244,63,94,.35)", color: "#fb7185" }}
+            style={{ background: "rgba(var(--adm-danger-rgb), .1)", borderColor: "rgba(var(--adm-danger-rgb), .35)", color: "var(--adm-danger)" }}
           >
             <b>讀不到資料庫，這一頁現在是空的（不是物件被刪光了）。</b>
             <br />
@@ -99,10 +99,10 @@ export default async function ListingsAdminPage() {
 
         <div className={styles.summaryRow}>
           {[
-            ["上架中", activeCount, "#4ade80"],
+            ["上架中", activeCount, "var(--adm-success)"],
             ["已下架", soldCount, CIS.textMute],
-            ["缺照片", noPhotoCount, noPhotoCount > 0 ? "#fbbf24" : CIS.textMute],
-            ["文案要注意", riskCount, riskCount > 0 ? "#fbbf24" : CIS.textMute],
+            ["缺照片", noPhotoCount, noPhotoCount > 0 ? "var(--adm-warn)" : CIS.textMute],
+            ["文案要注意", riskCount, riskCount > 0 ? "var(--adm-warn)" : CIS.textMute],
           ].map(([label, value, color]) => (
             <div
               key={String(label)}

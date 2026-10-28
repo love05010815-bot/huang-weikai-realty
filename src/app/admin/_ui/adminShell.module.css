@@ -15,6 +15,129 @@
   margin: 0;
 }
 
+/* ---------- 主題色票（2026-10-28 他要明亮版、並可切換） ----------
+ *
+ * 後台所有顏色只從這裡來：`_components/cis.ts` 的 CIS／CHIP 全是 var(--adm-*)，
+ * 各頁 CSS module 裡原本寫死的色碼也都換成了這些變數。
+ * 預設明亮（他說黑的太暗）；`<html data-adm-theme="dark">` 才是深色版。
+ * 掛在 :root 而不是 .shell：沒權限時的擋門頁沒有外殼，也要有顏色。
+ * 切換在 AdminShell 的選單底下，存 localStorage `adm-theme`，admin/layout.tsx
+ * 有一段 inline script 在畫面畫出來前就把屬性掛上去，不會先閃一下另一個顏色。
+ *
+ * `--adm-ink-rgb`：原本深色版到處用「白色加透明度」畫卡片／邊框／分隔線，
+ * 明亮版要變成「墨色加透明度」——所以那些 rgba 都改成 rgba(var(--adm-ink-rgb), a)，一個變數翻整套。
+ */
+:global(:root) {
+  color-scheme: light;
+  --adm-bg: #f4efec;
+  --adm-bg-soft: #ffffff;
+  --adm-ink-rgb: 38, 30, 27;
+  --adm-card: rgba(38, 30, 27, 0.035);
+  --adm-card-hover: rgba(38, 30, 27, 0.06);
+  --adm-card-border: rgba(38, 30, 27, 0.1);
+  --adm-card-border-strong: #d9d0cc;
+  --adm-divider: rgba(38, 30, 27, 0.08);
+  --adm-text: #241d1a;
+  --adm-text-sub: #4d4341;
+  --adm-text-mute: #7b6f6c;
+  --adm-neutral: #6b7280;
+  --adm-input: #ffffff;
+  --adm-input-focus: #ffffff;
+  --adm-btn-muted: #8f8481;
+  --adm-on-accent: #ffffff;
+  --adm-brand: #e00000;
+  --adm-brand-rgb: 224, 0, 0;
+  --adm-brand-deep: #c40000;
+  --adm-brand-deeper: #a30000;
+  --adm-brand-soft: #c2474d;
+  --adm-accent: #b4343a;
+  --adm-accent-rgb: 224, 0, 0;
+  --adm-danger: #dc2626;
+  --adm-danger-rgb: 220, 38, 38;
+  --adm-success: #15803d;
+  --adm-success-rgb: 22, 163, 74;
+  --adm-warn: #b45309;
+  --adm-warn-rgb: 217, 119, 6;
+  --adm-orange: #c2410c;
+  --adm-info-blue: #1d4ed8;
+}
+
+:global(html[data-adm-theme="dark"]) {
+  color-scheme: dark;
+  /* ⚠️ 這一塊是「色碼的源頭」，要寫真的色碼。scripts 批次換色時請跳過這個檔。 */
+  --adm-bg: #1a1614;
+  --adm-bg-soft: #231d1a;
+  --adm-ink-rgb: 255, 255, 255;
+  --adm-card: rgba(255, 255, 255, 0.03);
+  --adm-card-hover: rgba(255, 255, 255, 0.05);
+  --adm-card-border: rgba(255, 255, 255, 0.08);
+  --adm-card-border-strong: #2a2a2a;
+  --adm-divider: rgba(255, 255, 255, 0.06);
+  --adm-text: #f8f4f3;
+  --adm-text-sub: #d0c6c4;
+  --adm-text-mute: #a69a97;
+  --adm-neutral: #9aa0a6;
+  --adm-input: #141414;
+  --adm-input-focus: #1c1c1c;
+  --adm-btn-muted: #333333;
+  --adm-on-accent: #1a1614;
+  --adm-brand: #f26666;
+  --adm-brand-rgb: 242, 102, 102;
+  --adm-brand-deep: #e00000;
+  --adm-brand-deeper: #c40000;
+  --adm-brand-soft: #ee828a;
+  --adm-accent: #f5c0c4;
+  --adm-accent-rgb: 245, 192, 196;
+  --adm-danger: #fb7185;
+  --adm-danger-rgb: 244, 63, 94;
+  --adm-success: #4ade80;
+  --adm-success-rgb: 34, 197, 94;
+  --adm-warn: #fbbf24;
+  --adm-warn-rgb: 245, 158, 11;
+  --adm-orange: #fdba74;
+  --adm-info-blue: #7dd3fc;
+}
+
+/* 切換鈕（選單底下、手機頂欄各一顆） */
+.themeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--adm-card-border);
+  border-radius: 8px;
+  background: var(--adm-card);
+  color: var(--adm-text-sub);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+
+.themeBtn:hover {
+  background: var(--adm-card-hover);
+  color: var(--adm-text);
+}
+
+.themeBtnTop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  margin-left: auto;
+  border: 1px solid var(--adm-card-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--adm-text);
+  cursor: pointer;
+  padding: 0;
+}
+
 .shell {
   display: flex;
   align-items: flex-start;

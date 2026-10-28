@@ -113,7 +113,7 @@ export default async function MatchAdminPage() {
           買方在 /match 留條件、預約看屋；物件每 {MATCH.syncIntervalMin} 分鐘從愛屋店網（storeid {MATCH.houseolStoreId}）自動同步。
         </p>
         {loadError ? (
-          <div style={{ padding: 16, borderRadius: CIS.radiusSm, background: "rgba(244,63,94,0.12)", border: "1px solid rgba(244,63,94,0.35)" }}>
+          <div style={{ padding: 16, borderRadius: CIS.radiusSm, background: "rgba(var(--adm-danger-rgb), 0.12)", border: "1px solid rgba(var(--adm-danger-rgb), 0.35)" }}>
             資料庫讀不到：{loadError}
           </div>
         ) : (

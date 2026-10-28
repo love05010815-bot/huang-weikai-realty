@@ -13,8 +13,8 @@
 }
 
 .card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(var(--adm-ink-rgb), 0.03);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.08);
   border-radius: 14px;
   padding: 18px 16px;
 }
@@ -27,7 +27,7 @@
   margin-bottom: 16px;
   font-size: 14px;
   font-weight: 700;
-  color: #f8f4f3;
+  color: var(--adm-text);
 }
 .label {
   margin-bottom: 8px;
@@ -49,10 +49,10 @@
   font: inherit;
   font-size: 16px;
   font-weight: 400;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.14);
   border-radius: 10px;
-  background: #231d1a;
-  color: #f8f4f3;
+  background: var(--adm-bg-soft);
+  color: var(--adm-text);
 }
 .textarea {
   min-height: 84px;
@@ -61,7 +61,7 @@
 .input:focus,
 .select:focus,
 .textarea:focus {
-  outline: 2px solid #f26666;
+  outline: 2px solid var(--adm-brand);
   outline-offset: 0;
   border-color: transparent;
 }
@@ -74,10 +74,10 @@
 .chip {
   min-height: 40px;
   padding: 8px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.16);
   border-radius: 999px;
   background: transparent;
-  color: #d0c6c4;
+  color: var(--adm-text-sub);
   font: inherit;
   font-size: 14px;
   font-weight: 500;
@@ -85,13 +85,13 @@
   user-select: none;
 }
 .chipOn {
-  background: #f26666;
-  border-color: #f26666;
+  background: var(--adm-brand);
+  border-color: var(--adm-brand);
   color: #fff;
 }
 .hint {
   font-size: 13px;
-  color: #a69a97;
+  color: var(--adm-text-mute);
   font-weight: 400;
   margin: 8px 0;
 }
@@ -120,26 +120,26 @@
   cursor: default;
 }
 .btnPrimary {
-  background: #e00000;
+  background: var(--adm-brand-deep);
 }
 .btnPrimary:hover {
-  background: #c40000;
+  background: var(--adm-brand-deeper);
 }
 .btnGhost {
   background: transparent;
-  border-color: rgba(255, 255, 255, 0.18);
-  color: #d0c6c4;
+  border-color: rgba(var(--adm-ink-rgb), 0.18);
+  color: var(--adm-text-sub);
 }
 .btnGhost:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--adm-ink-rgb), 0.05);
 }
 .btnLine {
   background: #06c755;
 }
 .btnDanger {
   background: transparent;
-  border-color: rgba(244, 63, 94, 0.45);
-  color: #fb7185;
+  border-color: rgba(var(--adm-danger-rgb), 0.45);
+  color: var(--adm-danger);
 }
 .btnBlock {
   display: flex;
@@ -153,7 +153,7 @@
   display: flex;
   gap: 10px;
   padding: 12px 0 10px;
-  background: linear-gradient(to top, #1a1614 70%, rgba(26, 22, 20, 0));
+  background: linear-gradient(to top, var(--adm-bg) 70%, rgba(var(--adm-ink-rgb), 0));
 }
 .stickyBar .btn {
   flex: 1;
@@ -170,19 +170,19 @@
 .back {
   display: inline-block;
   margin-bottom: 12px;
-  color: #a69a97;
+  color: var(--adm-text-mute);
   font-size: 14px;
   text-decoration: none;
 }
 .back:hover {
-  color: #f8f4f3;
+  color: var(--adm-text);
 }
 
 .name {
   margin: 0 0 4px;
   font-size: 24px;
   font-weight: 800;
-  color: #f8f4f3;
+  color: var(--adm-text);
 }
 /* 沒填電話（2026-10-27 代客建檔的電話改選填）：淡字，不畫空的撥號連結 */
 .noPhone {
@@ -195,7 +195,7 @@
   margin: 0 0 8px;
   font-size: 20px;
   font-weight: 700;
-  color: #f26666;
+  color: var(--adm-brand);
   text-decoration: none;
 }
 .chipRow {
@@ -208,9 +208,9 @@
   margin: 8px 0 0;
   padding: 10px 12px;
   border-radius: 10px;
-  background: rgba(245, 192, 196, 0.08);
-  border: 1px solid rgba(245, 192, 196, 0.2);
-  color: #d0c6c4;
+  background: rgba(var(--adm-accent-rgb), 0.08);
+  border: 1px solid rgba(var(--adm-accent-rgb), 0.2);
+  color: var(--adm-text-sub);
   font-size: 14px;
   white-space: pre-wrap;
   line-height: 1.6;
@@ -220,7 +220,7 @@
   margin: 0 0 8px;
   font-size: 12px;
   font-weight: 700;
-  color: #a69a97;
+  color: var(--adm-text-mute);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -228,10 +228,10 @@
   margin: 0;
   font-size: 15px;
   line-height: 1.7;
-  color: #f8f4f3;
+  color: var(--adm-text);
 }
 .muted {
-  color: #a69a97;
+  color: var(--adm-text-mute);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -239,24 +239,24 @@
   margin: 0 0 12px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: #231d1a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--adm-bg-soft);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.08);
   font-size: 14px;
-  color: #f8f4f3;
+  color: var(--adm-text);
 }
 .error {
   margin: 8px 0 0;
-  color: #fb7185;
+  color: var(--adm-danger);
   font-size: 14px;
 }
 .linkBox {
   margin: 8px 0;
   padding: 10px 12px;
   border-radius: 10px;
-  background: #231d1a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--adm-bg-soft);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.08);
   font-size: 13px;
-  color: #d0c6c4;
+  color: var(--adm-text-sub);
   word-break: break-all;
 }
 
@@ -272,46 +272,46 @@
   gap: 12px;
   padding: 10px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(var(--adm-ink-rgb), 0.03);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.08);
 }
 .thumb {
   width: 96px;
   height: 72px;
   object-fit: cover;
   border-radius: 8px;
-  background: #231d1a;
+  background: var(--adm-bg-soft);
 }
 .thumbEmpty {
   width: 96px;
   height: 72px;
   border-radius: 8px;
-  background: #231d1a;
+  background: var(--adm-bg-soft);
 }
 .itemTitle {
   margin: 0;
   font-size: 15px;
   font-weight: 700;
-  color: #f8f4f3;
+  color: var(--adm-text);
   line-height: 1.4;
 }
 .price {
   margin: 2px 0;
   font-size: 17px;
   font-weight: 800;
-  color: #f26666;
+  color: var(--adm-brand);
 }
 .meta {
   margin: 0;
   font-size: 12px;
-  color: #a69a97;
+  color: var(--adm-text-mute);
   line-height: 1.5;
 }
 .itemLink {
   display: inline-block;
   margin-top: 4px;
   font-size: 13px;
-  color: #ee828a;
+  color: var(--adm-brand-soft);
   text-decoration: none;
 }
 

@@ -37,7 +37,7 @@
 .notice code {
   padding: 1px 6px;
   border-radius: 5px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--adm-ink-rgb), 0.08);
   font-size: 13px;
   word-break: break-all;
 }
@@ -133,7 +133,7 @@
 .empty code {
   padding: 1px 6px;
   border-radius: 5px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--adm-ink-rgb), 0.08);
   font-size: 13px;
   word-break: break-all;
 }
@@ -278,7 +278,7 @@
 
 .mutedBar {
   padding: 9px 16px;
-  background: rgba(245, 158, 11, 0.08);
+  background: rgba(var(--adm-warn-rgb), 0.08);
   font-size: 12.5px;
   line-height: 1.6;
 }

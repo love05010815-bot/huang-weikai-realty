@@ -1,4 +1,4 @@
-/* 開發物件追蹤後台 —— 沿用後台深色 CIS（#1a1614 底、太平洋紅提亮版 #F26666） */
+/* 開發物件追蹤後台 —— 沿用後台深色 CIS（var(--adm-bg) 底、太平洋紅提亮版 var(--adm-brand)） */
 
 .page {
   min-height: 100vh;
@@ -32,13 +32,13 @@
   border-radius: 10px;
   font-size: 13.5px;
   line-height: 1.75;
-  background: rgba(244, 63, 94, 0.15);
-  border: 1px solid rgba(244, 63, 94, 0.35);
-  color: #fb7185;
+  background: rgba(var(--adm-danger-rgb), 0.15);
+  border: 1px solid rgba(var(--adm-danger-rgb), 0.35);
+  color: var(--adm-danger);
 }
 
 .error code {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--adm-ink-rgb), 0.08);
   padding: 1px 6px;
   border-radius: 4px;
 }
@@ -59,21 +59,21 @@
   flex-direction: column;
   gap: 2px;
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(var(--adm-ink-rgb), 0.03);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.08);
   border-radius: 14px;
 }
 
 .stats b {
   font-size: 26px;
   font-weight: 900;
-  color: #f26666;
+  color: var(--adm-brand);
   line-height: 1.2;
 }
 
 .stats span {
   font-size: 12.5px;
-  color: #a69a97;
+  color: var(--adm-text-mute);
 }
 
 /* ── 版面 ── */
@@ -90,15 +90,15 @@
 }
 
 .msgOk {
-  background: rgba(34, 197, 94, 0.15);
-  border: 1px solid rgba(34, 197, 94, 0.35);
-  color: #4ade80;
+  background: rgba(var(--adm-success-rgb), 0.15);
+  border: 1px solid rgba(var(--adm-success-rgb), 0.35);
+  color: var(--adm-success);
 }
 
 .msgErr {
-  background: rgba(244, 63, 94, 0.15);
-  border: 1px solid rgba(244, 63, 94, 0.35);
-  color: #fb7185;
+  background: rgba(var(--adm-danger-rgb), 0.15);
+  border: 1px solid rgba(var(--adm-danger-rgb), 0.35);
+  color: var(--adm-danger);
 }
 
 /* ── 篩選列：區域下拉＋狀態下拉＋日曆鈕＋搜尋（2026-10-13 他說 pill 一大堆太亂，改下拉） ── */
@@ -114,17 +114,17 @@
   flex: 0 1 auto;
   min-height: 38px;
   padding: 6px 30px 6px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.14);
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.25);
-  color: #f8f4f3;
+  background: var(--adm-input);
+  color: var(--adm-text);
   font-size: 13.5px;
   font-weight: 700;
   font-family: inherit;
 }
 
 .filterSelect:focus {
-  outline: 2px solid #f26666;
+  outline: 2px solid var(--adm-brand);
   outline-offset: 1px;
 }
 
@@ -134,10 +134,10 @@
   gap: 6px;
   min-height: 38px;
   padding: 6px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.14);
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.25);
-  color: #d0c6c4;
+  background: var(--adm-input);
+  color: var(--adm-text-sub);
   font-size: 13.5px;
   font-weight: 700;
   font-family: inherit;
@@ -146,13 +146,13 @@
 }
 
 .calBtn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--adm-ink-rgb), 0.08);
 }
 
 .calBtnOn {
-  border-color: #f26666;
-  background: rgba(242, 102, 102, 0.16);
-  color: #f8f4f3;
+  border-color: var(--adm-brand);
+  background: rgba(var(--adm-brand-rgb), 0.16);
+  color: var(--adm-text);
 }
 
 .search {
@@ -162,22 +162,22 @@
   min-height: 38px;
   box-sizing: border-box;
   padding: 8px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.14);
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.25);
-  color: #f8f4f3;
+  background: var(--adm-input);
+  color: var(--adm-text);
   font-size: 13px;
   font-family: inherit;
 }
 
 .search:focus {
-  outline: 2px solid #f26666;
+  outline: 2px solid var(--adm-brand);
   outline-offset: 1px;
 }
 
 .primaryBtn {
-  border: 1px solid #e00000;
-  background: #e00000;
+  border: 1px solid var(--adm-brand-deep);
+  background: var(--adm-brand-deep);
   color: #fff;
   border-radius: 999px;
   padding: 8px 16px;
@@ -189,7 +189,7 @@
 }
 
 .primaryBtn:hover:not(:disabled) {
-  background: #c40000;
+  background: var(--adm-brand-deeper);
 }
 
 .primaryBtn:disabled {
@@ -204,7 +204,7 @@
   text-align: center;
   font-size: 13.5px;
   line-height: 1.8;
-  color: #a69a97;
+  color: var(--adm-text-mute);
 }
 
 .list {
@@ -218,9 +218,9 @@
 .card {
   /* grid item 預設 min-width:auto，「最新回饋」那行 nowrap 會把整張卡撐出畫面（手機量到 419px > 375px） */
   min-width: 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.08);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--adm-ink-rgb), 0.03);
   padding: 14px 16px;
 }
 
@@ -254,17 +254,17 @@
   align-items: center;
   gap: 10px;
   font-size: 12.5px;
-  color: #a69a97;
+  color: var(--adm-text-mute);
 }
 
 .metaRow a {
-  color: #f5c0c4;
+  color: var(--adm-accent);
 }
 
 .feedbackPreview {
   margin-top: 6px;
   font-size: 13px;
-  color: #d0c6c4;
+  color: var(--adm-text-sub);
   line-height: 1.6;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -279,9 +279,9 @@
 }
 
 .iconBtn {
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.05);
-  color: #d0c6c4;
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.14);
+  background: rgba(var(--adm-ink-rgb), 0.05);
+  color: var(--adm-text-sub);
   border-radius: 8px;
   padding: 6px 10px;
   font-size: 12.5px;
@@ -291,8 +291,8 @@
 }
 
 .iconBtn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  color: #f8f4f3;
+  background: rgba(var(--adm-ink-rgb), 0.1);
+  color: var(--adm-text);
 }
 
 .iconBtn:disabled {
@@ -301,20 +301,20 @@
 }
 
 .danger {
-  color: #fb7185 !important;
-  border-color: rgba(244, 63, 94, 0.35) !important;
+  color: var(--adm-danger) !important;
+  border-color: rgba(var(--adm-danger-rgb), 0.35) !important;
 }
 
 .dangerOn {
-  background: #fb7185 !important;
-  border-color: #fb7185 !important;
-  color: #1a1614 !important;
+  background: var(--adm-danger) !important;
+  border-color: var(--adm-danger) !important;
+  color: var(--adm-on-accent) !important;
   font-weight: 700;
 }
 
 .success {
-  color: #4ade80 !important;
-  border-color: rgba(34, 197, 94, 0.35) !important;
+  color: var(--adm-success) !important;
+  border-color: rgba(var(--adm-success-rgb), 0.35) !important;
 }
 
 /* ── 狀態 chip ── */
@@ -331,12 +331,12 @@
 }
 
 .overdue {
-  color: #fb7185;
+  color: var(--adm-danger);
   font-weight: 700;
 }
 
 .dueToday {
-  color: #fbbf24;
+  color: var(--adm-warn);
   font-weight: 700;
 }
 
@@ -344,7 +344,7 @@
 .cardBody {
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(var(--adm-ink-rgb), 0.06);
   display: grid;
   gap: 16px;
 }
@@ -353,8 +353,8 @@
   margin: 0;
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.2);
-  color: #d0c6c4;
+  background: var(--adm-input);
+  color: var(--adm-text-sub);
   font-size: 13px;
   line-height: 1.7;
   white-space: pre-wrap;
@@ -364,7 +364,7 @@
   margin: 0 0 8px;
   font-size: 12px;
   font-weight: 700;
-  color: #a69a97;
+  color: var(--adm-text-mute);
   letter-spacing: 0.04em;
 }
 
@@ -380,9 +380,9 @@
   display: flex;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.06);
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--adm-input);
 }
 
 .timelineDate {
@@ -390,7 +390,7 @@
   width: 76px;
   font-size: 12.5px;
   font-weight: 700;
-  color: #d0c6c4;
+  color: var(--adm-text-sub);
 }
 
 .timelineBody {
@@ -407,21 +407,21 @@
 
 .timelineMethod {
   font-size: 11.5px;
-  color: #a69a97;
+  color: var(--adm-text-mute);
 }
 
 .timelineFeedback {
   margin: 6px 0 0;
   font-size: 13px;
   line-height: 1.65;
-  color: #f8f4f3;
+  color: var(--adm-text);
   white-space: pre-wrap;
 }
 
 .timelineNext {
   margin-top: 6px;
   font-size: 12px;
-  color: #a69a97;
+  color: var(--adm-text-mute);
 }
 
 .timelineDel {
@@ -429,14 +429,14 @@
   align-self: flex-start;
   border: 0;
   background: transparent;
-  color: #a69a97;
+  color: var(--adm-text-mute);
   font-size: 11.5px;
   cursor: pointer;
   padding: 2px 4px;
 }
 
 .timelineDel:hover {
-  color: #fb7185;
+  color: var(--adm-danger);
 }
 
 /* ── 表單（新增物件／編輯物件／新增追蹤紀錄共用） ── */
@@ -465,14 +465,14 @@
 
 .form label > span {
   font-weight: 700;
-  color: #d0c6c4;
+  color: var(--adm-text-sub);
   font-size: 13px;
 }
 
 .form label > span em {
   font-style: normal;
   font-size: 11px;
-  color: #fb7185;
+  color: var(--adm-danger);
   margin-left: 6px;
 }
 
@@ -487,10 +487,10 @@
   /* 預設是 content-box，100% 再加左右 padding 與邊框就會衝出卡片 26px（/admin/owners 量過同一個坑） */
   box-sizing: border-box;
   padding: 9px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.14);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.25);
-  color: #f8f4f3;
+  background: var(--adm-input);
+  color: var(--adm-text);
   font-size: 14px;
   font-family: inherit;
   line-height: 1.6;
@@ -503,9 +503,9 @@
 .form input:focus,
 .form select:focus,
 .form textarea:focus {
-  outline: 2px solid #f26666;
+  outline: 2px solid var(--adm-brand);
   outline-offset: 1px;
-  border-color: #f26666;
+  border-color: var(--adm-brand);
 }
 
 .formBtns {
@@ -515,9 +515,9 @@
 }
 
 .plainBtn {
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.05);
-  color: #d0c6c4;
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.14);
+  background: rgba(var(--adm-ink-rgb), 0.05);
+  color: var(--adm-text-sub);
   border-radius: 8px;
   padding: 8px 16px;
   font-size: 13.5px;
@@ -527,8 +527,8 @@
 }
 
 .plainBtn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  color: #f8f4f3;
+  background: rgba(var(--adm-ink-rgb), 0.1);
+  color: var(--adm-text);
 }
 
 .plainBtn:disabled {
@@ -542,17 +542,17 @@
 }
 
 .formCard {
-  border: 1px dashed rgba(242, 102, 102, 0.35);
+  border: 1px dashed rgba(var(--adm-brand-rgb), 0.35);
   border-radius: 12px;
-  background: rgba(242, 102, 102, 0.05);
+  background: rgba(var(--adm-brand-rgb), 0.05);
   padding: 14px 16px;
   margin-bottom: 14px;
 }
 
 .addContactCard {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.08);
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--adm-input);
   padding: 12px 14px;
 }
 
@@ -741,9 +741,9 @@
 
 /* ── 丟進來 ── */
 .quickCard {
-  border: 1px solid rgba(242, 102, 102, 0.35);
+  border: 1px solid rgba(var(--adm-brand-rgb), 0.35);
   border-radius: 14px;
-  background: rgba(242, 102, 102, 0.06);
+  background: rgba(var(--adm-brand-rgb), 0.06);
   padding: 14px 16px;
   margin-bottom: 16px;
   display: grid;
@@ -752,7 +752,7 @@
 
 .quickCard .sectionTitle {
   margin: 0;
-  color: #f5c0c4;
+  color: var(--adm-accent);
 }
 
 .quickInput {
@@ -760,10 +760,10 @@
   box-sizing: border-box;
   min-height: 72px;
   padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.14);
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.3);
-  color: #f8f4f3;
+  background: var(--adm-input);
+  color: var(--adm-text);
   font-size: 15px;
   font-family: inherit;
   line-height: 1.6;
@@ -771,9 +771,9 @@
 }
 
 .quickInput:focus {
-  outline: 2px solid #f26666;
+  outline: 2px solid var(--adm-brand);
   outline-offset: 1px;
-  border-color: #f26666;
+  border-color: var(--adm-brand);
 }
 
 .quickRow {
@@ -789,15 +789,15 @@
   gap: 8px;
   font-size: 13px;
   font-weight: 700;
-  color: #d0c6c4;
+  color: var(--adm-text-sub);
 }
 
 .quickArea select {
   padding: 8px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.14);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.3);
-  color: #f8f4f3;
+  background: var(--adm-input);
+  color: var(--adm-text);
   font-size: 14px;
   font-family: inherit;
 }
@@ -809,7 +809,7 @@
   flex-wrap: wrap;
   gap: 4px 12px;
   font-size: 12.5px;
-  color: #a69a97;
+  color: var(--adm-text-mute);
 }
 
 .quickHint:empty {
@@ -833,10 +833,10 @@
   align-items: center;
   gap: 6px;
   padding: 5px 8px 5px 12px;
-  border: 1px solid rgba(242, 102, 102, 0.5);
+  border: 1px solid rgba(var(--adm-brand-rgb), 0.5);
   border-radius: 999px;
-  background: rgba(242, 102, 102, 0.14);
-  color: #f8f4f3;
+  background: rgba(var(--adm-brand-rgb), 0.14);
+  color: var(--adm-text);
   font-size: 13px;
   font-weight: 700;
 }
@@ -849,8 +849,8 @@
   height: 24px;
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #f8f4f3;
+  background: rgba(var(--adm-ink-rgb), 0.1);
+  color: var(--adm-text);
   cursor: pointer;
 }
 
@@ -859,9 +859,9 @@
   max-width: 360px;
   margin-bottom: 14px;
   padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.1);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--adm-ink-rgb), 0.03);
 }
 
 .calHead {
@@ -886,10 +886,10 @@
   min-width: 32px;
   height: 32px;
   padding: 0 8px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.14);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #d0c6c4;
+  background: rgba(var(--adm-ink-rgb), 0.05);
+  color: var(--adm-text-sub);
   font-size: 12px;
   font-family: inherit;
   cursor: pointer;
@@ -905,7 +905,7 @@
   text-align: center;
   font-size: 11px;
   font-weight: 700;
-  color: #a69a97;
+  color: var(--adm-text-mute);
   padding: 2px 0 4px;
 }
 
@@ -926,25 +926,25 @@
 }
 
 .calDayHas {
-  color: #f8f4f3;
+  color: var(--adm-text);
   font-weight: 800;
-  border-color: rgba(242, 102, 102, 0.45);
-  background: rgba(242, 102, 102, 0.1);
+  border-color: rgba(var(--adm-brand-rgb), 0.45);
+  background: rgba(var(--adm-brand-rgb), 0.1);
   cursor: pointer;
 }
 
 .calDayHas:hover {
-  background: rgba(242, 102, 102, 0.22);
+  background: rgba(var(--adm-brand-rgb), 0.22);
 }
 
 .calDayOn {
-  background: #e00000 !important;
-  border-color: #e00000 !important;
+  background: var(--adm-brand-deep) !important;
+  border-color: var(--adm-brand-deep) !important;
   color: #fff;
 }
 
 .calDayToday {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(var(--adm-ink-rgb), 0.35);
 }
 
 .calDay small {
@@ -954,7 +954,7 @@
   font-size: 9.5px;
   font-weight: 800;
   line-height: 1;
-  color: #f5c0c4;
+  color: var(--adm-accent);
 }
 
 .calDayOn small {
@@ -964,7 +964,7 @@
 .calHint {
   margin: 8px 0 0;
   font-size: 11.5px;
-  color: #a69a97;
+  color: var(--adm-text-mute);
 }
 
 /* ── 區域分組標題 ── */
@@ -979,20 +979,20 @@
   margin: 0 0 8px;
   font-size: 15px;
   font-weight: 900;
-  color: #f8f4f3;
+  color: var(--adm-text);
 }
 
 .groupTitle small {
   font-size: 12px;
   font-weight: 700;
-  color: #a69a97;
+  color: var(--adm-text-mute);
 }
 
 .groupLink {
   margin-left: auto;
   border: 0;
   background: transparent;
-  color: #f5c0c4;
+  color: var(--adm-accent);
   font-size: 12.5px;
   font-family: inherit;
   cursor: pointer;
@@ -1016,7 +1016,7 @@
 }
 
 .noAddress {
-  color: #a69a97;
+  color: var(--adm-text-mute);
   font-weight: 600;
 }
 
@@ -1028,23 +1028,23 @@
   max-width: 100%;
   min-height: 44px;
   padding: 8px 16px;
-  border: 1px solid rgba(242, 102, 102, 0.6);
+  border: 1px solid rgba(var(--adm-brand-rgb), 0.6);
   border-radius: 10px;
-  background: rgba(242, 102, 102, 0.14);
-  color: #f8f4f3;
+  background: rgba(var(--adm-brand-rgb), 0.14);
+  color: var(--adm-text);
   font-size: 15px;
   font-weight: 800;
   text-decoration: none;
 }
 
 .linkBtn:hover {
-  background: rgba(242, 102, 102, 0.26);
+  background: rgba(var(--adm-brand-rgb), 0.26);
 }
 
 .linkHost {
   font-size: 12px;
   font-weight: 600;
-  color: #f5c0c4;
+  color: var(--adm-accent);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1066,14 +1066,14 @@
   min-width: 84px;
   padding: 6px 10px;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--adm-input);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.06);
 }
 
 .dates dt {
   font-size: 11px;
   font-weight: 700;
-  color: #a69a97;
+  color: var(--adm-text-mute);
   letter-spacing: 0.04em;
 }
 
@@ -1083,23 +1083,23 @@
   align-items: baseline;
   gap: 6px;
   font-size: 13px;
-  color: #d0c6c4;
+  color: var(--adm-text-sub);
 }
 
 .dates dd b {
   font-size: 15px;
   font-weight: 900;
-  color: #f8f4f3;
+  color: var(--adm-text);
 }
 
 .dates dd small {
   font-size: 11.5px;
-  color: #a69a97;
+  color: var(--adm-text-mute);
 }
 
 .notYet {
   font-weight: 700;
-  color: #fbbf24;
+  color: var(--adm-warn);
 }
 
 .cardBtns {
@@ -1120,13 +1120,13 @@
 }
 
 .accent {
-  color: #f8f4f3 !important;
-  border-color: rgba(242, 102, 102, 0.6) !important;
-  background: rgba(242, 102, 102, 0.16) !important;
+  color: var(--adm-text) !important;
+  border-color: rgba(var(--adm-brand-rgb), 0.6) !important;
+  background: rgba(var(--adm-brand-rgb), 0.16) !important;
 }
 
 .accent:hover:not(:disabled) {
-  background: rgba(242, 102, 102, 0.28) !important;
+  background: rgba(var(--adm-brand-rgb), 0.28) !important;
 }
 
 .checkRow {
@@ -1139,7 +1139,7 @@
 .checkRow input[type="checkbox"] {
   width: 20px;
   height: 20px;
-  accent-color: #f26666;
+  accent-color: var(--adm-brand);
 }
 
 @media (max-width: 899px) {

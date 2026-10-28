@@ -181,8 +181,8 @@ export default async function AdminLinePage({
           <div
             className={styles.notice}
             style={{
-              background: "rgba(245,158,11,.08)",
-              borderColor: "rgba(245,158,11,.35)",
+              background: "rgba(var(--adm-warn-rgb), .08)",
+              borderColor: "rgba(var(--adm-warn-rgb), .35)",
               color: CIS.textSub,
             }}
           >
@@ -208,8 +208,8 @@ export default async function AdminLinePage({
           <div
             className={styles.notice}
             style={{
-              background: "rgba(244,63,94,.08)",
-              borderColor: "rgba(244,63,94,.35)",
+              background: "rgba(var(--adm-danger-rgb), .08)",
+              borderColor: "rgba(var(--adm-danger-rgb), .35)",
               color: CIS.textSub,
             }}
           >
@@ -435,10 +435,10 @@ export default async function AdminLinePage({
                               className={styles.bubble}
                               style={
                                 m.role === "user"
-                                  ? { background: "rgba(255,255,255,.07)", color: CIS.text }
+                                  ? { background: "rgba(var(--adm-ink-rgb), .07)", color: CIS.text }
                                   : byHuman
-                                    ? { background: "rgba(74,222,128,.14)", color: CIS.text }
-                                    : { background: "rgba(238,130,138,.14)", color: CIS.text }
+                                    ? { background: "rgba(var(--adm-success-rgb), .14)", color: CIS.text }
+                                    : { background: "rgba(var(--adm-brand-rgb), .14)", color: CIS.text }
                               }
                             >
                               {m.content}
@@ -450,7 +450,7 @@ export default async function AdminLinePage({
                               {m.role === "user" ? (
                                 "客戶"
                               ) : byHuman ? (
-                                <span className={styles.humanTag} style={{ color: "#4ade80" }}>
+                                <span className={styles.humanTag} style={{ color: "var(--adm-success)" }}>
                                   你回的
                                 </span>
                               ) : (

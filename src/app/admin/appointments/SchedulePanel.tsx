@@ -22,10 +22,10 @@ import {
 } from "@/lib/appointment-schedule-settings";
 
 const field: React.CSSProperties = {
-  width: "100%", background: "#141414", border: "1px solid #2a2a2a", borderRadius: 8,
-  color: "#ededed", padding: "8px 10px", fontSize: 16,
+  width: "100%", background: "var(--adm-input)", border: "1px solid var(--adm-card-border-strong)", borderRadius: 8,
+  color: "var(--adm-text)", padding: "8px 10px", fontSize: 16,
 };
-const lbl: React.CSSProperties = { display: "block", color: "#9aa0a6", fontSize: 14, marginBottom: 5 };
+const lbl: React.CSSProperties = { display: "block", color: "var(--adm-neutral)", fontSize: 14, marginBottom: 5 };
 
 /** 06:00 ～ 23:00，每 15 分一個選項（開始時間用到 22:45、結束時間用到 23:00） */
 const TIME_OPTIONS: number[] = [];
@@ -105,12 +105,12 @@ export default function SchedulePanel({
   return (
     <section
       className="rounded-xl"
-      style={{ background: "#0e0e0e", border: `1px solid ${borderColor}`, padding: open ? "14px 16px" : "10px 16px", marginBottom: 14 }}
+      style={{ background: "var(--adm-bg-soft)", border: `1px solid ${borderColor}`, padding: open ? "14px 16px" : "10px 16px", marginBottom: 14 }}
     >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        style={{ background: "none", border: 0, color: "#7dd3fc", fontWeight: 800, fontSize: 16, cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}
+        style={{ background: "none", border: 0, color: "var(--adm-info-blue)", fontWeight: 800, fontSize: 16, cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}
       >
         🕘 可預約時間（開放日、時段、休假日）
         <span style={{ color: "#5b6675", fontWeight: 400, fontSize: 14 }}>
@@ -126,7 +126,7 @@ export default function SchedulePanel({
             style={{ background: "rgba(125,211,252,.06)", border: "1px solid #23303f", borderRadius: 8, padding: "9px 11px", color: "#9fc7e8", fontSize: 14.5, lineHeight: 1.9 }}
           >
             {preview.map((line, i) => <div key={i}>・{line}</div>)}
-            <div style={{ color: "#6b7684", marginTop: 4 }}>
+            <div style={{ color: "var(--adm-text-mute)", marginTop: 4 }}>
               15 分鐘一格、前後緩衝、可選時長不在這裡調（跟撞單保護綁在一起）。臨時某天不接，直接在 Google 日曆放一個事件也可以。
             </div>
           </div>
@@ -144,7 +144,7 @@ export default function SchedulePanel({
                     aria-pressed={on}
                     style={{
                       minWidth: 52, padding: "8px 12px", borderRadius: 8, fontSize: 15, fontWeight: 700, cursor: "pointer",
-                      background: on ? "#16a34a" : "#141414", color: on ? "#fff" : "#6b7684", border: `1px solid ${on ? "#16a34a" : "#2a2a2a"}`,
+                      background: on ? "#16a34a" : "var(--adm-input)", color: on ? "#fff" : "var(--adm-text-mute)", border: `1px solid ${on ? "#16a34a" : "var(--adm-card-border-strong)"}`,
                     }}
                   >
                     週{WEEKDAY_LABELS[d]}
@@ -194,7 +194,7 @@ export default function SchedulePanel({
               onChange={(e) => setClosedText(e.target.value)}
             />
             {closedParsed.bad.length > 0 && (
-              <div style={{ color: "#fbbf24", fontSize: 14, marginTop: 6 }}>看不懂的行：{closedParsed.bad.join("、")}</div>
+              <div style={{ color: "var(--adm-warn)", fontSize: 14, marginTop: 6 }}>看不懂的行：{closedParsed.bad.join("、")}</div>
             )}
           </div>
 
@@ -204,7 +204,7 @@ export default function SchedulePanel({
               onClick={save}
               disabled={busy || !dirty}
               style={{
-                background: dirty ? "#16a34a" : "#333", border: 0, borderRadius: 8, color: "#fff",
+                background: dirty ? "#16a34a" : "var(--adm-btn-muted)", border: 0, borderRadius: 8, color: "#fff",
                 padding: "9px 20px", fontSize: 15.5, fontWeight: 700,
                 cursor: busy ? "wait" : dirty ? "pointer" : "not-allowed",
               }}
@@ -214,13 +214,13 @@ export default function SchedulePanel({
             <button
               type="button"
               onClick={resetDefault}
-              style={{ background: "none", border: "1px solid #2a2a2a", borderRadius: 7, color: "#6b7684", fontSize: 14.5, padding: "6px 12px", cursor: "pointer" }}
+              style={{ background: "none", border: "1px solid var(--adm-card-border-strong)", borderRadius: 7, color: "var(--adm-text-mute)", fontSize: 14.5, padding: "6px 12px", cursor: "pointer" }}
             >
               回到預設（週一～五 10:00–18:00・未來 14 天）
             </button>
           </div>
 
-          {msg && <div style={{ color: msg.ok ? "#86efac" : "#f0705c", fontSize: 14.5, lineHeight: 1.8 }}>{msg.text}</div>}
+          {msg && <div style={{ color: msg.ok ? "var(--adm-success)" : "#f0705c", fontSize: 14.5, lineHeight: 1.8 }}>{msg.text}</div>}
         </div>
       )}
     </section>

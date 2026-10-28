@@ -83,7 +83,7 @@ export default function CommentReply({
           {alreadyAnswered ? "再回一則" : "回覆"}
         </button>
         {msg ? (
-          <span className={styles.replyMsg} style={{ color: msg.ok ? "#4ade80" : "#fb7185" }}>
+          <span className={styles.replyMsg} style={{ color: msg.ok ? "var(--adm-success)" : "var(--adm-danger)" }}>
             {msg.text}
           </span>
         ) : null}
@@ -95,7 +95,7 @@ export default function CommentReply({
     <div className={styles.replyOpen}>
       <textarea
         className={styles.replyInput}
-        style={{ background: "#141414", borderColor: CIS.cardBorder, color: CIS.text }}
+        style={{ background: "var(--adm-input)", borderColor: CIS.cardBorder, color: CIS.text }}
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
@@ -110,7 +110,7 @@ export default function CommentReply({
         autoFocus
       />
       <div className={styles.replyRow}>
-        <span className={styles.replyHint} style={{ color: tooLong ? "#fb7185" : CIS.textMute }}>
+        <span className={styles.replyHint} style={{ color: tooLong ? "var(--adm-danger)" : CIS.textMute }}>
           {tooLong
             ? `太長了 ${text.length}／${MAX} 字`
             : priv
@@ -145,7 +145,7 @@ export default function CommentReply({
         </button>
       </div>
       {msg ? (
-        <div className={styles.replyMsg} style={{ color: msg.ok ? "#4ade80" : "#fb7185" }}>
+        <div className={styles.replyMsg} style={{ color: msg.ok ? "var(--adm-success)" : "var(--adm-danger)" }}>
           {msg.text}
         </div>
       ) : null}

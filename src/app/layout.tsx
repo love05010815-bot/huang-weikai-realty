@@ -39,7 +39,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-Hant">
+    <html lang="zh-Hant" suppressHydrationWarning>
       <body>
         {children}
         {/* 只負責記一次人氣，畫面上不顯示；顯示的那個在首頁頁尾 */}

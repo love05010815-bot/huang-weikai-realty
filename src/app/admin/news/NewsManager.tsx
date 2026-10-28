@@ -211,7 +211,7 @@ export default function NewsManager({ items, counts, latestRun, searchQuery }: P
         全台那區動輒兩三百則，捲到一半想回頭看海線，不該還要一路捲回頂端。
         數字是「按下去會看到幾則」，跟上面那排統計的時間窗不一樣，所以寫「只看」不寫數量標題。
       */}
-      {/* 底色要用不透明的 CIS.bg —— CIS.card 是 rgba(255,255,255,0.03)，
+      {/* 底色要用不透明的 CIS.bg —— CIS.card 是 rgba(var(--adm-ink-rgb), 0.03)，
           黏住之後底下的卡片會整片透上來、字全糊掉（實測看過）。 */}
       <div className={styles.regionBar} style={{ borderColor: CIS.cardBorder, background: CIS.bg }}>
         <span className={styles.regionBarLabel} style={{ color: CIS.textMute }}>

@@ -1,4 +1,4 @@
-/* 建案地圖物件後台 —— 沿用後台深色 CIS（#1a1614 底、太平洋紅提亮版 #F26666） */
+/* 建案地圖物件後台 —— 沿用後台深色 CIS（var(--adm-bg) 底、太平洋紅提亮版 var(--adm-brand)） */
 
 .page {
   min-height: 100vh;
@@ -26,7 +26,7 @@
 }
 
 .sub a {
-  color: #f26666;
+  color: var(--adm-brand);
   font-weight: 700;
 }
 
@@ -42,26 +42,26 @@
 }
 
 .notice {
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  color: #fbbf24;
+  background: rgba(var(--adm-warn-rgb), 0.12);
+  border: 1px solid rgba(var(--adm-warn-rgb), 0.35);
+  color: var(--adm-warn);
 }
 
 .ok {
-  background: rgba(34, 197, 94, 0.15);
-  border: 1px solid rgba(34, 197, 94, 0.35);
-  color: #4ade80;
+  background: rgba(var(--adm-success-rgb), 0.15);
+  border: 1px solid rgba(var(--adm-success-rgb), 0.35);
+  color: var(--adm-success);
 }
 
 .error {
-  background: rgba(244, 63, 94, 0.15);
-  border: 1px solid rgba(244, 63, 94, 0.35);
-  color: #fb7185;
+  background: rgba(var(--adm-danger-rgb), 0.15);
+  border: 1px solid rgba(var(--adm-danger-rgb), 0.35);
+  color: var(--adm-danger);
 }
 
 .notice code,
 .error code {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--adm-ink-rgb), 0.08);
   padding: 1px 6px;
   border-radius: 4px;
 }
@@ -82,21 +82,21 @@
   flex-direction: column;
   gap: 2px;
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(var(--adm-ink-rgb), 0.03);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.08);
   border-radius: 14px;
 }
 
 .stats b {
   font-size: 26px;
   font-weight: 900;
-  color: #f26666;
+  color: var(--adm-brand);
   line-height: 1.2;
 }
 
 .stats span {
   font-size: 12.5px;
-  color: #a69a97;
+  color: var(--adm-text-mute);
 }
 
 /* ── 版面 ── */
@@ -115,8 +115,8 @@
 .listCol,
 .formCol {
   min-width: 0;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(var(--adm-ink-rgb), 0.03);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.08);
   border-radius: 14px;
   padding: 18px;
 }
@@ -141,7 +141,7 @@
   padding: 24px 4px;
   font-size: 13.5px;
   line-height: 1.8;
-  color: #a69a97;
+  color: var(--adm-text-mute);
 }
 
 /* ── 依建案分組 ── */
@@ -156,14 +156,14 @@
   margin: 0 0 8px;
   font-size: 14px;
   font-weight: 800;
-  color: #f5c0c4;
+  color: var(--adm-accent);
 }
 
 .groupTitle span {
   font-size: 11.5px;
   font-weight: 600;
-  color: #a69a97;
-  background: rgba(255, 255, 255, 0.06);
+  color: var(--adm-text-mute);
+  background: rgba(var(--adm-ink-rgb), 0.06);
   border-radius: 999px;
   padding: 2px 9px;
 }
@@ -184,9 +184,9 @@
   justify-content: space-between;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.08);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--adm-ink-rgb), 0.02);
 }
 
 .itemSold {
@@ -206,7 +206,7 @@
   object-fit: cover;
   border-radius: 6px;
   flex: none;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--adm-ink-rgb), 0.06);
 }
 
 .noPhoto {
@@ -216,9 +216,9 @@
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--adm-ink-rgb), 0.06);
   font-size: 10.5px;
-  color: #a69a97;
+  color: var(--adm-text-mute);
   flex: none;
 }
 
@@ -232,7 +232,7 @@
   display: block;
   margin-top: 2px;
   font-size: 11.5px;
-  color: #a69a97;
+  color: var(--adm-text-mute);
 }
 
 .itemBtns {
@@ -244,9 +244,9 @@
 .itemBtns button,
 .formBtns button,
 .photoList button {
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.05);
-  color: #d0c6c4;
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.14);
+  background: rgba(var(--adm-ink-rgb), 0.05);
+  color: var(--adm-text-sub);
   border-radius: 8px;
   padding: 5px 10px;
   font-size: 12.5px;
@@ -257,8 +257,8 @@
 .itemBtns button:hover:not(:disabled),
 .formBtns button:hover:not(:disabled),
 .photoList button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  color: #f8f4f3;
+  background: rgba(var(--adm-ink-rgb), 0.1);
+  color: var(--adm-text);
 }
 
 .itemBtns button:disabled,
@@ -269,8 +269,8 @@
 }
 
 .primaryBtn {
-  border: 1px solid #e00000 !important;
-  background: #e00000 !important;
+  border: 1px solid var(--adm-brand-deep) !important;
+  background: var(--adm-brand-deep) !important;
   color: #fff !important;
   border-radius: 8px;
   padding: 8px 16px;
@@ -281,18 +281,18 @@
 }
 
 .primaryBtn:hover:not(:disabled) {
-  background: #c40000 !important;
+  background: var(--adm-brand-deeper) !important;
 }
 
 .danger {
-  color: #fb7185 !important;
-  border-color: rgba(244, 63, 94, 0.35) !important;
+  color: var(--adm-danger) !important;
+  border-color: rgba(var(--adm-danger-rgb), 0.35) !important;
 }
 
 .dangerOn {
-  background: #fb7185 !important;
-  border-color: #fb7185 !important;
-  color: #1a1614 !important;
+  background: var(--adm-danger) !important;
+  border-color: var(--adm-danger) !important;
+  color: var(--adm-on-accent) !important;
   border-radius: 8px;
   padding: 5px 10px;
   font-size: 12.5px;
@@ -316,7 +316,7 @@
 .form label > span,
 .fieldLabel {
   font-weight: 700;
-  color: #d0c6c4;
+  color: var(--adm-text-sub);
   font-size: 13px;
 }
 
@@ -324,7 +324,7 @@
 .fieldLabel em {
   font-style: normal;
   font-size: 11px;
-  color: #fb7185;
+  color: var(--adm-danger);
   margin-left: 6px;
 }
 
@@ -334,10 +334,10 @@
 .form textarea {
   width: 100%;
   padding: 9px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.14);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.25);
-  color: #f8f4f3;
+  background: var(--adm-input);
+  color: var(--adm-text);
   font-size: 14px;
   font-family: inherit;
   line-height: 1.6;
@@ -350,14 +350,14 @@
 .form input:focus,
 .form select:focus,
 .form textarea:focus {
-  outline: 2px solid #f26666;
+  outline: 2px solid var(--adm-brand);
   outline-offset: 1px;
-  border-color: #f26666;
+  border-color: var(--adm-brand);
 }
 
 .form small {
   font-size: 11.5px;
-  color: #a69a97;
+  color: var(--adm-text-mute);
   line-height: 1.6;
 }
 
@@ -373,7 +373,7 @@
 
 .inline span {
   font-weight: 500 !important;
-  color: #a69a97 !important;
+  color: var(--adm-text-mute) !important;
 }
 
 /* ── 點擊統計（每一列物件底下那排小字）── */
@@ -383,7 +383,7 @@
   gap: 10px;
   margin-top: 4px;
   font-size: 11px;
-  color: #a69a97;
+  color: var(--adm-text-mute);
 }
 
 .clickCell {
@@ -395,12 +395,12 @@
 .clickCell b {
   font-size: 13px;
   font-weight: 800;
-  color: #d0c6c4;
+  color: var(--adm-text-sub);
 }
 
 /* 有人點過就上色 —— 一整排 0 裡面要能一眼看到哪筆有動靜 */
 .clickHot {
-  color: #4ade80 !important;
+  color: var(--adm-success) !important;
 }
 
 .clickCell em {
@@ -413,18 +413,18 @@
   display: grid;
   gap: 8px;
   padding: 12px;
-  border: 1px dashed rgba(242, 102, 102, 0.35);
+  border: 1px dashed rgba(var(--adm-brand-rgb), 0.35);
   border-radius: 10px;
-  background: rgba(242, 102, 102, 0.05);
+  background: rgba(var(--adm-brand-rgb), 0.05);
 }
 
 .invBlock input[type="text"] {
   width: 100%;
   padding: 9px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.14);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.25);
-  color: #f8f4f3;
+  background: var(--adm-input);
+  color: var(--adm-text);
   font-size: 13.5px;
   font-family: inherit;
 }
@@ -445,9 +445,9 @@
   justify-content: space-between;
   gap: 10px;
   padding: 8px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.08);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--adm-ink-rgb), 0.02);
 }
 
 .invList b {
@@ -460,14 +460,14 @@
   display: block;
   margin-top: 2px;
   font-size: 11px;
-  color: #a69a97;
+  color: var(--adm-text-mute);
 }
 
 .invList button {
   flex: none;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.05);
-  color: #d0c6c4;
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.14);
+  background: rgba(var(--adm-ink-rgb), 0.05);
+  color: var(--adm-text-sub);
   border-radius: 8px;
   padding: 5px 10px;
   font-size: 12.5px;
@@ -476,8 +476,8 @@
 }
 
 .invList button:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #f8f4f3;
+  background: rgba(var(--adm-ink-rgb), 0.1);
+  color: var(--adm-text);
 }
 
 /* ── 照片 ── */
@@ -499,7 +499,7 @@
   align-items: center;
   gap: 8px;
   padding: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.08);
   border-radius: 8px;
 }
 
@@ -514,12 +514,12 @@
 .photoList span {
   flex: 1;
   font-size: 12px;
-  color: #a69a97;
+  color: var(--adm-text-mute);
 }
 
 .photoBlock input[type="file"] {
   font-size: 12.5px;
-  color: #a69a97;
+  color: var(--adm-text-mute);
 }
 
 .formBtns {
@@ -531,7 +531,7 @@
 
 .dirty {
   font-size: 12px;
-  color: #fbbf24;
+  color: var(--adm-warn);
 }
 
 @media (max-width: 960px) {
@@ -556,7 +556,7 @@
 }
 
 .addrLine {
-  color: #f5c0c4;
+  color: var(--adm-accent);
 }
 
 /* 沒填地址也要看得見，只是暗一點 —— 留白的話你不會發現自己漏填 */
@@ -572,7 +572,7 @@
   margin-top: 2px;
   font-size: 11px;
   line-height: 1.5;
-  color: #f5c0c4;
+  color: var(--adm-accent);
 }
 
 /* ── 建案挑選（2026-09-07）──
@@ -589,9 +589,9 @@
   justify-content: space-between;
   gap: 10px;
   padding: 9px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.14);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--adm-input);
   font-size: 14px;
 }
 
@@ -601,9 +601,9 @@
 
 .projPicked button {
   flex: none;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.05);
-  color: #d0c6c4;
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.14);
+  background: rgba(var(--adm-ink-rgb), 0.05);
+  color: var(--adm-text-sub);
   border-radius: 8px;
   padding: 5px 10px;
   font-size: 12.5px;
@@ -612,13 +612,13 @@
 }
 
 .projPicked button:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #f8f4f3;
+  background: rgba(var(--adm-ink-rgb), 0.1);
+  color: var(--adm-text);
 }
 
 /* 存著的建案代號在清單裡找不到 —— 要紅一點，不然會直接存下去 */
 .projWarn {
-  color: #fb7185;
+  color: var(--adm-danger);
 }
 
 /* ── 貼愛屋連結帶入（2026-09-16）── */
@@ -635,8 +635,8 @@
 
 .pasteRow button {
   flex: none;
-  border: 1px solid #e00000;
-  background: #e00000;
+  border: 1px solid var(--adm-brand-deep);
+  background: var(--adm-brand-deep);
   color: #fff;
   border-radius: 8px;
   padding: 8px 14px;
@@ -656,22 +656,22 @@
   display: grid;
   gap: 6px;
   padding: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.12);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--adm-input);
 }
 
 .readLine {
   font-size: 12.5px;
   line-height: 1.6;
-  color: #d0c6c4;
+  color: var(--adm-text-sub);
 }
 
 /* 沒讀到的欄位要紅一點 —— 留白他不會發現 */
 .readWarn {
   font-size: 12.5px;
   line-height: 1.6;
-  color: #fb7185;
+  color: var(--adm-danger);
 }
 
 /* 表單裡的訊息列（2026-09-17）。
@@ -697,25 +697,25 @@
   flex: 1;
   min-width: 0;
   padding: 9px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.14);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.25);
-  color: #f8f4f3;
+  background: var(--adm-input);
+  color: var(--adm-text);
   font-size: 13.5px;
   font-family: inherit;
 }
 
 .listSearch input[type="text"]:focus {
-  outline: 2px solid #f26666;
+  outline: 2px solid var(--adm-brand);
   outline-offset: 1px;
-  border-color: #f26666;
+  border-color: var(--adm-brand);
 }
 
 .listSearch button {
   flex: none;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.05);
-  color: #d0c6c4;
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.14);
+  background: rgba(var(--adm-ink-rgb), 0.05);
+  color: var(--adm-text-sub);
   border-radius: 8px;
   padding: 7px 12px;
   font-size: 12.5px;
@@ -724,8 +724,8 @@
 }
 
 .listSearch button:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #f8f4f3;
+  background: rgba(var(--adm-ink-rgb), 0.1);
+  color: var(--adm-text);
 }
 
 /* 座標確認連結（2026-09-17）。要顯眼 —— 型錄座標兩成是錯的，這條一定要點過 */
@@ -733,12 +733,12 @@
   display: inline-block;
   font-size: 12.5px;
   font-weight: 700;
-  color: #f5c0c4;
+  color: var(--adm-accent);
   text-decoration: underline;
 }
 
 .coordCheck:hover {
-  color: #f8f4f3;
+  color: var(--adm-text);
 }
 
 /* ── 🔗 連結檢查（2026-10-02）──
@@ -757,21 +757,21 @@
 }
 
 .linkOk {
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.28);
-  color: #86efac;
+  background: rgba(var(--adm-success-rgb), 0.1);
+  border: 1px solid rgba(var(--adm-success-rgb), 0.28);
+  color: var(--adm-success);
 }
 
 .linkAlert {
-  background: rgba(244, 63, 94, 0.14);
-  border: 1px solid rgba(244, 63, 94, 0.4);
+  background: rgba(var(--adm-danger-rgb), 0.14);
+  border: 1px solid rgba(var(--adm-danger-rgb), 0.4);
   color: #fecdd3;
 }
 
 .linkAlert > b {
   display: block;
   font-size: 15px;
-  color: #fb7185;
+  color: var(--adm-danger);
   margin-bottom: 6px;
 }
 
@@ -805,7 +805,7 @@
 }
 
 .linkUnknown button {
-  color: #fbbf24;
+  color: var(--adm-warn);
   margin-right: 10px;
 }
 
@@ -823,9 +823,9 @@
   margin: 0 0 8px;
   padding: 8px 10px;
   border-radius: 8px;
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  color: #fcd34d;
+  background: rgba(var(--adm-warn-rgb), 0.12);
+  border: 1px solid rgba(var(--adm-warn-rgb), 0.3);
+  color: var(--adm-warn);
 }
 
 .linkFoot {
@@ -838,8 +838,8 @@
   margin-left: 8px;
   padding: 3px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(var(--adm-ink-rgb), 0.28);
+  background: rgba(var(--adm-ink-rgb), 0.08);
   color: inherit;
   font: inherit;
   font-size: 12.5px;
@@ -853,8 +853,8 @@
 
 /* 那一列本身：紅邊，捲過去一眼認得出來 */
 .itemBroken {
-  border-color: rgba(244, 63, 94, 0.55);
-  background: rgba(244, 63, 94, 0.07);
+  border-color: rgba(var(--adm-danger-rgb), 0.55);
+  background: rgba(var(--adm-danger-rgb), 0.07);
 }
 
 /* 從警示跳過來時閃兩下。只有動畫，不改排版，不會把下面的東西推開 */
@@ -865,10 +865,10 @@
 @keyframes mlFlash {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0);
+    box-shadow: 0 0 0 0 rgba(var(--adm-danger-rgb), 0);
   }
   50% {
-    box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.45);
+    box-shadow: 0 0 0 4px rgba(var(--adm-danger-rgb), 0.45);
   }
 }
 
@@ -881,10 +881,10 @@
 }
 
 .rowBroken {
-  color: #fb7185;
+  color: var(--adm-danger);
   font-weight: 700;
 }
 
 .rowUnsure {
-  color: #fbbf24;
+  color: var(--adm-warn);
 }

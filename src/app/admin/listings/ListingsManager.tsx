@@ -33,7 +33,7 @@ function movePhoto(photos: string[], from: number, to: number): string[] {
 }
 
 const inputStyle: React.CSSProperties = {
-  background: "#141414",
+  background: "var(--adm-input)",
   borderColor: CIS.cardBorder,
   color: CIS.text,
 };
@@ -170,7 +170,7 @@ export default function ListingsManager({
           新增物件
         </button>
         {msg ? (
-          <span className={styles.msg} style={{ margin: 0, color: msg.ok ? "#4ade80" : "#fb7185" }}>
+          <span className={styles.msg} style={{ margin: 0, color: msg.ok ? "var(--adm-success)" : "var(--adm-danger)" }}>
             {msg.text}
           </span>
         ) : null}
@@ -318,7 +318,7 @@ export default function ListingsManager({
                     const cells: Array<[string, number, number, string]> = [
                       ["物件資訊", stat?.actions.link.total ?? 0, stat?.actions.link.recent ?? 0, CIS.textSub],
                       ["影片賞析", stat?.actions.video.total ?? 0, stat?.actions.video.recent ?? 0, CIS.textSub],
-                      ["預約看屋", stat?.actions.booking.total ?? 0, stat?.actions.booking.recent ?? 0, "#4ade80"],
+                      ["預約看屋", stat?.actions.booking.total ?? 0, stat?.actions.booking.recent ?? 0, "var(--adm-success)"],
                       ["單戶頁被開", stat?.actions.page.total ?? 0, stat?.actions.page.recent ?? 0, CIS.textSub],
                     ];
                     return (
@@ -353,7 +353,7 @@ export default function ListingsManager({
                 {risks.length > 0 ? (
                   <div
                     className={styles.riskBox}
-                    style={{ background: CHIP.warn.bg, borderColor: CHIP.warn.border, color: "#fdba74" }}
+                    style={{ background: CHIP.warn.bg, borderColor: CHIP.warn.border, color: "var(--adm-orange)" }}
                   >
                     {risks.map((risk) => (
                       <div key={risk.word}>
@@ -376,7 +376,7 @@ export default function ListingsManager({
                   <button
                     type="button"
                     className={styles.btn}
-                    style={{ borderColor: CIS.cardBorder, color: sold ? "#4ade80" : "#fbbf24" }}
+                    style={{ borderColor: CIS.cardBorder, color: sold ? "var(--adm-success)" : "var(--adm-warn)" }}
                     onClick={() => toggleStatus(row)}
                     disabled={busy === `status-${row.id}`}
                   >
@@ -387,7 +387,7 @@ export default function ListingsManager({
                   <button
                     type="button"
                     className={`${styles.btn} ${styles.btnIcon}`}
-                    style={{ borderColor: "rgba(244,63,94,0.35)", color: "#fb7185" }}
+                    style={{ borderColor: "rgba(var(--adm-danger-rgb), 0.35)", color: "var(--adm-danger)" }}
                     onClick={() => remove(row)}
                     disabled={busy === `del-${row.id}`}
                     aria-label="永久刪除"
@@ -585,7 +585,7 @@ function ListingForm({
                     )}
                     <span
                       className={styles.photoItemName}
-                      style={{ color: broken ? "#fdba74" : CIS.text }}
+                      style={{ color: broken ? "var(--adm-orange)" : CIS.text }}
                       title={file}
                     >
                       {photoDisplayName(file)}
@@ -629,7 +629,7 @@ function ListingForm({
                       <button
                         type="button"
                         className={styles.photoBtn}
-                        style={{ borderColor: CIS.cardBorder, color: "#f87171" }}
+                        style={{ borderColor: CIS.cardBorder, color: "var(--adm-danger)" }}
                         onClick={() => set("photos", form.photos.filter((_, n) => n !== i))}
                         disabled={uploading}
                         aria-label={`移除 ${photoDisplayName(file)}`}
@@ -802,7 +802,7 @@ function ListingForm({
       {risks.length > 0 ? (
         <div
           className={styles.riskBox}
-          style={{ background: CHIP.warn.bg, borderColor: CHIP.warn.border, color: "#fdba74" }}
+          style={{ background: CHIP.warn.bg, borderColor: CHIP.warn.border, color: "var(--adm-orange)" }}
         >
           <b>這段文案有需要留意的字：</b>
           {risks.map((risk) => (
