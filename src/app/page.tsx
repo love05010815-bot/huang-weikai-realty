@@ -427,7 +427,7 @@ export default async function HomePage() {
               {/* 我是屋主／我是買方 → /owner、/buyer（內容見 config/roles.ts） */}
               <div className={styles.heroRoles} aria-label="我是屋主或買方">
                 {ROLE_LIST.map((r) => (
-                  <Link key={r.path} className={styles.heroRole} href={r.path}>
+                  <Link key={r.path} className={styles.heroRoleBtn} href={r.path}>
                     <span aria-hidden="true">{r.icon}</span>
                     {r.label}
                   </Link>
