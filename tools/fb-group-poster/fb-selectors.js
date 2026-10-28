@@ -31,6 +31,8 @@
       blocked: ["暫時被封鎖", "暫時無法", "無法發佈", "違反社群守則", "請稍後再試"],
       // 照片沒傳上去時 FB 跳的字（2026-10-09 他遇到的「抱歉，沒有上傳新的相片。請再試一次。」）
       uploadFailed: ["沒有上傳新的相片", "無法上傳相片", "無法上傳你的檔案", "無法上傳影片", "相片上傳失敗", "上傳失敗"],
+      // 按了「發佈」後 FB 在鈕下面回的一般性失敗（他 2026-10-28 截圖：「我們無法完成你的要求，請再試一次。」）——不是封鎖，這則沒發出去
+      postFailed: ["我們無法完成你的要求", "無法完成你的要求"],
       discard: ["捨棄貼文", "捨棄", "離開"],
       // 「入社審核」視窗：社團要你先回答管理員的問題（2026-10-12 同事遇到）。只放廣告文案裡不可能出現的整句。
       membershipQuestions: ["入社審核", "回答這些問題", "協助管理員瞭解你", "你快要能夠發佈"],
@@ -60,6 +62,7 @@
       pendingApproval: ["pending approval", "pending review", "awaiting approval"],
       blocked: ["temporarily blocked", "couldn't post", "Community Standards", "restricted", "try again later"],
       uploadFailed: ["no new photos were uploaded", "Couldn't upload photo", "Unable to upload", "couldn't be uploaded", "Upload failed"],
+      postFailed: ["couldn't complete your request", "could not complete your request", "Something went wrong"],
       discard: ["Discard post", "Discard", "Leave"],
       membershipQuestions: ["Membership questions", "Answer these questions", "help admins get to know you", "almost able to post"],
       switchProfile: ["Select who to post as", "Switch profile", "Choose who to post as"],

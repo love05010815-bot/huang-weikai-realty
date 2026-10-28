@@ -233,11 +233,11 @@
 
     /** 自動模式：替他按「發佈」、確認發出去、等一下、換下一個。任何不確定都退回半自動停著等他。 */
     async function autoPost(dialog, photos) {
-      // 🔴 商品拍賣（runSell 來的）：他 2026-10-27 錄影——按了「發佈」之後「分享到更多地方」視窗一直不關，外掛停著等他按，
-      //    整批就卡在那個社團。他說「遇到這種狀況，若超過 5 秒沒回應直接跳過這則」→ 這條流程在前景時不停下來問：
-      //    「發佈」鈕等不到、按了「發佈」5 秒沒看到結果，都標成跳過換下一個（紀錄寫清楚原因，事後抽查）。
-      //    分頁在背景時 FB 本來就不更新畫面、看不到結果是常態，照舊走下面的「背景未確認」，不然背景跑的商品貼文會整批被跳掉。
-      //    一般發文框那條完全不變：前景照舊停下來問他、背景 75 秒當作發出去。
+      // 🔴 按了「發佈」之後不停下來等他（他 2026-10-27 錄影、2026-10-28 截圖，兩次都說「超過 5 秒沒回應直接跳過」）：
+      //    前景時按了「發佈」只等 5 秒，沒看到視窗關、也沒任何訊息就標成跳過換下一個；FB 回「無法完成你的要求」也跳過；
+      //    商品拍賣另外多一條：「分享到更多地方」裡 15 秒等不到可按的「發佈」鈕也跳過。紀錄都寫清楚原因，事後抽查。
+      //    分頁在背景時 FB 本來就不更新畫面、看不到結果是常態，照舊走下面的「背景未確認」（總共 75 秒）當作發出去，
+      //    不然背景跑的整批都會被跳掉。1.5.6 先只做商品拍賣那條，1.5.8 起一般發文框也一樣。
       const sellFlow = !!postVia;
       log("自動發佈：等「發佈」鈕可以按（照片還在傳的時候 FB 會先鎖住）…", "");
       const btn = await waitPostButton(dialog, L, sellFlow ? 15000 : 90000);
@@ -265,12 +265,12 @@
           break;
         }
         press.click();
-        log(attempt === 1 ? "已替你按下「發佈」，等 Facebook 回應…" + (sellFlow ? "（商品拍賣：最多等 5 秒）" : "") : "再按一次「發佈」…", "");
-        outcome = await waitPostOutcome(dialog, L, sellFlow ? 5000 : 30000, base, snippet);
+        log(attempt === 1 ? "已替你按下「發佈」，等 Facebook 回應…（最多等 5 秒）" : "再按一次「發佈」…", "");
+        outcome = await waitPostOutcome(dialog, L, 5000, base, snippet);
         if (outcome === "unknown" && document.visibilityState === "hidden") {
-          // 分頁在背景：FB 的畫面更新會慢，再多等一陣子（動態牆那篇或審核訊息出現就算）
-          log("分頁在背景，Facebook 的畫面更新會慢一點，再等最多 45 秒看結果…", "");
-          outcome = await waitPostOutcome(dialog, L, 45000, base, snippet);
+          // 分頁在背景：FB 的畫面更新會慢，再多等一陣子（動態牆那篇或審核訊息出現就算）；5＋70＝跟以前一樣總共 75 秒
+          log("分頁在背景，Facebook 的畫面更新會慢一點，再等最多 70 秒看結果…", "");
+          outcome = await waitPostOutcome(dialog, L, 70000, base, snippet);
           if (outcome === "unknown" && document.visibilityState === "hidden") {
             // 🔴 分頁在背景時 FB 根本不更新畫面：關視窗的動畫不跑、動態牆也不插新貼文（他 2026-10-12 兩次截圖，
             //    貼文都已經在牆上「剛剛」，外掛卻等到超時）。貼文在按下去那一刻就送出了，這 75 秒裡也沒看到任何錯誤，
@@ -327,15 +327,15 @@
         controls(false);
         return;
       }
-      if (outcome === "unknown" && sellFlow) {
-        log("⚠ 按了「發佈」5 秒內沒看到視窗關掉、也沒看到任何訊息。商品拍賣這種不等了，標成跳過換下一個；事後到發佈紀錄抽查，萬一其實有刊登成功就不要補發。", "fbq-bad");
-        return await autoSkip("商品拍賣按了「發佈」5 秒沒回應");
+      if (outcome === "postfail") {
+        // FB 在發佈鈕下面回「我們無法完成你的要求，請再試一次」（他 2026-10-28 截圖）：這則沒發出去，不等了
+        log("⚠ Facebook 說「無法完成你的要求，請再試一次」，這則沒發出去。不等了，標成跳過換下一個；之後在後台按「勾選未發佈的」補發。", "fbq-bad");
+        return await autoSkip((sellFlow ? "商品拍賣：" : "") + "Facebook 說無法完成你的要求");
       }
       if (outcome === "unknown") {
-        log("⚠ 按了「發佈」但沒看到視窗關掉，不確定有沒有發出去。請你自己看一下，再按下面。", "fbq-bad");
-        await report("ready", "自動按了發佈但不確定有沒有成功，等你確認");
-        controls(true);
-        return;
+        // 前景按了「發佈」5 秒沒看到視窗關、也沒任何訊息：他 2026-10-28 說「超過 5 秒沒回覆自動跳過」（1.5.6 只做商品拍賣，現在都一樣）
+        log("⚠ 按了「發佈」5 秒內沒看到視窗關掉、也沒看到任何訊息，不等了，標成跳過換下一個。事後到發佈紀錄抽查，萬一其實有發出去就不要補發。", "fbq-bad");
+        return await autoSkip((sellFlow ? "商品拍賣" : "") + "按了「發佈」5 秒沒回應");
       }
       const unconfirmed = outcome === "posted-unconfirmed";
       if (unconfirmed) outcome = "posted";
@@ -868,6 +868,7 @@
     const pendWords = FBQ.words(L, "pendingApproval");
     const blockWords = FBQ.words(L, "blocked");
     const failWords = FBQ.words(L, "uploadFailed");
+    const postFailWords = FBQ.words(L, "postFailed");
     const baseText = typeof base === "string" ? base : (base && base.text) || "";
     const baseArticles = (base && base.articles) || new Set();
     const snip = String(snippet || "").trim();
@@ -878,6 +879,8 @@
       // 上傳失敗要排在封鎖前面比：兩邊的字有機會同時出現，但「照片沒傳上去」是可以重試的，封鎖不是
       if (freshAny(failWords, baseText, body)) return "uploadfail";
       if (freshAny(blockWords, baseText, body)) return "blocked";
+      // 「我們無法完成你的要求，請再試一次」：FB 的一般性失敗，這則沒發出去（跟封鎖不一樣，不用停下來給他看）
+      if (freshAny(postFailWords, baseText, body)) return "postfail";
       // ④「入社審核」：FB 有時是把發文視窗整個換成它（同一個元素），所以要排在「視窗消失」前面看
       if (findQuestionsDialog(L)) return "questions";
       const gone = !document.contains(dialog) || dialog.offsetParent === null;
