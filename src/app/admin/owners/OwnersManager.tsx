@@ -259,7 +259,8 @@ const EMPTY_PROPERTY: PropertyDraft = {
   contractType: "",
 };
 
-type DelistDraft = { propertyId: string; reason: DelistReason; amount: string; note: string };
+/** inRow：從房子那一列的「下架」按的，面板就長在那一列底下、不用再選哪一間（2026-10-28 他要的） */
+type DelistDraft = { propertyId: string; reason: DelistReason; amount: string; note: string; delistedAt: string; inRow: boolean };
 
 function toPropertyDraft(p: AdminProperty): PropertyDraft {
   return {
@@ -344,7 +345,7 @@ export default function OwnersManager({
 
   // 下架面板：哪一張卡片打開、選了哪間房／原因／金額
   const [delistFor, setDelistFor] = useState<string | null>(null);
-  const [delistDraft, setDelistDraft] = useState<DelistDraft>({ propertyId: "", reason: "self_sold", amount: "", note: "" });
+  const [delistDraft, setDelistDraft] = useState<DelistDraft>({ propertyId: "", reason: "self_sold", amount: "", note: "", delistedAt: today, inRow: false });
 
   // 快速搜尋的日期範圍
   const [dateField, setDateField] = useState<DateFilterField>("contractEnd");
@@ -556,16 +557,38 @@ export default function OwnersManager({
 
   // ---------------------------------------------------------------- 下架
 
-  function startDelist(o: AdminOwner) {
+  /**
+   * 卡片右欄的「下架」不帶 propertyId（面板裡選哪一間）；
+   * 房子那一列的「下架」帶 propertyId（2026-10-28 他要的：那一列直接下架、填日期跟原因）。
+   */
+  function startDelist(o: AdminOwner, propertyId?: string) {
     const listing = o.properties.filter((p) => p.status === "listing");
     setDelistFor(o.id);
-    setDelistDraft({ propertyId: listing[0]?.id ?? o.properties[0]?.id ?? "", reason: "self_sold", amount: "", note: "" });
+    setDelistDraft({
+      propertyId: propertyId ?? listing[0]?.id ?? o.properties[0]?.id ?? "",
+      reason: "self_sold",
+      amount: "",
+      note: "",
+      delistedAt: today,
+      inRow: Boolean(propertyId),
+    });
+    setConfirmDelProp(null);
     setCardMsg(null);
   }
 
   async function submitDelist(ownerId: string) {
+    if (!delistDraft.delistedAt) {
+      say(ownerId, { kind: "err", text: "請填下架日期" });
+      return;
+    }
     setBusy(true);
-    const r = await delistPropertyAction({ ...delistDraft, delistedAt: today });
+    const r = await delistPropertyAction({
+      propertyId: delistDraft.propertyId,
+      reason: delistDraft.reason,
+      amount: delistDraft.amount,
+      note: delistDraft.note,
+      delistedAt: delistDraft.delistedAt,
+    });
     setBusy(false);
     if (!r.ok) {
       say(ownerId, { kind: "err", text: r.error ?? "下架失敗" });
@@ -580,20 +603,29 @@ export default function OwnersManager({
     const def = DELIST_REASONS.find((d) => d.key === delistDraft.reason);
     const candidates = o.properties.filter((p) => p.status !== "delisted");
     return (
-      <div className={styles.subCard} style={{ marginTop: 12 }}>
+      <div className={styles.subCard} style={{ marginTop: delistDraft.inRow ? 8 : 12 }}>
         <p className={styles.subCardTitle}>下架這間房子</p>
         <div className={styles.form}>
           <div className={styles.formGrid}>
-            <label style={{ gridColumn: "1 / -1" }}>
-              <span>哪一間</span>
-              <select value={delistDraft.propertyId} onChange={(e) => setDelistDraft((d) => ({ ...d, propertyId: e.target.value }))}>
-                {candidates.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {PROPERTY_STATUS_LABEL[p.status]}｜{p.community ? `${p.community}｜` : ""}
-                    {p.address}
-                  </option>
-                ))}
-              </select>
+            {/* 從那一列按進來的，哪一間已經定了，不再問 */}
+            {!delistDraft.inRow && (
+              <label style={{ gridColumn: "1 / -1" }}>
+                <span>哪一間</span>
+                <select value={delistDraft.propertyId} onChange={(e) => setDelistDraft((d) => ({ ...d, propertyId: e.target.value }))}>
+                  {candidates.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {PROPERTY_STATUS_LABEL[p.status]}｜{p.community ? `${p.community}｜` : ""}
+                      {p.address}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label>
+              <span>
+                下架日期<em>必填</em>
+              </span>
+              <RocDateInput value={delistDraft.delistedAt} onChange={(iso) => setDelistDraft((d) => ({ ...d, delistedAt: iso }))} placeholder="民國 115/10/27" />
             </label>
             <label>
               <span>原因</span>
@@ -1182,7 +1214,7 @@ export default function OwnersManager({
           </div>
         </div>
 
-        {delistFor === o.id && renderDelistPanel(o)}
+        {delistFor === o.id && !delistDraft.inRow && renderDelistPanel(o)}
 
         {msg && <p className={`${styles.msg} ${styles.cardMsg} ${msg.kind === "ok" ? styles.msgOk : styles.msgErr}`}>{msg.text}</p>}
 
@@ -1261,7 +1293,7 @@ export default function OwnersManager({
                               下架：{DELIST_REASON_LABEL[p.delistReason]}
                               {p.delistAmount ? `，${p.delistAmount}` : ""}
                               {p.delistNote ? `（${p.delistNote}）` : ""}
-                              {p.delistedAt ? `　${fmtDay(p.delistedAt)}` : ""}
+                              {p.delistedAt ? `　民國 ${toRoc(p.delistedAt)}` : ""}
                             </span>
                           </div>
                         )}
@@ -1308,7 +1340,19 @@ export default function OwnersManager({
                           >
                             {confirmDelProp === p.id ? "再按一次確定刪除" : "刪除"}
                           </button>
+                          {/* 這一列直接下架（2026-10-28 他要的：下架日期＋原因）；已下架的沒這顆 */}
+                          {p.status !== "delisted" && (
+                            <button
+                              type="button"
+                              className={`${styles.textBtn} ${styles.textBtnWarn}`}
+                              disabled={busy || (delistFor === o.id && delistDraft.inRow && delistDraft.propertyId === p.id)}
+                              onClick={() => startDelist(o, p.id)}
+                            >
+                              下架
+                            </button>
+                          )}
                         </div>
+                        {delistFor === o.id && delistDraft.inRow && delistDraft.propertyId === p.id && renderDelistPanel(o)}
                       </li>
                     ),
                   )}

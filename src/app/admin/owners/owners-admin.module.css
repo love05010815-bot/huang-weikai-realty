@@ -1005,10 +1005,10 @@
   background: #f26666;
 }
 
+/* 一般約用琥珀色，跟專約的紅拉開（2026-10-28 他嫌兩個紅太像分不出來）；跟「委託中」chip 同色系 */
 .barSeg[data-seg="general"],
 .legend i[data-seg="general"] {
-  background: #ee828a;
-  opacity: 0.75;
+  background: #f5b63a;
 }
 
 .barSeg[data-seg="untyped"],
@@ -1112,4 +1112,9 @@
 .form input.inputBad {
   border-color: #fb7185;
   outline: 2px solid rgba(251, 113, 133, 0.35);
+}
+
+/* 房子那一列的「下架」：平常灰字，滑過去變黃（跟「委託中」chip 同色系），不要跟刪除的紅混在一起 */
+.textBtnWarn:hover:not(:disabled) {
+  color: #fbbf24;
 }
