@@ -446,11 +446,52 @@ export function extractMainText(html: string): string {
   return text.slice(0, NEWS_CONFIG.maxContentChars);
 }
 
-async function fetchArticleText(url: string): Promise<string> {
+/**
+ * 抓一篇的全文，**順便把頁面自己寫的發布日期帶回來**。
+ *
+ * 2026-10-28 他抓到一則三立 2023-08 的舊聞，後台顯示 10/27：Google 新聞的 RSS 把舊文
+ * 重新推送、pubDate 給的是「Google 重推的時間」，而我們拿到整頁 HTML 只挖內文、
+ * 日期還是信 RSS 的。頁面的 JSON-LD 明明寫著 2023 —— 拿到頁面之後，日期就該以頁面為準。
+ */
+async function fetchArticlePage(url: string): Promise<{ text: string; publishedAt: string | null }> {
   const res = await fetchText(url, 8_000);
   if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
-  if (!/html|xml/i.test(res.contentType)) return "";
-  return extractMainText(res.text);
+  if (!/html|xml/i.test(res.contentType)) return { text: "", publishedAt: null };
+  return { text: extractMainText(res.text), publishedAt: extractPublishedAt(res.text) };
+}
+
+/**
+ * RSS 給的日期 vs 頁面自己寫的日期，該信哪個。
+ *
+ * **只往回修、不往後推，而且要差超過一天才動。**
+ * - 頁面比 RSS 早超過 24 小時 → Google 把舊文當新聞重推，以頁面為準
+ * - 差不到一天 → 時區、更新時間那種雜訊，不動（RSS 的通常比較準到分）
+ * - 頁面比 RSS 晚 → 多半是 dateModified 之類混進來，不信，維持 RSS
+ * - RSS 根本沒日期 → 頁面有就用頁面
+ */
+export function correctedPublishedAt(rssDate: string | null, pageDate: string | null): string | null {
+  if (!pageDate) return rssDate;
+  if (!rssDate) return pageDate;
+  const rss = Date.parse(rssDate.replace(" ", "T") + "+08:00");
+  const page = Date.parse(pageDate.replace(" ", "T") + "+08:00");
+  if (Number.isNaN(rss) || Number.isNaN(page)) return rssDate;
+  return rss - page > 86_400_000 ? pageDate : rssDate;
+}
+
+/**
+ * 抓完全文、日期校正過之後，再過一次各地區的時間窗（海線 3 天、其餘 1 天）。
+ * `collectNews` 那一關是用 RSS 日期過的，舊文被 Google 重推時會混過去；這裡用校正後的日期再擋一次。
+ * 沒日期的留著（跟 collectNews 一樣，不知道就不判它死刑）。
+ */
+export function dropStaleItems(items: FetchedNews[], now: number = Date.now()): { kept: FetchedNews[]; dropped: FetchedNews[] } {
+  const kept: FetchedNews[] = [];
+  const dropped: FetchedNews[] = [];
+  for (const it of items) {
+    const t = it.publishedAt ? Date.parse(it.publishedAt.replace(" ", "T") + "+08:00") : NaN;
+    const limit = now - NEWS_CONFIG.regionDays[it.region] * 86_400_000;
+    (!Number.isNaN(t) && t < limit ? dropped : kept).push(it);
+  }
+  return { kept, dropped };
 }
 
 // ---------------------------------------------------------------- 貼一條連結進來
@@ -555,6 +596,20 @@ export function extractPublishedAt(html: string): string | null {
 export class BlockedHostError extends Error {}
 
 /**
+ * 這個網址是不是「不准程式自動抓」的站（目前只有 591，見 NEWS_CONFIG.blockedHosts 的說明）。
+ * 🔴 兩條路都要查：貼連結進來（fetchArticleByUrl）**和排程抓全文（enrichNews）**。
+ *    2026-10-28 live 實測才發現排程那條一直沒查 —— Google 解碼出 591 的新聞頁就直接去抓了。
+ */
+export function isBlockedHost(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return NEWS_CONFIG.blockedHosts.some((h) => host === h || host.endsWith(`.${h}`));
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 貼一條抖音／TikTok 連結進來，把那支影片的**說明欄文案**抓成一筆 FetchedNews。
  *
  * 🔴 **只拿得到說明欄那段字，拿不到他在影片裡講的話。**
@@ -641,7 +696,7 @@ export async function fetchArticleByUrl(raw: string): Promise<FetchedNews> {
     throw new Error("這不是一個看得懂的網址。");
   }
   const host = target.hostname.toLowerCase();
-  if (NEWS_CONFIG.blockedHosts.some((h) => host === h || host.endsWith(`.${h}`))) {
+  if (isBlockedHost(input)) {
     throw new BlockedHostError(`${host} 不允許程式自動抓取，請改用「貼內文」把文字自己貼進來。`);
   }
   if (isExcludedHost(input)) {
@@ -683,7 +738,7 @@ export async function fetchArticleByUrl(raw: string): Promise<FetchedNews> {
 
 // ---------------------------------------------------------------- 第二步：解碼＋全文（有時間預算）
 
-export type EnrichResult = { decoded: number; withText: number; targets: number; googleBlocked: boolean };
+export type EnrichResult = { decoded: number; withText: number; targets: number; googleBlocked: boolean; backdated: number };
 
 /**
  * 解開 Google 轉址、抓全文。海線、中部先處理，其餘依時間新到舊；過了 deadline 就不再開新的工作。
@@ -694,7 +749,7 @@ export async function enrichNews(items: FetchedNews[], deadline: number, log: Lo
     (a, b) => regionRank(a.region) - regionRank(b.region) || (b.publishedAt || "").localeCompare(a.publishedAt || ""),
   );
   const targets = ordered.slice(0, NEWS_CONFIG.maxFullText);
-  const result: EnrichResult = { decoded: 0, withText: 0, targets: targets.length, googleBlocked: false };
+  const result: EnrichResult = { decoded: 0, withText: 0, targets: targets.length, googleBlocked: false, backdated: 0 };
   const googleTotal = targets.filter((t) => isGoogleLink(t.url)).length;
   log(`處理 ${targets.length} 則的連結與全文（海線、中部優先；其中 ${googleTotal} 則要解 Google 轉址）…`);
 
@@ -710,11 +765,19 @@ export async function enrichNews(items: FetchedNews[], deadline: number, log: Lo
       }
     }
     if (it.content) return;
+    // 591 的條款禁止程式抓取：只留標題與連結，不去碰它的頁面（貼連結那條路本來就擋，這條一度漏了）
+    if (isBlockedHost(it.url)) return;
     try {
-      const text = await fetchArticleText(it.url);
-      if (text.length >= 100) {
-        it.content = text;
+      const page = await fetchArticlePage(it.url);
+      if (page.text.length >= 100) {
+        it.content = page.text;
         result.withText += 1;
+      }
+      // 頁面自己寫的日期比 RSS 早超過一天 → Google 把舊文當新聞重推了，以頁面為準
+      const fixed = correctedPublishedAt(it.publishedAt, page.publishedAt);
+      if (fixed !== it.publishedAt) {
+        it.publishedAt = fixed;
+        result.backdated += 1;
       }
     } catch {
       // 抓不到全文不是錯誤：只留標題與連結
@@ -722,6 +785,7 @@ export async function enrichNews(items: FetchedNews[], deadline: number, log: Lo
   });
 
   let msg = `Google 轉址解碼成功 ${result.decoded}/${googleTotal} 則，取得全文 ${result.withText}/${targets.length} 則`;
+  if (result.backdated) msg += `，${result.backdated} 則依頁面日期往回修正`;
   if (result.googleBlocked) msg += "（Google 暫時限制解碼，其餘保留原連結）";
   if (Date.now() >= deadline) msg += "（時間用完，其餘只留標題）";
   log(msg);

@@ -143,12 +143,54 @@ ok(g2 instanceof Error && !(g2 instanceof NF.BlockedHostError) && g2.message.inc
 const g3 = await grabFails("ftp://example.com/a", "協定不對");
 ok(g3 instanceof Error && g3.message.includes("完整的網址"), "非 http(s) → 擋掉", g3?.message?.slice(0, 20), "請貼完整的網址…");
 
+// 2026-10-28 他抓到一則三立 2023-08 的舊聞、後台顯示 10/27：Google 新聞把舊文重推，RSS 的 pubDate 是
+// 「重推的時間」。拿到頁面之後日期要以頁面為準，而且校正完要再過一次時間窗。
+console.log("=== I 舊文被 Google 重推：日期校正＋再過一次時間窗 ===");
+const rss = "2026-10-27 17:49:16";
+ok(NF.correctedPublishedAt(rss, "2023-08-17 19:20:00") === "2023-08-17 19:20:00", "頁面早超過一天 → 以頁面為準", NF.correctedPublishedAt(rss, "2023-08-17 19:20:00"), "2023-08-17 19:20:00");
+ok(NF.correctedPublishedAt(rss, "2026-10-27 09:00:00") === rss, "同一天差幾小時 → 不動（時區雜訊）", NF.correctedPublishedAt(rss, "2026-10-27 09:00:00"), rss);
+ok(NF.correctedPublishedAt(rss, "2026-10-26 18:30:00") === rss, "早 23 小時多 → 不動（門檻是 24 小時）", NF.correctedPublishedAt(rss, "2026-10-26 18:30:00"), rss);
+ok(NF.correctedPublishedAt(rss, "2026-10-26 17:40:00") === "2026-10-26 17:40:00", "早 24 小時 9 分 → 修", NF.correctedPublishedAt(rss, "2026-10-26 17:40:00"), "2026-10-26 17:40:00");
+// 2026-10-28 live 實測：Google 當天的 feed 裡混了三則三立 2020 年的、一則 591 六月的，全被這一關擋下
+ok(NF.isBlockedHost("https://news.591.com.tw/news/12345") === true, "591 新聞頁也算 591（抓全文那條路要跳過）", NF.isBlockedHost("https://news.591.com.tw/news/12345"), "true");
+ok(NF.isBlockedHost("https://www.setn.com/news/1339805") === false, "三立不是 591", NF.isBlockedHost("https://www.setn.com/news/1339805"), "false");
+ok(NF.isBlockedHost("https://591.com.tw.evil.example/x") === false, "591.com.tw 當子字串不算", NF.isBlockedHost("https://591.com.tw.evil.example/x"), "false");
+ok(NF.correctedPublishedAt(rss, "2026-10-29 00:00:00") === rss, "頁面比較新 → 不往後推", NF.correctedPublishedAt(rss, "2026-10-29 00:00:00"), rss);
+ok(NF.correctedPublishedAt(null, "2023-08-17 19:20:00") === "2023-08-17 19:20:00", "RSS 沒日期 → 用頁面的", NF.correctedPublishedAt(null, "2023-08-17 19:20:00"), "2023-08-17 19:20:00");
+ok(NF.correctedPublishedAt(rss, null) === rss, "頁面沒日期 → 維持 RSS", NF.correctedPublishedAt(rss, null), rss);
+ok(NF.correctedPublishedAt(rss, "garbage") === rss, "頁面日期壞掉 → 維持 RSS", NF.correctedPublishedAt(rss, "garbage"), rss);
+
+const NOW = Date.parse("2026-10-28T09:12:00+08:00");
+const mk = (region, publishedAt, title) => ({ title, url: "https://example.com/" + title, source: "測試", summary: "", content: null, publishedAt, region });
+const stale = NF.dropStaleItems(
+  [
+    mk("national", "2023-08-17 19:20:00", "三立舊聞"),
+    mk("national", "2026-10-27 13:30:00", "全台昨天"),
+    mk("national", "2026-10-26 20:00:00", "全台前天"),
+    mk("coast", "2026-10-25 22:00:00", "海線兩天半前"),
+    mk("coast", "2026-10-23 08:00:00", "海線五天前"),
+    mk("central", null, "沒日期"),
+  ],
+  NOW,
+);
+ok(stale.dropped.map((d) => d.title).join(",") === "三立舊聞,全台前天,海線五天前", "過了各地區時間窗的被丟掉", stale.dropped.map((d) => d.title).join(","), "三立舊聞,全台前天,海線五天前");
+ok(stale.kept.map((d) => d.title).join(",") === "全台昨天,海線兩天半前,沒日期", "窗內的＋沒日期的留著", stale.kept.map((d) => d.title).join(","), "全台昨天,海線兩天半前,沒日期");
+ok(stale.kept.length + stale.dropped.length === 6, "一則不少", stale.kept.length + stale.dropped.length, 6);
+
 if (process.argv.includes("--live")) {
   console.log("=== G 真的抓一次（不進資料庫）===");
   const { items, counts } = await NF.collectNews((l) => console.log("   ", l));
   ok(items.length > 20, "抓到超過 20 則", items.length, ">20");
   console.log(`   海線 ${counts.coast}、中部 ${counts.central}、全台 ${counts.national}`);
   for (const it of items.filter((i) => i.region === "coast").slice(0, 8)) console.log("    海線 -", it.source, "|", it.title.slice(0, 50));
+
+  // 接著走跟正式排程一樣的「解碼＋全文＋日期校正＋再過時間窗」，看今天的 Google 有沒有混進舊文（只印、不存）
+  console.log("=== I-live 解碼＋全文＋日期校正（只印、不存）===");
+  const sample = [...items];
+  const r = await NF.enrichNews(sample, Date.now() + 45_000, (l) => console.log("   ", l));
+  const { kept, dropped } = NF.dropStaleItems(sample);
+  console.log(`   日期往回修 ${r.backdated} 則；校正後過了時間窗被丟掉 ${dropped.length} 則，留下 ${kept.length} 則`);
+  for (const d of dropped.slice(0, 10)) console.log(`    丟掉 - ${d.source} | ${(d.publishedAt || "").slice(0, 10)} | ${d.title.slice(0, 46)}`);
 }
 
 console.log(pass ? "\n全部通過" : "\n有失敗的項目");

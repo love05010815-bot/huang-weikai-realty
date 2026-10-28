@@ -36,6 +36,7 @@ import {
   classifyRegion,
   collectNews,
   countByRegion,
+  dropStaleItems,
   enrichNews,
   fetchArticleByUrl,
   fetchShortVideoByUrl,
@@ -938,11 +939,22 @@ export async function runDailyNewsFetch(opts: RunNewsOptions): Promise<RunNewsOu
   try {
     log("開始抓取新聞…");
     const { items } = await collectNews(log);
-    const fresh = await filterNewItems(items);
+    let fresh = await filterNewItems(items);
     log(`其中 ${fresh.length} 則是資料庫裡還沒有的`);
     if (fresh.length) {
       await enrichNews(fresh, deadline, log);
+      // 先分級再過時間窗：分級只會往海線／中部升，窗會變寬（海線 3 天），順序反了會多丟
       reclassifyWithContent(fresh, log);
+      // 抓到頁面後日期可能被往回修（Google 重推舊文），用校正後的日期再過一次時間窗
+      const { kept, dropped } = dropStaleItems(fresh);
+      if (dropped.length) {
+        const sample = dropped
+          .slice(0, 3)
+          .map((d) => `${d.source}「${d.title.slice(0, 18)}」${(d.publishedAt || "").slice(0, 10)}`)
+          .join("、");
+        log(`${dropped.length} 則頁面上的發布日期早就過了時間窗（Google 把舊文當新聞重推），略過：${sample}${dropped.length > 3 ? "…" : ""}`);
+      }
+      fresh = kept;
     }
     const inserted = await insertNewsItems(fresh);
     log(`已存入 ${inserted} 則新新聞`);
