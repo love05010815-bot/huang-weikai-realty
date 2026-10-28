@@ -171,7 +171,7 @@ function RocDateInput({
   );
 }
 
-type Filter = "all" | "listing" | "contract" | "sold" | "rented" | "stale" | "birthday";
+type Filter = "all" | "listing" | "contract" | "sold" | "rented" | "delisted" | "stale" | "birthday";
 
 const FILTERS: { key: Filter; label: string }[] = [
   { key: "all", label: "全部" },
@@ -179,6 +179,8 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: "contract", label: `合約 ${CONTRACT_SOON_DAYS} 天內到期` },
   { key: "sold", label: "已售出" },
   { key: "rented", label: "已出租" },
+  // 2026-10-28 他要的：已下架的也要能一鍵篩出來
+  { key: "delisted", label: "已下架" },
   { key: "stale", label: `${STALE_CONTACT_DAYS} 天沒聯絡` },
   { key: "birthday", label: "本月生日" },
 ];
@@ -387,6 +389,7 @@ export default function OwnersManager({
     else if (filter === "contract") list = list.filter((o) => o.properties.some((p) => p.contractEnd && p.contractEnd <= contractSoonBy));
     else if (filter === "sold") list = list.filter((o) => o.properties.some((p) => p.status === "sold"));
     else if (filter === "rented") list = list.filter((o) => o.properties.some((p) => p.status === "rented"));
+    else if (filter === "delisted") list = list.filter((o) => o.properties.some((p) => p.status === "delisted"));
     else if (filter === "stale") list = list.filter((o) => !o.lastContactAt || o.lastContactAt < staleBefore);
     else if (filter === "birthday") list = list.filter((o) => o.birthday && o.birthday.slice(5, 7) === thisMonth);
 
