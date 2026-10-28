@@ -428,8 +428,13 @@ export default async function HomePage() {
               <div className={styles.heroRoles} aria-label="我是屋主或買方">
                 {ROLE_LIST.map((r) => (
                   <Link key={r.path} className={styles.heroRoleBtn} href={r.path}>
-                    <span aria-hidden="true">{r.icon}</span>
+                    <span className={styles.heroRoleIcon} aria-hidden="true">
+                      {r.icon}
+                    </span>
                     {r.label}
+                    <span className={styles.heroRoleArrow} aria-hidden="true">
+                      ›
+                    </span>
                   </Link>
                 ))}
               </div>

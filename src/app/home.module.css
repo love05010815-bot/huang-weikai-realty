@@ -619,38 +619,115 @@
 }
 
 /* 「我是屋主／我是買方」兩顆分流按鈕（2026-10-26），接在三顆 CTA 下面、等寬各佔一半。
-   寬度對齊上面那排按鈕（三顆加起來約 520px）；不跟 .heroStory 的 520px 共用變數是刻意的 —— 文案寬度改了按鈕不該跟著動。
-   長相刻意跟 .btn 那三顆分開：白底主色框、hover 整顆填滿，讓人一眼看出這是「先選身分」不是又一顆聯絡按鈕。 */
-   ⚠️ 按鈕的 class 叫 .heroRoleBtn，不能叫 .heroRole——那是上面「太平洋房屋 … 副店長」頭銜那行的 class，2026-10-26 撞名過一次、頭銜整行變成藥丸（10-28 修）。
+   2026-10-28 系統擁有者：「紅線地方要稍微分開 3 公分距離，按鈕稍微美化並大顆一點」——
+   跟 CTA 列的距離 16→40px、兩顆之間 14→40px、整排 520→580px（對齊上面三顆 CTA 的總寬 568px）；
+   按鈕字 16→18px、內距加大到至少 62px 高、圖示放進圓底、右邊一個小箭頭、淡綠漸層＋綠影。
+   不跟 .heroStory 的 520px 共用變數是刻意的 —— 文案寬度改了按鈕不該跟著動。
+   長相刻意跟 .btn 那三顆分開：白底主色框、hover 整顆填滿，讓人一眼看出這是「先選身分」不是又一顆聯絡按鈕。
+   ⚠️ 按鈕的 class 叫 .heroRoleBtn，不能叫 .heroRole——那是上面「太平洋房屋 … 副店長」頭銜那行的 class，
+   10-26 撞名過一次、頭銜整行變成藥丸；10-28 修撞名時這行警告又被寫到註解外面，瀏覽器把緊接的
+   .heroRoles 整條丟掉（按鈕縮成 130px、緊貼 CTA 列，build 不會報）。改這段之後驗收要量 .heroRoles 是不是 grid。 */
 .heroRoles {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  max-width: 520px;
-  margin-top: 16px;
+  gap: 40px;
+  max-width: 580px;
+  margin-top: 40px;
 }
 
 .heroRoleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 62px;
+  /* 這個專案沒有全域 box-sizing reset；高度靠 min-height＋padding 撐，不設固定 height */
+  box-sizing: border-box;
+  padding: 12px 22px;
+  border-radius: 18px;
+  border: 2px solid var(--primary);
+  background: linear-gradient(135deg, #eef9f6 0%, #ffffff 65%);
+  color: var(--primary-dark);
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 8px 20px rgba(47, 168, 148, 0.18);
+  transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* 圖示放進圓底，按鈕才不會只是「字加一個 emoji」 */
+.heroRoleIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 13px 16px;
-  border-radius: 14px;
-  border: 2px solid var(--primary);
-  background: #fff;
-  color: var(--primary-dark);
-  font-size: 16px;
-  font-weight: 800;
-  text-decoration: none;
-  white-space: nowrap;
-  transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  font-size: 19px;
+  flex: none;
+}
+
+.heroRoleArrow {
+  font-size: 22px;
+  line-height: 1;
+  opacity: 0.6;
+  transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
 .heroRoleBtn:hover {
   background: var(--primary);
   color: #fff;
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 26px rgba(47, 168, 148, 0.3);
+}
+
+.heroRoleBtn:hover .heroRoleIcon {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.heroRoleBtn:hover .heroRoleArrow {
+  opacity: 1;
+  transform: translateX(3px);
+}
+
+@media (max-width: 1000px) {
+  /* 兩欄 hero 的左欄在 1000px 以下只剩四百多 px，間距與內距先收一點，字才不會撐出按鈕 */
+  .heroRoles {
+    gap: 24px;
+  }
+
+  .heroRoleBtn {
+    padding: 12px 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* 手機兩顆並排：容器只有 335px，每顆 160px，間距、內距、字級都縮回來，箭頭拿掉 */
+  .heroRoles {
+    gap: 14px;
+    margin-top: 28px;
+  }
+
+  .heroRoleBtn {
+    gap: 8px;
+    min-height: 54px;
+    padding: 10px 12px;
+    font-size: 16px;
+    letter-spacing: 0;
+  }
+
+  .heroRoleIcon {
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+  }
+
+  .heroRoleArrow {
+    display: none;
+  }
 }
 
 .heroPhotoWrap {
