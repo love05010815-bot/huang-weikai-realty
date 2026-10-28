@@ -308,7 +308,12 @@ function emptyContactDraft(today: string): ContactDraft {
   return { contactedAt: today, method: OWNER_CONTACT_METHODS[0], content: "" };
 }
 
-type Msg = { kind: "ok" | "err"; text: string };
+/** muted：灰色（下架完成用——2026-10-28 他說下架的色塊要反灰，不要跟「存檔成功」一樣綠） */
+type Msg = { kind: "ok" | "err" | "muted"; text: string };
+
+function msgClass(kind: Msg["kind"]): string {
+  return kind === "ok" ? styles.msgOk : kind === "muted" ? styles.msgMuted : styles.msgErr;
+}
 
 /** 哪一張卡片正在編輯哪個東西 */
 type PropertyEditing = { ownerId: string; propertyId: string | "new" } | null;
@@ -598,7 +603,7 @@ export default function OwnersManager({
       return;
     }
     setDelistFor(null);
-    say(ownerId, { kind: "ok", text: `已下架（${DELIST_REASON_LABEL[delistDraft.reason]}${delistDraft.amount ? `，${delistDraft.amount}` : ""}）` });
+    say(ownerId, { kind: "muted", text: `已下架（${DELIST_REASON_LABEL[delistDraft.reason]}${delistDraft.amount ? `，${delistDraft.amount}` : ""}）` });
     router.refresh();
   }
 
@@ -1125,7 +1130,7 @@ export default function OwnersManager({
             這裡只有屋主本人的資料。房子的地址、合約編號、合約起訖日是在卡片展開後的「房子」區按「加一間房子」登記，一位屋主可以掛好幾間。
           </p>
           {renderOwnerForm(false)}
-          {msg && <p className={`${styles.msg} ${styles.cardMsg} ${msg.kind === "ok" ? styles.msgOk : styles.msgErr}`}>{msg.text}</p>}
+          {msg && <p className={`${styles.msg} ${styles.cardMsg} ${msgClass(msg.kind)}`}>{msg.text}</p>}
         </li>
       );
     }
@@ -1219,7 +1224,7 @@ export default function OwnersManager({
 
         {delistFor === o.id && !delistDraft.inRow && renderDelistPanel(o)}
 
-        {msg && <p className={`${styles.msg} ${styles.cardMsg} ${msg.kind === "ok" ? styles.msgOk : styles.msgErr}`}>{msg.text}</p>}
+        {msg && <p className={`${styles.msg} ${styles.cardMsg} ${msgClass(msg.kind)}`}>{msg.text}</p>}
 
         {open && (
           <div className={styles.cardBody}>
@@ -1490,7 +1495,7 @@ export default function OwnersManager({
         </div>
       </div>
 
-      {topMsg && <p className={`${styles.msg} ${topMsg.kind === "ok" ? styles.msgOk : styles.msgErr}`}>{topMsg.text}</p>}
+      {topMsg && <p className={`${styles.msg} ${msgClass(topMsg.kind)}`}>{topMsg.text}</p>}
 
       {importOpen && renderImport()}
 
