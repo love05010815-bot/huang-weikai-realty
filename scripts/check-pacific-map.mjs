@@ -190,7 +190,8 @@ eq("輸入：分享連結", isPacificInput("https://prim.pacific.com.tw/s/ABCDEF
 eq("輸入：官網物件頁", pacificSaleIdFrom("https://www.pacific.com.tw/Object/ObjectDetail/?saleID=S1234567"), "S1234567");
 eq("輸入：官網物件頁（小寫 saleid 也認）", pacificSaleIdFrom("https://www.pacific.com.tw/Object/ObjectDetail/?saleid=s1234567"), "S1234567");
 eq("輸入：直接打 S 編號", pacificSaleIdFrom(" s1234567 "), "S1234567");
-eq("輸入：愛屋案號不是", pacificSaleIdFrom("AA1234567"), null);
+eq("輸入：愛屋案號不是 S 編號（不同識別碼，分開判斷）", pacificSaleIdFrom("AA1234567"), null);
+eq("🔴 輸入：委託編號（AA…，2026-11-02 起）isPacificInput 算是", isPacificInput("AA1234567"), true);
 eq("🔴 輸入：P 編號（別墅／透天）直接打", pacificSaleIdFrom("P0000309"), "P0000309");
 eq("🔴 輸入：pacific.com.tw.evil.com 不是", pacificSaleIdFrom("https://www.pacific.com.tw.evil.com/Object/ObjectDetail/?saleID=S1234567"), null);
 eq("輸入：愛屋連結不是太平洋", isPacificInput("https://es.houseol.com.tw/Ecatalog.aspx?No=AA1234567"), false);

@@ -12,6 +12,8 @@ register("./alias-hooks.mjs", import.meta.url);
 const {
   classifyPrimShare,
   communityFromTitle,
+  houseolContractIdFrom,
+  isPacificInput,
   pacificSaleIdFrom,
   parsePrimShare,
   primAgeYears,
@@ -100,6 +102,18 @@ eq("pacificSaleIdFrom：P0000309 直接打", pacificSaleIdFrom("P0000309"), "P00
 eq("pacificSaleIdFrom：小寫 p0000309 也認", pacificSaleIdFrom("p0000309"), "P0000309");
 eq("pacificSaleIdFrom：官網網址帶 saleID=P0000309", pacificSaleIdFrom("https://www.pacific.com.tw/Object/ObjectDetail/?saleID=P0000309"), "P0000309");
 eq("pacificSaleIdFrom：沒見過的字首 X 不認（別亂猜）", pacificSaleIdFrom("X0000309"), null);
+
+/* 委託編號（AA…，2026-11-02 他要的：「AA59及AA63開頭是我們合約書的編號開頭，設定這兩個開頭的編碼也可以複製文案讀取資訊」）
+ * 不鎖這兩個開頭——跟 houseolIdFromPic（lib/match/pacific-parse.ts）同一個形狀，查表（houseol_id → S 編號）在 pacific-listing.ts，
+ * 這支不碰資料庫所以只測規則認不認得，查不查得到另外在 pacific-listing 那層用真資料庫測過。 */
+eq("houseolContractIdFrom：AA6350828（他給的真實例子）", houseolContractIdFrom("AA6350828"), "AA6350828");
+eq("houseolContractIdFrom：AA5979601（他給的另一個）", houseolContractIdFrom("AA5979601"), "AA5979601");
+eq("houseolContractIdFrom：小寫也認", houseolContractIdFrom("aa6350828"), "AA6350828");
+eq("houseolContractIdFrom：不是這個形狀的字串不是（S 編號）", houseolContractIdFrom("S3487284"), null);
+eq("houseolContractIdFrom：位數不對（少一碼）不是", houseolContractIdFrom("AA635082"), null);
+eq("houseolContractIdFrom：三個字母開頭不是", houseolContractIdFrom("AAA6350828"), null);
+eq("houseolContractIdFrom：第一個字母不是 A 不是（跟 houseolIdFromPic 同規矩）", houseolContractIdFrom("BB6350828"), null);
+eq("isPacificInput：委託編號也算一種", isPacificInput("AA6350828"), true);
 
 /* 價格：元換萬，離譜的不要 */
 const priced = (p) => parsePrimShare({ status: "success", data: { items: [{ obj_no: "S1234567", price: p }] } })?.items[0].price;

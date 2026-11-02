@@ -88,9 +88,24 @@ export function pacificSaleIdFrom(input: string): string | null {
   return null;
 }
 
-/** 分享連結、官網物件頁、S 編號 —— 三種太平洋的輸入任一種 */
+/**
+ * 太平洋房屋自己的委託編號（跟合約書上印的一樣，例：AA6350828）—— 跟 `match_listing.houseol_id` 同一個欄位、
+ * 同一個形狀（`lib/match/pacific-parse.ts` 的 `houseolIdFromPic` 從照片檔名抓出來的就是它）。
+ * 2026-11-02 他說「AA59 及 AA63 開頭是我們和約書的編號開頭，設定這兩個開頭的編碼也可以複製文案讀取資訊」——
+ * 不特別鎖這兩個開頭：往後還會有新一批（AA64…），格式對就試著查，查不到（不是我們同步範圍內的店，或還沒同步到）
+ * 自然會是「找不到」，不用維護一份開頭清單。真正查表（houseol_id → S 編號）在 pacific-listing.ts，這支檔不碰資料庫。
+ */
+export const HOUSEOL_CONTRACT_ID = /^A[A-Z]\d{7}$/i;
+
+/** 他貼的是委託編號 → 整理成大寫；不是 → null */
+export function houseolContractIdFrom(input: string): string | null {
+  const raw = String(input ?? "").trim();
+  return HOUSEOL_CONTRACT_ID.test(raw) ? raw.toUpperCase() : null;
+}
+
+/** 分享連結、官網物件頁、S 編號、委託編號 —— 四種太平洋的輸入任一種 */
 export function isPacificInput(input: string): boolean {
-  return primShareCode(input) !== null || pacificSaleIdFrom(input) !== null;
+  return primShareCode(input) !== null || pacificSaleIdFrom(input) !== null || houseolContractIdFrom(input) !== null;
 }
 
 /** 官網物件頁（直接打 S 編號時「物件資訊」按鈕連這裡） */

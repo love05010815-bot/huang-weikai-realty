@@ -281,15 +281,17 @@ const pastedUrl = () => {
   const t = $("raw").value.trim();
   return /^https?:\/\/\S+$/.test(t) && isHouseolPage(t) ? t : "";
 };
-/** 貼的是太平洋的分享連結（prim.pacific.com.tw/s/…）、官網物件頁（?saleID=S…／P…）或直接打 S／P 編號（2026-10-14 起；
- *  2026-10-15 補 P 開頭——別墅之類的物件編號是 P 開頭，原本只認 S，跟伺服器端 PACIFIC_SALE_ID 不一致） */
+/** 貼的是太平洋的分享連結（prim.pacific.com.tw/s/…）、官網物件頁（?saleID=…）、S／P／R／C 編號、或委託編號（AA…）
+ *  （2026-10-14 起；2026-10-15 補 P 開頭；2026-11-02 補委託編號——這份正則是伺服器端 PACIFIC_SALE_ID／HOUSEOL_CONTRACT_ID
+ *  各自抄一份出來的，伺服器那邊的字首或形狀以後再加，記得回來補這裡，上次就漏過一次） */
 const pacificInput = () => {
   const t = $("raw").value.trim();
   if (!t || /\s/.test(t)) return "";
   const ok =
     /^https?:\/\/prim\.pacific\.com\.tw\/s\/[A-Za-z0-9]{6,32}\/?(\?.*)?$/i.test(t) ||
-    /^https?:\/\/(www\.)?pacific\.com\.tw\/.*saleid=[sp]\d{5,}/i.test(t) ||
-    /^[SP]\d{5,}$/i.test(t);
+    /^https?:\/\/(www\.)?pacific\.com\.tw\/.*saleid=[sprc]\d{5,}/i.test(t) ||
+    /^[SPRC]\d{5,}$/i.test(t) ||
+    /^A[A-Z]\d{7}$/i.test(t);
   return ok ? t : "";
 };
 let fetching = "";

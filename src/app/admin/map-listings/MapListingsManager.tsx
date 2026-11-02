@@ -739,7 +739,7 @@ export default function MapListingsManager({
                 <div className={styles.pasteRow}>
                   <input
                     type="text"
-                    placeholder="貼太平洋分享連結（prim.pacific.com.tw/s/…）、愛屋連結，或直接打 S 編號／案號"
+                    placeholder="貼太平洋分享連結（prim.pacific.com.tw/s/…）、愛屋連結，或直接打 S 編號／委託編號／案號"
                     value={houseolInput}
                     onChange={(e) => setHouseolInput(e.target.value)}
                     onKeyDown={(e) => {

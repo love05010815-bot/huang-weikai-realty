@@ -369,7 +369,7 @@ export default function FbGroupManager({
   }
   async function importFromHouseol() {
     const input = impInput.trim();
-    if (!input) return showToast("先貼太平洋分享連結（prim.pacific.com.tw/s/…）或愛屋連結，或直接打 S 編號／案號", "warn");
+    if (!input) return showToast("先貼太平洋分享連結（prim.pacific.com.tw/s/…）或愛屋連結，或直接打 S 編號／委託編號／案號", "warn");
     if (!licensed) return showToast(`🔒 ${licenseHint}`, "bad");
     // 打字打到一半被蓋掉最嘔，先問過
     if ((draftText.trim() || draftTitle.trim()) && !confirm("帶入會蓋掉現在這篇的標題與內容，確定嗎？")) return;

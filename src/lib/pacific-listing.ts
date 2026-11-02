@@ -1,34 +1,39 @@
 /**
  * 🧩 「貼一條太平洋的連結 → 一筆完整的物件」—— 三個工具共用的載入器（伺服器專用，會碰資料庫）
  *
- * 吃三種輸入：
+ * 吃四種輸入：
  *   ・分享連結  https://prim.pacific.com.tw/s/<代碼>   （愛屋改版後他新增物件貼的那種；客戶看的也是它）
  *   ・官網物件頁 https://www.pacific.com.tw/Object/ObjectDetail/?saleID=S…
  *   ・直接打 S 編號  S2862747
+ *   ・委託編號（合約書上那個，例 AA6350828，2026-11-02 他要的）→ 查 match_listing.houseol_id 換成 S 編號，
+ *     查不到代表不是我們同步範圍內的店、或還沒同步到，當一般的「找不到」處理，不特別分訊息
  *
  * 拼起來的順序：
+ *   ⓪ 委託編號 → 查表拿 S 編號，查不到就直接回報找不到（這步只有委託編號這種輸入才會走）
  *   ① 分享連結 → 分享 API（lib/prim-share.ts）拿 S 編號、完工日、封面；**一條分享包好幾筆就停下來要他指定**
  *   ② S 編號 → 官網 GetObjectDetail ＋ GetObjectPicture（lib/pacific-object.ts）：欄位最全、照片全部
- *   ③ 照片檔名對出愛屋編號 → 資料庫 houseol_address 拿完整門牌（跟愛屋那條一樣）
+ *   ③ 照片檔名對出愛屋編號 → 資料庫 houseol_address 拿完整門牌（跟愛屋那條一樣）；委託編號輸入本身就是它，不用再猜
  *   官網掛掉但有分享 API 的 → 用分享 API 的欄位湊（detailFromShare），空格多但帶得進來；兩邊都沒有才算失敗。
  *
  * 出口：`toCatalog()`（FB 廣告、地圖物件）與 `toPost591()`（591 刊登助手）—— 純規則在 lib/pacific-map.ts。
  */
 import { getHouseolAddressMap } from "@/lib/houseol-address";
-import { getListing } from "@/lib/match/store";
+import { getListing, getListingByHouseolId } from "@/lib/match/store";
 import { houseolIdFromPic } from "@/lib/match/pacific-parse";
 import { detailFromShare, detailToCatalog, detailToPost591, type PacificDetail, type PacificExtra } from "@/lib/pacific-map";
 import { fetchPacificObject } from "@/lib/pacific-object";
-import { fetchPrimShare, pacificDetailUrl, pacificSaleIdFrom, primShareCode, primShareUrl, type PrimShareItem } from "@/lib/prim-share";
+import { houseolContractIdFrom, fetchPrimShare, pacificDetailUrl, pacificSaleIdFrom, primShareCode, primShareUrl, type PrimShareItem } from "@/lib/prim-share";
 
-export type PacificInput = { kind: "prim"; code: string } | { kind: "sale"; saleId: string };
+export type PacificInput = { kind: "prim"; code: string } | { kind: "sale"; saleId: string } | { kind: "houseol"; houseolId: string };
 
-/** 看得懂的輸入 → 是分享連結還是 S 編號；都不是 → null */
+/** 看得懂的輸入 → 分享連結、S 編號、還是委託編號；都不是 → null */
 export function parsePacificInput(input: string): PacificInput | null {
   const code = primShareCode(input);
   if (code) return { kind: "prim", code };
   const saleId = pacificSaleIdFrom(input);
-  return saleId ? { kind: "sale", saleId } : null;
+  if (saleId) return { kind: "sale", saleId };
+  const houseolId = houseolContractIdFrom(input);
+  return houseolId ? { kind: "houseol", houseolId } : null;
 }
 
 export type PacificLoaded = {
@@ -48,7 +53,7 @@ export type PacificLoadResult = { ok: true; data: PacificLoaded } | { ok: false;
 
 export async function loadPacificListing(input: string): Promise<PacificLoadResult> {
   const parsed = parsePacificInput(input);
-  if (!parsed) return { ok: false, error: "這不是太平洋的分享連結、官網物件頁或 S 編號" };
+  if (!parsed) return { ok: false, error: "這不是太平洋的分享連結、官網物件頁、S 編號或委託編號" };
 
   let share: PrimShareItem | null = null;
   let saleId: string;
@@ -68,6 +73,13 @@ export async function loadPacificListing(input: string): Promise<PacificLoadResu
     share = items[0];
     saleId = share.objNo;
     linkHref = primShareUrl(parsed.code);
+  } else if (parsed.kind === "houseol") {
+    // 委託編號 → 查我們自己同步的表拿 S 編號。查不到就是不是我們店的物件、或這間還沒同步到——
+    // 他只能等一下或改貼 S 編號／分享連結，不用再往下試
+    const row = await getListingByHouseolId(parsed.houseolId);
+    if (!row) return { ok: false, error: `委託編號 ${parsed.houseolId} 在同步清單裡找不到（可能還沒同步到，或編號打錯），用 S 編號或分享連結試試看。` };
+    saleId = row.id;
+    linkHref = pacificDetailUrl(saleId);
   } else {
     saleId = parsed.saleId;
     linkHref = pacificDetailUrl(saleId);
@@ -92,8 +104,8 @@ export async function loadPacificListing(input: string): Promise<PacificLoadResu
   // 官網沒照片時封面至少有一張（pacblob）；有照片時不要再塞封面 —— 實測封面就是第一張、會重複
   if (photos.length === 0 && share?.coverPhoto) photos = [share.coverPhoto];
 
-  // ③ 愛屋編號 → 完整門牌。照片檔名對不到就看官網同步表那一筆
-  let houseolId = houseolIdFromPic(photos.find((u) => /houseol\.com\.tw/i.test(u)));
+  // ③ 愛屋編號 → 完整門牌。輸入本身就是委託編號的話不用再猜，照片檔名對不到就看官網同步表那一筆
+  let houseolId = parsed.kind === "houseol" ? parsed.houseolId : houseolIdFromPic(photos.find((u) => /houseol\.com\.tw/i.test(u)));
   if (!houseolId) {
     try {
       houseolId = (await getListing(saleId))?.houseolId ?? "";
