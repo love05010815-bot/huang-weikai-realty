@@ -64,8 +64,9 @@ const loadPage = cache(async (raw: string): Promise<PageData> => {
   const cover = row.images.filter((u) => /^https?:\/\//i.test(u));
   const photos = detail && detail.photos.length > 0 ? detail.photos : cover;
   const area = project?.name || row.district || "海線物件";
-  // 租金（元／月）：同步表優先，沒有才退回官網單筆（官網單筆的 sellTotalPrice 在出租物件上就是月租）
-  const price = active ? (row.price > 0 ? row.price : (detail?.detail.price ?? null)) : null;
+  // 租金（元／月）：同步表優先，沒有才退回官網單筆（官網單筆的 sellTotalPrice 在出租物件上就是月租，
+  // sanitizeDetail 2026-11-04 起把它放在 rent（元）、price 留給買賣的萬）
+  const price = active ? (row.price > 0 ? row.price : (detail?.detail.rent ?? null)) : null;
   const item: Listing = {
     slug: saleId,
     title: row.title,

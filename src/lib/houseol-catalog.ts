@@ -36,8 +36,15 @@ export type CatalogListing = {
   /** 型錄上的地址。**沒有門牌號碼**，只到路名 */
   address: string;
   community: string;
-  /** 委託總價（萬） */
+  /** 委託總價（萬）；出租物件是 null（月租在 `rent`） */
   price: number | null;
+  /**
+   * 售／租。愛屋型錄解析出來的沒有這欄（＝買賣）；太平洋官網的出租物件（R／C 編號、合約書委託編號 AD 開頭）
+   * 才是 "rent"，這時 `price` 是 null、月租在 `rent`（元）、押金在 `deposit`（元）—— 2026-11-04 起，見 lib/pacific-map.ts。
+   */
+  deal?: "sale" | "rent";
+  rent?: number | null;
+  deposit?: number | null;
   /** 登記坪數 */
   ping: number | null;
   rooms: number | null;
@@ -259,6 +266,9 @@ const LABEL_LOOKALIKE = /^(委託總價|登記坪數|建物面積|主\s*\+\s*附
 /** 台灣地址至少有區／鄉／鎮／里或路／街／巷／段。擋掉滑進地址那一格的數字（「768萬」） */
 const LOOKS_LIKE_ADDRESS = /[縣市區鄉鎮村里]|[路街道巷弄段]/;
 
+/** 元的金額加千分位：20000 → 「20,000」（月租／押金用；萬的總價照舊不加） */
+const fmtYuan = (n: number): string => n.toLocaleString("en-US");
+
 export type AdDraft = {
   /** 後台文案的標題欄＝型錄第一行（他說的「愛屋案名」） */
   title: string;
@@ -273,6 +283,7 @@ export type AdDraft = {
  *
  * 欄位與順序是他 2026-09-18 指定的：
  *   標題（案名）／開價／路名／格局／登記坪數／主+附屬／樓別-樓高／屋齡／車位／車位型式／環境特色
+ *   （出租物件那一行是「月租 X 元（押金 Y 元）」，不是開價；2026-11-04 起）
  *
  * 🔴 **讀不到的欄位就不寫**，改列進 `missing` 讓他自己補 —— 廣告是對外的，
  *    猜一個「約」「左右」出去就是不實資訊。同理「無車位」只有在型錄真的講了車位
@@ -290,7 +301,14 @@ export function buildAdDraft(l: CatalogListing): AdDraft {
   else missing.push("標題");
 
   const facts: string[] = [];
-  if (l.price !== null) facts.push(`💰 開價 ${l.price} 萬`);
+  if (l.deal === "rent") {
+    // 出租：月租是「元」不是「萬」；押金官網有給才寫，沒給就列 missing（不替他預設「2 個月」發出去）
+    const rent = l.rent ?? null;
+    const deposit = l.deposit ?? null;
+    if (rent !== null) facts.push(`💰 月租 ${fmtYuan(rent)} 元${deposit !== null ? `（押金 ${fmtYuan(deposit)} 元）` : ""}`);
+    else missing.push("租金");
+    if (deposit === null) missing.push("押金");
+  } else if (l.price !== null) facts.push(`💰 開價 ${l.price} 萬`);
   else missing.push("開價");
 
   // 地址跟標題一樣是「照位置讀」的（型錄第 2、3 行）。抬頭一改版整批往上滑，
@@ -358,7 +376,7 @@ export function buildPoints(l: CatalogListing): string[] {
     l.floor ? `${l.floor} 樓` : "",
     l.age !== null ? `屋齡 ${l.age} 年` : "",
     l.hasParking ? "含車位" : "",
-    l.price !== null ? `總價 ${l.price} 萬` : "",
+    l.deal === "rent" ? (l.rent != null ? `月租 ${fmtYuan(l.rent)} 元` : "") : l.price !== null ? `總價 ${l.price} 萬` : "",
   ].filter(Boolean);
 
   const points = spec.length ? [spec.join("｜")] : [];

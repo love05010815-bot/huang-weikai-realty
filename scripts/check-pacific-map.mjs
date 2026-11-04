@@ -103,7 +103,9 @@ eq("🔴 sanitize：P 編號（別墅／透天）不再被擋", sanitizeDetail({
 eq("sanitize：null → null", sanitizeDetail(null), null);
 eq("sanitize：hasStall 2 → false", sanitizeDetail({ ...RAW, hasStall: 2 }).hasStall, false);
 eq("sanitize：hasStall null → null（沒講）", sanitizeDetail({ ...RAW, hasStall: null }).hasStall, null);
-eq("sanitize：沒售價 → 當出租", sanitizeDetail({ ...RAW, sellTotalPrice: 0 }).isRent, true);
+/* 2026-11-04 起售／租看 hasSellAndRent（沒這欄看字首），「沒售價」只是沒開價，不再當出租 */
+eq("sanitize：沒售價不再當出租（S 編號＝買賣，只是沒開價）", [sanitizeDetail({ ...RAW, sellTotalPrice: 0 }).isRent, sanitizeDetail({ ...RAW, sellTotalPrice: 0 }).price], [false, null]);
+eq("sanitize：買賣物件 rent／deposit 是 null", [d.rent, d.deposit], [null, null]);
 /* 單筆 API 沒有 ageYear 數字欄（2026-10-14 實測），屋齡要從「7年7個月」那串字算 */
 eq("屋齡字：7年7個月 → 7.58", ageYearsFromText("7年7個月"), 7.58);
 eq("屋齡字：3年 → 3", ageYearsFromText("3年"), 3);
@@ -184,6 +186,41 @@ eq("退路：車位不猜（parkType 空）", L3.parkType, "");
 eq("退路：提醒型態要自己點", L3.warnings.some((w) => w.includes("型態")), true);
 const c3 = detailToCatalog(ds, { ...extra, photos: [SHARE.coverPhoto] });
 eq("退路 FB：車位沒問過 → missing 有車位", buildAdDraft(c3).missing.includes("車位"), true);
+
+/* ── 出租物件（R 編號；合約書委託編號 AD 開頭，2026-11-04 他說「AK 及 AD 開頭也是我們合約書的編號開頭」）──
+ * 官網同一支 API：sellTotalPrice 在出租是月租（元）、deposit 是押金（元）、hasSellAndRent 2；線上曾把 AD5358900 印成「開價 20000 萬」 */
+const RAW_RENT = { ...RAW, saleID: "R7654321", objectName: "租-測試商辦", hasSellAndRent: 2, sellTotalPrice: 20000, firstSellTotalPrice: 0, deposit: 40000, rentTypeName: "商用", objFeature1: "①近測試商圈➁有停車位" };
+const extraRent = { ...extra, share: null, linkHref: pacificDetailUrl("R7654321"), houseolId: "AD7654321" };
+const dr = sanitizeDetail(RAW_RENT);
+eq("🔴 出租 sanitize：hasSellAndRent 2 → 出租", dr.isRent, true);
+eq("🔴 出租 sanitize：月租放 rent（元）、price／firstPrice 是 null", [dr.rent, dr.price, dr.firstPrice], [20000, null, null]);
+eq("出租 sanitize：押金（元）", dr.deposit, 40000);
+eq("出租 sanitize：出租型態", dr.rentType, "商用");
+eq("🔴 sanitize：hasSellAndRent 1 → 買賣（rentTypeName 有字、deposit 有值也不算出租）", sanitizeDetail({ ...RAW, hasSellAndRent: 1, rentTypeName: "店面商辦", deposit: 40000 }).isRent, false);
+eq("sanitize：沒 hasSellAndRent 欄 → 看字首：R 出租", sanitizeDetail({ ...RAW, saleID: "R1234567" }).isRent, true);
+eq("sanitize：沒 hasSellAndRent 欄 → 看字首：C 出租", sanitizeDetail({ ...RAW, saleID: "C1234567" }).isRent, true);
+eq("sanitize：沒 hasSellAndRent 欄 → 看字首：P 當買賣（售租都有，不猜）", sanitizeDetail({ ...RAW, saleID: "P1234567" }).isRent, false);
+eq("🔴 出租 sanitize：個資一樣不在", JSON.stringify(dr).includes("王小明") || JSON.stringify(dr).includes("0912345678"), false);
+const cr = detailToCatalog(dr, extraRent);
+eq("出租型錄：deal rent、price null、rent／deposit 元", [cr.deal, cr.price, cr.rent, cr.deposit], ["rent", null, 20000, 40000]);
+eq("買賣型錄：deal sale", c.deal, "sale");
+const adr = buildAdDraft(cr);
+eq("🔴 出租 FB：月租＋押金那行（元，不是萬）", adr.text.includes("💰 月租 20,000 元（押金 40,000 元）"), true);
+eq("🔴 出租 FB：沒有「開價」", adr.text.includes("開價"), false);
+eq("出租 FB：missing 沒有開價／租金／押金", adr.missing.filter((m) => ["開價", "租金", "押金"].includes(m)), []);
+const adrNoDep = buildAdDraft({ ...cr, deposit: null });
+eq("出租 FB：官網沒押金 → 月租那行不帶押金、missing 列押金", [adrNoDep.text.includes("💰 月租 20,000 元"), adrNoDep.text.includes("押金"), adrNoDep.missing.includes("押金")], [true, false, true]);
+eq("出租 FB：沒租金 → missing 租金", buildAdDraft({ ...cr, rent: null }).missing.includes("租金"), true);
+eq("出租地圖賣點：月租不是總價", [buildPoints(cr)[0].includes("月租 20,000 元"), buildPoints(cr)[0].includes("總價")], [true, false]);
+const LR = detailToPost591(dr, extraRent);
+eq("🔴 出租 591：deal rent、租金元、price null", [LR.deal, LR.rent, LR.price], ["rent", 20000, null]);
+eq("出租 591：押金是月租兩倍 → 「2個月」", LR.deposit, "2個月");
+eq("出租 591 derive：押金選項 2個月", derive(LR).rentDeposit, "2個月");
+eq("出租 591：型別欄位齊全", Object.keys(LR).sort(), Object.keys(parseListing("x")).sort());
+eq("出租 591：押金不是整數倍 → 寫金額讓他選", detailToPost591(sanitizeDetail({ ...RAW_RENT, deposit: 50000 }), extraRent).deposit, "50,000 元");
+const LRnoDep = detailToPost591(sanitizeDetail({ ...RAW_RENT, deposit: null }), extraRent);
+eq("出租 591：官網沒押金 → 空字串＋提醒", [LRnoDep.deposit, LRnoDep.warnings.some((w) => w.includes("押金"))], ["", true]);
+eq("出租 591：有押金就不提醒押金", LR.warnings.some((w) => w.includes("押金")), false);
 
 /* ── 輸入判斷（prim-share.ts）── */
 eq("輸入：分享連結", isPacificInput("https://prim.pacific.com.tw/s/ABCDEFGH"), true);

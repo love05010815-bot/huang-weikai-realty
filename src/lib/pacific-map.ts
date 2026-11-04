@@ -19,6 +19,11 @@
  *   - `detailToCatalog()`  → 愛屋型錄那種 CatalogListing，FB 廣告草稿（buildAdDraft）與地圖物件賣點（buildPoints）直接沿用
  *   - `detailToPost591()`  → 591 刊登助手的 Listing（跟貼型錄文字解析出來的是同一個型別，後面對應規則全部共用）
  *   - `detailFromShare()`  → 官網 API 掛掉時，只用分享 API 的欄位湊一份 PacificDetail（空格多，但不會整個帶不進來）
+ *
+ * 🔑 出租物件（R／C 編號、少數 P 編號；合約書委託編號 AD 開頭的那些，2026-11-04 他說「AK 及 AD 開頭也是我們合約書的編號開頭」）：
+ *    官網**同一支 API、同一個欄位** sellTotalPrice 在買賣是總價（萬）、在出租是**月租（元）**，deposit 是押金（元）；
+ *    售／租看 hasSellAndRent（1 買賣、2 出租，跟分享 API 的 sell_rent 同一套）。進來就分開放：`price`／`firstPrice` 只給買賣（萬），
+ *    `rent`／`deposit` 只給出租（元）—— 之前 isRent 用「沒售價」判，AD5358900 那間商辦被印成「💰 開價 20000 萬」。
  */
 import type { CatalogListing } from "@/lib/houseol-catalog";
 import type { Listing } from "@/lib/post591-parser";
@@ -35,10 +40,14 @@ export type PacificDetail = {
   areaName: string;
   /** 官網給的地址，只到路名：「臺中市梧棲區自強一街」 */
   addressRoad: string;
-  /** 總價（萬） */
+  /** 總價（萬）；出租物件一律 null（月租在 `rent`） */
   price: number | null;
-  /** 第一次刊登的總價（萬）；比現價高就是降過價 */
+  /** 第一次刊登的總價（萬）；比現價高就是降過價。出租物件一律 null */
   firstPrice: number | null;
+  /** 月租（元）；買賣物件一律 null */
+  rent: number | null;
+  /** 押金（元）；官網沒給就 null，不要替他預設「幾個月」 */
+  deposit: number | null;
   rooms: number | null;
   halls: number | null;
   baths: number | null;
@@ -84,9 +93,12 @@ export type PacificDetail = {
   feature: string;
   lat: number | null;
   lng: number | null;
-  /** 出租型態（官網 rentTypeName：整層(棟)住家／獨立套房／店面商辦…）；買賣物件多半是空字串（2026-10-26） */
+  /**
+   * 出租型態（官網 rentTypeName：整層(棟)住家／獨立套房／店面商辦…）。
+   * ⚠️ 買賣物件這格也常有值（2026-11-04 實測：S3487284 寫「店面商辦」、農地 S2545694 寫「出租車位」），**不能拿來判售／租**。
+   */
   rentType: string;
-  /** 沒有售價就當出租 */
+  /** 官網 hasSellAndRent 2 ＝出租、1 ＝買賣；沒這欄才看編號字首（R／C 一定出租） */
   isRent: boolean;
 };
 
@@ -117,6 +129,18 @@ export function ageYearsFromText(text: string): number | null {
 }
 
 /**
+ * 售／租：官網 hasSellAndRent 1 ＝買賣、2 ＝出租（2026-11-04 實測 7 筆：R／C／P 開頭的出租全是 2，S／P 開頭的買賣全是 1）。
+ * 欄位不在（官網改版）才退回看編號字首：R、C 一定是出租；P 售租都有、S 只有買賣 → 當買賣。
+ * ⚠️ 不能看 rentTypeName（買賣物件也常有字）、不能看「沒售價」（出租物件的 sellTotalPrice 是月租，有值）。
+ */
+function isRentObject(r: Record<string, unknown>, saleId: string): boolean {
+  const flag = num(r.hasSellAndRent);
+  if (flag === 2) return true;
+  if (flag === 1) return false;
+  return /^[RC]/.test(saleId);
+}
+
+/**
  * 官網 GetObjectDetail 的原始 JSON → PacificDetail。長相不對（沒有 saleID）回 null。
  * 🔴 只挑欄位、不整包複製：saleEmployeeName／saleEmployeePhone／storeAuthentication 那些個資就在這裡被擋下來。
  */
@@ -125,7 +149,9 @@ export function sanitizeDetail(raw: unknown): PacificDetail | null {
   const r = raw as Record<string, unknown>;
   const saleId = str(r.saleID).toUpperCase();
   if (!PACIFIC_SALE_ID.test(saleId)) return null;
-  const price = pos(r.sellTotalPrice);
+  const isRent = isRentObject(r, saleId);
+  // 同一個欄位：買賣是總價（萬）、出租是月租（元）—— 分開放，20000 元才不會變成「開價 20000 萬」
+  const amount = pos(r.sellTotalPrice);
   const hasStallRaw = num(r.hasStall);
   return {
     saleId,
@@ -134,8 +160,10 @@ export function sanitizeDetail(raw: unknown): PacificDetail | null {
     cityName: str(r.cityName),
     areaName: str(r.areaName),
     addressRoad: str(r.address),
-    price,
-    firstPrice: pos(r.firstSellTotalPrice),
+    price: isRent ? null : amount,
+    firstPrice: isRent ? null : pos(r.firstSellTotalPrice),
+    rent: isRent ? amount : null,
+    deposit: isRent ? pos(r.deposit) : null,
     rooms: pos(r.layoutRoom),
     halls: num(r.layoutHall) !== null && Number(r.layoutHall) >= 0 ? Number(r.layoutHall) : null,
     baths: num(r.layoutToilet) !== null && Number(r.layoutToilet) >= 0 ? Number(r.layoutToilet) : null,
@@ -172,7 +200,7 @@ export function sanitizeDetail(raw: unknown): PacificDetail | null {
     lat: num(r.y_POINT),
     lng: num(r.x_POINT),
     rentType: str(r.rentTypeName),
-    isRent: price === null,
+    isRent,
   };
 }
 
@@ -185,8 +213,11 @@ export function detailFromShare(it: PrimShareItem): PacificDetail {
     cityName: "",
     areaName: "",
     addressRoad: it.addressShort,
-    price: it.price,
+    // 分享 API 的 price 一律當總價換成萬（50 萬以下會被 yuanToWan 丟掉）；出租物件的月租單位沒驗過，寧可留空讓他補
+    price: it.isRent ? null : it.price,
     firstPrice: null,
+    rent: null,
+    deposit: null,
     rooms: it.rooms,
     halls: it.halls,
     baths: it.baths,
@@ -290,7 +321,11 @@ export function detailToCatalog(d: PacificDetail, x: PacificExtra): CatalogListi
     title,
     address: pickAddress(d, x),
     community: d.community || communityFromTitle(title),
-    price: d.price ?? x.share?.price ?? null,
+    // 出租：price 留空、月租／押金（元）另外放，buildAdDraft／buildPoints 看 deal 決定印「開價 X 萬」還是「月租 X 元」
+    price: d.isRent ? null : (d.price ?? x.share?.price ?? null),
+    deal: d.isRent ? "rent" : "sale",
+    rent: d.rent,
+    deposit: d.deposit,
     ping: d.totalArea ?? x.share?.ping ?? null,
     rooms: d.rooms ?? x.share?.rooms ?? null,
     halls: d.halls ?? x.share?.halls ?? null,
@@ -317,6 +352,19 @@ export function detailToCatalog(d: PacificDetail, x: PacificExtra): CatalogListi
   };
 }
 
+/**
+ * 押金（元）→ 591 押金欄吃的字：剛好是月租的整數倍就寫「2個月」（post591-map 的 derive 認得 1／2 個月，其餘歸「其他」），
+ * 不然寫金額讓他自己選；官網沒給 → 空字串（derive 退回預設 2 個月，並在表上提醒）
+ */
+function depositText(d: PacificDetail): string {
+  if (d.deposit === null) return "";
+  if (d.rent !== null && d.rent > 0 && d.deposit % d.rent === 0) {
+    const months = d.deposit / d.rent;
+    if (months >= 1 && months <= 12) return `${months}個月`;
+  }
+  return `${d.deposit.toLocaleString("en-US")} 元`;
+}
+
 /** 「2019-01-30」→ { y, m, dd }；沒有或認不得 → 全 null */
 function ymd(date: string | null | undefined): { y: number | null; m: number | null; dd: number | null } {
   const m = String(date ?? "").match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -341,18 +389,20 @@ export function detailToPost591(d: PacificDetail, x: PacificExtra): Listing {
   if (date.y === null) warnings.push("沒有完工日（只有貼分享連結才有）：591 的完工年會用屋齡回推，要確認。");
   if (!d.purpose) warnings.push("官網沒寫謄本用途：法定用途先當住家用，請核對謄本。");
   if (!d.kind) warnings.push("官網讀不到型態（華廈／大樓／透天）：第①頁要自己點。");
+  if (d.isRent && d.rent === null) warnings.push("官網沒寫月租：租金那格自己填。");
+  if (d.isRent && d.deposit === null) warnings.push("官網沒寫押金：押金那格自己選（表上先照 591 預設 2 個月）。");
 
   return {
     source: "houseol",
     deal: d.isRent ? "rent" : "sale",
-    rent: null,
-    deposit: "",
+    rent: d.rent,
+    deposit: depositText(d),
     mainAttPing: d.mainBuildArea !== null && d.outbuildingArea !== null ? round2(d.mainBuildArea + d.outbuildingArea) : null,
     rentCond: { noPets: null, cook: null, feeIncluded: false, parkIncluded: false, noSmoking: false },
     rawTitle: title,
     addr: address,
     no: x.houseolId,
-    price: d.price ?? x.share?.price ?? null,
+    price: d.isRent ? null : (d.price ?? x.share?.price ?? null),
     regPing: d.totalArea ?? x.share?.ping ?? null,
     parkPing: d.ownerStallArea,
     mainPing: d.mainBuildArea,
