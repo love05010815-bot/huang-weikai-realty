@@ -167,15 +167,32 @@ const stale = NF.dropStaleItems(
     mk("national", "2023-08-17 19:20:00", "三立舊聞"),
     mk("national", "2026-10-27 13:30:00", "全台昨天"),
     mk("national", "2026-10-26 20:00:00", "全台前天"),
-    mk("coast", "2026-10-25 22:00:00", "海線兩天半前"),
     mk("coast", "2026-10-23 08:00:00", "海線五天前"),
+    mk("coast", "2026-10-19 08:00:00", "海線九天前"),
     mk("central", null, "沒日期"),
   ],
   NOW,
 );
-ok(stale.dropped.map((d) => d.title).join(",") === "三立舊聞,全台前天,海線五天前", "過了各地區時間窗的被丟掉", stale.dropped.map((d) => d.title).join(","), "三立舊聞,全台前天,海線五天前");
-ok(stale.kept.map((d) => d.title).join(",") === "全台昨天,海線兩天半前,沒日期", "窗內的＋沒日期的留著", stale.kept.map((d) => d.title).join(","), "全台昨天,海線兩天半前,沒日期");
+// 海線的窗 2026-11-04 從 3 天放寬到 7 天（NEWS_CONFIG.regionDays.coast），五天前要留、九天前要丟
+ok(stale.dropped.map((d) => d.title).join(",") === "三立舊聞,全台前天,海線九天前", "過了各地區時間窗的被丟掉", stale.dropped.map((d) => d.title).join(","), "三立舊聞,全台前天,海線九天前");
+ok(stale.kept.map((d) => d.title).join(",") === "全台昨天,海線五天前,沒日期", "窗內的＋沒日期的留著（海線看 7 天）", stale.kept.map((d) => d.title).join(","), "全台昨天,海線五天前,沒日期");
 ok(stale.kept.length + stale.dropped.length === 6, "一則不少", stale.kept.length + stale.dropped.length, 6);
+
+// 2026-11-04 他說海線要涵蓋梧棲、清水、大甲、龍井、大肚。地名早就都在，問題是模糊地名沒伴就判全台、
+// 然後排在抓全文佇列最後面永遠拿不到內文。提示詞擴到鄰近鄉鎮與海線地標，抓全文的順序也改了。
+console.log("=== J 海線：模糊地名的伴、地標、抓全文的優先序 ===");
+const clsJ = (title, summary = "", content = null) => NF.classifyRegion({ title, summary, content });
+ok(clsJ("八里、清水有「窮人高速公路」為何房市弱爆？", "台61 西濱快速道路沿線") === "coast", "清水＋台61 → 海線（不用寫台中）", clsJ("八里、清水有「窮人高速公路」為何房市弱爆？", "台61 西濱快速道路沿線"), "coast");
+ok(clsJ("清水模建築的房價") === "national", "清水沒伴 → 還是不算海線", clsJ("清水模建築的房價"), "national");
+ok(clsJ("離岸風電產業鏈擴張 台中港加碼建設 三區房市迎剛性買盤") === "coast", "台中港 → 海線", clsJ("離岸風電產業鏈擴張 台中港加碼建設 三區房市迎剛性買盤"), "coast");
+ok(clsJ("大肚王市議員退選 驚爆建商議價內幕", "", "台中市大肚區的林家建商…大肚區…") === "coast", "大肚＋內文有台中 → 海線", clsJ("大肚王市議員退選 驚爆建商議價內幕", "", "台中市大肚區的林家建商…大肚區…"), "coast");
+ok(clsJ("大肚山以西的土地") === "national", "只有大肚、沒伴 → 全台", clsJ("大肚山以西的土地"), "national");
+ok(clsJ("梧棲港區倉儲用地標售") === "coast", "梧棲港 → 海線", clsJ("梧棲港區倉儲用地標售"), "coast");
+ok(clsJ("台北大安區房價") === "central" || clsJ("台北大安區房價") === "national", "大安不在海線名單（台北大安）", clsJ("台北大安區房價"), "不是 coast");
+ok(NF.mentionsCoastPlace({ title: "八里、清水有窮人高速公路", summary: "" }) === true, "mentionsCoastPlace：清水沒伴也算「提到」", NF.mentionsCoastPlace({ title: "八里、清水有窮人高速公路", summary: "" }), "true");
+ok(NF.mentionsCoastPlace({ title: "青埔房市急凍", summary: "" }) === false, "mentionsCoastPlace：沒提到", NF.mentionsCoastPlace({ title: "青埔房市急凍", summary: "" }), "false");
+const pri = (region, title) => NF.enrichPriority({ region, title, summary: "" });
+ok(pri("coast", "沙鹿房價") === 0 && pri("national", "清水房市弱爆") === 1 && pri("central", "台中七期") === 2 && pri("national", "青埔房市") === 3, "抓全文順序：海線 → 提到海線地名 → 中部 → 全台", `${pri("coast", "沙鹿房價")},${pri("national", "清水房市弱爆")},${pri("central", "台中七期")},${pri("national", "青埔房市")}`, "0,1,2,3");
 
 if (process.argv.includes("--live")) {
   console.log("=== G 真的抓一次（不進資料庫）===");
@@ -187,10 +204,16 @@ if (process.argv.includes("--live")) {
   // 接著走跟正式排程一樣的「解碼＋全文＋日期校正＋再過時間窗」，看今天的 Google 有沒有混進舊文（只印、不存）
   console.log("=== I-live 解碼＋全文＋日期校正（只印、不存）===");
   const sample = [...items];
+  const coastBefore = sample.filter((i) => i.region === "coast").length;
   const r = await NF.enrichNews(sample, Date.now() + 45_000, (l) => console.log("   ", l));
+  // 跟正式排程一樣的順序：抓全文 → 重新分區 → 過時間窗（見 news.ts runDailyNewsFetch）
+  NF.reclassifyWithContent(sample, (l) => console.log("   ", l));
   const { kept, dropped } = NF.dropStaleItems(sample);
   console.log(`   日期往回修 ${r.backdated} 則；校正後過了時間窗被丟掉 ${dropped.length} 則，留下 ${kept.length} 則`);
   for (const d of dropped.slice(0, 10)) console.log(`    丟掉 - ${d.source} | ${(d.publishedAt || "").slice(0, 10)} | ${d.title.slice(0, 46)}`);
+  const coastAfter = kept.filter((i) => i.region === "coast");
+  console.log(`   海線：依標題 ${coastBefore} 則 → 抓完全文重新分區後 ${coastAfter.length} 則`);
+  for (const c of coastAfter) console.log(`    海線✓ - ${c.source} | ${(c.publishedAt || "").slice(0, 10)} | ${c.title.slice(0, 46)}`);
 }
 
 console.log(pass ? "\n全部通過" : "\n有失敗的項目");

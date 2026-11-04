@@ -144,6 +144,25 @@ function placeHit(term: string, head: string, body: string, full: string): boole
   return body.split(term).length - 1 >= 2;
 }
 
+/**
+ * 標題或摘要有沒有「提到」任何海線地名 —— 不管模糊不模糊、有沒有提示詞。
+ * 給 `enrichNews` 排優先序用：這種文章先抓全文，抓到全文才有機會補到提示詞、改判成海線。
+ *
+ * 2026-11-04：「八里、清水有窮人高速公路為何房市弱爆」這種標題，清水沒伴就先判成全台，
+ * 全台排在抓全文佇列最後面、輪不到 → 永遠沒有內文 → 永遠改判不了。先抓它的全文就解了。
+ */
+export function mentionsCoastPlace(item: Pick<FetchedNews, "title" | "summary">): boolean {
+  const head = `${item.title} ${item.summary}`;
+  return NEWS_CONFIG.coastPlaces.some((t) => head.includes(t));
+}
+
+/** 抓全文的優先序：確定海線 → 提到海線地名但還沒確定 → 中部 → 全台。數字小的先。 */
+export function enrichPriority(item: Pick<FetchedNews, "title" | "summary" | "region">): number {
+  if (item.region === "coast") return 0;
+  if (mentionsCoastPlace(item)) return 1;
+  return item.region === "central" ? 2 : 3;
+}
+
 /** 依內容判斷地區：先海線、再中部，都沒有就是全台。 */
 export function classifyRegion(item: Pick<FetchedNews, "title" | "summary" | "content">): NewsRegion {
   const head = `${item.title} ${item.summary}`;
@@ -745,8 +764,9 @@ export type EnrichResult = { decoded: number; withText: number; targets: number;
  * 就地修改 items（url 換成真網址、content 填入全文）。
  */
 export async function enrichNews(items: FetchedNews[], deadline: number, log: LogFn): Promise<EnrichResult> {
+  // 提到海線地名但還沒確定的（清水、大肚沒伴）排在中部前面：先拿到內文才有機會改判成海線
   const ordered = [...items].sort(
-    (a, b) => regionRank(a.region) - regionRank(b.region) || (b.publishedAt || "").localeCompare(a.publishedAt || ""),
+    (a, b) => enrichPriority(a) - enrichPriority(b) || (b.publishedAt || "").localeCompare(a.publishedAt || ""),
   );
   const targets = ordered.slice(0, NEWS_CONFIG.maxFullText);
   const result: EnrichResult = { decoded: 0, withText: 0, targets: targets.length, googleBlocked: false, backdated: 0 };
