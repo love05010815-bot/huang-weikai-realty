@@ -158,6 +158,13 @@ eq("官網主站 → null（那是另一種連結）", primShareCode("https://ww
 eq("光打代碼 → null（跟案號分不清，不收）", primShareCode("LV5rC5XJ"), null);
 eq("空字串 → null", primShareCode(""), null);
 eq("代碼太短 → null", primShareCode("https://prim.pacific.com.tw/s/ab"), null);
+/* 2026-11-04 同事從瀏覽器網址列複製的分享連結尾巴帶 /0（分享頁自己加的），以前認不出、退成「只認得愛屋的連結」 */
+eq("🔴 尾巴 /0（網址列複製的那種）也認", primShareCode("https://prim.pacific.com.tw/s/kr9ybLVu/0"), "kr9ybLVu");
+eq("尾巴 /0/ 也認", primShareCode("https://prim.pacific.com.tw/s/kr9ybLVu/0/"), "kr9ybLVu");
+eq("尾巴 /0 帶 query 也認", primShareCode("https://prim.pacific.com.tw/s/kr9ybLVu/0?utm=x"), "kr9ybLVu");
+eq("尾巴一段隨便什麼都只拿代碼", primShareCode("https://prim.pacific.com.tw/s/kr9ybLVu/photos"), "kr9ybLVu");
+eq("尾巴兩段以上 → null", primShareCode("https://prim.pacific.com.tw/s/kr9ybLVu/0/1"), null);
+eq("組回的分享網址永遠不帶尾巴", primShareUrl(primShareCode("https://prim.pacific.com.tw/s/kr9ybLVu/0")), "https://prim.pacific.com.tw/s/kr9ybLVu");
 eq("組回分享網址", primShareUrl("LV5rC5XJ"), "https://prim.pacific.com.tw/s/LV5rC5XJ");
 
 /* ── 小工具 ── */

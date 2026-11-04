@@ -282,13 +282,14 @@ const pastedUrl = () => {
   return /^https?:\/\/\S+$/.test(t) && isHouseolPage(t) ? t : "";
 };
 /** 貼的是太平洋的分享連結（prim.pacific.com.tw/s/…）、官網物件頁（?saleID=…）、S／P／R／C 編號、或委託編號（AA…）
- *  （2026-10-14 起；2026-10-15 補 P 開頭；2026-11-02 補委託編號——這份正則是伺服器端 PACIFIC_SALE_ID／HOUSEOL_CONTRACT_ID
- *  各自抄一份出來的，伺服器那邊的字首或形狀以後再加，記得回來補這裡，上次就漏過一次） */
+ *  （2026-10-14 起；2026-10-15 補 P 開頭；2026-11-02 補委託編號；2026-11-04 分享連結尾巴多一段 `/0` 也認（同事從網址列複製
+ *  的那種，分享頁自己加的）——這份正則是伺服器端 SHARE_PATH／PACIFIC_SALE_ID／HOUSEOL_CONTRACT_ID 各自抄一份出來的，
+ *  伺服器那邊的字首或形狀以後再加，記得回來補這裡，上次就漏過一次） */
 const pacificInput = () => {
   const t = $("raw").value.trim();
   if (!t || /\s/.test(t)) return "";
   const ok =
-    /^https?:\/\/prim\.pacific\.com\.tw\/s\/[A-Za-z0-9]{6,32}\/?(\?.*)?$/i.test(t) ||
+    /^https?:\/\/prim\.pacific\.com\.tw\/s\/[A-Za-z0-9]{6,32}(\/[^/?#]*)?\/?(\?.*)?$/i.test(t) ||
     /^https?:\/\/(www\.)?pacific\.com\.tw\/.*saleid=[sprc]\d{5,}/i.test(t) ||
     /^[SPRC]\d{5,}$/i.test(t) ||
     /^A[A-Z]\d{7}$/i.test(t);

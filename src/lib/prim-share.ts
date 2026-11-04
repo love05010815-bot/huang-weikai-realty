@@ -35,8 +35,13 @@ import type { LinkCheck } from "@/lib/map-listing-check";
 
 /** 只認這個網域；`prim.pacific.com.tw.evil.com` 這種一律不算 */
 const PRIM_HOST = /^prim\.pacific\.com\.tw$/i;
-/** 分享代碼長相：實測 8 碼英數（LV5rC5XJ）。範圍放寬到 6～32 碼，太短太長都不算 */
-const SHARE_PATH = /^\/s\/([A-Za-z0-9]{6,32})\/?$/;
+/**
+ * 分享代碼長相：實測 8 碼英數（LV5rC5XJ）。範圍放寬到 6～32 碼，太短太長都不算。
+ * 代碼後面可以再跟一段（`/s/kr9ybLVu/0`）：2026-11-04 同事從瀏覽器網址列複製的分享連結尾巴都帶 `/0`——
+ * 分享頁自己把它加上去的（`/0`、`/1`、`/abc` 都回 200，是它前端的路由），LINE 上收到的原始連結則沒有。
+ * 那一段不管是什麼都不看（多筆分享還是照規矩要他指定哪一筆），只拿代碼；兩段以上就不認。
+ */
+const SHARE_PATH = /^\/s\/([A-Za-z0-9]{6,32})(?:\/[^/]*)?\/?$/;
 export const PRIM_API_BASE = "https://prim.pacific.com.tw/api/prim/v1/app/public/house-share";
 
 /** 分享連結 → 代碼。不是 prim 的分享連結回 null */
