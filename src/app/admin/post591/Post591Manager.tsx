@@ -360,7 +360,7 @@ export default function Post591Manager() {
       <section className={styles.card}>
         <h2 className={styles.h2}>① 貼上資料</h2>
         <p className={styles.hint}>
-          太平洋：<b>直接貼分享連結</b>（prim.pacific.com.tw/s/…）、官網物件頁網址、S／P 編號，或我們自己的委託編號（合約書上那個，例 AA6350828），伺服器會向官網拿齊欄位和照片，不用外掛也帶得進來。
+          太平洋：<b>直接貼分享連結</b>（prim.pacific.com.tw/s/…）、官網物件頁網址、S／P 編號，或我們自己的委託編號（合約書上那個，AA／AK／AD 開頭，例 AA6350828），伺服器會向官網拿齊欄位和照片，不用外掛也帶得進來。
           <br />
           愛屋型錄：<b>直接貼型錄頁的網址</b>（一行就好），會自動抓回來解析，不用按解析；照片（型錄頁上的＋「更多照片」的）也自動帶、上架時自動上傳，<b>不用再貼任何連結</b>。
           門牌若沒帶到（有些頁只印到路名），③ 的門牌自己補；或照舊：型錄頁把地址旁的「<b>顯示</b>」點開 → Ctrl+A → Ctrl+C 貼進來。

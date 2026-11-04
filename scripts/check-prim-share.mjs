@@ -114,6 +114,12 @@ eq("houseolContractIdFrom：位數不對（少一碼）不是", houseolContractI
 eq("houseolContractIdFrom：三個字母開頭不是", houseolContractIdFrom("AAA6350828"), null);
 eq("houseolContractIdFrom：第一個字母不是 A 不是（跟 houseolIdFromPic 同規矩）", houseolContractIdFrom("BB6350828"), null);
 eq("isPacificInput：委託編號也算一種", isPacificInput("AA6350828"), true);
+/* 2026-11-04 他補：「AK及AD開頭也是我們合約書的編號開頭」。查過同步表：AA 774 筆、AK 76 筆（土地）、AD 5 筆（出租），
+ * 全是 2 字母＋7 位數，規則本來就吃 A＋任一字母所以沒改程式——這幾條是鎖住「以後別有人把它收窄成只認 AA」。 */
+eq("🔴 houseolContractIdFrom：AK 開頭（土地的合約書）也認", houseolContractIdFrom("AK5200001"), "AK5200001");
+eq("🔴 houseolContractIdFrom：AD 開頭（出租的合約書）也認", houseolContractIdFrom("AD5300001"), "AD5300001");
+eq("isPacificInput：AK 委託編號算太平洋輸入", isPacificInput("ak5200001"), true);
+eq("isPacificInput：AD 委託編號算太平洋輸入", isPacificInput("AD5300001"), true);
 
 /* 價格：元換萬，離譜的不要 */
 const priced = (p) => parsePrimShare({ status: "success", data: { items: [{ obj_no: "S1234567", price: p }] } })?.items[0].price;
