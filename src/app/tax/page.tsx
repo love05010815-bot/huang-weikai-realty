@@ -1,8 +1,12 @@
 /**
- * /tax —— 稅費試算
+ * /tax —— 免費小工具（原「稅費試算」）
  *
  * 2026-08-23 系統擁有者拍板：不再連到外部網站，改成自己站上算完。
  * 原本首頁連財政部與內政部的兩張卡已經改成導引到這一頁。
+ * 2026-11-04 系統擁有者：「稅費試算改免費小工具，並把所有小工具都列出在上方標籤」——
+ * h1 與麵包屑改成「免費小工具」（跟導覽列那一項同名），上方標籤列從 4 個補成 7 個
+ * （學區、坪數換算、房子行情是獨立頁面，標籤按了是連過去；見 TaxCalculator.tsx 的 TOOL_TABS）。
+ * <title> 刻意不改：搜尋引擎要的是「房地合一稅試算」這種客戶會打的字，「免費小工具」沒人搜。
  *
  * 算法在 src/lib/land-tax.ts（房地合一）、src/lib/loan.ts（房貸）、
  * src/lib/rent-subsidy.ts（租金補貼）與 src/lib/youth-loan.ts（青安 3.0），
@@ -71,7 +75,7 @@ export default function TaxPage() {
   return (
     <div className={styles.page}>
       {/* 麵包屑結構化資料（只給 Google 看，畫面不變）—— 2026-10-19 第一包 */}
-      <BreadcrumbJsonLd items={[{ name: "稅費試算", href: "/tax" }]} />
+      <BreadcrumbJsonLd items={[{ name: "免費小工具", href: "/tax" }]} />
       <header className={styles.header}>
         <div className={styles.navWrap}>
           <Link href="/" className={styles.brand}>
@@ -111,12 +115,12 @@ export default function TaxPage() {
               home.module.css 的 .stickyTitleWrap。 */}
           <div className={`${styles.container} ${styles.center} ${styles.stickyTitleWrap}`}>
             <span className={styles.eyebrow}>TOOLS</span>
-            <h1 className={styles.sectionTitle}>稅費試算</h1>
+            <h1 className={styles.sectionTitle}>免費小工具</h1>
           </div>
           <div className={`${styles.container} ${styles.center}`}>
             <p className={styles.sectionDesc}>
-              賣房子最怕的不是稅高，是簽了約才發現稅金把獲利吃掉了。
-              這裡直接算，不用跳到別的網站，也會把每一步怎麼來的攤開給你看。
+              房地合一稅、房貸月付金、租金補貼、新青安 3.0 在這頁直接算；學區查詢、坪數換算、房子行情各有自己一頁，點上面的標籤就過去。
+              全部免費、不用跳到別的網站，也會把每一步怎麼來的攤開給你看。
             </p>
           </div>
 

@@ -6,8 +6,15 @@
 
 /* ---------- 分頁切換 ---------- */
 
+/* 2026-11-04 從 4 個變 7 個（後 3 個是 <a> 連去別頁），所以：
+   ① 一律允許換行（以前只有 640px 以下）—— 7 個一行約 1000px，平板就放不下；
+   ② 外框圓角 999px → 26px：單行時高 52px 仍是整顆膠囊，換成兩行就變圓角方框。
+      留 999px 的話兩行時角落的標籤會凸出外框的弧線；
+   ③ .tab 補 display:inline-flex／line-height／text-decoration，<a> 跟 <button> 才會一樣高、沒底線；
+   ④ 內距 22 → 18px，七個才塞得進 1080px 的容器一行。 */
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
   margin: 0 auto 28px;
@@ -16,19 +23,23 @@
   max-width: 100%;
   background: var(--soft);
   border: 1px solid var(--line-warm);
-  border-radius: 999px;
+  border-radius: 26px;
 }
 
 .tab {
   box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
   border: 0;
   background: none;
-  padding: 10px 22px;
+  padding: 10px 18px;
   border-radius: 999px;
   font-family: inherit;
   font-size: 15px;
   font-weight: 800;
+  line-height: 1.25;
   color: var(--muted);
+  text-decoration: none;
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.15s ease, color 0.15s ease;
@@ -555,14 +566,9 @@
     grid-template-columns: 1fr;
   }
 
-  /* 三個分頁在 375px 硬擠一行會塞不下（實測溢出 7px），改成允許換行 —— 
-     兩個在第一行、一個在第二行，膠囊形狀分兩行置中還算整齊 */
-  .tabs {
-    flex-wrap: wrap;
-  }
-
+  /* 手機上七個標籤會疊成三、四行（換行已在基本規則裡），內距與字級縮一階讓一行塞得下兩到三個 */
   .tab {
-    padding: 10px 16px;
+    padding: 9px 13px;
     font-size: 14px;
   }
 }

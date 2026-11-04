@@ -33,6 +33,23 @@ const TAB_BY_HASH: Record<string, Tab> = {
   "youth-loan": "youth",
 };
 
+/** 上方那條標籤。kind=tab 是這頁的分頁（按了切換表單）、kind=link 是獨立頁面的工具（按了過去）。
+    2026-11-04 系統擁有者：「把所有小工具都列出在上方標籤」。
+    名稱、圖示、順序跟首頁 TOOLS（app/page.tsx）與導覽列 TOOLS_MENU（_ui/SiteNav.tsx）對齊，
+    三處各自一份、手動同步；這裡的字刻意短（一行要放七個）。 */
+const TOOL_TABS: readonly (
+  | { kind: "tab"; tab: Tab; label: string }
+  | { kind: "link"; href: string; label: string }
+)[] = [
+  { kind: "tab", tab: "landTax", label: "🏠 房地合一稅" },
+  { kind: "tab", tab: "loan", label: "🏦 房貸月付金" },
+  { kind: "tab", tab: "rent", label: "🔑 租金補貼" },
+  { kind: "tab", tab: "youth", label: "🏡 新青安 3.0" },
+  { kind: "link", href: "/school", label: "🏫 學區查詢" },
+  { kind: "link", href: "/area", label: "📐 坪數換算" },
+  { kind: "link", href: "/estimate", label: "💰 房子行情" },
+];
+
 const YUAN_PER_WAN = 10_000;
 
 function parseWan(v: string): number | null {
@@ -69,44 +86,27 @@ export default function TaxCalculator() {
 
   return (
     <>
-      <div className={styles.tabs} role="tablist" aria-label="選擇試算工具">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "landTax"}
-          className={tab === "landTax" ? `${styles.tab} ${styles.tabOn}` : styles.tab}
-          onClick={() => setTab("landTax")}
-        >
-          🏠 房地合一稅
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "loan"}
-          className={tab === "loan" ? `${styles.tab} ${styles.tabOn}` : styles.tab}
-          onClick={() => setTab("loan")}
-        >
-          🏦 房貸月付金
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "rent"}
-          className={tab === "rent" ? `${styles.tab} ${styles.tabOn}` : styles.tab}
-          onClick={() => setTab("rent")}
-        >
-          🔑 租金補貼
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "youth"}
-          className={tab === "youth" ? `${styles.tab} ${styles.tabOn}` : styles.tab}
-          onClick={() => setTab("youth")}
-        >
-          🏡 新青安 3.0
-        </button>
-      </div>
+      {/* 七個標籤同一條：前四個切這頁的表單、後三個連去別頁（見 TOOL_TABS）。
+          以前是 role=tablist；裡面混了 <a> 之後 ARIA 的 tab 模型不成立，改成 nav＋按鈕 aria-pressed。 */}
+      <nav className={styles.tabs} aria-label="免費小工具">
+        {TOOL_TABS.map((t) =>
+          t.kind === "tab" ? (
+            <button
+              key={t.tab}
+              type="button"
+              aria-pressed={tab === t.tab}
+              className={tab === t.tab ? `${styles.tab} ${styles.tabOn}` : styles.tab}
+              onClick={() => setTab(t.tab)}
+            >
+              {t.label}
+            </button>
+          ) : (
+            <Link key={t.href} href={t.href} className={styles.tab}>
+              {t.label}
+            </Link>
+          ),
+        )}
+      </nav>
 
       {tab === "landTax" && <LandTaxForm />}
       {tab === "loan" && <LoanForm />}
