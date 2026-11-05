@@ -908,9 +908,14 @@ export default function FbGroupManager({
   const delSourceJob = delSourceKey.startsWith("h:") ? delHistoryJobs.find((j) => j.id === delSourceKey.slice(2)) || null : null;
   const delSourceAd = delSourceKey.startsWith("a:") ? ads.find((a) => a.id === delSourceKey.slice(2)) || null : null;
   const delIdentity = identities.find((i) => i.id === delIdentityId) || null;
-  /** 這次要比對的文案開頭（外掛那邊再 normText 一次、取前 20 字） */
-  const delSnippet = delSourceJob ? String(delSourceJob.adSnippet || "").replace(/…$/, "") : delSourceAd ? matchSnippetOf(delSourceAd.text) : "";
-  const delSnippetShown = matchSnippetOf(delSnippet);
+  // 第三種來源「自己打關鍵字」（2026-11-05 他說：同事重裝過外掛、舊紀錄跟文案都沒了，要能打關鍵字找自己發過的文來刪）：
+  // 外掛一樣只看這個身分發的貼文、文字含關鍵字的才刪，所以關鍵字要能指到那一戶（案名＋格局那種），別只打「三房」。
+  const delIsKeyword = delSourceKey === "k";
+  const [delKeyword, setDelKeyword] = useState<string>("");
+  const delKeywordNorm = delKeyword.replace(/[\p{S}\p{C}\p{M}]/gu, "").replace(/\s+/g, " ").trim().slice(0, 20);
+  /** 這次要比對的字（外掛那邊再 normText 一次、取前 20 字、看貼文文字有沒有「包含」它） */
+  const delSnippet = delIsKeyword ? delKeyword.trim() : delSourceJob ? String(delSourceJob.adSnippet || "").replace(/…$/, "") : delSourceAd ? matchSnippetOf(delSourceAd.text) : "";
+  const delSnippetShown = delIsKeyword ? delKeywordNorm : matchSnippetOf(delSnippet);
   /** 這次列哪些社團：紀錄那批＝當時發過的那些（帶當時的結果）；文案＝這個身分底下的社團 */
   const delGroups: { id: string; name: string; url: string; status: string; missing: boolean }[] = delSourceJob
     ? delSourceJob.results.map((r) => {
@@ -918,7 +923,9 @@ export default function FbGroupManager({
         return { id: r.groupId, name: g?.name || r.groupName, url: g?.url || "", status: r.status, missing: !g };
       })
     : groupsForIdentity(delIdentityId).map((g) => ({ id: g.id, name: g.name, url: g.url, status: g.lastResult?.status || "", missing: false }));
-  const delDefaultIds = (list: typeof delGroups) => list.filter((g) => !g.missing && (g.status === "posted" || g.status === "pending")).map((g) => g.id);
+  // 預勾：紀錄那批／文案＝上次結果是已發佈或待審核的；關鍵字＝不知道發到哪、這個身分的社團全勾（外掛沒找到就記「沒找到」，不會亂刪）
+  const delDefaultIds = (list: typeof delGroups) =>
+    list.filter((g) => !g.missing && (delIsKeyword ? g.url !== "" : g.status === "posted" || g.status === "pending")).map((g) => g.id);
   // 換來源：紀錄那批 → 身分跟著那批、預勾當時發成功的；文案 → 預勾上次結果是已發佈的
   useEffect(() => {
     if (!loaded) return;
@@ -939,14 +946,17 @@ export default function FbGroupManager({
 
   async function launchDelete() {
     if (!extVersion) return showToast("沒偵測到外掛：請先安裝「FB 社團廣告助手」，裝好後按 F5 重新整理這頁", "bad");
-    if (!delSourceJob && !delSourceAd) return showToast("請先選要刪哪一篇（發佈紀錄的某一批，或一版文案）", "warn");
+    if (!delSourceJob && !delSourceAd && !delIsKeyword) return showToast("請先選要刪哪一篇（發佈紀錄的某一批、一版文案，或自己打關鍵字）", "warn");
     if (!delIdentity) return showToast("請選發文身分（貼文是誰發的，就用誰刪）", "warn");
-    if (delSnippetShown.length < 4) return showToast("這篇文案的開頭太短（去掉表情符號後不到 4 個字），外掛認不出是哪一則，請換一篇或改文案第一行", "warn");
+    if (delIsKeyword && delKeywordNorm.length < 2) return showToast("關鍵字至少 2 個字（表情符號不算）", "warn");
+    if (!delIsKeyword && delSnippetShown.length < 4) return showToast("這篇文案的開頭太短（去掉表情符號後不到 4 個字），外掛認不出是哪一則，請換一篇或改文案第一行", "warn");
     if (!delPicked.length) return showToast("請至少勾選一個社團", "warn");
+    const how = delIsKeyword ? `文字含「${delSnippetShown}」` : `開頭是「${delSnippetShown}」`;
     if (
       !confirm(
-        `要在 ${delPicked.length} 個社團裡，刪掉「${delIdentity.name}」發的、開頭是「${delSnippetShown}」的貼文。\n\n` +
-          `刪掉的貼文（含底下的留言和心情）無法復原。外掛只刪作者和開頭都對的，別人的貼文不會碰。\n\n確定開始？`,
+        `要在 ${delPicked.length} 個社團裡，刪掉「${delIdentity.name}」發的、${how}的貼文。\n\n` +
+          (delIsKeyword ? `⚠ 關鍵字模式：這個身分發過、只要文字含這幾個字的都會刪（同一戶的不同版本文案也算）。關鍵字太籠統會刪到別戶。\n\n` : "") +
+          `刪掉的貼文（含底下的留言和心情）無法復原。外掛只刪作者和文字都對的，別人的貼文不會碰。\n\n確定開始？`,
       )
     )
       return;
@@ -956,9 +966,9 @@ export default function FbGroupManager({
       identity: { name: delIdentity.name, kind: delIdentity.kind },
       identityUid: delIdentity.fbUid || "",
       locale: settings.locale,
-      match: { snippet: delSnippet, query: delSnippetShown.slice(0, 12) },
-      adTitle: delSourceJob ? delSourceJob.adTitle : delSourceAd ? delSourceAd.title : "",
-      adSnippet: delSourceJob ? delSourceJob.adSnippet || "" : delSourceAd ? adSnippetOf(delSourceAd.text) : "",
+      match: { snippet: delSnippet, query: delSnippetShown.slice(0, 12), kind: delIsKeyword ? "keyword" : "snippet" },
+      adTitle: delIsKeyword ? `關鍵字：${delSnippetShown}` : delSourceJob ? delSourceJob.adTitle : delSourceAd ? delSourceAd.title : "",
+      adSnippet: delIsKeyword ? delSnippetShown : delSourceJob ? delSourceJob.adSnippet || "" : delSourceAd ? adSnippetOf(delSourceAd.text) : "",
       confirmEach: !!settings.delConfirmEach,
       gapSec: Math.max(0, Number(settings.delGapSec) || 0),
       groups: delPicked.map((g) => ({ id: g.id, name: g.name, url: g.url })),
@@ -1713,12 +1723,31 @@ export default function FbGroupManager({
                     ))}
                   </optgroup>
                 )}
+                <optgroup label="沒有紀錄也沒有文案（例如重裝過）">
+                  <option value="k">🔍 自己打關鍵字找我發過的文</option>
+                </optgroup>
               </select>
-              {delSourceJob || delSourceAd ? (
+              {delIsKeyword && (
+                <>
+                  <input
+                    className={styles.input}
+                    value={delKeyword}
+                    disabled={delRunning}
+                    onChange={(e) => setDelKeyword(e.target.value)}
+                    placeholder="例：聯悅聚 大兩房（要能指到那一戶：案名＋格局）"
+                    style={{ marginTop: 8 }}
+                  />
+                  <p className={styles.hint}>
+                    外掛只看<b>這個身分發的</b>貼文，文字含這幾個字的才刪；別人發的不會碰。關鍵字太籠統（例如只打「三房」）會把你同一身分發的別戶一起刪掉，
+                    打案名＋格局那種能指到那一戶的字。下面社團預設全勾（不知道當時發到哪），沒找到的社團只會記「沒找到」。
+                  </p>
+                </>
+              )}
+              {delSourceJob || delSourceAd || delIsKeyword ? (
                 <>
                   <p className={styles.hint}>
-                    比對字串（文案第一行、去掉表情符號後的前 20 字）：
-                    <b className={styles.adSnippet}>「{delSnippetShown || "（太短，認不出來）"}」</b>
+                    {delIsKeyword ? "比對字串（去掉表情符號、最多 20 字，貼文文字含它就算）：" : "比對字串（文案第一行、去掉表情符號後的前 20 字）："}
+                    <b className={styles.adSnippet}>「{delSnippetShown || (delIsKeyword ? "（請在上面打關鍵字）" : "（太短，認不出來）")}」</b>
                   </p>
                   {delSourceJob && (
                     <p className={styles.hint}>
@@ -1730,7 +1759,7 @@ export default function FbGroupManager({
                 </>
               ) : (
                 <p className={styles.hint}>
-                  {delHistoryJobs.length ? "從發佈紀錄挑那一批最省事。" : "還沒有可用的發佈紀錄（較舊的紀錄沒記到文案開頭，認不出是哪一則），可以改從廣告文案挑。"}
+                  {delHistoryJobs.length ? "從發佈紀錄挑那一批最省事。" : "還沒有可用的發佈紀錄（較舊的紀錄沒記到文案開頭，認不出是哪一則），可以改從廣告文案挑，或自己打關鍵字。"}
                 </p>
               )}
             </section>

@@ -451,7 +451,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         identity,
         identityUid: String(p.identityUid || uids[identity.name] || "").replace(/\D/g, ""),
         locale: p.locale === "en" ? "en" : "zh-TW",
-        match: { snippet, query: String((p.match && p.match.query) || snippet) },
+        match: { snippet, query: String((p.match && p.match.query) || snippet), kind: p.match && p.match.kind === "keyword" ? "keyword" : "snippet" },
         confirmEach: !!p.confirmEach,
         gapSec: Math.max(0, Number(p.gapSec) || 0),
         groups: p.groups.map((g) => ({ id: String(g.id || ""), name: String(g.name || ""), url: String(g.url || "") })),

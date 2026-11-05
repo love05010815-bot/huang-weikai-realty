@@ -1436,7 +1436,8 @@
     const pos = "第 " + (job.index + 1) + " / " + job.total + " 個";
     setTitle("FB 社團廣告助手（刪除貼文 " + pos + "）");
     log("社團：" + (g.name || g.url), "fbq-strong");
-    log("要刪：「" + idName + "」發的、開頭是「" + snip + "」的貼文", "");
+    // kind=keyword：後台「自己打關鍵字」（同事重裝過、沒紀錄沒文案）——比對方式一樣是「貼文文字含這幾個字」，只是字是他打的
+    log("要刪：「" + idName + "」發的、" + (job.match.kind === "keyword" ? "文字含「" + snip + "」" : "開頭是「" + snip + "」") + "的貼文", "");
     const report = (status, message, deleted) => send("fbq:del-report", { status, message, deleted: deleted || 0 });
 
     let advancing = false;
