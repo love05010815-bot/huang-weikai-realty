@@ -32,7 +32,7 @@ type ScanState = { status: "scanning" | "done"; found?: number; groups?: ScanGro
  * kind="page" 粉專（同一個 FB 帳號底下切換，外掛可以自己切）
  * kind="account" 另一個 FB 帳號（要你自己換 Chrome 使用者／登入，工具只負責認人、不碰密碼）
  */
-type Identity = { id: string; name: string; kind: "page" | "account"; note: string };
+type Identity = { id: string; name: string; kind: "page" | "account"; note: string; fbUid?: string };
 /** tailText＝固定尾段，每則廣告自動接在文案後面（預設值在 config/fb-tail.ts） */
 /**
  * autoPost：外掛填好後自己按「發佈」、自動換下一個（他 2026-10-06 要的）。
@@ -49,10 +49,16 @@ type Settings = {
   autoGapMode: "fixed" | "random";
   autoGapMin: number;
   autoGapMax: number;
+  /** 刪除貼文：每一則先停下來問（預設不問，面板倒數 3 秒可按停）；每個社團之間等幾秒 */
+  delConfirmEach: boolean;
+  delGapSec: number;
 };
-type ResultRow = { groupId: string; groupName: string; status: string; message: string; at: string };
-type HistoryJob = { id: string; at: number; adTitle: string; adSnippet?: string; identityName?: string; total: number; results: ResultRow[]; status: string };
+type ResultRow = { groupId: string; groupName: string; status: string; message: string; at: string; deleted?: number };
+/** kind 沒填＝發佈（舊紀錄）；"delete"＝刪除貼文那一批（2026-11-05 起） */
+type HistoryJob = { id: string; at: number; kind?: "post" | "delete"; adTitle: string; adSnippet?: string; identityName?: string; total: number; results: ResultRow[]; status: string };
 type Progress = {
+  kind?: "post" | "delete";
+  identityUid?: string;
   status: "running" | "done" | "stopped";
   total: number;
   index: number;
@@ -82,6 +88,8 @@ const defaultSettings = (tail: string): Settings => ({
   autoGapMode: "fixed",
   autoGapMin: 20,
   autoGapMax: 60,
+  delConfirmEach: false,
+  delGapSec: 5,
 });
 
 export type ImportDraft = { title: string; text: string; missing: string[] };
@@ -120,7 +128,26 @@ const STATUS_LABEL: Record<string, [string, string]> = {
   skipped: ["跳過", "muted"],
   stopped: ["已停止", "muted"],
   waiting: ["等待中", "muted"],
+  // 刪除貼文那一批用的
+  deleted: ["已刪除", "ok"],
+  notfound: ["沒找到", "warn"],
+  nodelete: ["刪不了", "bad"],
+  uncertain: ["不確定", "warn"],
+  scanning: ["查找中", "info"],
+  found: ["找到了", "info"],
 };
+/**
+ * 刪除貼文比對用的「文案開頭」：跟外掛 content.js 的 postSnippet() 同一套——第一行有內容的、去掉表情符號與控制字元、取前 20 字。
+ * 發佈紀錄存的 adSnippet（40 字、沒去表情符號）也餵得進去，外掛那邊會再 normText 一次。
+ */
+function matchSnippetOf(text: string): string {
+  const line =
+    String(text || "")
+      .split("\n")
+      .map((s) => s.replace(/[\p{S}\p{C}\p{M}]/gu, "").replace(/\s+/g, " ").trim())
+      .find((s) => s.length >= 4) || "";
+  return line.slice(0, 20);
+}
 const fmt = (ms: number | string) => (ms ? new Date(ms).toLocaleString("zh-TW", { hour12: false }) : "");
 /** 文案開頭那幾個字，給發佈紀錄分辨「這批到底是哪篇」用（同一份標題底下他常常改來改去）。跟 content.js 的 postSnippet() 同一個想法。 */
 function adSnippetOf(text: string): string {
@@ -205,7 +232,7 @@ export default function FbGroupManager({
   licenseHint = "先在最上面貼授權碼、按「儲存並驗證」",
   importApi = ADMIN_IMPORT_API,
 }: FbGroupManagerProps) {
-  const [tab, setTab] = useState<"publish" | "posts" | "groups" | "history" | "settings">("publish");
+  const [tab, setTab] = useState<"publish" | "posts" | "groups" | "history" | "delete" | "settings">("publish");
   const [ads, setAds] = useState<Ad[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [identities, setIdentities] = useState<Identity[]>([]);
@@ -218,6 +245,10 @@ export default function FbGroupManager({
   const [extVersion, setExtVersion] = useState("");
   const [progress, setProgress] = useState<Progress | null>(null);
   const [running, setRunning] = useState(false);
+  // 刪除貼文那一批的進度（背景程式存 chrome.storage.local 的 fbq:delprogress，bridge 轉成 fbq:del-progress）
+  const [delProgress, setDelProgress] = useState<Progress | null>(null);
+  const [delRunning, setDelRunning] = useState(false);
+  const wroteDelHistoryFor = useRef<number | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wroteHistoryFor = useRef<number | null>(null);
@@ -293,14 +324,60 @@ export default function FbGroupManager({
         setRunning(!!p && p.status === "running");
       } else if (ev.data.type === "fbq:scan-state") {
         setScan((ev.data.scan as ScanState | null) || null);
+      } else if (ev.data.type === "fbq:del-progress") {
+        const p: Progress | null = ev.data.progress;
+        setDelProgress(p);
+        setDelRunning(!!p && p.status === "running");
       }
     }
     window.addEventListener("message", onMsg);
     // 重新整理後跟外掛要目前進度與上次抓到的社團
     window.postMessage({ type: "fbq:progress-get" }, window.location.origin);
     window.postMessage({ type: "fbq:scan-get" }, window.location.origin);
+    window.postMessage({ type: "fbq:del-progress-get" }, window.location.origin);
     return () => window.removeEventListener("message", onMsg);
   }, []);
+
+  // 刪除那一批：外掛學到身分的 FB 成員代號就記到身分上（下一批直接開「成員在此社團的貼文」頁，不用再搜）
+  useEffect(() => {
+    const uid = delProgress?.identityUid;
+    const name = delProgress?.identityName;
+    if (!uid || !name) return;
+    setIdentities((prev) => prev.map((i) => (i.name === name && i.fbUid !== uid ? { ...i, fbUid: uid } : i)));
+  }, [delProgress?.identityUid, delProgress?.identityName]);
+
+  // 刪除那一批結束 → 寫進紀錄（kind=delete）、社團「上次結果」改成已刪除（每個 finishedAt 只寫一次）
+  useEffect(() => {
+    if (!delProgress || delProgress.status === "running" || !delProgress.finishedAt) return;
+    if (wroteDelHistoryFor.current === delProgress.finishedAt) return;
+    wroteDelHistoryFor.current = delProgress.finishedAt;
+    const results = delProgress.results || [];
+    setHistory((h) =>
+      [
+        {
+          id: uid(),
+          at: delProgress.finishedAt || Date.now(),
+          kind: "delete" as const,
+          adTitle: delProgress.adTitle || "",
+          adSnippet: delProgress.adSnippet || undefined,
+          identityName: delProgress.identityName || undefined,
+          total: delProgress.total,
+          results,
+          status: delProgress.status,
+        },
+        ...h,
+      ].slice(0, 100),
+    );
+    setGroups((gs) =>
+      gs.map((g) => {
+        const r = results.find((x) => x.groupId === g.id && (x.deleted || 0) > 0);
+        return r ? { ...g, lastResult: { status: "deleted", message: r.message, at: r.at } } : g;
+      }),
+    );
+    const n = results.reduce((s, r) => s + (r.deleted || 0), 0);
+    showToast(delProgress.status === "stopped" ? `已停止（刪了 ${n} 則）` : `刪除完成：共刪 ${n} 則`, delProgress.status === "stopped" ? "warn" : "ok");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [delProgress]);
 
   // 整批結束 → 寫紀錄、更新社團「上次結果」（每個 finishedAt 只寫一次）
   useEffect(() => {
@@ -821,6 +898,89 @@ export default function FbGroupManager({
     showToast("已送出停止", "warn");
   }
 
+  // ── 刪除貼文（2026-11-05 他說「物件賣出就必須刪除發過的文章，粉專要進社團一個一個編輯刪除太花時間」）──
+  // 來源二選一：發佈紀錄的某一批（最準：那批當時發到哪些社團、文案開頭是什麼都記著）／廣告文案（自己勾社團）。
+  // 外掛在每個社團找「這個身分發的、開頭跟文案一樣」的貼文，兩個條件都對才刪；審核中的貼文不在牆上，刪不到。
+  const [delSourceKey, setDelSourceKey] = useState<string>(""); // "h:<紀錄id>" ／ "a:<文案id>"
+  const [delIdentityId, setDelIdentityId] = useState<string>("");
+  const [delChecked, setDelChecked] = useState<Set<string>>(new Set());
+  const delHistoryJobs = history.filter((j) => (j.kind ?? "post") === "post" && !!j.adSnippet && j.results.some((r) => r.status === "posted" || r.status === "pending"));
+  const delSourceJob = delSourceKey.startsWith("h:") ? delHistoryJobs.find((j) => j.id === delSourceKey.slice(2)) || null : null;
+  const delSourceAd = delSourceKey.startsWith("a:") ? ads.find((a) => a.id === delSourceKey.slice(2)) || null : null;
+  const delIdentity = identities.find((i) => i.id === delIdentityId) || null;
+  /** 這次要比對的文案開頭（外掛那邊再 normText 一次、取前 20 字） */
+  const delSnippet = delSourceJob ? String(delSourceJob.adSnippet || "").replace(/…$/, "") : delSourceAd ? matchSnippetOf(delSourceAd.text) : "";
+  const delSnippetShown = matchSnippetOf(delSnippet);
+  /** 這次列哪些社團：紀錄那批＝當時發過的那些（帶當時的結果）；文案＝這個身分底下的社團 */
+  const delGroups: { id: string; name: string; url: string; status: string; missing: boolean }[] = delSourceJob
+    ? delSourceJob.results.map((r) => {
+        const g = groups.find((x) => x.id === r.groupId);
+        return { id: r.groupId, name: g?.name || r.groupName, url: g?.url || "", status: r.status, missing: !g };
+      })
+    : groupsForIdentity(delIdentityId).map((g) => ({ id: g.id, name: g.name, url: g.url, status: g.lastResult?.status || "", missing: false }));
+  const delDefaultIds = (list: typeof delGroups) => list.filter((g) => !g.missing && (g.status === "posted" || g.status === "pending")).map((g) => g.id);
+  // 換來源：紀錄那批 → 身分跟著那批、預勾當時發成功的；文案 → 預勾上次結果是已發佈的
+  useEffect(() => {
+    if (!loaded) return;
+    if (delSourceJob) {
+      const byName = identities.find((i) => i.name === delSourceJob.identityName);
+      if (byName && byName.id !== delIdentityId) setDelIdentityId(byName.id);
+      else if (!byName && !delIdentityId && identities[0]) setDelIdentityId(identities[0].id);
+    } else if (!delIdentityId && identities[0]) setDelIdentityId(identities[0].id);
+    setDelChecked(new Set(delDefaultIds(delGroups)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [delSourceKey, loaded]);
+  useEffect(() => {
+    if (!loaded || delSourceJob) return;
+    setDelChecked(new Set(delDefaultIds(delGroups)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [delIdentityId]);
+  const delPicked = delGroups.filter((g) => delChecked.has(g.id) && !g.missing && g.url);
+
+  async function launchDelete() {
+    if (!extVersion) return showToast("沒偵測到外掛：請先安裝「FB 社團廣告助手」，裝好後按 F5 重新整理這頁", "bad");
+    if (!delSourceJob && !delSourceAd) return showToast("請先選要刪哪一篇（發佈紀錄的某一批，或一版文案）", "warn");
+    if (!delIdentity) return showToast("請選發文身分（貼文是誰發的，就用誰刪）", "warn");
+    if (delSnippetShown.length < 4) return showToast("這篇文案的開頭太短（去掉表情符號後不到 4 個字），外掛認不出是哪一則，請換一篇或改文案第一行", "warn");
+    if (!delPicked.length) return showToast("請至少勾選一個社團", "warn");
+    if (
+      !confirm(
+        `要在 ${delPicked.length} 個社團裡，刪掉「${delIdentity.name}」發的、開頭是「${delSnippetShown}」的貼文。\n\n` +
+          `刪掉的貼文（含底下的留言和心情）無法復原。外掛只刪作者和開頭都對的，別人的貼文不會碰。\n\n確定開始？`,
+      )
+    )
+      return;
+    if (delIdentity.kind === "account" && !confirm(`這批要用「${delIdentity.name}」這個帳號刪。請先確認 Chrome 目前登入的就是它。現在就是這個帳號嗎？`)) return;
+    const payload = {
+      v: 1,
+      identity: { name: delIdentity.name, kind: delIdentity.kind },
+      identityUid: delIdentity.fbUid || "",
+      locale: settings.locale,
+      match: { snippet: delSnippet, query: delSnippetShown.slice(0, 12) },
+      adTitle: delSourceJob ? delSourceJob.adTitle : delSourceAd ? delSourceAd.title : "",
+      adSnippet: delSourceJob ? delSourceJob.adSnippet || "" : delSourceAd ? adSnippetOf(delSourceAd.text) : "",
+      confirmEach: !!settings.delConfirmEach,
+      gapSec: Math.max(0, Number(settings.delGapSec) || 0),
+      groups: delPicked.map((g) => ({ id: g.id, name: g.name, url: g.url })),
+    };
+    const ack = await askExt("del-launch", { type: "fbq:del-launch", payload });
+    if (ack.ok) {
+      setDelRunning(true);
+      showToast("已交給外掛，正在開第一個社團…那個分頁請留在前面", "ok");
+    } else {
+      showToast(ack.error || "外掛沒回應。到 chrome://extensions 按那張卡片的 ↻（刪除貼文要 1.6.0 以上），回來重新整理這頁再試", "bad");
+    }
+  }
+  async function stopDelete() {
+    window.postMessage({ type: "fbq:del-stop" }, window.location.origin);
+    showToast("已送出停止", "warn");
+  }
+  /** 發佈紀錄裡的某一批 →「刪除貼文」頁、來源選好、社團預勾當時發成功的 */
+  function deleteFromJob(j: HistoryJob) {
+    setDelSourceKey("h:" + j.id);
+    setTab("delete");
+  }
+
   const badge = (status: string) => {
     const [label, cls] = STATUS_LABEL[status] || [status, "muted"];
     return <span className={`${styles.badge} ${styles["b_" + cls] || ""}`}>{label}</span>;
@@ -833,6 +993,7 @@ export default function FbGroupManager({
     ["posts", "📝 廣告文案"],
     ["groups", "👥 社團清單"],
     ["history", "📜 發佈紀錄"],
+    ["delete", "🗑️ 刪除貼文"],
     ["settings", "⚙️ 設定"],
   ];
   const missing: string[] = [];
@@ -1461,10 +1622,12 @@ export default function FbGroupManager({
           {history.length ? (
             history.map((j) => {
               const c = (s: string) => j.results.filter((r) => r.status === s).length;
+              const isDel = j.kind === "delete";
+              const nDel = j.results.reduce((s, r) => s + (r.deleted || 0), 0);
               return (
                 <details key={j.id} className={`${styles.card} ${styles.job}`}>
                   <summary>
-                    {badge(j.status === "done" ? "posted" : j.status)}
+                    {isDel ? <span className={`${styles.badge} ${styles.b_muted}`}>🗑️ 刪除</span> : badge(j.status === "done" ? "posted" : j.status)}
                     {j.adTitle || j.adSnippet ? (
                       <>
                         <b>{j.adTitle}</b>
@@ -1474,12 +1637,22 @@ export default function FbGroupManager({
                       <span className={styles.hintInline}>（沒記到文案是哪篇，較舊的紀錄）</span>
                     )}
                     <span className={styles.hintInline}>
-                      {fmt(j.at)} · {j.total} 個社團{j.identityName ? ` · 以 ${j.identityName} 發` : ""}
+                      {fmt(j.at)} · {j.total} 個社團{j.identityName ? (isDel ? ` · 以 ${j.identityName} 刪` : ` · 以 ${j.identityName} 發`) : ""}
                     </span>
                     <span className={styles.counts}>
-                      已發 {c("posted")} · 待審核 {c("pending")} · 失敗 {c("failed")} · 跳過 {c("skipped")}
+                      {isDel
+                        ? `已刪 ${nDel} 則 · 沒找到 ${c("notfound")} · 刪不了 ${c("nodelete")} · 不確定 ${c("uncertain")} · 跳過 ${c("skipped")}`
+                        : `已發 ${c("posted")} · 待審核 ${c("pending")} · 失敗 ${c("failed")} · 跳過 ${c("skipped")}`}
                     </span>
                   </summary>
+                  {!isDel && j.adSnippet && (c("posted") > 0 || c("pending") > 0) && (
+                    <div className={styles.actions} style={{ marginTop: 8 }}>
+                      <button type="button" className={styles.btnSm} onClick={() => deleteFromJob(j)} disabled={delRunning}>
+                        🗑️ 物件賣掉了，刪掉這批發出去的貼文
+                      </button>
+                      <span className={styles.hintInline}>會到「刪除貼文」頁，社團已預勾這批發成功的那些，看一眼再按開始。</span>
+                    </div>
+                  )}
                   <ul className={styles.results}>
                     {j.results.map((r, i) => (
                       <li key={i}>
@@ -1495,6 +1668,207 @@ export default function FbGroupManager({
           ) : (
             <section className={styles.card}>
               <p className={styles.hint}>還沒有發佈紀錄。</p>
+            </section>
+          )}
+        </>
+      )}
+
+      {/* ── 刪除貼文 ── */}
+      {tab === "delete" && (
+        <>
+          <section className={`${styles.card} ${styles.warnCard}`}>
+            <b>物件賣掉了，把發過的廣告一次收回來。</b>
+            <ul className={styles.ul}>
+              <li>
+                外掛會逐一打開你勾的社團，找<b>「這個身分」發的、開頭跟這篇文案一樣</b>的貼文，按「⋯ → 刪除貼文 → 刪除」。兩個條件都對才刪，別人的貼文、同身分的其他廣告不會碰；同一篇不小心發了兩次的會一起刪。
+              </li>
+              <li>第一次會先在社團裡找一則這個身分的貼文、學到它在 Facebook 的成員代號，之後每個社團直接開「這個成員的貼文」頁，比較快。</li>
+              <li>
+                <b>那個 Facebook 分頁請留在前面</b>（刪除要看確認框有沒有關掉，在背景看不到）。還在審核中的貼文不在牆上，刪不到，紀錄會寫「沒找到」。
+              </li>
+              <li>刪掉的貼文連同留言和心情一起消失、<b>無法復原</b>。開始前先看一眼下面的比對字串和社團。</li>
+            </ul>
+          </section>
+          <div className={styles.grid2}>
+            <section className={styles.card}>
+              <h2 className={styles.h2}>1. 要刪哪一篇</h2>
+              <select className={styles.input} value={delSourceKey} onChange={(e) => setDelSourceKey(e.target.value)} disabled={delRunning}>
+                <option value="">（請選擇）</option>
+                {delHistoryJobs.length > 0 && (
+                  <optgroup label="從發佈紀錄挑（最準：當時發到哪些社團都記著）">
+                    {delHistoryJobs.map((j) => (
+                      <option key={j.id} value={"h:" + j.id}>
+                        {fmt(j.at).slice(0, 16)} · {j.adTitle || "（無標題）"}「{(j.adSnippet || "").slice(0, 18)}」· {j.results.filter((r) => r.status === "posted" || r.status === "pending").length} 個社團
+                        {j.identityName ? ` · ${j.identityName}` : ""}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {ads.length > 0 && (
+                  <optgroup label="從廣告文案挑（社團自己勾）">
+                    {ads.map((a) => (
+                      <option key={a.id} value={"a:" + a.id}>
+                        {a.title}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+              {delSourceJob || delSourceAd ? (
+                <>
+                  <p className={styles.hint}>
+                    比對字串（文案第一行、去掉表情符號後的前 20 字）：
+                    <b className={styles.adSnippet}>「{delSnippetShown || "（太短，認不出來）"}」</b>
+                  </p>
+                  {delSourceJob && (
+                    <p className={styles.hint}>
+                      這批 {fmt(delSourceJob.at)} 發的，{delSourceJob.identityName ? `以「${delSourceJob.identityName}」` : "（沒記到身分）"}發到 {delSourceJob.total} 個社團。
+                      {!delSourceJob.identityName && "請在右邊自己選身分。"}
+                    </p>
+                  )}
+                  {delSourceAd && <p className={styles.hint}>用文案挑的話，外掛不知道當時發到哪些社團，下面請自己勾（預勾的是上次結果為已發佈的）。</p>}
+                </>
+              ) : (
+                <p className={styles.hint}>
+                  {delHistoryJobs.length ? "從發佈紀錄挑那一批最省事。" : "還沒有可用的發佈紀錄（較舊的紀錄沒記到文案開頭，認不出是哪一則），可以改從廣告文案挑。"}
+                </p>
+              )}
+            </section>
+            <section className={styles.card}>
+              <h2 className={styles.h2}>2. 用哪個身分刪</h2>
+              {identities.length ? (
+                <>
+                  <select className={styles.input} value={delIdentityId} onChange={(e) => setDelIdentityId(e.target.value)} disabled={delRunning}>
+                    {identities.map((i) => (
+                      <option key={i.id} value={i.id}>
+                        {i.name}（{i.kind === "page" ? "粉專" : "帳號"}）
+                      </option>
+                    ))}
+                  </select>
+                  <p className={styles.hint}>
+                    貼文是誰發的就用誰：外掛只刪作者名跟這裡<b>一模一樣</b>的貼文。
+                    {delIdentity?.fbUid ? ` 已記住它的成員代號 ${delIdentity.fbUid}，每個社團會直接開它的貼文頁。` : " 第一次會先在社團裡找一則它的貼文學成員代號。"}
+                  </p>
+                  {delIdentity?.kind === "account" && (
+                    <p className={styles.warnText}>⚠ 這是另一個 FB 帳號，刪之前請先把 Chrome 切到登入「{delIdentity.name}」的那個視窗。</p>
+                  )}
+                  <label className={styles.checkItem}>
+                    <input type="checkbox" checked={settings.delConfirmEach} disabled={delRunning} onChange={(e) => setSettings((s) => ({ ...s, delConfirmEach: e.target.checked }))} />
+                    <span>每找到一則先停下來問我（不勾＝面板倒數 3 秒自動刪，來得及按停）</span>
+                  </label>
+                  <div className={styles.impRow}>
+                    <span className={styles.hint}>每個社團之間等</span>
+                    <input
+                      className={styles.input}
+                      type="number"
+                      min={0}
+                      disabled={delRunning}
+                      value={settings.delGapSec}
+                      onChange={(e) => setSettings((s) => ({ ...s, delGapSec: Math.max(0, Number(e.target.value) || 0) }))}
+                    />
+                    <span className={styles.hint}>秒</span>
+                  </div>
+                </>
+              ) : (
+                <p className={styles.hint}>還沒有發文身分，請到「設定」新增。</p>
+              )}
+            </section>
+          </div>
+
+          <section className={styles.card}>
+            <div className={styles.between}>
+              <h2 className={styles.h2}>
+                3. 到哪些社團刪 <span className={styles.hintInline}>（已勾 {delPicked.length} / {delGroups.filter((g) => !g.missing).length}）</span>
+              </h2>
+              <div>
+                <button type="button" className={styles.btnSm} disabled={delRunning} onClick={() => setDelChecked(new Set(delDefaultIds(delGroups)))}>
+                  只勾已發佈／待審核的（{delDefaultIds(delGroups).length}）
+                </button>
+                <button type="button" className={styles.btnSm} disabled={delRunning} onClick={() => setDelChecked(new Set(delGroups.filter((g) => !g.missing).map((g) => g.id)))}>
+                  全選
+                </button>
+                <button type="button" className={styles.btnSm} disabled={delRunning} onClick={() => setDelChecked(new Set())}>
+                  全部取消
+                </button>
+              </div>
+            </div>
+            {delGroups.length ? (
+              <div className={styles.checklist}>
+                {delGroups.map((g) => (
+                  <label key={g.id} className={`${styles.checkItem} ${g.missing ? styles.disabled : ""}`} title={g.missing ? "這個社團已經不在社團清單裡（沒有網址），刪不了" : ""}>
+                    <input
+                      type="checkbox"
+                      disabled={delRunning || g.missing}
+                      checked={delChecked.has(g.id) && !g.missing}
+                      onChange={(e) =>
+                        setDelChecked((c) => {
+                          const n = new Set(c);
+                          if (e.target.checked) n.add(g.id);
+                          else n.delete(g.id);
+                          return n;
+                        })
+                      }
+                    />
+                    <span className={styles.ciName}>{g.name}</span>
+                    {g.status && badge(g.status)}
+                    {g.missing && <span className={styles.hintInline}>已不在清單</span>}
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <p className={styles.hint}>{delSourceKey ? "這個身分底下沒有社團。" : "先在上面選要刪哪一篇。"}</p>
+            )}
+          </section>
+
+          <div className={styles.actions}>
+            <button type="button" className={styles.runBig} onClick={launchDelete} disabled={delRunning || running || !licensed}>
+              🗑️ 開始刪除
+            </button>
+            {delRunning && (
+              <button type="button" className={styles.btnDanger} onClick={stopDelete}>
+                ■ 停止
+              </button>
+            )}
+            {running && <span className={styles.hintInline}>發佈還在跑，等它結束再刪。</span>}
+          </div>
+
+          {delProgress && (delProgress.results.length > 0 || delProgress.status === "running") && (
+            <section className={styles.card}>
+              <div className={styles.between}>
+                <h2 className={styles.h2}>刪除進度 {badge(delProgress.status === "running" ? "scanning" : delProgress.status === "done" ? "deleted" : delProgress.status)}</h2>
+                <span className={styles.hintInline}>
+                  已刪 {delProgress.results.reduce((s, r) => s + (r?.deleted || 0), 0)} 則 · 沒找到 {delProgress.results.filter((r) => r && r.status === "notfound").length} ·
+                  刪不了 {delProgress.results.filter((r) => r && r.status === "nodelete").length} · 不確定 {delProgress.results.filter((r) => r && r.status === "uncertain").length}
+                </span>
+              </div>
+              <div className={styles.progressBar}>
+                <div
+                  className={styles.progressFill}
+                  style={{ width: `${delProgress.total ? Math.round((delProgress.results.filter((r) => r && r.status !== "scanning" && r.status !== "found").length / delProgress.total) * 100) : 0}%` }}
+                />
+              </div>
+              {(delProgress.adTitle || delProgress.adSnippet) && (
+                <p className={styles.hint}>
+                  <b>{delProgress.adTitle}</b>
+                  {delProgress.adSnippet && <span className={styles.adSnippet}>「{delProgress.adSnippet}」</span>}
+                  {delProgress.identityName ? ` · 以 ${delProgress.identityName} 刪` : ""}
+                </p>
+              )}
+              <ul className={styles.results}>
+                {delProgress.groupIds.map((id, i) => {
+                  const r = delProgress.results[i];
+                  const name = delProgress.groupNames[id] || id;
+                  const st = r ? r.status : delProgress.status === "running" && delProgress.index === i ? "scanning" : delProgress.status === "running" ? "waiting" : "skipped";
+                  return (
+                    <li key={id} className={st === "scanning" || st === "found" ? styles.rowActive : ""}>
+                      {badge(st)}
+                      <b>{name}</b>
+                      <span className={styles.msg}>{r ? r.message : ""}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+              {delProgress.status === "running" && <p className={styles.hint}>到 Facebook 分頁看面板；它會自己換社團。「不確定」的那幾個，結束後自己去看一眼。</p>}
             </section>
           )}
         </>

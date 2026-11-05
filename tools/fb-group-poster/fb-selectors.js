@@ -40,6 +40,15 @@
       notAvailable: ["此內容目前無法顯示", "這個頁面無法使用", "此內容不存在"],
       joinGroup: ["加入社團"],
       close: ["關閉", "確定", "知道了"],
+      // 刪除貼文（2026-11-05 他要的「賣掉就把發過的文章刪掉」；在他的 Chrome 實看過）：
+      //   每則貼文右上角「⋯」的 aria-label 是「對<作者>的這則貼文採取的動作」——作者名就在裡面，靠它認「這是不是我這個身分發的」。
+      //   🔴 搜尋結果頁的「⋯」裡沒有「刪除貼文」（只有儲存／關閉留言），貼文本頁與「成員在此社團的貼文」頁（/groups/<id>/user/<uid>/）才有。
+      postActionsSuffix: ["的這則貼文採取的動作"],
+      deletePost: ["刪除貼文"],
+      // 確認框：aria-label「永久刪除貼文？」，按鈕「刪除」「取消」、右上角 X 的 aria-label「關閉」
+      deleteDialog: ["永久刪除貼文", "刪除貼文？", "刪除這則貼文"],
+      deleteConfirm: ["刪除"],
+      cancel: ["取消"],
       // 「你的社團」頁上，這些標題以下是 FB 推薦你加入的、不是你已加入的 → 抓清單時在這裡切掉
       suggested: ["建議的社團", "推薦社團", "推薦的社團", "為你推薦", "你可能有興趣", "探索社團", "探索新社團"],
       // 抓清單時要略過的「不是社團名稱」的字（按鈕、統計）
@@ -69,6 +78,12 @@
       notAvailable: ["This content isn't available", "Page not found", "isn't available right now"],
       joinGroup: ["Join group", "Join Group"],
       close: ["Close", "OK", "Got it"],
+      // 英文介面的「⋯」aria-label 是「Actions for this post」，沒有作者名 → 作者改從貼文裡的第一個人名連結認
+      postActionsSuffix: ["Actions for this post"],
+      deletePost: ["Delete post", "Delete Post", "Move to Recycle bin"],
+      deleteDialog: ["Delete post?", "Delete Post?", "Delete this post", "Move to Recycle bin?"],
+      deleteConfirm: ["Delete", "Move"],
+      cancel: ["Cancel"],
       suggested: ["Suggested for you", "Suggested groups", "Groups you may like", "Discover groups", "Recommended for you"],
       notAName: ["Join", "Joined", "View group", "Visit group", "Invite", "More", "Manage", "Settings", "Share", "Cancel"],
     },
@@ -193,5 +208,45 @@
     return [...out.values()];
   }
 
-  self.FBQ = { UI_TEXT, words, escapeRe, anyRe, exactRe, groupIdFromHref, nameFromAnchor, findSuggestedHeading, collectGroups };
+  /* ───────── 刪除貼文用的解析 ───────── */
+
+  /**
+   * 貼文右上角「⋯」鈕的 aria-label → 作者名。
+   * 中文：「對<作者>的這則貼文採取的動作」→ 作者；英文「Actions for this post」沒有作者名 → 回空字串（呼叫端另外從連結認）。
+   * 不是「⋯」鈕的 aria-label（例如「更多關於某某的選項」）→ 回 null。
+   */
+  function postAuthorFromLabel(label) {
+    const s = clean(label);
+    if (!s) return null;
+    for (const suf of UI_TEXT["zh-TW"].postActionsSuffix) {
+      if (s.endsWith(suf) && s.startsWith("對") && s.length > suf.length + 1) return s.slice(1, s.length - suf.length).trim();
+    }
+    for (const w of UI_TEXT.en.postActionsSuffix) {
+      if (s.toLowerCase() === w.toLowerCase()) return "";
+    }
+    return null;
+  }
+
+  /** 「成員在此社團的貼文」頁的連結 /groups/<社團>/user/<uid>/ → uid；不是這種連結回空字串。 */
+  function uidFromMemberHref(href) {
+    let path = "";
+    try {
+      path = new URL(String(href || ""), "https://www.facebook.com").pathname;
+    } catch {
+      return "";
+    }
+    const m = path.match(/^\/groups\/[^/?#]+\/user\/(\d{5,})\/?$/);
+    return m ? m[1] : "";
+  }
+
+  /** 相片連結的 set=pcb.<貼文編號>（同一則貼文的每張相片都帶同一個）→ 貼文編號；沒有就回空字串。拿來當「這則看過了」的鍵。 */
+  function postIdFromHtml(html) {
+    const m = String(html || "").match(/pcb\.(\d{8,})/);
+    return m ? m[1] : "";
+  }
+
+  self.FBQ = {
+    UI_TEXT, words, escapeRe, anyRe, exactRe, groupIdFromHref, nameFromAnchor, findSuggestedHeading, collectGroups,
+    postAuthorFromLabel, uidFromMemberHref, postIdFromHtml,
+  };
 })();

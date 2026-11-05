@@ -49,6 +49,16 @@
     } else if (type === "fbq:scan-clear") {
       await send("fbq:scan-clear");
       toPage({ type: "fbq:scan-state", scan: null });
+    } else if (type === "fbq:del-launch") {
+      // 刪除貼文（2026-11-05）：一批「哪篇文案、哪個身分、哪些社團」→ 背景逐一開社團刪
+      const r = await send("fbq:del-launch", { payload: ev.data.payload });
+      toPage({ type: "fbq:ack", action: "del-launch", ok: !!r.ok, error: r.error });
+    } else if (type === "fbq:del-stop") {
+      const r = await send("fbq:del-stop");
+      toPage({ type: "fbq:ack", action: "del-stop", ok: !!r.ok, error: r.error });
+    } else if (type === "fbq:del-progress-get") {
+      const r = await send("fbq:del-progress-get");
+      toPage({ type: "fbq:del-progress", progress: r.progress || null, running: !!r.running });
     }
   });
 
@@ -57,5 +67,6 @@
     if (area !== "local") return;
     if (changes["fbq:progress"]) toPage({ type: "fbq:progress", progress: changes["fbq:progress"].newValue || null });
     if (changes["fbq:scan"]) toPage({ type: "fbq:scan-state", scan: changes["fbq:scan"].newValue || null });
+    if (changes["fbq:delprogress"]) toPage({ type: "fbq:del-progress", progress: changes["fbq:delprogress"].newValue || null });
   });
 })();

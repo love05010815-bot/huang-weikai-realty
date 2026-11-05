@@ -142,6 +142,17 @@
         check("壞網址不會爆掉", FBQ.groupIdFromHref("javascript:void(0)"), "");
         check("空值不會爆掉", FBQ.groupIdFromHref(null), "");
 
+        // ④ 刪除貼文用的解析（2026-11-05 在他的 Chrome 實看的字）
+        check("「⋯」鈕 aria-label → 作者", FBQ.postAuthorFromLabel("對台中海線房仲丨房產找瑋凱丨安心不踩雷的這則貼文採取的動作"), "台中海線房仲丨房產找瑋凱丨安心不踩雷");
+        check("作者名裡有「的」也不會切錯", FBQ.postAuthorFromLabel("對∣房仲國手∣→∣台中海線∣的這則貼文採取的動作"), "∣房仲國手∣→∣台中海線∣");
+        check("英文「Actions for this post」→ 空字串（作者另外認）", FBQ.postAuthorFromLabel("Actions for this post"), "");
+        check("「更多關於某某的選項」不是「⋯」鈕", FBQ.postAuthorFromLabel("更多關於蔡雅琳的選項"), null);
+        check("空值不是「⋯」鈕", FBQ.postAuthorFromLabel(""), null);
+        check("成員連結 → uid", FBQ.uidFromMemberHref("/groups/3095647527421773/user/100064855206134/?__cft__[0]=x"), "100064855206134");
+        check("社團首頁不是成員連結", FBQ.uidFromMemberHref("/groups/3095647527421773/"), "");
+        check("相片連結 set=pcb.<貼文編號>", FBQ.postIdFromHtml('<a href="/photo/?fbid=1&amp;set=pcb.4681390838847426&amp;x=1">'), "4681390838847426");
+        check("沒有相片就沒有編號", FBQ.postIdFromHtml("<div>純文字貼文</div>"), "");
+
         lines.push("");
         lines.push(fail === 0 ? "全部通過（" + pass + " 項）" : fail + " 項失敗 / " + (pass + fail) + " 項");
         out.textContent = lines.join("\n");

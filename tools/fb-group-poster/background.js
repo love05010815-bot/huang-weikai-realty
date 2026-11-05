@@ -23,6 +23,10 @@ const DAILY_KEY = "fbq:daily"; // chrome.storage.local：{ date, count } 每日�
 const SCAN_KEY = "fbq:scan"; // chrome.storage.local：抓社團清單的狀態與結果（後台讀這個）
 const SCANJOB_KEY = "fbq:scanjob"; // chrome.storage.session：哪個分頁正在抓
 const JOINED_URL = "https://www.facebook.com/groups/joins/"; // Facebook 的「你的社團」清單
+// 刪除貼文（2026-11-05 他說「物件賣出就必須刪除發過的文章，一個一個進社團刪太花時間」）：跟發佈同一套「後台出任務、分頁裡做」
+const DELJOB_KEY = "fbq:deljob"; // chrome.storage.session：這批要刪哪篇、哪個身分、哪些社團
+const DELPROG_KEY = "fbq:delprogress"; // chrome.storage.local：後台的「刪除貼文」頁讀這個
+const UIDS_KEY = "fbq:uids"; // chrome.storage.local：{ 身分名稱: FB 成員代號 }，第一次從貼文上學到之後就記住
 
 const ADMIN_URLS = [
   "https://weikaihouse.com/admin/fb",
@@ -120,6 +124,55 @@ async function openGroup(job) {
   await saveJob(job);
 }
 
+/* ───────── 刪除貼文的任務 ───────── */
+async function getDelJob() {
+  const o = await chrome.storage.session.get(DELJOB_KEY);
+  return o[DELJOB_KEY] || null;
+}
+async function saveDelJob(job) {
+  await chrome.storage.session.set({ [DELJOB_KEY]: job });
+}
+async function setDelProgress(patch) {
+  const o = await chrome.storage.local.get(DELPROG_KEY);
+  const cur = o[DELPROG_KEY] || {};
+  const next = { ...cur, ...patch, at: Date.now() };
+  await chrome.storage.local.set({ [DELPROG_KEY]: next });
+  return next;
+}
+/** 社團網址 → 代號（數字或英文代稱都可能） */
+function groupSlug(url) {
+  const m = String(url || "").match(/\/groups\/([^/?#]+)/);
+  return m ? m[1] : "";
+}
+/**
+ * 這個社團要開哪一頁：知道成員代號就直接開「這個成員在此社團的貼文」（每一則都能刪）；
+ * 還不知道就先開社團搜尋（搜身分名稱），content.js 從找到的貼文學代號再換頁。
+ */
+function delPageUrl(job) {
+  const g = job.groups[job.index];
+  const slug = groupSlug(g.url);
+  if (job.identityUid) return "https://www.facebook.com/groups/" + slug + "/user/" + job.identityUid + "/";
+  return "https://www.facebook.com/groups/" + slug + "/search/?q=" + encodeURIComponent(job.identity.name);
+}
+async function openDelGroup(job) {
+  const url = delPageUrl(job);
+  if (job.tabId != null) {
+    try {
+      // 🔴 刪除跟發佈不一樣：分頁要留在前面。確認框關掉、貼文消失這些「畫面變化」在背景分頁看不到，會變成每一則都「不確定」
+      await chrome.tabs.update(job.tabId, { url, active: true, autoDiscardable: false });
+      return;
+    } catch {
+      /* 分頁被關了，改開新的 */
+    }
+  }
+  const tab = await chrome.tabs.create({ url, active: true });
+  try {
+    await chrome.tabs.update(tab.id, { autoDiscardable: false });
+  } catch {}
+  job.tabId = tab.id;
+  await saveDelJob(job);
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg || typeof msg !== "object") return false;
   const reply = (fn) => {
@@ -143,6 +196,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return reply(async () => {
       const p = msg.payload;
       if (!p || p.v !== 1 || !Array.isArray(p.groups) || !p.groups.length) throw new Error("資料格式不對");
+      if (await getDelJob()) return { ok: false, error: "刪除貼文還在跑，等它結束或先按「停止」再發" };
       if (fromAppPage(sender)) {
         // 同事版：沒有有效授權碼就不開分頁；event=launch 這一次一定問伺服器並記一次「發佈」（後台看使用人次）
         const lic = await license.check({ event: "launch" });
@@ -369,6 +423,152 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return reply(async () => {
       const lic = await license.setKey(msg.key);
       return { ok: true, license: lic, message: self.FBQLicense.message(lic) };
+    });
+  }
+
+  /* ───────── 刪除貼文 ───────── */
+  // 🔴 只刪「這個身分自己發的、開頭跟這篇文案一樣」的貼文（content.js 兩個條件都比對過才按）；別人的貼文連選單都不會打開。
+  //    流程：每個社團先開「這個成員在此社團的貼文」頁（/groups/<社團>/user/<成員代號>/，每一則右上角「⋯」都有「刪除貼文」）；
+  //    成員代號還不知道的第一次，先開社團搜尋頁找一則這個身分發的貼文、從作者連結學到代號再換過去（fbq:del-uid）。
+
+  if (msg.type === "fbq:del-launch") {
+    return reply(async () => {
+      const p = msg.payload;
+      if (!p || p.v !== 1 || !Array.isArray(p.groups) || !p.groups.length) throw new Error("資料格式不對");
+      if (await getJob()) return { ok: false, error: "發佈還在跑，等它結束或先按「停止」再刪" };
+      if (await getDelJob()) return { ok: false, error: "上一批刪除還在跑，先按「停止」" };
+      if (fromAppPage(sender)) {
+        const lic = await license.check({ event: "launch" });
+        if (!lic.ok) return { ok: false, error: self.FBQLicense.message(lic), license: lic };
+      }
+      const identity = { name: String((p.identity && p.identity.name) || ""), kind: p.identity && p.identity.kind === "account" ? "account" : "page" };
+      if (!identity.name) throw new Error("沒有發文身分");
+      const snippet = String((p.match && p.match.snippet) || "").trim();
+      if (!snippet) throw new Error("沒有文案開頭可以比對");
+      const uids = (await chrome.storage.local.get(UIDS_KEY))[UIDS_KEY] || {};
+      const job = {
+        v: 1,
+        identity,
+        identityUid: String(p.identityUid || uids[identity.name] || "").replace(/\D/g, ""),
+        locale: p.locale === "en" ? "en" : "zh-TW",
+        match: { snippet, query: String((p.match && p.match.query) || snippet) },
+        confirmEach: !!p.confirmEach,
+        gapSec: Math.max(0, Number(p.gapSec) || 0),
+        groups: p.groups.map((g) => ({ id: String(g.id || ""), name: String(g.name || ""), url: String(g.url || "") })),
+        index: 0,
+        tabId: null,
+        startedAt: Date.now(),
+      };
+      await saveDelJob(job);
+      await setDelProgress({
+        kind: "delete",
+        status: "running",
+        total: job.groups.length,
+        index: 0,
+        results: [],
+        identityName: identity.name,
+        identityUid: job.identityUid,
+        adTitle: String(p.adTitle || ""),
+        adSnippet: String(p.adSnippet || snippet),
+        groupNames: Object.fromEntries(job.groups.map((g) => [g.id, g.name])),
+        groupIds: job.groups.map((g) => g.id),
+      });
+      await openDelGroup(job);
+      return { ok: true };
+    });
+  }
+
+  // 社團頁 content.js → 「我這個分頁是不是來刪貼文的？」
+  if (msg.type === "fbq:del-current") {
+    return reply(async () => {
+      const job = await getDelJob();
+      if (!job) return { ok: true, job: null };
+      if (sender.tab && job.tabId != null && sender.tab.id !== job.tabId) return { ok: true, job: null };
+      return {
+        ok: true,
+        job: {
+          identity: job.identity,
+          identityUid: job.identityUid,
+          locale: job.locale,
+          match: job.match,
+          confirmEach: !!job.confirmEach,
+          gapSec: Number(job.gapSec) || 0,
+          index: job.index,
+          total: job.groups.length,
+          group: job.groups[job.index] || null,
+        },
+      };
+    });
+  }
+
+  // content.js 在搜尋頁學到這個身分的成員代號 → 記住（這批與以後都用）
+  if (msg.type === "fbq:del-uid") {
+    return reply(async () => {
+      const uid = String(msg.uid || "").replace(/\D/g, "");
+      if (!uid) return { ok: false, error: "沒有代號" };
+      const job = await getDelJob();
+      if (job) {
+        job.identityUid = uid;
+        await saveDelJob(job);
+        const uids = (await chrome.storage.local.get(UIDS_KEY))[UIDS_KEY] || {};
+        uids[job.identity.name] = uid;
+        await chrome.storage.local.set({ [UIDS_KEY]: uids });
+        await setDelProgress({ identityUid: uid });
+      }
+      return { ok: true };
+    });
+  }
+
+  if (msg.type === "fbq:del-report") {
+    return reply(async () => {
+      const job = await getDelJob();
+      if (!job) return { ok: true };
+      const results = (await chrome.storage.local.get(DELPROG_KEY))[DELPROG_KEY]?.results || [];
+      const g = job.groups[job.index];
+      results[job.index] = { groupId: g.id, groupName: g.name, status: msg.status || "scanning", message: msg.message || "", deleted: Number(msg.deleted) || 0, at: new Date().toISOString() };
+      await setDelProgress({ results, index: job.index });
+      return { ok: true };
+    });
+  }
+
+  // 這個社團做完（刪了 N 則／沒找到／跳過）→ 記結果、換下一個
+  if (msg.type === "fbq:del-next") {
+    return reply(async () => {
+      const job = await getDelJob();
+      if (!job) return { ok: true, done: true };
+      const g = job.groups[job.index];
+      const prog = (await chrome.storage.local.get(DELPROG_KEY))[DELPROG_KEY] || {};
+      const results = prog.results || [];
+      const deleted = Number(msg.deleted) || 0;
+      const status = String(msg.status || (deleted > 0 ? "deleted" : "notfound"));
+      results[job.index] = { groupId: g.id, groupName: g.name, status, message: String(msg.message || ""), deleted, at: new Date().toISOString() };
+      job.index += 1;
+      if (job.index >= job.groups.length) {
+        await setDelProgress({ results, status: "done", index: job.groups.length, finishedAt: Date.now() });
+        await chrome.storage.session.remove(DELJOB_KEY);
+        return { ok: true, done: true };
+      }
+      await saveDelJob(job);
+      await setDelProgress({ results, index: job.index });
+      await openDelGroup(job);
+      return { ok: true, done: false, next: job.groups[job.index].name };
+    });
+  }
+
+  if (msg.type === "fbq:del-stop") {
+    return reply(async () => {
+      const job = await getDelJob();
+      await setDelProgress({ status: "stopped", finishedAt: Date.now() });
+      await chrome.storage.session.remove(DELJOB_KEY);
+      return { ok: true, hadJob: !!job };
+    });
+  }
+
+  if (msg.type === "fbq:del-progress-get") {
+    return reply(async () => {
+      const prog = (await chrome.storage.local.get(DELPROG_KEY))[DELPROG_KEY] || null;
+      const job = await getDelJob();
+      return { ok: true, progress: prog, running: !!job };
     });
   }
 

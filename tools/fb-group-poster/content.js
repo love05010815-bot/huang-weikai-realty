@@ -1325,8 +1325,341 @@
     ]);
   }
 
+  /* ───────── 刪除貼文（2026-11-05 他說「物件賣出就必須刪除發過的文章，粉專要進社團一個一個刪太花時間」）───────── */
   /**
-   * 這個分頁是來抓社團清單的，還是來發文的？
+   * 後台「🗑️ 刪除貼文」→ 背景逐一開社團 → 這支在社團頁裡找「這個身分發的、開頭跟那篇文案一樣」的貼文，按「⋯」→「刪除貼文」→「刪除」。
+   *
+   * 在他的 Chrome 實看過（2026-11-05）：
+   *   - 每則貼文右上角「⋯」的 aria-label 是「對<作者>的這則貼文採取的動作」→ 作者名就在裡面，拿它認「是不是我這個身分發的」。
+   *   - 🔴 社團搜尋結果頁的「⋯」裡**沒有**「刪除貼文」（只有儲存／關閉留言）；「這個成員在此社團的貼文」頁
+   *     （/groups/<社團>/user/<成員代號>/）每一則都有「編輯貼文／刪除貼文」→ 刪除在那一頁做。
+   *   - 成員代號只能從一則這個身分發的貼文上的作者連結學到（粉專的「專頁編號」不是這個代號）→ 第一次先開搜尋頁找一則、學到就記住。
+   *   - 確認框 aria-label「永久刪除貼文？」，按鈕「刪除」「取消」。
+   *   - 貼文容器不是 [role=article]（搜尋頁與成員頁都不是）：從「⋯」鈕往上爬到「再上去會包到第二則」為止。
+   *   - 捲遠的貼文會被 FB 清空（虛擬化），所以一邊捲一邊看，不能先捲到底再一次掃。
+   * 🔴 兩個條件都要成立才會碰：① 作者＝這個身分 ② 貼文文字含文案開頭那幾個字（normText 後比，表情符號不算）。
+   *    別人的貼文連選單都不會打開；同一篇被發了兩次（補發造成的重複）會一起刪。
+   * 🔴 分頁要留在前景：確認框關掉、貼文消失這種「畫面變化」在背景分頁看不到（跟發佈那邊同一個坑），背景程式開分頁時會把它帶到前面。
+   */
+  function postActionButtons(root) {
+    const out = [];
+    for (const el of (root || document).querySelectorAll('[role="button"][aria-label]')) {
+      const author = FBQ.postAuthorFromLabel(el.getAttribute("aria-label"));
+      if (author === null) continue;
+      out.push({ btn: el, author });
+    }
+    return out;
+  }
+  const sameName = (a, b) => textOf({ textContent: a }).toLowerCase() === textOf({ textContent: b }).toLowerCase();
+  /** 從「⋯」鈕往上找這一則貼文的容器：往上爬，直到再上一層會包到第二則貼文（或整個 feed／視窗）為止 */
+  function postContainer(btn) {
+    let el = btn;
+    while (el.parentElement && el.parentElement !== document.body) {
+      const p = el.parentElement;
+      const role = p.getAttribute("role") || "";
+      if (role === "feed" || role === "main" || role === "dialog") break;
+      if (postActionButtons(p).length !== 1) break;
+      if ((p.textContent || "").length > 8000) break;
+      el = p;
+    }
+    return el;
+  }
+  /** 貼文容器裡「作者」那條連結（/groups/<社團>/user/<代號>/）→ { name, uid }；英文介面「⋯」上沒有作者名，靠這個認 */
+  function postAuthorLink(c) {
+    for (const a of c.querySelectorAll("a[href]")) {
+      const uid = FBQ.uidFromMemberHref(a.getAttribute("href") || "");
+      if (!uid) continue;
+      const name = textOf(a);
+      if (name) return { name, uid };
+    }
+    return null;
+  }
+  const pressEsc = () => document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  async function waitFor(fn, ms) {
+    const deadline = Date.now() + ms;
+    while (Date.now() < deadline) {
+      const el = fn();
+      if (el) return el;
+      await sleep(300);
+    }
+    return null;
+  }
+
+  /**
+   * 刪掉一則：「⋯」→「刪除貼文」→ 確認框的「刪除」。回傳：
+   *   deleted（確認框關掉了）／uncertain（按了「刪除」但 10 秒內確認框還在）／nomenu（選單裡沒有「刪除貼文」＝沒權限）／
+   *   nodialog（沒跳確認框）／nobutton（確認框裡找不到「刪除」鈕）
+   * 🔴 「刪除」鈕只認文字整個就是「刪除／Delete」且不是「取消」；右上角 X（aria-label「關閉」）不碰。
+   */
+  async function deleteOnePost(btn, L) {
+    const before = new Set(document.querySelectorAll('[role="dialog"], [role="alertdialog"]'));
+    btn.scrollIntoView({ block: "center" });
+    await sleep(400);
+    btn.click();
+    const delRe = FBQ.exactRe(FBQ.words(L, "deletePost"));
+    const item = await waitFor(() => [...document.querySelectorAll('[role="menuitem"]')].find((i) => isVisible(i) && delRe.test(textOf(i))), 6000);
+    if (!item) {
+      pressEsc();
+      return "nomenu";
+    }
+    item.click();
+    const dlgRe = FBQ.anyRe(FBQ.words(L, "deleteDialog"));
+    const dlg = await waitFor(
+      () =>
+        [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')]
+          .reverse()
+          .find((d) => !before.has(d) && isVisible(d) && (dlgRe.test(d.getAttribute("aria-label") || "") || dlgRe.test((d.innerText || "").slice(0, 400)))),
+      6000,
+    );
+    if (!dlg) {
+      pressEsc();
+      return "nodialog";
+    }
+    const okRe = FBQ.exactRe(FBQ.words(L, "deleteConfirm"));
+    const cancelRe = FBQ.exactRe(FBQ.words(L, "cancel"));
+    const okBtn = [...dlg.querySelectorAll('[role="button"], button')].find((b) => isVisible(b) && okRe.test(textOf(b)) && !cancelRe.test(textOf(b)));
+    if (!okBtn) {
+      closeBox(dlg, L);
+      return "nobutton";
+    }
+    okBtn.click();
+    const gone = await waitFor(() => (!document.contains(dlg) || !isVisible(dlg) ? true : null), 10000);
+    await sleep(1200);
+    return gone ? "deleted" : "uncertain";
+  }
+
+  async function runDelete(job) {
+    const L = job.locale || "zh-TW";
+    const g = job.group || {};
+    const idName = (job.identity && job.identity.name) || "";
+    const snip = normText(job.match.snippet).slice(0, 20);
+    const pos = "第 " + (job.index + 1) + " / " + job.total + " 個";
+    setTitle("FB 社團廣告助手（刪除貼文 " + pos + "）");
+    log("社團：" + (g.name || g.url), "fbq-strong");
+    log("要刪：「" + idName + "」發的、開頭是「" + snip + "」的貼文", "");
+    const report = (status, message, deleted) => send("fbq:del-report", { status, message, deleted: deleted || 0 });
+
+    let advancing = false;
+    let stopped = false;
+    async function finishGroup(status, message, deleted) {
+      if (advancing) return;
+      advancing = true;
+      const gap = Number(job.gapSec) || 0;
+      if (gap > 0 && job.index + 1 < job.total) {
+        log("等 " + gap + " 秒再換下一個社團。", "");
+        if ((await countdown(gap)) === "stop") return onStop();
+      }
+      buttons([{ label: "換下一個社團中…", onClick: () => {} }]);
+      const r = await send("fbq:del-next", { status, message, deleted: deleted || 0 });
+      if (r.done) {
+        setTitle("FB 社團廣告助手（刪除完成）");
+        log("這一批社團都處理完了 🎉 回「FB社團廣告助手」頁的「刪除貼文」看整批結果。", "fbq-ok");
+        buttons([{ label: "關閉面板", onClick: () => panel.remove() }]);
+      }
+    }
+    async function onSkip() {
+      stopped = true;
+      await finishGroup("skipped", "你選擇跳過", 0);
+    }
+    async function onStop() {
+      stopped = true;
+      advancing = true;
+      await send("fbq:del-stop");
+      log("已停止。你可以關掉這個分頁。", "fbq-strong");
+      buttons([{ label: "關閉面板", onClick: () => panel.remove() }]);
+    }
+    const controls = () =>
+      buttons([
+        { label: "跳過這個社團", onClick: onSkip },
+        { label: "停止全部", danger: true, onClick: onStop },
+      ]);
+    controls();
+
+    if (/\/login|\/checkpoint/.test(location.pathname) || (document.querySelector('input[name="pass"]') || {}).offsetParent) {
+      log("看起來還沒登入 Facebook。請先登入，再回後台重新開始。", "fbq-bad");
+      await report("failed", "尚未登入");
+      return;
+    }
+    await sleep(1500);
+    const bodyText = (document.body.innerText || "").slice(0, 3000);
+    if (FBQ.anyRe(FBQ.words(L, "notAvailable")).test(bodyText)) {
+      log("這一頁打不開（社團不存在、你沒有權限、或這個身分已不在社團裡）。", "fbq-bad");
+      await report("notfound", "頁面無法顯示（社團不存在或身分已不在社團裡）");
+      return finishGroup("notfound", "頁面無法顯示（社團不存在或身分已不在社團裡）", 0);
+    }
+    if (document.visibilityState === "hidden") log("⚠ 這個分頁在背景。刪除要看畫面上的確認框，請把這個分頁留在前面。", "fbq-bad");
+
+    const isMemberPage = /\/groups\/[^/]+\/user\/\d+/.test(location.pathname);
+    const isSearchPage = /\/groups\/[^/]+\/search/.test(location.pathname);
+
+    try {
+      /* ── A. 還不知道這個身分的成員代號：在搜尋頁找一則它發的貼文、從作者連結學 ── */
+      if (!isMemberPage) {
+        const stageKey = "fbq-del-stage-" + (g.id || "");
+        const stage = isSearchPage ? sessionStorage.getItem(stageKey) || "1" : "1";
+        log("還不知道「" + idName + "」在 Facebook 的成員代號，先在這個社團找一則它發的貼文…", "");
+        await report("scanning", "在搜尋頁找這個身分的貼文（學成員代號）");
+        let learned = null;
+        let rounds = 0;
+        await waitFor(() => (postActionButtons().length ? true : null), 15000);
+        while (!stopped && !learned && rounds < 8) {
+          for (const { btn, author } of postActionButtons()) {
+            const c = postContainer(btn);
+            const link = postAuthorLink(c);
+            const who = author || (link && link.name) || "";
+            if (!sameName(who, idName)) continue;
+            if (link && link.uid) {
+              learned = link.uid;
+              break;
+            }
+          }
+          if (learned) break;
+          window.scrollBy(0, Math.max(600, Math.round(window.innerHeight * 0.8)));
+          await sleep(1500);
+          rounds++;
+        }
+        if (stopped) return;
+        if (learned) {
+          await send("fbq:del-uid", { uid: learned });
+          const slug = (location.pathname.match(/\/groups\/([^/?#]+)/) || [])[1] || "";
+          log("學到成員代號 " + learned + "，換到「這個成員在此社團的貼文」頁逐一看…", "fbq-ok");
+          sessionStorage.removeItem(stageKey);
+          location.href = location.origin + "/groups/" + slug + "/user/" + learned + "/"; // 沿用目前網域（www／web.facebook.com 都有）
+          return;
+        }
+        if (isSearchPage && stage === "1" && job.match.query && job.match.query !== idName) {
+          // 搜身分名稱找不到 → 改搜文案開頭再找一次
+          sessionStorage.setItem(stageKey, "2");
+          log("搜身分名稱沒看到它的貼文，改搜文案開頭再找一次…", "");
+          const u = new URL(location.href);
+          u.searchParams.set("q", job.match.query);
+          location.href = u.toString();
+          return;
+        }
+        sessionStorage.removeItem(stageKey);
+        log("在這個社團找不到「" + idName + "」發的貼文（可能還在審核、已經刪掉、或 Facebook 搜尋沒列出來）。", "fbq-bad");
+        await report("notfound", "找不到這個身分發的貼文（搜尋頁沒看到）");
+        return finishGroup("notfound", "找不到這個身分發的貼文（還在審核、已刪、或搜尋沒列出）", 0);
+      }
+
+      /* ── B. 成員頁：一邊往下捲一邊看，作者＝身分、文字含文案開頭的就刪 ── */
+      await report("scanning", "逐一看這個身分在此社團的貼文");
+      await waitFor(() => (postActionButtons().length ? true : null), 15000);
+      // 「這則看過了」：先認元素本身（WeakSet），有相片的再認貼文編號（pcb.<編號>，同一則被 FB 重畫成新元素也認得）。
+      // 🔴 不能拿「文字前 N 字」當鍵：同一篇補發造成的兩則重複貼文（沒相片時）文字一模一樣，會被當成同一則而漏刪。
+      const seen = new Set();
+      const seenEls = new WeakSet();
+      let scanned = 0;
+      let deleted = 0;
+      let uncertain = 0;
+      let noperm = 0;
+      let idle = 0;
+      const deadline = Date.now() + 180000; // 一個社團最多看 3 分鐘
+      while (!stopped && Date.now() < deadline && idle < 5 && scanned < 80) {
+        let fresh = 0;
+        let didDelete = false;
+        for (const { btn, author } of postActionButtons()) {
+          if (stopped) break;
+          if (!document.contains(btn)) continue;
+          const c = postContainer(btn);
+          if (seenEls.has(c)) continue;
+          const pid = FBQ.postIdFromHtml(c.innerHTML);
+          if (pid && seen.has(pid)) continue;
+          seenEls.add(c);
+          if (pid) seen.add(pid);
+          fresh++;
+          scanned++;
+          const link = postAuthorLink(c);
+          const who = author || (link && link.name) || "";
+          if (!sameName(who, idName)) continue;
+          const text = normText(c.textContent);
+          if (!text.includes(snip)) continue;
+          // 命中：作者對、開頭也對
+          const peek = text.slice(Math.max(0, text.indexOf(snip)), text.indexOf(snip) + 40);
+          log("找到一則：「" + peek + "…」", "fbq-strong");
+          let go = "go";
+          if (job.confirmEach) {
+            await report("found", "找到一則，等你按「刪這則」");
+            go = await new Promise((resolve) =>
+              buttons([
+                { label: "🗑️ 刪這則", primary: true, onClick: () => resolve("go") },
+                { label: "跳過這則", onClick: () => resolve("skip") },
+                { label: "停止全部", danger: true, onClick: () => resolve("stop") },
+              ]),
+            );
+          } else {
+            go = await delCountdown(3);
+          }
+          if (go === "stop") return onStop();
+          if (go === "skip") {
+            log("這則跳過不刪。", "");
+            controls();
+            continue;
+          }
+          controls();
+          const r = await deleteOnePost(btn, L);
+          if (r === "deleted") {
+            deleted++;
+            log("已刪除 ✓", "fbq-ok");
+          } else if (r === "uncertain") {
+            uncertain++;
+            log("按了「刪除」但 10 秒內沒看到確認框關掉，不確定有沒有刪掉；等一下自己看一眼。", "fbq-bad");
+          } else if (r === "nomenu") {
+            noperm++;
+            log("這則的選單裡沒有「刪除貼文」（不是這個登入能刪的，或 Facebook 改版）。", "fbq-bad");
+          } else {
+            noperm++;
+            log("沒跳出刪除確認框（" + r + "），這則沒刪。", "fbq-bad");
+          }
+          await report("scanning", "已刪 " + deleted + " 則" + (uncertain ? "、不確定 " + uncertain : "") + (noperm ? "、刪不了 " + noperm : ""), deleted);
+          didDelete = r === "deleted" || r === "uncertain";
+          if (didDelete) break; // 畫面變了，重新收集一次再繼續
+        }
+        if (stopped) return;
+        if (fresh) {
+          idle = 0;
+          log("看了 " + scanned + " 則，往下捲…", "");
+        } else idle++;
+        if (!didDelete) window.scrollBy(0, Math.max(600, Math.round(window.innerHeight * 0.8)));
+        await sleep(didDelete ? 800 : 1500);
+      }
+      if (stopped) return;
+      const msg =
+        (deleted ? "已刪 " + deleted + " 則" : "沒找到要刪的貼文") +
+        (uncertain ? "；" + uncertain + " 則按了刪除但沒看到確認（請自己看）" : "") +
+        (noperm ? "；" + noperm + " 則刪不了（選單沒有刪除）" : "") +
+        "（看了 " + scanned + " 則" + (scanned >= 80 ? "，到上限沒再往下看" : "") + "）";
+      log(msg, deleted ? "fbq-ok" : "fbq-bad");
+      const status = deleted ? "deleted" : uncertain ? "uncertain" : noperm ? "nodelete" : "notfound";
+      return finishGroup(status, msg, deleted);
+    } catch (e) {
+      log("發生問題：" + (e && e.message ? e.message : e), "fbq-bad");
+      await report("failed", String(e && e.message ? e.message : e));
+      return finishGroup("failed", String(e && e.message ? e.message : e), 0);
+    }
+  }
+  /** 刪之前倒數幾秒讓他來得及按停（自動模式）；回 go／skip／stop */
+  async function delCountdown(sec) {
+    let left = Math.max(0, Math.round(sec));
+    let choice = "";
+    const draw = () =>
+      buttons([
+        { label: "🗑️ 立刻刪（" + left + " 秒後自動刪）", primary: true, onClick: () => (choice = "go") },
+        { label: "跳過這則", onClick: () => (choice = "skip") },
+        { label: "停止全部", danger: true, onClick: () => (choice = "stop") },
+      ]);
+    draw();
+    while (left > 0 && !choice) {
+      await sleep(1000);
+      if (choice) break;
+      left -= 1;
+      if (left > 0) draw();
+    }
+    return choice || "go";
+  }
+
+  /**
+   * 這個分頁是來抓社團清單的、來刪貼文的，還是來發文的？
    * 背景是「先開分頁、再存任務」，理論上分頁載完時任務已經在了；但 FB 偶爾載很快，所以重試幾次。
    */
   async function boot() {
@@ -1335,6 +1668,13 @@
       if (s && s.ok && s.scanning) return runScan(s.locale || "zh-TW");
       if (!s || !s.ok) break;
       if (!/\/groups\/joins/.test(location.pathname)) break; // 不是「你的社團」頁就不用等
+      await sleep(700);
+    }
+    for (let i = 0; i < 3; i++) {
+      const d = await send("fbq:del-current");
+      if (d && d.ok && d.job) return runDelete(d.job);
+      if (!d || !d.ok) break;
+      if (!/\/groups\/[^/]+\/(user|search)\b/.test(location.pathname)) break; // 不是成員頁／搜尋頁就不是來刪的
       await sleep(700);
     }
     return run();

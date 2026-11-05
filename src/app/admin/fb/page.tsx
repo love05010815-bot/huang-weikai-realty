@@ -37,7 +37,7 @@ export default async function FbPage() {
         <p className={styles.lede}>
           寫一版廣告、勾好要發的 Facebook 社團，交給你 Chrome 裡的「FB 社團廣告助手」外掛，用你的<b>粉專身分</b>
           逐一打開社團、填好文案和圖片、<b>替你按「發佈」</b>、隔幾秒換下一個；想自己按，到「⚙️ 設定」把「自動按發佈」關掉。
-          內容只存在這台電腦、<b>不會上傳</b>。
+          物件賣掉了，到「🗑️ 刪除貼文」選那一批，外掛會逐一進社團把那篇廣告刪掉。內容只存在這台電腦、<b>不會上傳</b>。
         </p>
       </header>
       <FbAdminManager />
