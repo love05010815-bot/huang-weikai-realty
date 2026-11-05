@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
   "name": "591 刊登助手",
-  "version": "1.6.11",
+  "version": "1.6.12",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAw46aaW8RWOyXg3FTtJfrELAtHbLhpHM7iqqfPZqbd1df/X35kSRW97lCFzfEkPndSslqVZf6g830ElyyO9fk9vOsfP7J+/E30Vv8+TwigoqmGuTGCv1D2ZBSU5nqZ2dhi/oUtYcZCMwr0nwPDYetA5xBGjAgQcu2eB85khUQ300KfSEyItAGtfXSdh5TLMY+4o3xd5QYebrRZQFVITHVFj4xsOzrPOurJq6ohbq7NMaBe+aJ2BN22uXHrMUF4/KZ8bq2M47JT1m7d2kw3koBzxp/EySyfdjQYSCTxiieL/ojWGzKhDeTI/LPpHRbRfXmi3IicllSwCobGGW3HqgCuQIDAQAB",
   "description": "貼上愛屋型錄或物件文字，一鍵把物件資料、文案、照片填進 591 與樂屋網的出售／出租刊登表單。保存與付款仍由你自己按。",
   "permissions": ["storage"],
-  "host_permissions": ["https://*.houseol.com.tw/*", "https://*.591.com.tw/*", "https://member.rakuya.com.tw/*"],
+  "host_permissions": ["https://*.houseol.com.tw/*", "https://pacblob.blob.core.windows.net/*", "https://*.591.com.tw/*", "https://member.rakuya.com.tw/*"],
   "action": { "default_title": "591／樂屋 刊登助手：貼資料 → 上架" },
   "background": { "service_worker": "background.js" },
   "content_scripts": [
