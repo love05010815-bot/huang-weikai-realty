@@ -15,6 +15,22 @@
   window.__fbqNetProbe = true;
 
   const WATCH = /upload|photo|attachment|media/i;
+  // 刪除貼文（2026-11-05）：分頁在背景時 FB 不更新畫面，看不到確認框關掉；改看 FB 的 GraphQL 請求——
+  // 刪除是 POST /api/graphql/，body 裡 fb_api_req_friendly_name=…Delete…Mutation。只記「名字像刪除」的那幾筆，回應只看有沒有 errors。
+  const GQL = /\/api\/graphql\/?$/i;
+  const DELETE_OP = /delet|remov/i;
+  const opOf = (body) => {
+    try {
+      if (!body) return "";
+      if (typeof body === "string") {
+        const m = body.match(/(?:^|&)fb_api_req_friendly_name=([^&]*)/);
+        return m ? decodeURIComponent(m[1]) : "";
+      }
+      if (body instanceof URLSearchParams) return body.get("fb_api_req_friendly_name") || "";
+      if (body instanceof FormData) return String(body.get("fb_api_req_friendly_name") || "");
+    } catch {}
+    return "";
+  };
   const pathOf = (url) => {
     try {
       const u = new URL(String(url), location.href);
@@ -42,7 +58,9 @@
     if (!t) return { empty: true };
     try {
       const j = JSON.parse(t);
-      return { error: j.error, summary: j.errorSummary, desc: j.errorDescription, payload: !!j.payload };
+      // GraphQL 回應：{ data, errors:[{message|summary}] }——只留第一條錯誤的字
+      const ge = Array.isArray(j.errors) && j.errors.length ? String(j.errors[0].summary || j.errors[0].message || "error").slice(0, 120) : undefined;
+      return { error: j.error, summary: j.errorSummary, desc: j.errorDescription, payload: !!j.payload, data: !!j.data, gqlError: ge };
     } catch {
       return { raw: t.slice(0, 120) };
     }
@@ -53,9 +71,14 @@
     } catch {}
   };
   // content.js 載入後會 ping 一下，確認探針真的裝上了（沒按 ↻ 的舊分頁就沒有）
+  // fbq-net-watch：接下來 ms 毫秒內「所有」GraphQL 請求的名字都記（刪除那一下用：萬一 FB 的刪除叫別的名字，面板印出來就知道要補哪個字）
+  let watchUntil = 0;
   window.addEventListener("message", (e) => {
-    if (e.source === window && e.data && e.data.source === "fbq-net-ping") report({ kind: "hello" });
+    if (e.source !== window || !e.data) return;
+    if (e.data.source === "fbq-net-ping") report({ kind: "hello" });
+    if (e.data.source === "fbq-net-watch") watchUntil = Date.now() + Math.min(Number(e.data.ms) || 0, 30000);
   });
+  const wantOp = (op) => !!op && (DELETE_OP.test(op) || Date.now() < watchUntil);
 
   // XMLHttpRequest
   const XO = XMLHttpRequest.prototype.open;
@@ -67,7 +90,9 @@
   XMLHttpRequest.prototype.send = function (body) {
     const info = this.__fbq;
     const files = filesIn(body);
-    if (info && (WATCH.test(info.url) || files.length)) {
+    const op = info && GQL.test(info.url) ? opOf(body) : "";
+    if (wantOp(op)) info.op = op;
+    if (info && (WATCH.test(info.url) || files.length || info.op)) {
       const t0 = Date.now();
       const done = (kind) => {
         let text = "";
@@ -93,9 +118,11 @@
     const url = pathOf(typeof input === "string" ? input : input && input.url);
     const body = init && init.body;
     const files = filesIn(body);
-    if (!WATCH.test(url) && !files.length) return F.apply(this, arguments);
+    const op0 = GQL.test(url) ? opOf(body) : "";
+    const op = wantOp(op0) ? op0 : "";
+    if (!WATCH.test(url) && !files.length && !op) return F.apply(this, arguments);
     const t0 = Date.now();
-    const base = { method: String((init && init.method) || (input && input.method) || "GET"), url, t0, files };
+    const base = { method: String((init && init.method) || (input && input.method) || "GET"), url, t0, files, op: op || undefined };
     return F.apply(this, arguments).then(
       (res) => {
         try {

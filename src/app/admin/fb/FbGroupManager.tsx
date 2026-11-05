@@ -982,7 +982,7 @@ export default function FbGroupManager({
     const ack = await askExt("del-launch", { type: "fbq:del-launch", payload });
     if (ack.ok) {
       setDelRunning(true);
-      showToast("已交給外掛，正在開第一個社團…那個分頁請留在前面", "ok");
+      showToast("已交給外掛，正在開第一個社團…可以縮小或切走，別關掉那個分頁", "ok");
     } else {
       showToast(ack.error || "外掛沒回應。到 chrome://extensions 按那張卡片的 ↻（刪除貼文要 1.6.0 以上），回來重新整理這頁再試", "bad");
     }
@@ -1705,7 +1705,7 @@ export default function FbGroupManager({
               </li>
               <li>第一次會先在社團裡找一則這個身分的貼文、學到它在 Facebook 的成員代號，之後每個社團直接開「這個成員的貼文」頁，比較快。</li>
               <li>
-                <b>那個 Facebook 分頁請留在前面</b>（刪除要看確認框有沒有關掉，在背景看不到）。還在審核中的貼文不在牆上，刪不到，紀錄會寫「沒找到」。
+                那個 Facebook 分頁可以縮小或切走（外掛改看 Facebook 回的刪除請求來確認；沒看到回應的會標「背景未確認」，結束後抽查）。別關掉它、電腦別睡著。還在審核中的貼文不在牆上，刪不到，紀錄會寫「沒找到」。
               </li>
               <li>刪掉的貼文連同留言和心情一起消失、<b>無法復原</b>。開始前先看一眼下面的比對字串和社團。</li>
             </ul>
@@ -1908,7 +1908,7 @@ export default function FbGroupManager({
                   );
                 })}
               </ul>
-              {delProgress.status === "running" && <p className={styles.hint}>到 Facebook 分頁看面板；它會自己換社團。「不確定」的那幾個，結束後自己去看一眼。</p>}
+              {delProgress.status === "running" && <p className={styles.hint}>它會自己換社團，分頁縮小或切走也照跑。「不確定」和「背景未確認」的那幾個，結束後自己去看一眼。</p>}
             </section>
           )}
         </>

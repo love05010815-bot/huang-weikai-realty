@@ -158,8 +158,8 @@ async function openDelGroup(job) {
   const url = delPageUrl(job);
   if (job.tabId != null) {
     try {
-      // 🔴 刪除跟發佈不一樣：分頁要留在前面。確認框關掉、貼文消失這些「畫面變化」在背景分頁看不到，會變成每一則都「不確定」
-      await chrome.tabs.update(job.tabId, { url, active: true, autoDiscardable: false });
+      // 換社團不搶到最前面（跟發佈一樣）：他 2026-11-05 說要縮小視窗／切走也能刪——確認改看網路探針（content.js deleteOnePost），不靠畫面
+      await chrome.tabs.update(job.tabId, { url, autoDiscardable: false });
       return;
     } catch {
       /* 分頁被關了，改開新的 */

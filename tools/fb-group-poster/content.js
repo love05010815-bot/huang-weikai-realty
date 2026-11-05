@@ -1422,11 +1422,44 @@
       closeBox(dlg, L);
       return "nobutton";
     }
+    const clickAt = Date.now();
+    try {
+      window.postMessage({ source: "fbq-net-watch", ms: 12000 }, location.origin); // 這 12 秒內所有 GraphQL 請求名字都記，認不出刪除時印給他看
+    } catch {}
     okBtn.click();
-    const gone = await waitFor(() => (!document.contains(dlg) || !isVisible(dlg) ? true : null), 10000);
+    // 兩個訊號任一個都算刪了：① 確認框關掉（前景才看得到）② 網路探針看到 FB 的刪除請求（…Delete…Mutation）回 200 且沒有 errors
+    //    （分頁縮小／切走時 FB 不更新畫面，①永遠等不到——他 2026-11-05 真跑 99 個社團時縮小視窗就整批「不確定」；②在背景照樣看得到）。
+    //    探針看到刪除請求回錯誤＝沒刪成（failed）。兩個都沒看到：背景→比照發佈「當作已刪、背景未確認」；前景→不確定。
+    const DEL_OP = /delet|remov/i;
+    const netDelete = () => netLog.find((r) => r.op && DEL_OP.test(r.op) && (r.t0 || 0) >= clickAt - 50 && (r.kind === "load" || r.kind === "error" || r.kind === "timeout" || r.kind === "abort"));
+    const opsSeen = () => [...new Set(netLog.filter((r) => r.op && (r.t0 || 0) >= clickAt - 50).map((r) => r.op))].slice(0, 6).join("、");
+    const outcome = await waitFor(() => {
+      const r = netDelete();
+      if (r) return r.kind === "load" && r.status >= 200 && r.status < 300 && !(r.fb && (r.fb.gqlError || r.fb.error)) ? "net-ok" : "net-fail";
+      if (!document.contains(dlg) || !isVisible(dlg)) return "gone";
+      return null;
+    }, 10000);
     await sleep(1200);
-    return gone ? "deleted" : "uncertain";
+    if (outcome === "net-ok" || outcome === "gone") {
+      const r = netDelete();
+      lastDeleteNote = r ? "（FB 回應 " + r.op + " " + r.status + "）" : probeSeen ? "（沒看到刪除請求，但確認框關了）" : "";
+      return "deleted";
+    }
+    if (outcome === "net-fail") {
+      const r = netDelete();
+      lastDeleteNote = "（FB 回 " + (r.fb && (r.fb.gqlError || r.fb.error) ? r.fb.gqlError || r.fb.error : r.kind + " " + (r.status || "")) + "）";
+      return "failed";
+    }
+    const seen = opsSeen();
+    const seenNote = seen ? "；這段看到的請求：" + seen : "";
+    if (document.visibilityState === "hidden") {
+      lastDeleteNote = (probeSeen ? "（分頁在背景、探針沒看到名字像刪除的請求回應，當作已刪，事後抽查" : "（分頁在背景、探針沒接上，當作已刪，事後抽查") + seenNote + "）";
+      return "deleted-unconfirmed";
+    }
+    lastDeleteNote = seen ? "（" + seenNote.slice(1) + "）" : "";
+    return "uncertain";
   }
+  let lastDeleteNote = ""; // deleteOnePost 附帶給面板／紀錄的一句話（探針看到什麼）
 
   async function runDelete(job) {
     const L = job.locale || "zh-TW";
@@ -1488,7 +1521,7 @@
       await report("notfound", "頁面無法顯示（社團不存在或身分已不在社團裡）");
       return finishGroup("notfound", "頁面無法顯示（社團不存在或身分已不在社團裡）", 0);
     }
-    if (document.visibilityState === "hidden") log("⚠ 這個分頁在背景。刪除要看畫面上的確認框，請把這個分頁留在前面。", "fbq-bad");
+    if (document.visibilityState === "hidden") log("這個分頁在背景：照樣刪，靠 Facebook 回的刪除請求確認（探針沒接上就當作已刪、事後抽查）。", "");
 
     const isMemberPage = /\/groups\/[^/]+\/user\/\d+/.test(location.pathname);
     const isSearchPage = /\/groups\/[^/]+\/search/.test(location.pathname);
@@ -1552,6 +1585,7 @@
       const seenEls = new WeakSet();
       let scanned = 0;
       let deleted = 0;
+      let unconfirmed = 0; // 背景裡按了刪除、沒看到任何回應，當作已刪的那幾則
       let uncertain = 0;
       let noperm = 0;
       let idle = 0;
@@ -1576,7 +1610,8 @@
           const text = normText(c.textContent);
           if (!text.includes(snip)) continue;
           // 命中：作者對、開頭也對
-          const peek = text.slice(Math.max(0, text.indexOf(snip)), text.indexOf(snip) + 40);
+          // 面板上印的那一小段：到「查看更多」就停（後面接的是 FB 亂碼化的連結字，他截圖裡看到「查看更多63Svy8Sm…」）
+          const peek = text.slice(Math.max(0, text.indexOf(snip)), text.indexOf(snip) + 40).replace(/\s*(查看更多|See more).*$/, "");
           log("找到一則：「" + peek + "…」", "fbq-strong");
           let go = "go";
           if (job.confirmEach) {
@@ -1601,10 +1636,17 @@
           const r = await deleteOnePost(btn, L);
           if (r === "deleted") {
             deleted++;
-            log("已刪除 ✓", "fbq-ok");
+            log("已刪除 ✓ " + lastDeleteNote, "fbq-ok");
+          } else if (r === "deleted-unconfirmed") {
+            deleted++;
+            unconfirmed++;
+            log("已按「刪除」，當作已刪 " + lastDeleteNote, "fbq-ok");
+          } else if (r === "failed") {
+            noperm++;
+            log("Facebook 說刪不掉 " + lastDeleteNote, "fbq-bad");
           } else if (r === "uncertain") {
             uncertain++;
-            log("按了「刪除」但 10 秒內沒看到確認框關掉，不確定有沒有刪掉；等一下自己看一眼。", "fbq-bad");
+            log("按了「刪除」但 10 秒內沒看到確認框關掉、探針也沒看到回應，不確定有沒有刪掉；等一下自己看一眼。" + lastDeleteNote, "fbq-bad");
           } else if (r === "nomenu") {
             noperm++;
             log("這則的選單裡沒有「刪除貼文」（不是這個登入能刪的，或 Facebook 改版）。", "fbq-bad");
@@ -1612,8 +1654,8 @@
             noperm++;
             log("沒跳出刪除確認框（" + r + "），這則沒刪。", "fbq-bad");
           }
-          await report("scanning", "已刪 " + deleted + " 則" + (uncertain ? "、不確定 " + uncertain : "") + (noperm ? "、刪不了 " + noperm : ""), deleted);
-          didDelete = r === "deleted" || r === "uncertain";
+          await report("scanning", "已刪 " + deleted + " 則" + (unconfirmed ? "（" + unconfirmed + " 則背景未確認）" : "") + (uncertain ? "、不確定 " + uncertain : "") + (noperm ? "、刪不了 " + noperm : ""), deleted);
+          didDelete = r === "deleted" || r === "deleted-unconfirmed" || r === "uncertain";
           if (didDelete) break; // 畫面變了，重新收集一次再繼續
         }
         if (stopped) return;
@@ -1627,8 +1669,9 @@
       if (stopped) return;
       const msg =
         (deleted ? "已刪 " + deleted + " 則" : "沒找到要刪的貼文") +
+        (unconfirmed ? "（" + unconfirmed + " 則在背景按的、沒看到回應，當作已刪，請事後抽查）" : "") +
         (uncertain ? "；" + uncertain + " 則按了刪除但沒看到確認（請自己看）" : "") +
-        (noperm ? "；" + noperm + " 則刪不了（選單沒有刪除）" : "") +
+        (noperm ? "；" + noperm + " 則刪不了（選單沒有刪除或 FB 回錯誤）" : "") +
         "（看了 " + scanned + " 則" + (scanned >= 80 ? "，到上限沒再往下看" : "") + "）";
       log(msg, deleted ? "fbq-ok" : "fbq-bad");
       const status = deleted ? "deleted" : uncertain ? "uncertain" : noperm ? "nodelete" : "notfound";
