@@ -47,6 +47,8 @@ export type PacificLoaded = {
   photos: string[];
   houseolId: string;
   fullAddress: string | null;
+  /** 照片為什麼不齊（官網照片清單沒回應、或官網整個讀不到只剩分享頁封面）；照片正常（含官網真的 0 張）是 null */
+  photoNote: string | null;
 };
 
 export type PacificLoadResult = { ok: true; data: PacificLoaded } | { ok: false; error: string };
@@ -90,14 +92,17 @@ export async function loadPacificListing(input: string): Promise<PacificLoadResu
   let detail: PacificDetail;
   let photos: string[];
   let fromOfficial: boolean;
+  let photoNote: string | null;
   if (obj.ok) {
     detail = obj.detail;
     photos = obj.photos;
     fromOfficial = true;
+    photoNote = obj.photoError;
   } else if (share) {
     detail = detailFromShare(share);
     photos = share.coverPhoto ? [share.coverPhoto] : [];
     fromOfficial = false;
+    photoNote = `太平洋官網暫時讀不到（${obj.error}），照片只有分享頁的封面`;
   } else {
     return { ok: false, error: obj.error };
   }
@@ -122,7 +127,7 @@ export async function loadPacificListing(input: string): Promise<PacificLoadResu
     }
   }
 
-  return { ok: true, data: { saleId, linkHref, share, detail, fromOfficial, photos, houseolId, fullAddress } };
+  return { ok: true, data: { saleId, linkHref, share, detail, fromOfficial, photos, houseolId, fullAddress, photoNote } };
 }
 
 function extraOf(d: PacificLoaded): PacificExtra {
@@ -138,5 +143,6 @@ export function toCatalog(d: PacificLoaded) {
 export function toPost591(d: PacificLoaded) {
   const listing = detailToPost591(d.detail, extraOf(d));
   if (!d.fromOfficial) listing.warnings.unshift("太平洋官網暫時讀不到，這份只有分享頁的欄位（樓層、車位、管理費、坪數明細都要自己補）。");
+  else if (d.photoNote) listing.warnings.unshift(`${d.photoNote}：照片沒帶到，等一下重貼一次連結或編號。`);
   return listing;
 }

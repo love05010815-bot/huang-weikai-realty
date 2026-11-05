@@ -95,7 +95,7 @@ const defaultSettings = (tail: string): Settings => ({
 export type ImportDraft = { title: string; text: string; missing: string[] };
 /** 「從愛屋帶入」打哪裡：後台走 /api/admin/fb/*（Google 登入）、同事版走 weikaihouse.com/api/fb-ext/*（授權碼） */
 export type FbImportApi = {
-  houseol(input: string): Promise<{ ok: boolean; error?: string; caseId?: string; photos?: string[]; draft?: ImportDraft }>;
+  houseol(input: string): Promise<{ ok: boolean; error?: string; caseId?: string; photos?: string[]; photoNote?: string; draft?: ImportDraft }>;
   photo(url: string): Promise<{ ok: boolean; error?: string; dataUrl?: string }>;
 };
 const postJson = async (url: string, body: unknown) =>
@@ -427,6 +427,8 @@ export default function FbGroupManager({
   const [impMissing, setImpMissing] = useState<string[]>([]);
   /** 上次帶入那一戶的型錄照片網址（還沒抓圖，等他按「帶入型錄照片」） */
   const [impPhotos, setImpPhotos] = useState<string[]>([]);
+  /** 上次帶入時照片清單沒抓到的原因（官網照片 API 沒回應那種）；有這個就叫他再按一次「帶入」，別當成這戶沒照片 */
+  const [impPhotoNote, setImpPhotoNote] = useState("");
   const [picBusy, setPicBusy] = useState(false);
   const [picDone, setPicDone] = useState(0);
   const [picTotal, setPicTotal] = useState(0);
@@ -437,6 +439,7 @@ export default function FbGroupManager({
     setDraftText("");
     setDraftImages([]);
     setImpMissing([]);
+    setImpPhotoNote("");
   }
   function editAd(a: Ad) {
     setEditingAdId(a.id);
@@ -444,6 +447,7 @@ export default function FbGroupManager({
     setDraftText(a.text);
     setDraftImages(a.images);
     setImpMissing([]);
+    setImpPhotoNote("");
   }
   async function importFromHouseol() {
     const input = impInput.trim();
@@ -460,8 +464,10 @@ export default function FbGroupManager({
       setDraftText(j.draft.text);
       setImpMissing(j.draft.missing || []);
       setImpPhotos(Array.isArray(j.photos) ? j.photos : []);
+      setImpPhotoNote(j.photoNote || "");
       setPicDone(0);
-      showToast(`已帶入 ${j.caseId || ""}，記得看一下再存`, "ok");
+      if (j.photoNote) showToast(`文案帶入了，但照片清單沒抓到：${j.photoNote}。再按一次「帶入」就會補上`, "warn");
+      else showToast(`已帶入 ${j.caseId || ""}，記得看一下再存`, "ok");
     } catch (e) {
       showToast(`連不上伺服器：${e instanceof Error ? e.message : String(e)}`, "bad");
     } finally {
@@ -479,7 +485,7 @@ export default function FbGroupManager({
     const room = 10 - draftImages.length;
     if (room <= 0) return showToast("已經有 10 張了，先移掉幾張再帶", "warn");
     const list = impPhotos.slice(0, room);
-    if (!list.length) return showToast("這一戶的型錄上沒有照片", "warn");
+    if (!list.length) return showToast(impPhotoNote ? `照片清單沒抓到：${impPhotoNote}。再按一次「帶入」` : "這一戶的型錄上沒有照片", "warn");
     if (!licensed) return showToast(`🔒 ${licenseHint}`, "bad");
     setPicBusy(true);
     setPicDone(0);
@@ -1321,6 +1327,11 @@ export default function FbGroupManager({
                 <span className={styles.hintInline}>
                   {draftImages.length >= 10 ? "已經 10 張了" : `最多再帶 ${10 - draftImages.length} 張，會接在現有圖片後面`}
                 </span>
+              </div>
+            )}
+            {impPhotos.length === 0 && impPhotoNote && (
+              <div className={styles.actions}>
+                <span className={styles.hintInline}>📷 照片清單這次沒抓到：{impPhotoNote}。再按一次「帶入」就會補上照片</span>
               </div>
             )}
             <label className={styles.lbl}>標題（只給自己看，方便辨認）</label>
