@@ -139,13 +139,40 @@ export function toolsInGroup(group: ToolGroup): Tool[] {
   });
 }
 
+/**
+ * 沒被任何一區收走的工具 —— /tools 的「其他」那排。
+ * 2026-11-11 系統擁有者：「全部工具改其他，移除已歸類的項目」。從 TOOL_GROUPS 跟
+ * INFO_SITES 裡的站內工具（internal）反推、不另外手寫一份，之後把某個工具搬進買房／賣房組
+ * 或房屋地產資訊網，這排會自己少掉那一張。七個工具在 /tools 上每個只出現一次。
+ */
+export function ungroupedTools(): Tool[] {
+  const placed = new Set<string>([
+    ...TOOL_GROUPS.flatMap((g) => g.hrefs),
+    ...INFO_SITES.filter((s) => s.internal).map((s) => s.href),
+  ]);
+  for (const href of placed) {
+    // 站內工具的 href 一定要在 TOOLS 裡（分組跟資訊網都只是「放哪裡」，工具本體只有一份）
+    if (href.startsWith("/") && !TOOLS.some((t) => t.href === href)) {
+      throw new Error(`config/tools.ts：${href} 被排進分組或房屋地產資訊網，但不在 TOOLS 裡`);
+    }
+  }
+  return TOOLS.filter((t) => !placed.has(t.href));
+}
+
 export type InfoSite = {
   icon: string;
   title: string;
   desc: string;
-  /** 卡上標的機關名，照各站自己寫的 */
+  /** 卡上標的機關名，照各站自己寫的；站內工具就寫資料來源 */
   agency: string;
   href: string;
+  /**
+   * true＝站內頁面（同一個分頁開、卡底寫「開始查詢 →」），沒給＝外部網站（另開新視窗）。
+   * 2026-11-11 系統擁有者：「國中小學區查詢移到房屋地產資訊網」—— 這區第一次混進站內工具。
+   * 有這個旗標的 href 必須也在 TOOLS 裡（它還是工具，首頁藥丸、導覽列選單照列），
+   * 只是 /tools 上改放這區、不再出現在「其他」（見 ungroupedTools）。
+   */
+  internal?: true;
 };
 
 /**
@@ -158,6 +185,16 @@ export type InfoSite = {
  * 之後要加站：先 curl 確認活著，機關名照對方網站自己寫的。
  */
 export const INFO_SITES: readonly InfoSite[] = [
+  // 2026-11-11 系統擁有者：「國中小學區查詢移到房屋地產資訊網」—— 站內工具，放第一張；
+  // 字跟 TOOLS 那筆各自寫（這裡要短一點、像這區其他卡的口吻），連結一定要一樣是 /school。
+  {
+    icon: "🏫",
+    title: "國中小學區查詢",
+    desc: "打路名或地址、選里，或直接手機定位，馬上列出讀哪間國小國中；只有幾個鄰、共同學區這些細節照教育局公告標出來。",
+    agency: "本站工具，資料整理自臺中市政府教育局公告",
+    href: "/school",
+    internal: true,
+  },
   {
     icon: "🗺️",
     title: "台中市158空間資訊網",

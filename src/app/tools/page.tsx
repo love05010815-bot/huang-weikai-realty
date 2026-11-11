@@ -8,7 +8,9 @@
  * 卡片樣式借 home.module.css 的 .toolGrid／.toolCard／.toolDisclaimer／.infoSites，
  * 「買房常用／賣房常用」那兩張是 .toolGroups（同一個檔）。
  *
- * 這頁由上到下：買房常用｜賣房常用（2026-11-11 加，客戶先選身分）→ 全部工具七張卡 → 試算免責 → 房屋地產資訊網。
+ * 這頁由上到下：買房常用｜賣房常用（2026-11-11 加，客戶先選身分）→ 其他（沒歸進那兩組、也沒放進
+ * 資訊網的，目前兩張：租金補貼、坪數換算）→ 試算免責 → 房屋地產資訊網（站內的學區查詢＋五個政府網站）。
+ * 七個工具每個只出現一次：在組裡或資訊網裡的，不再重複列在「其他」。
  *
  * ⚠️ 導覽列下拉選單（SiteNav.tsx 的 TOOLS_MENU）跟 /owner、/buyer 的按鈕（config/roles.ts）
  *    是各自一份，加工具時三處一起改。
@@ -16,7 +18,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { OG_IMAGE, OWNER, SITE_URL } from "@/config/owner";
-import { INFO_SITES, TOOLS, TOOL_GROUPS, toolsInGroup } from "@/config/tools";
+import { INFO_SITES, TOOL_GROUPS, toolsInGroup, ungroupedTools } from "@/config/tools";
 import BreadcrumbJsonLd from "@/app/_ui/BreadcrumbJsonLd";
 import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
@@ -140,9 +142,11 @@ export default function ToolsPage() {
               ))}
             </div>
 
-            <h2 className={styles.toolsSubTitle}>全部工具</h2>
+            {/* 其他：沒歸進買房／賣房的工具（2026-11-11 系統擁有者：「全部工具改其他，移除已歸類的項目」）。
+                清單從 TOOL_GROUPS 反推（config/tools.ts 的 ungroupedTools），不是另一份手寫清單。 */}
+            <h2 className={styles.toolsSubTitle}>其他</h2>
             <div className={styles.toolGrid}>
-              {TOOLS.map((tool) => (
+              {ungroupedTools().map((tool) => (
                 <Link key={tool.title} className={styles.toolCard} href={tool.href}>
                   <div className={styles.toolIcon}>{tool.icon}</div>
                   <h3>{tool.title}</h3>
@@ -158,28 +162,44 @@ export default function ToolsPage() {
               試算頁面上有標明法規核對日期與法源出處。試算結果不構成稅務或財務意見。
             </p>
 
-            {/* 房屋地產資訊網：五個政府查詢系統的外部連結（清單在 config/tools.ts 的 INFO_SITES） */}
+            {/* 房屋地產資訊網：站內的學區查詢（2026-11-11 系統擁有者「國中小學區查詢移到房屋地產資訊網」）
+                ＋五個政府查詢系統的外部連結（清單在 config/tools.ts 的 INFO_SITES）。
+                站內的用 <Link> 同分頁開、卡底寫「開始查詢 →」；外部的 <a target="_blank">、寫「另開新視窗 ↗」。 */}
             <div className={styles.infoSites}>
               <h2 className={styles.infoSitesTitle}>房屋地產資訊網</h2>
               <p className={styles.infoSitesDesc}>
-                買賣前常要查的政府系統，整理在這裡不用再找。點了會另開新視窗到各機關的網站。
+                買賣前常要查的學區、地籍、稅籍、土地使用分區，整理在這裡不用再找。學區在站上直接查；政府系統點了會另開新視窗。
               </p>
               <div className={styles.infoGrid}>
-                {INFO_SITES.map((site) => (
-                  <a key={site.href} className={styles.infoCard} href={site.href} target="_blank" rel="noopener noreferrer">
-                    <span className={styles.infoIcon} aria-hidden="true">
-                      {site.icon}
-                    </span>
-                    <span className={styles.infoBody}>
-                      <span className={styles.infoName}>{site.title}</span>
-                      <span className={styles.infoDesc}>{site.desc}</span>
-                      <span className={styles.infoMeta}>{site.agency}・另開新視窗 ↗</span>
-                    </span>
-                  </a>
-                ))}
+                {INFO_SITES.map((site) => {
+                  const body = (
+                    <>
+                      <span className={styles.infoIcon} aria-hidden="true">
+                        {site.icon}
+                      </span>
+                      <span className={styles.infoBody}>
+                        <span className={styles.infoName}>{site.title}</span>
+                        <span className={styles.infoDesc}>{site.desc}</span>
+                        <span className={styles.infoMeta}>
+                          {site.agency}・{site.internal ? "開始查詢 →" : "另開新視窗 ↗"}
+                        </span>
+                      </span>
+                    </>
+                  );
+                  return site.internal ? (
+                    <Link key={site.href} className={styles.infoCard} href={site.href}>
+                      {body}
+                    </Link>
+                  ) : (
+                    <a key={site.href} className={styles.infoCard} href={site.href} target="_blank" rel="noopener noreferrer">
+                      {body}
+                    </a>
+                  );
+                })}
               </div>
               <p className={styles.infoNote}>
-                以上為各政府機關的查詢系統，查詢結果以各機關為準。查到的資料看不懂、或想知道對買賣有什麼影響，直接問我。
+                學區查詢是本站整理教育局公告的工具，其餘為各政府機關的查詢系統，查詢結果以各機關為準。
+                查到的資料看不懂、或想知道對買賣有什麼影響，直接問我。
               </p>
             </div>
 
