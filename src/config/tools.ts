@@ -93,6 +93,17 @@ export const TOOLS: readonly Tool[] = [
     href: "/estimate",
     cta: "查我的房子 →",
   },
+  // 2026-11-11 系統擁有者：「我想做另一個工具放在賣方常用裡面：賣方實拿速算，跟這個網站做一樣」（/seller-net）。
+  //   三個分頁：出售（舊制／房地合一都算得出實拿）、贈與稅、遺產稅。算法 lib/seller-net.ts，數字 lib/seller-net-data.ts。
+  {
+    icon: "🧮",
+    title: "賣方實拿速算",
+    desc: "賣房前先算清楚：填成交價、買價、日期和費用，自己判斷舊制還是房地合一 2.0，把稅、仲介費、土增稅全扣完，告訴你實拿多少、賺多少。含豪宅門檻、自住優惠、重購退稅；另有贈與稅、遺產稅可以算。",
+    brief: "稅、仲介費全扣完，賣完實拿多少",
+    source: "所得稅法第 14 條之 4、財政部 115 年度財產交易所得計算規定、遺產及贈與稅法",
+    href: "/seller-net",
+    cta: "開始速算 →",
+  },
   // 實價登錄（/lvr）不在這裡：2026-09-30 系統擁有者「把這個單獨列出在首頁」，它有自己一區（首頁 #lvr）。
 ];
 
@@ -120,12 +131,13 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
     desc: "先抓每個月的負擔，再看青安辦不辦得下來。",
     hrefs: ["/tax#loan", "/tax#youth-loan"],
   },
+  // 2026-11-11 系統擁有者：「做另一個工具放在賣方常用裡面：賣方實拿速算」——放第一顆，它把稅跟費用都算完。
   {
     key: "sell",
     icon: "🏷️",
     title: "賣房常用",
-    desc: "先知道要繳多少稅、房子現在值多少，再談價。",
-    hrefs: ["/tax#land-tax", "/estimate"],
+    desc: "先知道實拿多少、要繳多少稅、房子現在值多少，再談價。",
+    hrefs: ["/seller-net", "/tax#land-tax", "/estimate"],
   },
 ];
 

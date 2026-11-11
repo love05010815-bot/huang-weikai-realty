@@ -33,6 +33,7 @@
     "check:school": "node --experimental-strip-types scripts/check-school-district.mjs",
     "build:addr": "node --experimental-strip-types scripts/build-address-index.mjs",
     "check:addr": "node --experimental-strip-types scripts/check-address-index.mjs",
+    "check:seller-net": "node --experimental-strip-types scripts/check-seller-net.mjs",
     "check:lvr": "node --experimental-strip-types scripts/check-lvr.mjs",
     "check:estimate": "node --experimental-strip-types scripts/check-lvr-estimate.mjs",
     "check:area": "node --experimental-strip-types scripts/check-area-units.mjs",

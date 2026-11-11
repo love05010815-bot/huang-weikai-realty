@@ -117,6 +117,8 @@ const TOOLS_MENU: readonly { label: string; href: string }[] = [
   { label: "坪數與地籍面積換算", href: "/area" },
   // 2026-10-26 行情試算（/estimate），跟 page.tsx 的 TOOLS 同步加的
   { label: "我的房子行情多少", href: "/estimate" },
+  // 2026-11-11 賣方實拿速算（/seller-net），跟 config/tools.ts 的 TOOLS 同步加的
+  { label: "賣方實拿速算", href: "/seller-net" },
 ];
 
 type Variant = "home" | "sub";

@@ -1,0 +1,415 @@
+/* ---------- 賣方實拿速算 ----------
+   表單、分頁、免責借 tax.module.css；這裡只放這頁自己的：區塊標題、稅制標籤、
+   結果橫幅、四格指標、支出分布條、贈與／遺產的四格。配色變數在 home.module.css 的 .page。
+   ⚠️ 專案沒有全域 box-sizing reset，有邊框又設寬度的都要自己寫。 */
+
+.sectionTitle {
+  margin: 26px 0 12px;
+  padding-left: 10px;
+  border-left: 4px solid var(--primary);
+  font-size: 15.5px;
+  font-weight: 900;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.sectionTitle:first-child {
+  margin-top: 0;
+}
+
+.sectionHint {
+  margin: -6px 0 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* 三欄（成交價、買價、日期那種） */
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 18px;
+}
+
+/* 稅制標籤：購入日期填了就出現 */
+.regime {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--soft);
+  border: 1px solid var(--line-warm);
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--ink);
+}
+
+.regimeBadge {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  color: #fff;
+  background: var(--primary);
+  white-space: nowrap;
+}
+
+.regimeOld .regimeBadge {
+  background: #b45309;
+}
+
+.regimeSuperOld .regimeBadge {
+  background: #6d28d9;
+}
+
+/* 勾選項：整列可點 */
+.chk {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.chkOn {
+  border-color: var(--primary);
+  background: var(--accent-soft);
+}
+
+.chkOff {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.chkBox {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: 6px;
+  border: 1.5px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 900;
+  color: #fff;
+}
+
+.chkOn .chkBox {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.chkTitle {
+  font-size: 14.5px;
+  font-weight: 800;
+}
+
+.chkDesc {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* 狀態小框：綠＝符合、黃＝提醒、紅＝不符 */
+.status {
+  margin-top: 10px;
+  padding: 10px 13px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.statusOk {
+  background: #e6f4ea;
+  border: 1px solid #b7dfc4;
+}
+
+.statusWarn {
+  background: #fff8e8;
+  border: 1px solid #e7c47d;
+}
+
+.statusBad {
+  background: #fdecec;
+  border: 1px solid #f0a8a0;
+}
+
+.statusBtn {
+  display: inline-block;
+  margin-left: 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  padding: 4px 12px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* 舊制：財產交易所得的計算卡 */
+.formulaCard {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-left: 4px solid var(--primary);
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--ink);
+}
+
+.formulaCardLux {
+  border-left-color: #c2410c;
+}
+
+.formulaBig {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+/* ───── 結果 ───── */
+.results {
+  margin-top: 26px;
+  scroll-margin-top: 90px;
+}
+
+.banner {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 16px;
+  padding: clamp(18px, 3vw, 26px);
+  border-radius: var(--radius);
+  color: #fff;
+  background: var(--primary);
+}
+
+.bannerLoss {
+  background: #b91c1c;
+}
+
+.bannerLabel {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  opacity: 0.9;
+}
+
+.bannerBig {
+  font-size: clamp(30px, 7vw, 44px);
+  font-weight: 900;
+  line-height: 1.2;
+  margin: 4px 0 2px;
+}
+
+.bannerSub {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.bannerSide {
+  flex-shrink: 0;
+  text-align: right;
+  align-self: center;
+}
+
+.bannerRoi {
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.metric {
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  box-shadow: var(--shadow);
+}
+
+.metricLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.metricVal {
+  margin-top: 4px;
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.metricSub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.metricGood .metricVal {
+  color: var(--primary);
+}
+
+.metricBad .metricVal {
+  color: #b91c1c;
+}
+
+.tableWrap {
+  margin-top: 18px;
+  padding: 18px 20px;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+}
+
+.tableTitle {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.sectionRow td {
+  padding-top: 14px !important;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: 0.04em;
+  border-bottom: 0 !important;
+}
+
+.tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  background: var(--accent-soft);
+  color: var(--primary);
+  vertical-align: 1px;
+}
+
+.tagWarn {
+  background: #fff3cd;
+  color: #8a5a00;
+}
+
+.tagBad {
+  background: #fdecec;
+  color: #b91c1c;
+}
+
+.negative {
+  color: #b91c1c;
+}
+
+/* 支出分布：一條堆疊的橫條＋圖例，不另外載圖表程式庫 */
+.bar {
+  display: flex;
+  height: 22px;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 10px;
+  background: var(--line);
+}
+
+.barSeg {
+  height: 100%;
+  min-width: 2px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 10px;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* 贈與／遺產：四格 */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.deadline {
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+@media (max-width: 860px) {
+  .grid3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metrics,
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .grid3 {
+    grid-template-columns: 1fr;
+  }
+
+  .banner {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .bannerSide {
+    text-align: left;
+    align-self: flex-start;
+  }
+}

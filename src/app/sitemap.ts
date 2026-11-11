@@ -39,6 +39,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: SITE_URL + "/tax", lastModified, changeFrequency: "monthly", priority: 0.9 },
     // 2026-11-11 免費小工具總覽（七個工具＋五個政府查詢系統連結），原本是首頁的一個區塊、做成分頁
     { url: SITE_URL + "/tools", lastModified, changeFrequency: "monthly", priority: 0.8 },
+    // 2026-11-11 賣方實拿速算。「賣房實拿多少」「賣房要繳多少稅」是屋主族群常搜的字；含贈與稅、遺產稅
+    { url: SITE_URL + "/seller-net", lastModified, changeFrequency: "monthly", priority: 0.9 },
     // 2026-09-24 學區查詢。「台中學區查詢」「○○國小學區」是買房族常搜的字
     { url: SITE_URL + "/school", lastModified, changeFrequency: "monthly", priority: 0.9 },
     // 2026-09-30 海線實價登錄。「梧棲實價登錄」「沙鹿房價」是買賣雙方都會搜的字；資料每旬更新
