@@ -141,18 +141,28 @@
 
 /* ---------- 「免費小工具」下拉選單（2026-10-22；見 ToolsDropdown） ---------- */
 
-/* 觸發鈕是 <button> 不是 <a>，重置瀏覽器預設的邊框／背景／字型，讓它長得跟其他
-   八個 .desktopLink 一模一樣——顏色、hover 變色、下面那條細線動畫都直接沿用
-   `.desktopLink` 跟 `.desktopLink:hover(::after)`，這裡只補 <button> 特有的重置。 */
-button.desktopLink {
+/* 2026-11-11 系統擁有者：「按下免費小工具就要跳轉到分頁」—— 觸發鈕拆成兩個：
+   字是 <Link class="desktopLink">（直接進 /tools，顏色、hover 變色、細線動畫全沿用），
+   旁邊的小三角是 <button class="dropdownCaretBtn">，只負責開合選單。
+   ⚠️ 總寬度要跟之前「一顆按鈕含三角」一模一樣（gap 3px＋三角 11px、按鈕零內距），
+      不然 1094 那條斷點要重掃（見檔頭）。 */
+.dropdownTrigger {
   display: inline-flex;
   align-items: center;
   gap: 3px;
+}
+
+.dropdownCaretBtn {
+  display: inline-flex;
+  align-items: center;
   border: 0;
   background: none;
   padding: 0;
+  margin: 0;
   font-family: inherit;
+  color: var(--ink, #22323f);
   cursor: pointer;
+  line-height: 1;
 }
 
 .dropdownCaret {
@@ -160,18 +170,27 @@ button.desktopLink {
   transition: transform 0.15s ease;
 }
 
-/* 選單開著的時候（aria-expanded="true"），觸發鈕要長得跟「滑鼠正停在上面」一樣
-   （變色＋細線），不然遊標移進下面的選單本體時，鈕本身的 :hover 會解除、細線
-   跟著消失，看起來選單是自己憑空浮出來的。箭頭順便轉向，呼應「已展開」。 */
-.desktopLink[aria-expanded="true"] {
+.dropdownCaretBtn:hover {
   color: var(--primary, #2fa894);
 }
 
-.desktopLink[aria-expanded="true"]::after {
+/* 選單開著的時候，字要長得跟「滑鼠正停在上面」一樣（變色＋細線），不然遊標移進
+   下面的選單本體時，字的 :hover 會解除、細線跟著消失，看起來選單是自己憑空浮出來的。
+   開合狀態掛在三角鈕的 aria-expanded 上，字那邊用 .desktopLinkOpen 這個 class 同步。
+   箭頭順便轉向，呼應「已展開」。 */
+.desktopLinkOpen {
+  color: var(--primary, #2fa894);
+}
+
+.desktopLinkOpen::after {
   transform: scaleX(1);
 }
 
-.desktopLink[aria-expanded="true"] .dropdownCaret {
+.dropdownCaretBtn[aria-expanded="true"] {
+  color: var(--primary, #2fa894);
+}
+
+.dropdownCaretBtn[aria-expanded="true"] .dropdownCaret {
   transform: rotate(180deg);
 }
 

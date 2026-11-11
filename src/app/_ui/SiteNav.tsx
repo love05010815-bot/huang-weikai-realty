@@ -157,9 +157,13 @@ function NavItemLink({
  * 他的原話「右方做下拉選單」講的是桌機那條橫的，手機的漢堡面板本來就是整頁
  * 捲動，跳去 /tools 看完整的卡片（含說明文字）反而比選單裡塞七個次連結清楚。
  *
- * 開合邏輯比照手機選單既有的模式（Esc 關閉、點外面關閉），多了滑鼠移入移出：
- * 觸發鈕是 `<button>` 不是連結 —— 它本來就不導去任何地方，點它只是開合選單，
- * 底部另外有一個「查看完整說明」才是真的連結（2026-11-11 起連 /tools，之前是首頁 #tools）。
+ * 開合邏輯比照手機選單既有的模式（Esc 關閉、點外面關閉），多了滑鼠移入移出。
+ *
+ * 2026-11-11 系統擁有者：「按下免費小工具就要跳轉到分頁」—— 觸發鈕拆成兩個：
+ *   「免費小工具」四個字是 `<Link>`，點了直接進 /tools；
+ *   旁邊的小三角是 `<button>`，只負責開合選單（滑鼠移上去本來就會開，三角是給觸控／鍵盤用的）。
+ * 之前整顆是一個 `<button>`，點了只開合、不導頁，他要的是點字就走。
+ * 選單底部的「查看完整說明」也連 /tools（之前是首頁 #tools）。
  */
 function ToolsDropdown() {
   const [open, setOpen] = useState(false);
@@ -198,19 +202,28 @@ function ToolsDropdown() {
 
   return (
     <li ref={rootRef} className={styles.dropdownRoot} onMouseEnter={openNow} onMouseLeave={closeSoon}>
-      <button
-        type="button"
-        className={styles.desktopLink}
-        aria-expanded={open}
-        aria-haspopup="true"
-        aria-controls="tools-dropdown-panel"
-        onClick={() => (open ? close() : openNow())}
-      >
-        免費小工具
-        <span className={styles.dropdownCaret} aria-hidden="true">
-          ▾
-        </span>
-      </button>
+      <span className={styles.dropdownTrigger}>
+        <Link
+          className={open ? `${styles.desktopLink} ${styles.desktopLinkOpen}` : styles.desktopLink}
+          href="/tools"
+          onClick={close}
+        >
+          免費小工具
+        </Link>
+        <button
+          type="button"
+          className={styles.dropdownCaretBtn}
+          aria-expanded={open}
+          aria-haspopup="true"
+          aria-controls="tools-dropdown-panel"
+          aria-label={open ? "收起工具選單" : "展開工具選單"}
+          onClick={() => (open ? close() : openNow())}
+        >
+          <span className={styles.dropdownCaret} aria-hidden="true">
+            ▾
+          </span>
+        </button>
+      </span>
       {open && (
         <ul id="tools-dropdown-panel" className={styles.dropdownPanel}>
           {TOOLS_MENU.map((tool) => (

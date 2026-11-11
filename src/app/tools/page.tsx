@@ -4,8 +4,11 @@
  * 2026-11-11 系統擁有者：「把免費小工具另外單獨一個分頁」。之前這整塊長在首頁的 #tools 區塊，
  * 跟影音專區（2026-08-25）一樣改成獨立分頁；首頁只留一個入口（標題＋七顆工具連結＋「看全部」）。
  *
- * 清單在 config/tools.ts（TOOLS、INFO_SITES），首頁入口跟這頁共用；
- * 卡片樣式借 home.module.css 的 .toolGrid／.toolCard／.toolDisclaimer／.infoSites，沒另外寫。
+ * 清單在 config/tools.ts（TOOLS、TOOL_GROUPS、INFO_SITES），首頁入口跟這頁共用；
+ * 卡片樣式借 home.module.css 的 .toolGrid／.toolCard／.toolDisclaimer／.infoSites，
+ * 「買房常用／賣房常用」那兩張是 .toolGroups（同一個檔）。
+ *
+ * 這頁由上到下：買房常用｜賣房常用（2026-11-11 加，客戶先選身分）→ 全部工具七張卡 → 試算免責 → 房屋地產資訊網。
  *
  * ⚠️ 導覽列下拉選單（SiteNav.tsx 的 TOOLS_MENU）跟 /owner、/buyer 的按鈕（config/roles.ts）
  *    是各自一份，加工具時三處一起改。
@@ -13,7 +16,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { OG_IMAGE, OWNER, SITE_URL } from "@/config/owner";
-import { INFO_SITES, TOOLS } from "@/config/tools";
+import { INFO_SITES, TOOLS, TOOL_GROUPS, toolsInGroup } from "@/config/tools";
 import BreadcrumbJsonLd from "@/app/_ui/BreadcrumbJsonLd";
 import SiteNav from "@/app/_ui/SiteNav";
 import SocialLinks from "@/app/_ui/SocialLinks";
@@ -104,6 +107,40 @@ export default function ToolsPage() {
           </div>
 
           <div className={styles.container}>
+            {/* 買房常用／賣房常用（2026-11-11 系統擁有者：「再多增加一區是買房常用/賣房常用」）：
+                放在最前面讓客戶先選身分，四顆都是下面七個工具裡的，分組在 config/tools.ts 的 TOOL_GROUPS。 */}
+            <div className={styles.toolGroups}>
+              {TOOL_GROUPS.map((group) => (
+                <section
+                  key={group.key}
+                  className={`${styles.toolGroup} ${group.key === "buy" ? styles.toolGroupBuy : styles.toolGroupSell}`}
+                  aria-labelledby={`tool-group-${group.key}`}
+                >
+                  <div className={styles.toolGroupHead}>
+                    <h2 id={`tool-group-${group.key}`} className={styles.toolGroupTitle}>
+                      <span aria-hidden="true">{group.icon}</span> {group.title}
+                    </h2>
+                    <p className={styles.toolGroupDesc}>{group.desc}</p>
+                  </div>
+                  <div className={styles.toolGroupList}>
+                    {toolsInGroup(group).map((tool) => (
+                      <Link key={tool.href} className={styles.toolGroupItem} href={tool.href}>
+                        <span className={styles.toolGroupIcon} aria-hidden="true">
+                          {tool.icon}
+                        </span>
+                        <span className={styles.toolGroupBody}>
+                          <span className={styles.toolGroupName}>{tool.title}</span>
+                          <span className={styles.toolGroupHint}>{tool.brief}</span>
+                        </span>
+                        <span className={styles.toolGroupGo}>{tool.cta ?? "開始試算 →"}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+
+            <h2 className={styles.toolsSubTitle}>全部工具</h2>
             <div className={styles.toolGrid}>
               {TOOLS.map((tool) => (
                 <Link key={tool.title} className={styles.toolCard} href={tool.href}>
