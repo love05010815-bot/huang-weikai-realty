@@ -201,6 +201,52 @@ const TOOLS = [
   // 實價登錄（/lvr）不在這裡：2026-09-30 系統擁有者「把這個單獨列出在首頁」，它有自己一區（見下面 #lvr）。
 ];
 
+/**
+ * 房屋地產資訊網 —— 免費小工具底下的一區，五個政府查詢系統的外部連結。
+ * 2026-11-11 系統擁有者：「在免費小工具裡建立一區房屋地產資訊網，這些網站要帶入外部連結」。
+ *
+ * 跟上面 TOOLS 的差別：這些不是站上的工具，整張卡是 <a target="_blank">，卡上直接寫機關名＋「另開新視窗」。
+ * 網址是他給的，一字不改；機關名照各站自己寫的（套繪那站首頁寫都市發展局、稅籍那站標題寫地方稅務局）。
+ * 說明只寫「拿來查什麼」，不替政府系統解釋怎麼操作 —— 他們改版我們不會知道。
+ */
+const INFO_SITES = [
+  {
+    icon: "🗺️",
+    title: "台中市158空間資訊網",
+    desc: "台中市政府的地圖查詢平台。輸入地址或地號，疊看都市計畫、地籍、航照等各種圖層。",
+    agency: "臺中市政府",
+    href: "https://lohas.taichung.gov.tw/webgis/",
+  },
+  {
+    icon: "🧾",
+    title: "台中市房屋稅籍編號查詢",
+    desc: "用門牌地址查這間房子的房屋稅籍編號，辦理房屋稅相關申請、線上查稅時會用到。",
+    agency: "臺中市政府地方稅務局",
+    href: "https://www.tax.taichung.gov.tw/41375/42040/?path=326",
+  },
+  {
+    icon: "🏙️",
+    title: "全國土地使用分區查詢",
+    desc: "查這塊地是住宅區、商業區，還是農業區、保護區。買地、蓋房前先確認能做什麼用途。",
+    agency: "內政部國土管理署",
+    href: "https://luz.nlma.gov.tw/web/",
+  },
+  {
+    icon: "📍",
+    title: "地籍圖資網路便民服務系統",
+    desc: "輸入地段地號或門牌，在地圖上看這塊地的位置、形狀，和鄰地怎麼接。",
+    agency: "內政部地政司",
+    href: "https://easymap.moi.gov.tw/Z10Web/Normal",
+  },
+  {
+    icon: "🏗️",
+    title: "建築物地籍套繪查詢",
+    desc: "查這塊土地有沒有被既有建物的建照套繪過。買空地、想分割或增建前先看清楚。",
+    agency: "臺中市政府都市發展局",
+    href: "https://mcgbm.taichung.gov.tw/geoViewer2/geoViewAction.do?infopage=1&pas=I80",
+  },
+];
+
 /* hero 三顆按鈕底下的「我是屋主／我是買方」兩顆分流按鈕：字、圖示、目的地都在 config/roles.ts（ROLE_LIST），
    連進去的 /owner、/buyer 頁面也讀同一份。2026-10-26 系統擁有者：「在紅框處做兩個按鈕，我是屋主 / 我是買方」，
    同日指定兩頁各放兩顆工具按鈕（見 roles.ts 檔頭）。 */
@@ -652,6 +698,31 @@ export default async function HomePage() {
               貸款條件與利率以各銀行實際審核結果為準。稅率與相關法規會調整，
               試算頁面上有標明法規核對日期與法源出處。試算結果不構成稅務或財務意見。
             </p>
+
+            {/* 房屋地產資訊網：五個政府查詢系統的外部連結（清單在上面 INFO_SITES） */}
+            <div className={styles.infoSites}>
+              <h3 className={styles.infoSitesTitle}>房屋地產資訊網</h3>
+              <p className={styles.infoSitesDesc}>
+                買賣前常要查的政府系統，整理在這裡不用再找。點了會另開新視窗到各機關的網站。
+              </p>
+              <div className={styles.infoGrid}>
+                {INFO_SITES.map((site) => (
+                  <a key={site.href} className={styles.infoCard} href={site.href} target="_blank" rel="noopener noreferrer">
+                    <span className={styles.infoIcon} aria-hidden="true">
+                      {site.icon}
+                    </span>
+                    <span className={styles.infoBody}>
+                      <span className={styles.infoName}>{site.title}</span>
+                      <span className={styles.infoDesc}>{site.desc}</span>
+                      <span className={styles.infoMeta}>{site.agency}・另開新視窗 ↗</span>
+                    </span>
+                  </a>
+                ))}
+              </div>
+              <p className={styles.infoNote}>
+                以上為各政府機關的查詢系統，查詢結果以各機關為準。查到的資料看不懂、或想知道對買賣有什麼影響，直接問我。
+              </p>
+            </div>
           </div>
         </section>
 
