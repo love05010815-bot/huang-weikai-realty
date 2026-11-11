@@ -8,6 +8,8 @@ import { OWNER, SOCIAL, SITE_URL } from "@/config/owner";
 import { AREAS } from "@/config/profile";
 import { HOME_FEATURED_COUNT } from "@/config/listings";
 import { ROLE_LIST } from "@/config/roles";
+// 免費小工具的七顆連結（首頁只放入口，完整卡片在 /tools；清單跟那頁共用這一份）
+import { TOOLS } from "@/config/tools";
 import { getPublicListings, sortByPrice } from "@/lib/listings";
 import { getPublicVideos, CATEGORY_META } from "@/lib/videos";
 import { getDistrictStats, latestSuccessfulSync } from "@/lib/lvr";
@@ -133,119 +135,8 @@ const SERVICES: Service[] = [
   },
 ];
 
-/**
- * 稅費試算工具。2026-08-23 系統擁有者拍板：改成自己站上算，不再把客戶丟到外部網站。
- *
- * 原本的顧慮是「自己算等於給稅務意見，而且稅率一改就會過期」。
- * 處理方式：算法抽到 src/lib/land-tax.ts，每個數字都註明官方出處；
- * /tax 頁把計算過程整個攤開、標明法規核對日期，並保留免責聲明。
- * 稅率變動時只要改 land-tax.ts 一個檔。
- */
-const TOOLS = [
-  {
-    icon: "🏠",
-    title: "房地合一稅試算",
-    desc: "賣房前先算清楚要繳多少稅。填入取得與出售的日期與價格，馬上算出持有期間、適用稅率與應納稅額，還會把每一步怎麼來的攤開給你看。",
-    source: "所得稅法第 14 條之 4 與財政部規定",
-    href: "/tax#land-tax",
-  },
-  {
-    icon: "🏦",
-    title: "房貸月付金試算",
-    desc: "先抓出每個月要還多少。填入貸款金額、利率、年限與寬限期，算出月付金與總利息，買房的預算才抓得準。",
-    source: "本息平均攤還公式",
-    href: "/tax#loan",
-  },
-  {
-    icon: "🔑",
-    title: "租金補貼試算",
-    desc: "租屋族先算算看能領多少。填入所在縣市、行政區與家庭狀況，就算出每月可領補貼，海線各行政區金額不一樣，選錯區會差很多。",
-    source: "內政部 300 億元中央擴大租金補貼分級表",
-    href: "/tax#rent",
-  },
-  {
-    icon: "🏡",
-    title: "新青安 3.0 資格檢測",
-    desc: "115 年 8 月上路的新制多了年齡、所得、總價三道門檻。點 7 題，30 秒看你能不能辦、能貸多少、月付大概多少，連補貼退場後的月付也一起算。",
-    source: "財政部青安 3.0 方案與國庫署問答集",
-    href: "/tax#youth-loan",
-  },
-  // 2026-09-24 系統擁有者：客戶問學區都得去翻教育局網頁，要一個自己站上的版本（/school）。
-  {
-    icon: "🏫",
-    title: "國中小學區查詢",
-    desc: "買房前先看讀哪間學校。選行政區和里、在地圖上點一下，或直接用手機定位，馬上列出對應的國小與國中；只有幾個鄰、共同學區這些細節都照教育局公告標出來。",
-    source: "臺中市政府教育局學區公告、內政部村里界圖",
-    href: "/school",
-    cta: "開始查詢 →",
-  },
-  // 2026-10-01 系統擁有者：加一項地籍面積單位換算，七種單位互通、打哪一格其他格自動對應（/area）。
-  {
-    icon: "📐",
-    title: "坪數與地籍面積換算",
-    desc: "謄本寫平方公尺、廣告講坪、農地論甲論分。在任何一格打數字，平方公尺、坪、公畝、公頃、平方公里、甲、分七種單位同時換好，一甲幾坪、一分地幾坪不用再查。",
-    source: "1 坪＝3.3058 平方公尺、1 甲＝2,934 坪、1 公頃＝3,025 坪",
-    href: "/area",
-    cta: "開始換算 →",
-  },
-  // 2026-10-26 系統擁有者：客戶填行政區、型態、坪數、屋齡就看到自己房子的行情區間（/estimate）。
-  //   資料就是 /lvr 那套內政部實價登錄，不另外抓；比對邏輯在 lib/lvr-estimate.ts。
-  {
-    icon: "💰",
-    title: "我的房子行情多少",
-    desc: "填行政區、大樓或透天、權狀坪數、屋齡，從內政部實價登錄裡挑出跟您條件相近的成交，算出每坪最低、中價位、最高，再換成您這間的總價區間，連那幾筆成交的門牌都列給您看。",
-    source: "內政部不動產交易實價登錄開放資料（每天同步）",
-    href: "/estimate",
-    cta: "查我的房子 →",
-  },
-  // 實價登錄（/lvr）不在這裡：2026-09-30 系統擁有者「把這個單獨列出在首頁」，它有自己一區（見下面 #lvr）。
-];
-
-/**
- * 房屋地產資訊網 —— 免費小工具底下的一區，五個政府查詢系統的外部連結。
- * 2026-11-11 系統擁有者：「在免費小工具裡建立一區房屋地產資訊網，這些網站要帶入外部連結」。
- *
- * 跟上面 TOOLS 的差別：這些不是站上的工具，整張卡是 <a target="_blank">，卡上直接寫機關名＋「另開新視窗」。
- * 網址是他給的，一字不改；機關名照各站自己寫的（套繪那站首頁寫都市發展局、稅籍那站標題寫地方稅務局）。
- * 說明只寫「拿來查什麼」，不替政府系統解釋怎麼操作 —— 他們改版我們不會知道。
- */
-const INFO_SITES = [
-  {
-    icon: "🗺️",
-    title: "台中市158空間資訊網",
-    desc: "台中市政府的地圖查詢平台。輸入地址或地號，疊看都市計畫、地籍、航照等各種圖層。",
-    agency: "臺中市政府",
-    href: "https://lohas.taichung.gov.tw/webgis/",
-  },
-  {
-    icon: "🧾",
-    title: "台中市房屋稅籍編號查詢",
-    desc: "用門牌地址查這間房子的房屋稅籍編號，辦理房屋稅相關申請、線上查稅時會用到。",
-    agency: "臺中市政府地方稅務局",
-    href: "https://www.tax.taichung.gov.tw/41375/42040/?path=326",
-  },
-  {
-    icon: "🏙️",
-    title: "全國土地使用分區查詢",
-    desc: "查這塊地是住宅區、商業區，還是農業區、保護區。買地、蓋房前先確認能做什麼用途。",
-    agency: "內政部國土管理署",
-    href: "https://luz.nlma.gov.tw/web/",
-  },
-  {
-    icon: "📍",
-    title: "地籍圖資網路便民服務系統",
-    desc: "輸入地段地號或門牌，在地圖上看這塊地的位置、形狀，和鄰地怎麼接。",
-    agency: "內政部地政司",
-    href: "https://easymap.moi.gov.tw/Z10Web/Normal",
-  },
-  {
-    icon: "🏗️",
-    title: "建築物地籍套繪查詢",
-    desc: "查這塊土地有沒有被既有建物的建照套繪過。買空地、想分割或增建前先看清楚。",
-    agency: "臺中市政府都市發展局",
-    href: "https://mcgbm.taichung.gov.tw/geoViewer2/geoViewAction.do?infopage=1&pas=I80",
-  },
-];
+/* 免費小工具的清單（TOOLS）跟房屋地產資訊網（INFO_SITES）2026-11-11 搬到 config/tools.ts ——
+   首頁只放入口，完整的卡片、免責、政府網站都在 /tools 分頁。新增工具去那個檔改，這裡會跟著變。 */
 
 /* hero 三顆按鈕底下的「我是屋主／我是買方」兩顆分流按鈕：字、圖示、目的地都在 config/roles.ts（ROLE_LIST），
    連進去的 /owner、/buyer 頁面也讀同一份。2026-10-26 系統擁有者：「在紅框處做兩個按鈕，我是屋主 / 我是買方」，
@@ -671,58 +562,31 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* ---------------- 免費小工具（原「稅費試算」，2026-09-24 加了學區查詢後改名） ---------------- */}
+        {/* ---------------- 免費小工具（入口） ----------------
+            2026-11-11 系統擁有者：「把免費小工具另外單獨一個分頁」—— 七張卡＋免責＋五個政府網站
+            整塊搬到 /tools，首頁只留標題、一句話、七顆工具連結（直接進各工具）跟「看全部」。
+            id="tools" 留著：導覽列以外還有地方連 /#tools，點過來要有東西。
+            色帶照舊蜜桃（首頁色序 hero 白 → 精選 淡藍 → 服務 白 → 工具 蜜桃 → 預約 深藍綠，不動）。
+            （2026-09-24 前叫「稅費試算」，加了學區查詢後改名。） */}
         <section id="tools" className={`${styles.section} ${styles.band} ${styles.bandSoft}`}>
           <SectionWave flip />
           <div className={`${styles.container} ${styles.center}`}>
             <span className={styles.eyebrow}>TOOLS</span>
             <h2 className={styles.sectionTitle}>免費小工具</h2>
             <p className={styles.sectionDesc}>
-              買賣房子最怕算漏了。這些試算都在站上，不用跳到別的網站，算完還看得到每一步怎麼來的。
+              房地合一稅、房貸月付金、租金補貼、學區、坪數、行情，買賣房子會算到的都在站上；
+              另外整理了五個政府查詢系統的連結。
             </p>
-          </div>
-          <div className={styles.container}>
-            <div className={styles.toolGrid}>
+            <div className={styles.toolChips}>
               {TOOLS.map((tool) => (
-                <Link key={tool.title} className={styles.toolCard} href={tool.href}>
-                  <div className={styles.toolIcon}>{tool.icon}</div>
-                  <h3>{tool.title}</h3>
-                  <p>{tool.desc}</p>
-                  <span className={styles.toolSource}>依據：{tool.source}</span>
-                  <span className={styles.toolGo}>{"cta" in tool ? tool.cta : "開始試算 →"}</span>
+                <Link key={tool.title} className={styles.toolChip} href={tool.href}>
+                  <span aria-hidden="true">{tool.icon}</span> {tool.title}
                 </Link>
               ))}
             </div>
-            <p className={styles.toolDisclaimer}>
-              ⚠️ 試算<strong>僅供參考</strong>。房地合一稅之<strong>實際稅額以國稅局核定為準</strong>；
-              貸款條件與利率以各銀行實際審核結果為準。稅率與相關法規會調整，
-              試算頁面上有標明法規核對日期與法源出處。試算結果不構成稅務或財務意見。
-            </p>
-
-            {/* 房屋地產資訊網：五個政府查詢系統的外部連結（清單在上面 INFO_SITES） */}
-            <div className={styles.infoSites}>
-              <h3 className={styles.infoSitesTitle}>房屋地產資訊網</h3>
-              <p className={styles.infoSitesDesc}>
-                買賣前常要查的政府系統，整理在這裡不用再找。點了會另開新視窗到各機關的網站。
-              </p>
-              <div className={styles.infoGrid}>
-                {INFO_SITES.map((site) => (
-                  <a key={site.href} className={styles.infoCard} href={site.href} target="_blank" rel="noopener noreferrer">
-                    <span className={styles.infoIcon} aria-hidden="true">
-                      {site.icon}
-                    </span>
-                    <span className={styles.infoBody}>
-                      <span className={styles.infoName}>{site.title}</span>
-                      <span className={styles.infoDesc}>{site.desc}</span>
-                      <span className={styles.infoMeta}>{site.agency}・另開新視窗 ↗</span>
-                    </span>
-                  </a>
-                ))}
-              </div>
-              <p className={styles.infoNote}>
-                以上為各政府機關的查詢系統，查詢結果以各機關為準。查到的資料看不懂、或想知道對買賣有什麼影響，直接問我。
-              </p>
-            </div>
+            <Link className={`${styles.btn} ${styles.btnPrimary}`} href="/tools">
+              看全部免費小工具 →
+            </Link>
           </div>
         </section>
 

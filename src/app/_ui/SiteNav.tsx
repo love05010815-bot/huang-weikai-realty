@@ -42,15 +42,18 @@ import styles from "./SiteNav.module.css";
  * 分兩種只是因為連結要用不同寫法（錨點用 `<a>`、分頁用 `<Link>` 才有預先載入），
  * 不是為了分類 —— 客戶不需要知道哪個是同一頁哪個是另一頁。
  *
- * 注意「免費小工具」（2026-09-24 前叫「稅費試算」，加了學區查詢後改名）指的是
- * **首頁的 `#tools` 區塊**，不是 /tax 那一頁。桌機那條原本就是這樣接的，不要「順手」改成 /tax。
+ * 注意「免費小工具」2026-11-11 起是獨立分頁 /tools（七張工具卡＋免責＋五個政府網站都在那頁），
+ * 不是 /tax 那一頁（/tax 只是其中四個稅費試算）。
+ * ⚠️ 這段註解裡不要把路徑用 ** 包起來——「** /tools **」會出現 `*` `/` 相連，把整個區塊註解提前關掉。
+ * 之前它是首頁的 `#tools` 錨點（再之前叫「稅費試算」，2026-09-24 加了學區查詢後改名）；
+ * 首頁現在還留一個入口區塊 id="tools"，但導覽列直接連 /tools。
  */
 type NavItem =
   | { label: string; kind: "anchor"; hash: string }
   | {
       label: string;
       kind: "route";
-      href: "/" | "/about" | "/map" | "/videos" | "/news" | "/lvr" | "/match" | "/listings";
+      href: "/" | "/about" | "/map" | "/videos" | "/news" | "/lvr" | "/match" | "/listings" | "/tools";
     };
 
 const ITEMS: readonly NavItem[] = [
@@ -81,7 +84,9 @@ const ITEMS: readonly NavItem[] = [
   // 放在「海線社區一覽」後面：兩頁都是海線的房產資料查詢，一個看建案總覽、一個看成交行情。
   // ⚠️ 這是第八項，加之前已照下面 SiteNav.module.css 檔頭的規矩重掃斷點（結果：1045px 仍夠，見那邊的紀錄）。
   { label: "實價登錄", kind: "route", href: "/lvr" },
-  { label: "免費小工具", kind: "anchor", hash: "#tools" },
+  // 2026-11-11 系統擁有者：「把免費小工具另外單獨一個分頁」—— 從首頁 #tools 錨點改成 /tools 分頁，
+  //    跟影音專區同一個做法。桌機這格是下拉選單（ToolsDropdown），手機漢堡裡是普通連結，兩邊都進 /tools。
+  { label: "免費小工具", kind: "route", href: "/tools" },
   // 2026-08-25 系統擁有者拍板：**影音不放首頁下滑區塊，做成獨立分頁**，跟「海線社區一覽」
   // 一樣。所以這是 route 不是 #videos 錨點 —— 首頁上沒有那個區塊了。
   { label: "影音專區", kind: "route", href: "/videos" },
@@ -96,12 +101,12 @@ const ITEMS: readonly NavItem[] = [
  * 「免費小工具」桌機下拉選單裡列的六個工具。2026-10-22 系統擁有者：
  * 「免費小工具右方做下拉選單，把小工具列出在選單內」。
  *
- * ⚠️ **跟首頁 `page.tsx` 的 `TOOLS` 是兩份獨立清單，故意不共用**：那邊每項多了
- * icon／desc／source，是整塊介紹卡片要用的；這裡只要「名字＋連結」給選單用。
- * 兩邊都改到才會一致——新增或改工具時，**這裡跟 `page.tsx` 的 `TOOLS` 要一起改**，
+ * ⚠️ **跟 `config/tools.ts` 的 `TOOLS`（首頁入口與 /tools 分頁共用）是兩份獨立清單，故意不共用**：
+ * 那邊每項多了 icon／desc／source，是整塊介紹卡片要用的；這裡只要「名字＋連結」給選單用。
+ * 兩邊都改到才會一致——新增或改工具時，**這裡跟 `config/tools.ts` 的 `TOOLS` 要一起改**，
  * 順序也跟著那邊（房地合一稅／房貸月付金／租金補貼／新青安 3.0 都在 /tax 分段，
- * 後面才是 /school、/area）。實價登錄（/lvr）不在這裡——它是獨立的導覽列項目，
- * 不是「小工具」的一部分（見 page.tsx 的 TOOLS 同一條備註）。
+ * 後面才是 /school、/area、/estimate）。實價登錄（/lvr）不在這裡——它是獨立的導覽列項目，
+ * 不是「小工具」的一部分（見 config/tools.ts 的 TOOLS 同一條備註）。
  */
 const TOOLS_MENU: readonly { label: string; href: string }[] = [
   { label: "房地合一稅試算", href: "/tax#land-tax" },
@@ -148,15 +153,15 @@ function NavItemLink({
 
 /**
  * 「免費小工具」桌機那顆的下拉選單。**只有桌機那條在用**——手機漢堡選單裡
- * 「免費小工具」還是原本的 `NavItemLink`（單純連去 `#tools`），沒有做成手風琴：
+ * 「免費小工具」還是原本的 `NavItemLink`（單純連去 `/tools`），沒有做成手風琴：
  * 他的原話「右方做下拉選單」講的是桌機那條橫的，手機的漢堡面板本來就是整頁
- * 捲動，跳去 `#tools` 看完整的六張卡片（含說明文字）反而比選單裡塞六個次連結清楚。
+ * 捲動，跳去 /tools 看完整的卡片（含說明文字）反而比選單裡塞七個次連結清楚。
  *
  * 開合邏輯比照手機選單既有的模式（Esc 關閉、點外面關閉），多了滑鼠移入移出：
  * 觸發鈕是 `<button>` 不是連結 —— 它本來就不導去任何地方，點它只是開合選單，
- * 底部另外有一個「查看完整說明」才是真的連結。
+ * 底部另外有一個「查看完整說明」才是真的連結（2026-11-11 起連 /tools，之前是首頁 #tools）。
  */
-function ToolsDropdown({ variant }: { variant: Variant }) {
+function ToolsDropdown() {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLLIElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -216,13 +221,9 @@ function ToolsDropdown({ variant }: { variant: Variant }) {
             </li>
           ))}
           <li>
-            <a
-              href={variant === "home" ? "#tools" : "/#tools"}
-              className={styles.dropdownSeeAll}
-              onClick={close}
-            >
+            <Link href="/tools" className={styles.dropdownSeeAll} onClick={close}>
               查看完整說明 →
-            </a>
+            </Link>
           </li>
         </ul>
       )}
@@ -299,7 +300,7 @@ export default function SiteNav({ variant }: { variant: Variant }) {
             // 「免費小工具」桌機這條換成下拉選單（見 ToolsDropdown），其餘八項不變。
             // 手機漢堡選單那份 ITEMS.map（下面）沒有這個特判，還是原本的 NavItemLink。
             item.label === "免費小工具" ? (
-              <ToolsDropdown key={item.label} variant={variant} />
+              <ToolsDropdown key={item.label} />
             ) : (
               <li key={item.label}>
                 <NavItemLink item={item} variant={variant} className={styles.desktopLink} />

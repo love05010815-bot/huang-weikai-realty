@@ -1438,6 +1438,41 @@
   color: var(--ink);
 }
 
+/* 首頁的免費小工具入口（2026-11-11 整塊搬去 /tools 之後，首頁只剩這排）：
+   七顆藥丸直接連各工具，底下一顆主按鈕去 /tools。
+   藥丸白底、細框、hover 變主色——跟 .toolCard 一樣「整顆都能點」，但矮很多，不占版面。 */
+.toolChips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 10px;
+  max-width: 760px;
+  margin: 18px auto 22px;
+}
+
+.toolChip {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ink);
+  text-decoration: none;
+  box-shadow: var(--shadow);
+  transition: transform 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.toolChip:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  color: var(--primary);
+}
+
 /* ---------- 房屋地產資訊網（免費小工具底下的一區，2026-11-11） ----------
    系統擁有者：「在免費小工具裡建立一區房屋地產資訊網，這些網站要帶入外部連結」。
    五個政府查詢系統，整張卡是 <a target="_blank">。跟上面的試算卡刻意長得不一樣：

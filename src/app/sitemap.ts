@@ -37,6 +37,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: SITE_URL + "/listings", lastModified, changeFrequency: "weekly", priority: 0.8 },
     // 稅費試算是很強的搜尋入口（「房地合一稅試算」搜尋量高），優先度給高一點
     { url: SITE_URL + "/tax", lastModified, changeFrequency: "monthly", priority: 0.9 },
+    // 2026-11-11 免費小工具總覽（七個工具＋五個政府查詢系統連結），原本是首頁的一個區塊、做成分頁
+    { url: SITE_URL + "/tools", lastModified, changeFrequency: "monthly", priority: 0.8 },
     // 2026-09-24 學區查詢。「台中學區查詢」「○○國小學區」是買房族常搜的字
     { url: SITE_URL + "/school", lastModified, changeFrequency: "monthly", priority: 0.9 },
     // 2026-09-30 海線實價登錄。「梧棲實價登錄」「沙鹿房價」是買賣雙方都會搜的字；資料每旬更新

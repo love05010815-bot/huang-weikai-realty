@@ -8,7 +8,7 @@
  *
  * 工具本身都是既有頁面（/tax 的 hash 會直接切到那個計算分頁、/estimate、/sell、/buy、/lvr），這裡只是分流入口。
  * 排版：2～3 顆一排、剛好 4 顆排 2×2（RolePage.tsx 看 tools.length 決定），加到第 5 顆前先想一下版面。
- * 工具的標題／說明跟首頁 TOOLS（app/page.tsx）、導覽列 TOOLS_MENU（_ui/SiteNav.tsx）
+ * 工具的標題／說明跟 config/tools.ts 的 TOOLS（首頁入口與 /tools 分頁共用）、導覽列 TOOLS_MENU（_ui/SiteNav.tsx）
  * 一樣是各自一份、手動同步 —— 改了那邊的字，記得回來對一下。
  *
  * 首頁那兩顆按鈕的字、圖示、目的地，跟 /owner、/buyer 頁面的標題、說明、兩顆工具，全部只在這裡。

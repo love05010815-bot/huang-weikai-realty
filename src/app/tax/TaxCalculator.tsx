@@ -35,7 +35,7 @@ const TAB_BY_HASH: Record<string, Tab> = {
 
 /** 上方那條標籤。kind=tab 是這頁的分頁（按了切換表單）、kind=link 是獨立頁面的工具（按了過去）。
     2026-11-04 系統擁有者：「把所有小工具都列出在上方標籤」。
-    名稱、圖示、順序跟首頁 TOOLS（app/page.tsx）與導覽列 TOOLS_MENU（_ui/SiteNav.tsx）對齊，
+    名稱、圖示、順序跟 config/tools.ts 的 TOOLS（首頁入口與 /tools 分頁共用）與導覽列 TOOLS_MENU（_ui/SiteNav.tsx）對齊，
     三處各自一份、手動同步；這裡的字刻意短（一行要放七個）。 */
 const TOOL_TABS: readonly (
   | { kind: "tab"; tab: Tab; label: string }

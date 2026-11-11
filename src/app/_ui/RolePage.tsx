@@ -107,7 +107,7 @@ export default function RolePage({ role }: { role: Role }) {
                   {other.icon} {other.label} →
                 </Link>
               )}
-              <Link href="/#tools">全部免費小工具 →</Link>
+              <Link href="/tools">全部免費小工具 →</Link>
               <Link href="/">← 回首頁</Link>
             </div>
           </div>
