@@ -1392,16 +1392,22 @@
    * 🔴 「刪除」鈕只認文字整個就是「刪除／Delete」且不是「取消」；右上角 X（aria-label「關閉」）不碰。
    */
   async function deleteOnePost(btn, L) {
+    lastDeleteNote = "";
     const before = new Set(document.querySelectorAll('[role="dialog"], [role="alertdialog"]'));
     btn.scrollIntoView({ block: "center" });
     await sleep(400);
     btn.click();
     const delRe = FBQ.exactRe(FBQ.words(L, "deletePost"));
-    const item = await waitFor(() => [...document.querySelectorAll('[role="menuitem"]')].find((i) => isVisible(i) && delRe.test(textOf(i))), 6000);
+    const menuItems = () => [...document.querySelectorAll('[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]')].filter((i) => isVisible(i));
+    const item = await waitFor(() => menuItems().find((i) => delRe.test(textOf(i))), 6000);
     if (!item) {
+      // 🔴 把選單裡實際有哪些字記下來（同事 2026-11-12 整批「刪不了」，後台只寫「選單沒有刪除」看不出為什麼）
+      const seenItems = menuItems().map((i) => textOf(i).slice(0, 14)).filter(Boolean).slice(0, 8);
+      lastDeleteNote = seenItems.length ? "選單只有：" + seenItems.join("、") : "按了「⋯」6 秒內沒看到選單";
       pressEsc();
       return "nomenu";
     }
+    const itemText = textOf(item).slice(0, 14);
     item.click();
     const dlgRe = FBQ.anyRe(FBQ.words(L, "deleteDialog"));
     const dlg = await waitFor(
@@ -1412,13 +1418,17 @@
       6000,
     );
     if (!dlg) {
+      const fresh = [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')].filter((d) => !before.has(d) && isVisible(d));
+      lastDeleteNote = "按了「" + itemText + "」" + (fresh.length ? "，跳出的視窗寫：" + textOf(fresh[fresh.length - 1]).slice(0, 60) : "，6 秒內沒跳出確認框");
       pressEsc();
       return "nodialog";
     }
     const okRe = FBQ.exactRe(FBQ.words(L, "deleteConfirm"));
     const cancelRe = FBQ.exactRe(FBQ.words(L, "cancel"));
-    const okBtn = [...dlg.querySelectorAll('[role="button"], button')].find((b) => isVisible(b) && okRe.test(textOf(b)) && !cancelRe.test(textOf(b)));
+    const dlgButtons = [...dlg.querySelectorAll('[role="button"], button')].filter((b) => isVisible(b));
+    const okBtn = dlgButtons.find((b) => okRe.test(textOf(b)) && !cancelRe.test(textOf(b)));
     if (!okBtn) {
+      lastDeleteNote = "確認框（" + textOf(dlg).slice(0, 40) + "）裡的鈕只有：" + dlgButtons.map((b) => textOf(b) || b.getAttribute("aria-label") || "?").slice(0, 6).join("、");
       closeBox(dlg, L);
       return "nobutton";
     }
@@ -1435,7 +1445,8 @@
     const opsSeen = () => [...new Set(netLog.filter((r) => r.op && (r.t0 || 0) >= clickAt - 50).map((r) => r.op))].slice(0, 6).join("、");
     const outcome = await waitFor(() => {
       const r = netDelete();
-      if (r) return r.kind === "load" && r.status >= 200 && r.status < 300 && !(r.fb && (r.fb.gqlError || r.fb.error)) ? "net-ok" : "net-fail";
+      // 🔴 FB 的 GraphQL 常常 data 跟 errors（severity WARNING）一起回，那是成功的：只有「沒有 data 又有 errors」或 HTTP 不是 2xx 才算失敗
+      if (r) return r.kind === "load" && r.status >= 200 && r.status < 300 && !(r.fb && r.fb.error) && !(r.fb && r.fb.gqlError && !r.fb.data) ? "net-ok" : "net-fail";
       if (!document.contains(dlg) || !isVisible(dlg)) return "gone";
       return null;
     }, 10000);
@@ -1588,6 +1599,7 @@
       let unconfirmed = 0; // 背景裡按了刪除、沒看到任何回應，當作已刪的那幾則
       let uncertain = 0;
       let noperm = 0;
+      const whyNotes = []; // 刪不了／不確定的原因（選單只有哪些字、FB 回什麼），寫進這個社團的紀錄
       let idle = 0;
       const deadline = Date.now() + 180000; // 一個社團最多看 3 分鐘
       while (!stopped && Date.now() < deadline && idle < 5 && scanned < 80) {
@@ -1649,11 +1661,13 @@
             log("按了「刪除」但 10 秒內沒看到確認框關掉、探針也沒看到回應，不確定有沒有刪掉；等一下自己看一眼。" + lastDeleteNote, "fbq-bad");
           } else if (r === "nomenu") {
             noperm++;
-            log("這則的選單裡沒有「刪除貼文」（不是這個登入能刪的，或 Facebook 改版）。", "fbq-bad");
+            log("這則的選單裡沒有「刪除貼文」（不是這個登入能刪的，或 Facebook 改版）。" + lastDeleteNote, "fbq-bad");
           } else {
             noperm++;
-            log("沒跳出刪除確認框（" + r + "），這則沒刪。", "fbq-bad");
+            log("沒刪成（" + r + "）：" + lastDeleteNote, "fbq-bad");
           }
+          // 刪不了的原因記進紀錄（每個社團最多兩種），後台那一列就看得到是選單沒有、確認框不對、還是 FB 回錯誤
+          if (r !== "deleted" && r !== "deleted-unconfirmed" && lastDeleteNote && whyNotes.length < 2 && !whyNotes.includes(lastDeleteNote)) whyNotes.push(lastDeleteNote);
           await report("scanning", "已刪 " + deleted + " 則" + (unconfirmed ? "（" + unconfirmed + " 則背景未確認）" : "") + (uncertain ? "、不確定 " + uncertain : "") + (noperm ? "、刪不了 " + noperm : ""), deleted);
           didDelete = r === "deleted" || r === "deleted-unconfirmed" || r === "uncertain";
           if (didDelete) break; // 畫面變了，重新收集一次再繼續
@@ -1671,7 +1685,8 @@
         (deleted ? "已刪 " + deleted + " 則" : "沒找到要刪的貼文") +
         (unconfirmed ? "（" + unconfirmed + " 則在背景按的、沒看到回應，當作已刪，請事後抽查）" : "") +
         (uncertain ? "；" + uncertain + " 則按了刪除但沒看到確認（請自己看）" : "") +
-        (noperm ? "；" + noperm + " 則刪不了（選單沒有刪除或 FB 回錯誤）" : "") +
+        (noperm ? "；" + noperm + " 則刪不了" : "") +
+        (whyNotes.length ? "【" + whyNotes.join("／") + "】" : "") +
         "（看了 " + scanned + " 則" + (scanned >= 80 ? "，到上限沒再往下看" : "") + "）";
       log(msg, deleted ? "fbq-ok" : "fbq-bad");
       const status = deleted ? "deleted" : uncertain ? "uncertain" : noperm ? "nodelete" : "notfound";

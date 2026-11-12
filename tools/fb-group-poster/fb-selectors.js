@@ -44,10 +44,11 @@
       //   每則貼文右上角「⋯」的 aria-label 是「對<作者>的這則貼文採取的動作」——作者名就在裡面，靠它認「這是不是我這個身分發的」。
       //   🔴 搜尋結果頁的「⋯」裡沒有「刪除貼文」（只有儲存／關閉留言），貼文本頁與「成員在此社團的貼文」頁（/groups/<id>/user/<uid>/）才有。
       postActionsSuffix: ["的這則貼文採取的動作"],
-      deletePost: ["刪除貼文"],
-      // 確認框：aria-label「永久刪除貼文？」，按鈕「刪除」「取消」、右上角 X 的 aria-label「關閉」
-      deleteDialog: ["永久刪除貼文", "刪除貼文？", "刪除這則貼文"],
-      deleteConfirm: ["刪除"],
+      // 同事 2026-11-12 整批「刪不了（選單沒有刪除）」→ 候選字放寬：FB 有些帳號／版本把刪除叫「移至垃圾桶」「移到垃圾桶」
+      deletePost: ["刪除貼文", "刪除", "移至垃圾桶", "移到垃圾桶", "移至資源回收桶", "移到資源回收筒", "移至資源回收筒"],
+      // 確認框：aria-label「永久刪除貼文？」，按鈕「刪除」「取消」、右上角 X 的 aria-label「關閉」。字只要含「刪除」或「垃圾桶」就算
+      deleteDialog: ["永久刪除", "刪除貼文", "刪除這則貼文", "要刪除", "垃圾桶", "資源回收"],
+      deleteConfirm: ["刪除", "確認", "確定", "移至垃圾桶", "移到垃圾桶", "移至資源回收桶"],
       cancel: ["取消"],
       // 「你的社團」頁上，這些標題以下是 FB 推薦你加入的、不是你已加入的 → 抓清單時在這裡切掉
       suggested: ["建議的社團", "推薦社團", "推薦的社團", "為你推薦", "你可能有興趣", "探索社團", "探索新社團"],
@@ -80,9 +81,9 @@
       close: ["Close", "OK", "Got it"],
       // 英文介面的「⋯」aria-label 是「Actions for this post」，沒有作者名 → 作者改從貼文裡的第一個人名連結認
       postActionsSuffix: ["Actions for this post"],
-      deletePost: ["Delete post", "Delete Post", "Move to Recycle bin"],
-      deleteDialog: ["Delete post?", "Delete Post?", "Delete this post", "Move to Recycle bin?"],
-      deleteConfirm: ["Delete", "Move"],
+      deletePost: ["Delete post", "Delete Post", "Delete", "Move to Recycle bin", "Move to trash", "Move to Trash"],
+      deleteDialog: ["Delete post", "Delete Post", "Delete this post", "Recycle bin", "trash", "Trash"],
+      deleteConfirm: ["Delete", "Move", "Confirm", "OK"],
       cancel: ["Cancel"],
       suggested: ["Suggested for you", "Suggested groups", "Groups you may like", "Discover groups", "Recommended for you"],
       notAName: ["Join", "Joined", "View group", "Visit group", "Invite", "More", "Manage", "Settings", "Share", "Cancel"],
