@@ -70,6 +70,11 @@
     ensurePanel();
     headEl.textContent = t;
   }
+  /** 社團網址 → 代號（數字或英文代稱都可能；跟 background.js 同一條規則） */
+  function groupSlug(url) {
+    const m = String(url || "").match(/\/groups\/([^/?#]+)/);
+    return m ? m[1] : "";
+  }
   function log(m, cls) {
     ensurePanel();
     const li = document.createElement("li");
@@ -184,6 +189,20 @@
     setTitle("FB 社團廣告助手（" + pos + "）");
     log("社團：" + (g.name || g.url), "fbq-strong");
 
+    // 這個分頁不是這個社團（上一個社團換頁沒成功、他重新整理了分頁）→ 自己換過去，最多試一次
+    // （FB 會把數字代號的網址改成英文代稱，比對不上不代表走錯，所以同一個序號只重導一次、不能無限轉）
+    const wantSlug = groupSlug(g.url);
+    const hereSlug = groupSlug(location.href);
+    const hopKey = "fbq:hop:" + job.index;
+    if (wantSlug && hereSlug && wantSlug !== hereSlug && !sessionStorage.getItem(hopKey)) {
+      try {
+        sessionStorage.setItem(hopKey, "1");
+      } catch {}
+      log("這個分頁不在這個社團，換過去…", "");
+      location.href = g.url;
+      return;
+    }
+
     const report = (status, message) => send("fbq:report", { status, message });
 
     // 這個社團剛才已經回報「發出去了」、分頁卻重新載入（倒數中按了 F5、Chrome 卸載再載入…）→ 絕不能再發一次，直接換下一個
@@ -205,18 +224,43 @@
       ]);
     let advancing = false;
     let postVia = ""; // 走「商品拍賣」表單發的，紀錄後面標一下
-    async function onNext() {
+    /**
+     * 記這個社團的結果、請背景程式換下一個（fbq:next／fbq:skip）。
+     * 2026-11-13 他截圖面板停在「換下一個社團中…」不動：背景有把第 33 個記成跳過，分頁卻沒換過去。以前這裡送一次訊息就放著，
+     * 背景回錯（分頁正被拖曳時 Chrome 不給改、背景程式剛被回收…）或換頁沒成功都沒人管。現在：背景回錯就隔 2 秒再送，最多 3 次；
+     * 背景說換好了但 12 秒後這一頁還在，就請背景再換一次（fbq:reopen）；還是不行就把按鈕還給他，重新整理分頁也會自己去下一個社團。
+     */
+    async function advance(type, extra) {
       if (advancing) return;
       advancing = true;
       buttons([{ label: "換下一個社團中…", onClick: () => {} }]);
-      const r = await send("fbq:next", { status: "posted" });
-      if (r.done) finishScreen(r.reason);
+      let r = null;
+      for (let i = 1; i <= 3; i++) {
+        r = await send(type, extra);
+        if (r && r.ok) break;
+        log("換下一個社團沒成功（" + ((r && r.error) || "背景程式沒回應") + "）" + (i < 3 ? "，2 秒後再試一次…" : "。"), "fbq-bad");
+        if (i < 3) await sleep(2000);
+      }
+      if (!r || !r.ok) {
+        advancing = false;
+        buttons([{ label: "再試一次換下一個", primary: true, onClick: () => advance(type, extra) }, { label: "停止全部", danger: true, onClick: onStop }]);
+        return;
+      }
+      if (r.done) return finishScreen(r.reason);
+      await sleep(12000); // 正常的話這一頁早就被換成下一個社團了（這行之後的程式碼根本跑不到）
+      log("分頁沒換到下一個社團，再請背景程式換一次…", "fbq-bad");
+      const r2 = await send("fbq:reopen");
+      if (r2 && r2.done) return finishScreen(r2.reason);
+      await sleep(12000);
+      advancing = false;
+      log("還是沒換過去。按下面的按鈕再試一次，或直接重新整理這個分頁（外掛會自己去下一個社團）。", "fbq-bad");
+      buttons([{ label: "再試一次換下一個", primary: true, onClick: () => advance("fbq:reopen", {}) }, { label: "停止全部", danger: true, onClick: onStop }]);
+    }
+    async function onNext() {
+      return advance("fbq:next", { status: "posted" });
     }
     async function onSkip() {
-      if (advancing) return;
-      advancing = true;
-      const r = await send("fbq:skip", { message: "你選擇跳過" });
-      if (r.done) finishScreen(r.reason);
+      return advance("fbq:skip", { message: "你選擇跳過" });
     }
     async function onStop() {
       advancing = true;
@@ -255,6 +299,7 @@
       // 不然會發出一則沒有照片的廣告（2026-10-09 他遇到「抱歉，沒有上傳新的相片」那次）。
       let outcome = "";
       let base = null; // 按之前頁面與彈出視窗上就有的字、動態牆上已有的貼文，之後不算數
+      let clickAt = 0; // 按下「發佈」的時刻：網路探針只看這之後的「建立貼文」回應
       const snippet = postSnippet(job.ad.text); // 發出去後動態牆上會多一篇含這幾個字的貼文（分頁在背景時視窗常關不掉，靠這個）
       for (let attempt = 1; attempt <= 2; attempt++) {
         const press = findPostButton(dialog, L) || btn;
@@ -264,13 +309,17 @@
           outcome = "questions"; // 「入社審核」疊在發文視窗上面：發佈先別按
           break;
         }
+        clickAt = Date.now();
+        try {
+          window.postMessage({ source: "fbq-net-watch", ms: 15000 }, location.origin); // 這 15 秒 FB 送出的 GraphQL 名字都記：認不出「建立貼文」叫什麼時印出來
+        } catch {}
         press.click();
         log(attempt === 1 ? "已替你按下「發佈」，等 Facebook 回應…（最多等 5 秒）" : "再按一次「發佈」…", "");
-        outcome = await waitPostOutcome(dialog, L, 5000, base, snippet);
+        outcome = await waitPostOutcome(dialog, L, 5000, base, snippet, clickAt);
         if (outcome === "unknown" && document.visibilityState === "hidden") {
           // 分頁在背景：FB 的畫面更新會慢，再多等一陣子（動態牆那篇或審核訊息出現就算）；5＋70＝跟以前一樣總共 75 秒
           log("分頁在背景，Facebook 的畫面更新會慢一點，再等最多 70 秒看結果…", "");
-          outcome = await waitPostOutcome(dialog, L, 70000, base, snippet);
+          outcome = await waitPostOutcome(dialog, L, 70000, base, snippet, clickAt);
           if (outcome === "unknown" && document.visibilityState === "hidden") {
             // 🔴 分頁在背景時 FB 根本不更新畫面：關視窗的動畫不跑、動態牆也不插新貼文（他 2026-10-12 兩次截圖，
             //    貼文都已經在牆上「剛剛」，外掛卻等到超時）。貼文在按下去那一刻就送出了，這 75 秒裡也沒看到任何錯誤，
@@ -333,9 +382,25 @@
         return await autoSkip((sellFlow ? "商品拍賣：" : "") + "Facebook 說無法完成你的要求");
       }
       if (outcome === "unknown") {
-        // 前景按了「發佈」5 秒沒看到視窗關、也沒任何訊息：他 2026-10-28 說「超過 5 秒沒回覆自動跳過」（1.5.6 只做商品拍賣，現在都一樣）
-        log("⚠ 按了「發佈」5 秒內沒看到視窗關掉、也沒看到任何訊息，不等了，標成跳過換下一個。事後到發佈紀錄抽查，萬一其實有發出去就不要補發。", "fbq-bad");
-        return await autoSkip((sellFlow ? "商品拍賣" : "") + "按了「發佈」5 秒沒回應");
+        // 前景按了「發佈」5 秒沒看到視窗關、也沒任何訊息：他 2026-10-28 說「超過 5 秒沒回覆自動跳過」（1.5.6 只做商品拍賣，現在都一樣）。
+        // 2026-11-13 他截圖：面板說「5 秒沒回應，跳過」但貼文已經在牆上「剛剛」，一批 170 個有 107 個被記成跳過——FB 只是慢了幾秒。
+        // 所以倒數 5 秒之後**再看一眼**（視窗關了／審核訊息／FB 回應建立成功／牆上多了這篇），有就照實記成已發佈，沒有才跳過。
+        log("⚠ 按了「發佈」5 秒內沒看到視窗關掉、也沒看到任何訊息。再給它 5 秒看看，還是沒有就標成跳過換下一個。", "fbq-bad");
+        const seen = netOpsSince(clickAt);
+        if (seen.length) log("（這幾秒 Facebook 送出的請求：" + seen.slice(0, 6).join("、") + "）", "");
+        if (!job.autoPost) {
+          controls(false);
+          return;
+        }
+        if ((await countdown(5)) === "stop") return onStop();
+        const late = lateOutcome(dialog, L, base, snippet, clickAt);
+        if (!late) {
+          log("10 秒了還是什麼都沒看到，標成跳過換下一個。事後到發佈紀錄抽查，萬一其實有發出去就不要補發。", "fbq-bad");
+          return await advance("fbq:skip", { message: (sellFlow ? "商品拍賣" : "") + "按了「發佈」10 秒沒回應，自動跳過" });
+        }
+        log("倒數期間看到" + late.how + "，照實記成已發佈。", "fbq-ok");
+        outcome = late.outcome;
+        note = "；Facebook 慢了幾秒才確認";
       }
       const unconfirmed = outcome === "posted-unconfirmed";
       if (unconfirmed) outcome = "posted";
@@ -356,11 +421,7 @@
         log("等 " + gap + " 秒再換下一個" + gapNote + "（連發太快容易被當垃圾訊息）。", "");
         if ((await countdown(gap)) === "stop") return onStop();
       }
-      if (advancing) return;
-      advancing = true;
-      buttons([{ label: "換下一個社團中…", onClick: () => {} }]);
-      const r = await send("fbq:next", { status: outcome, message: doneMsg });
-      if (r.done) finishScreen(r.reason);
+      return await advance("fbq:next", { status: outcome, message: doneMsg });
     }
 
     /**
@@ -509,11 +570,7 @@
       if (!job.autoPost) return controls(false);
       log("自動模式：" + reason + "，5 秒後自動跳過換下一個。", "fbq-strong");
       if ((await countdown(5)) === "stop") return onStop();
-      if (advancing) return;
-      advancing = true;
-      buttons([{ label: "換下一個社團中…", onClick: () => {} }]);
-      const r = await send("fbq:skip", { message: reason + "，自動跳過" });
-      if (r.done) finishScreen(r.reason);
+      return advance("fbq:skip", { message: reason + "，自動跳過" });
     }
 
     controls(false);
@@ -863,7 +920,7 @@
    * 出現「暫時被封鎖／違反守則」類字＝FB 拒絕；時間到什麼都沒看到＝不確定（退回半自動讓他看）。
    * base＝snapshotBeforePost() 的結果（舊呼叫端傳字串也吃）。
    */
-  async function waitPostOutcome(dialog, L, timeoutMs, base, snippet) {
+  async function waitPostOutcome(dialog, L, timeoutMs, base, snippet, sinceTs) {
     const deadline = Date.now() + timeoutMs;
     const pendWords = FBQ.words(L, "pendingApproval");
     const blockWords = FBQ.words(L, "blocked");
@@ -887,6 +944,11 @@
       const pend = freshAny(pendWords, baseText, body);
       if (gone) return pend ? "pending" : "posted";
       if (pend) return "pending";
+      // ⑤ 網路探針看到 FB「建立貼文」回 200 且沒 errors＝發出去了（2026-11-13）：FB 關視窗常常比回應慢好幾秒，分頁在背景時根本不關
+      if (sinceTs) {
+        const nr = netPostCreate(sinceTs);
+        if (nr && nr.ok) return "posted";
+      }
       if (postInFeed()) {
         if (!feedSeenAt) feedSeenAt = Date.now();
         else if (Date.now() - feedSeenAt >= 4000) return "posted";
@@ -896,6 +958,21 @@
       await sleep(500);
     }
     return "unknown";
+  }
+
+  /**
+   * 「5 秒沒回應」之後再多給 5 秒，倒數完回頭看一眼：視窗關了／審核訊息／FB 回應貼文建立成功／牆上多了這篇，任一個都算發出去。
+   * 2026-11-13 他截圖：面板說「5 秒沒回應，跳過」，貼文其實已經在牆上「剛剛」——FB 就是慢了幾秒。回 null＝還是什麼都沒看到。
+   */
+  function lateOutcome(dialog, L, base, snippet, sinceTs) {
+    const body = pageProbe();
+    const baseText = (base && base.text) || "";
+    if (freshAny(FBQ.words(L, "pendingApproval"), baseText, body)) return { outcome: "pending", how: "審核中的訊息" };
+    if (!document.contains(dialog) || dialog.offsetParent === null) return { outcome: "posted", how: "發文視窗關掉了" };
+    const nr = sinceTs ? netPostCreate(sinceTs) : null;
+    if (nr && nr.ok) return { outcome: "posted", how: "Facebook 回應貼文建立成功（" + nr.op + "）" };
+    if (feedHasPost(dialog, (base && base.articles) || new Set(), snippet)) return { outcome: "posted", how: "牆上多了這篇" };
+    return null;
   }
 
   /** 自動模式換下一個社團前先等一下：面板倒數，可以立刻換或停止。用 sleep()（走背景計時），分頁在背景也照樣數。 */
@@ -987,6 +1064,22 @@
   try {
     window.postMessage({ source: "fbq-net-ping" }, location.origin);
   } catch {}
+  /**
+   * 按「發佈」之後，探針有沒有看到 FB「建立貼文」的 GraphQL 回應（fb_api_req_friendly_name 像 ComposerStoryCreateMutation）。
+   * 2026-11-13 他一批 170 個社團有 107 個被記成「跳過」——FB 常常超過 5 秒才把發文視窗關掉，外掛只看畫面就以為沒發出去，
+   * 其實貼文早就在牆上。網路回應比畫面快、分頁在背景也看得到，所以回 200 且沒 errors 就當發出去了。
+   */
+  const POST_OP = /ComposerStoryCreate|StoryCreate|PostCreate/i;
+  function netPostCreate(sinceTs) {
+    const r = netLog.find((x) => (x.t0 || 0) >= (sinceTs || 0) && x.op && POST_OP.test(x.op) && x.kind === "load");
+    if (!r) return null;
+    const ok = r.status >= 200 && r.status < 300 && !(r.fb && (r.fb.gqlError || r.fb.error));
+    return { op: r.op, status: r.status, ok, error: r.fb && (r.fb.gqlError || r.fb.error) };
+  }
+  /** 這段時間 FB 送出過哪些 GraphQL（名字）：認不出「建立貼文」叫什麼時印給他看，下次截圖就知道要補哪個字 */
+  function netOpsSince(sinceTs) {
+    return [...new Set(netLog.filter((x) => (x.t0 || 0) >= (sinceTs || 0) && x.op).map((x) => String(x.op).slice(0, 60)))];
+  }
   /** 這次上傳的請求摘要（給人看的一行字）；探針沒接上、沒看到請求也要講清楚 */
   function netSummary(sinceTs) {
     if (!probeSeen) return "網路探針沒接上（外掛剛更新的話，到 chrome://extensions 按 ↻，這個社團重新載入就有）";

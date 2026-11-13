@@ -105,13 +105,25 @@ async function saveJob(job) {
 async function openGroup(job) {
   const g = job.groups[job.index];
   if (job.tabId != null) {
-    try {
-      // 不帶 active:true：換社團時不把分頁搶到最前面，他可以在別的分頁做事
-      // （content.js 的計時走 fbq:sleep，分頁在背景照跑——他 2026-10-12 要的「不用一直開著視窗」）
-      await chrome.tabs.update(job.tabId, { url: g.url, autoDiscardable: false });
-      return;
-    } catch {
-      /* 分頁被關了，改開新的 */
+    // 不帶 active:true：換社團時不把分頁搶到最前面，他可以在別的分頁做事
+    // （content.js 的計時走 fbq:sleep，分頁在背景照跑——他 2026-10-12 要的「不用一直開著視窗」）
+    // 2026-11-13 他截圖面板停在「換下一個社團中…」：tabs.update 偶爾會失敗（分頁正被拖曳時 Chrome 回「Tabs cannot be edited right now」）
+    // 以前失敗一次就當分頁被關了、去開新分頁；現在隔 0.7 秒重試三次，三次都不行才當它關了
+    let lastErr = null;
+    for (let i = 1; i <= 3; i++) {
+      try {
+        await chrome.tabs.update(job.tabId, { url: g.url, autoDiscardable: false });
+        return;
+      } catch (e) {
+        lastErr = e;
+        const gone = /No tab with id/i.test(String(e && e.message ? e.message : e));
+        if (gone) break; // 分頁真的被關了，改開新的
+        if (i < 3) await new Promise((r) => setTimeout(r, 700));
+      }
+    }
+    if (lastErr && !/No tab with id/i.test(String(lastErr.message || lastErr))) {
+      // 三次都改不了但分頁還在：不要另開一個新分頁（會變兩個分頁同時跑），把原因丟回去讓 content.js 再試
+      throw new Error("分頁換不過去：" + String(lastErr.message || lastErr).slice(0, 80));
     }
   }
   // 第一個社團照舊開在前面讓他看到開始跑。autoDiscardable:false＝Chrome 省記憶體時不准把這個分頁卸載
@@ -330,6 +342,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
       await saveJob(job);
       await setProgress({ results, index: job.index, today });
+      await openGroup(job);
+      return { ok: true, done: false, next: job.groups[job.index].name };
+    });
+  }
+
+  // 社團頁 content.js：背景說換好了、分頁卻沒換過去（或他重新整理了舊的那頁）→ 再把這個分頁帶到目前該做的社團（可以重複叫，不會多記結果）
+  if (msg.type === "fbq:reopen") {
+    return reply(async () => {
+      const job = await getJob();
+      if (!job) return { ok: true, done: true };
+      if (sender.tab && job.tabId != null && sender.tab.id !== job.tabId) return { ok: true, done: false, ignored: true }; // 別的分頁不理它
       await openGroup(job);
       return { ok: true, done: false, next: job.groups[job.index].name };
     });

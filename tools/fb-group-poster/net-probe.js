@@ -19,6 +19,9 @@
   // 刪除是 POST /api/graphql/，body 裡 fb_api_req_friendly_name=…Delete…Mutation。只記「名字像刪除」的那幾筆，回應只看有沒有 errors。
   const GQL = /\/api\/graphql\/?$/i;
   const DELETE_OP = /delet|remov/i;
+  // 發佈（2026-11-13）：按了「發佈」FB 常常超過 5 秒才把視窗關掉，外掛看不到就記成「跳過」，他一批 170 個有 107 個被記成跳過、
+  // 其實大多發出去了。改成也看 FB 建立貼文的 GraphQL（fb_api_req_friendly_name 像 ComposerStoryCreateMutation）回 200 且沒 errors＝發出去了。
+  const POST_OP = /ComposerStoryCreate|StoryCreate|PostCreate/i;
   const opOf = (body) => {
     try {
       if (!body) return "";
@@ -78,7 +81,7 @@
     if (e.data.source === "fbq-net-ping") report({ kind: "hello" });
     if (e.data.source === "fbq-net-watch") watchUntil = Date.now() + Math.min(Number(e.data.ms) || 0, 30000);
   });
-  const wantOp = (op) => !!op && (DELETE_OP.test(op) || Date.now() < watchUntil);
+  const wantOp = (op) => !!op && (DELETE_OP.test(op) || POST_OP.test(op) || Date.now() < watchUntil);
 
   // XMLHttpRequest
   const XO = XMLHttpRequest.prototype.open;
