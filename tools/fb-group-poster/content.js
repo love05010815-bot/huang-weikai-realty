@@ -199,6 +199,8 @@
         sessionStorage.setItem(hopKey, "1");
       } catch {}
       log("這個分頁不在這個社團，換過去…", "");
+      window.postMessage({ source: "fbq-leave" }, location.origin);
+      await sleep(150);
       location.href = g.url;
       return;
     }
@@ -234,6 +236,9 @@
       if (advancing) return;
       advancing = true;
       buttons([{ label: "換下一個社團中…", onClick: () => {} }]);
+      // 發文視窗裡還有沒發出去的文案時，FB 會讓 Chrome 跳「要離開網站嗎？」把分頁卡住——先請探針把那個提醒擋掉
+      window.postMessage({ source: "fbq-leave" }, location.origin);
+      await sleep(150);
       let r = null;
       for (let i = 1; i <= 3; i++) {
         r = await send(type, extra);

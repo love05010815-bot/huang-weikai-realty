@@ -76,8 +76,26 @@
   // content.js 載入後會 ping 一下，確認探針真的裝上了（沒按 ↻ 的舊分頁就沒有）
   // fbq-net-watch：接下來 ms 毫秒內「所有」GraphQL 請求的名字都記（刪除那一下用：萬一 FB 的刪除叫別的名字，面板印出來就知道要補哪個字）
   let watchUntil = 0;
+  // fbq-leave（2026-11-17）：照片沒傳成功要跳過時，發文視窗裡還有沒發出去的文案，FB 掛了 beforeunload，
+  // 外掛一換頁 Chrome 就跳「要離開網站嗎？」把整個分頁卡住（面板停在「換下一個社團中…」），沒人按「離開」就不會動。
+  // 外掛決定要換下一個社團時先喊一聲，這裡就把 FB 的 beforeunload 擋掉（這支在 document_start 就掛上，排在 FB 的前面）。
+  // 只在外掛自己要換頁的那一下生效；他自己手動關分頁、打字到一半離開，FB 原本的提醒照舊。
+  let leaving = false;
+  window.addEventListener(
+    "beforeunload",
+    (e) => {
+      if (leaving) e.stopImmediatePropagation();
+    },
+    true,
+  );
   window.addEventListener("message", (e) => {
     if (e.source !== window || !e.data) return;
+    if (e.data.source === "fbq-leave") {
+      leaving = true;
+      try {
+        window.onbeforeunload = null;
+      } catch {}
+    }
     if (e.data.source === "fbq-net-ping") report({ kind: "hello" });
     if (e.data.source === "fbq-net-watch") watchUntil = Date.now() + Math.min(Number(e.data.ms) || 0, 30000);
   });
