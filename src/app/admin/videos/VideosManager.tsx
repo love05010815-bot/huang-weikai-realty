@@ -144,6 +144,12 @@ export default function VideosManager({
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<string | "new" | null>(null);
+  /**
+   * 分類篩選：全部／房產知識／生活知識／房屋開箱。
+   * 影片破百支之後，要找某一類得捲過前面整類（房產知識就 80 幾支）——按一下只留那一類。
+   * 只是畫面上的篩選，不存、不進網址；重新整理回到「全部」。
+   */
+  const [filter, setFilter] = useState<VideoCategory | "all">("all");
   const [form, setForm] = useState<FormState>(emptyForm);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -619,6 +625,40 @@ export default function VideosManager({
         </div>
       ) : null}
 
+      {/* 分類快速切換。數字是那一類的全部支數（含隱藏中的），跟下面清單的小標一致。
+          0 支的分類灰掉不給按 —— 按了只會看到一片空白。 */}
+      {initial.length > 0 ? (
+        <div className={styles.actions} style={{ marginBottom: 12 }}>
+          {(
+            [
+              ["all", "全部", initial.length],
+              ...VIDEO_CATEGORIES.map(
+                (c) => [c, CATEGORY_META[c].label, initial.filter((r) => r.category === c).length] as const,
+              ),
+            ] as const
+          ).map(([value, label, count]) => {
+            const on = filter === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                className={styles.btn}
+                aria-pressed={on}
+                disabled={count === 0}
+                style={
+                  on
+                    ? { borderColor: CIS.blue, color: CIS.text, background: "rgba(var(--adm-brand-rgb), 0.12)" }
+                    : { borderColor: CIS.cardBorder, color: CIS.textSub }
+                }
+                onClick={() => setFilter(value)}
+              >
+                {label}（{count}）
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
       <div className={styles.list}>
         {initial.length === 0 ? (
           <div className={styles.notice} style={{ borderColor: CIS.cardBorder, color: CIS.textMute }}>
@@ -627,6 +667,7 @@ export default function VideosManager({
         ) : null}
 
         {VIDEO_CATEGORIES.map((category) => {
+          if (filter !== "all" && filter !== category) return null;
           const rows = initial.filter((r) => r.category === category);
           if (rows.length === 0) return null;
           return (
