@@ -1271,6 +1271,14 @@ export default function BookingForm() {
                     哪天把它設成 "1" 開啟兩段式確認，這句要改回保留 N 分鐘的版本。 */}
                 送出後預約即成立，確認信會立即寄出。
               </p>
+              {/* 個資告知（個資法第 8 條）。2026-11-18 他點頭上線；全文在 /privacy。開新分頁，免得填到一半的表單不見。 */}
+              <p className={styles.submitHint}>
+                送出即表示您同意依
+                <a href="/privacy" target="_blank" rel="noopener">
+                  〈個人資料蒐集告知〉
+                </a>
+                使用您填寫的資料，僅用於與您聯繫及安排本次服務。
+              </p>
             </section>
           ) : null}
         </form>

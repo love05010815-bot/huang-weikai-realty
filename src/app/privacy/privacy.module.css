@@ -1,0 +1,38 @@
+/* /privacy —— 個人資料蒐集告知。配色變數來自 home.module.css 的 .page。 */
+
+.wrap {
+  max-width: 760px;
+}
+
+.list {
+  margin: 0 0 20px;
+  padding: 26px 28px 26px 48px;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.85;
+}
+
+.list li + li {
+  margin-top: 16px;
+}
+
+.list strong {
+  display: block;
+  color: var(--ink);
+  font-weight: 900;
+}
+
+.list a {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+@media (max-width: 600px) {
+  .list {
+    padding: 20px 18px 20px 38px;
+  }
+}

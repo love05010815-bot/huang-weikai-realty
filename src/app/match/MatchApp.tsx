@@ -637,6 +637,17 @@ export default function MatchApp({ initial, colleague: colleagueProp = null }: {
           <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`} disabled={busy}>
             {busy ? "送出中…" : "送出預約"}
           </button>
+          {/* 個資告知（個資法第 8 條），2026-11-18。/privacy 寫的蒐集者是他本人，
+              所以同事代客那條（colleague 有值）不顯示——那邊接案的是同事。 */}
+          {!colleague && (
+            <p className={styles.hint}>
+              送出即表示您同意依
+              <a href="/privacy" target="_blank" rel="noopener">
+                〈個人資料蒐集告知〉
+              </a>
+              使用您填寫的資料，僅用於與您聯繫及安排本次看屋。
+            </p>
+          )}
         </form>
       </div>
     );
