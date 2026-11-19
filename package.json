@@ -27,6 +27,7 @@
     "check:pacific": "node --experimental-strip-types scripts/check-pacific-map.mjs",
     "check:inventory": "node --experimental-strip-types scripts/check-project-inventory.mjs",
     "check:threads": "node --experimental-strip-types scripts/check-threads.mjs",
+    "check:video-stats": "node --experimental-strip-types scripts/check-video-stats.mjs",
     "check:fb-ad": "node --experimental-strip-types scripts/check-fb-ad.mjs",
     "build:fb-ext": "node tools/fb-group-poster/build-colleague.mjs",
     "fetch:school": "node --experimental-strip-types scripts/fetch-school-districts.mjs",

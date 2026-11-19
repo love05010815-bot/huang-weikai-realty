@@ -16,6 +16,7 @@
  *    以這個頻道的量，一天用不到 200 單位。
  */
 import { getConfig, setConfig } from "@/lib/google-calendar";
+import type { PlatformVideoFetch, VideoStat } from "@/lib/video-stats-types";
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -394,5 +395,115 @@ export async function replyToComment(parentId: string, text: string): Promise<{ 
   } catch (e) {
     console.error("[youtube] 回留言例外:", e);
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+// ---------------------------------------------------------------- 影片觀看數
+
+/**
+ * 頻道上傳的影片與觀看數（/admin/inbox/videos 用）。2026-11-19。
+ *
+ * 走「上傳清單 → 影片統計」兩段：playlistItems 一次 50 支、videos 一次 50 支，
+ * 300 支也才 12 次請求、12 點配額（每天 10,000 點），不用怕。
+ * 現有的 youtube.force-ssl 權限就夠，不用重綁。
+ */
+export async function fetchYoutubeVideoStats(max = 300): Promise<PlatformVideoFetch> {
+  const base: PlatformVideoFetch = {
+    platform: "youtube",
+    bound: false,
+    accountName: null,
+    videos: [],
+    error: null,
+    viewsMissing: null,
+  };
+  if (!(await isYoutubeBound())) return base;
+  base.bound = true;
+  base.accountName = (await getBoundChannel())?.title ?? null;
+
+  const token = await getAccessToken();
+  if (!token) {
+    base.error = "拿不到 access token，授權可能已失效，請重新綁定";
+    return base;
+  }
+  const headers = { Authorization: `Bearer ${token}` };
+  const fail = async (res: Response): Promise<string> => {
+    try {
+      const j = (await res.json()) as { error?: { message?: string } };
+      return j.error?.message || `YouTube 回 ${res.status}`;
+    } catch {
+      return `YouTube 回 ${res.status}`;
+    }
+  };
+
+  try {
+    const chRes = await fetch(`${YT_API}/channels?part=contentDetails&mine=true`, { headers, cache: "no-store" });
+    if (!chRes.ok) {
+      base.error = await fail(chRes);
+      return base;
+    }
+    const ch = (await chRes.json()) as {
+      items?: Array<{ contentDetails?: { relatedPlaylists?: { uploads?: string } } }>;
+    };
+    const uploads = ch.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+    if (!uploads) {
+      base.error = "找不到這個頻道的上傳清單";
+      return base;
+    }
+
+    const ids: string[] = [];
+    let pageToken = "";
+    while (ids.length < max) {
+      const p = new URLSearchParams({ part: "contentDetails", playlistId: uploads, maxResults: "50" });
+      if (pageToken) p.set("pageToken", pageToken);
+      const res = await fetch(`${YT_API}/playlistItems?${p}`, { headers, cache: "no-store" });
+      if (!res.ok) {
+        base.error = await fail(res);
+        return base;
+      }
+      const j = (await res.json()) as {
+        items?: Array<{ contentDetails?: { videoId?: string } }>;
+        nextPageToken?: string;
+      };
+      for (const it of j.items || []) if (it.contentDetails?.videoId) ids.push(it.contentDetails.videoId);
+      if (!j.nextPageToken) break;
+      pageToken = j.nextPageToken;
+    }
+
+    const out: VideoStat[] = [];
+    const wanted = ids.slice(0, max);
+    for (let i = 0; i < wanted.length; i += 50) {
+      const p = new URLSearchParams({ part: "snippet,statistics", id: wanted.slice(i, i + 50).join(",") });
+      const res = await fetch(`${YT_API}/videos?${p}`, { headers, cache: "no-store" });
+      if (!res.ok) {
+        base.error = await fail(res);
+        return base;
+      }
+      const j = (await res.json()) as {
+        items?: Array<{
+          id: string;
+          snippet?: { title?: string; publishedAt?: string };
+          statistics?: { viewCount?: string; likeCount?: string; commentCount?: string };
+        }>;
+      };
+      const num = (v: string | undefined): number | null => (v === undefined ? null : Number(v) || 0);
+      for (const v of j.items || []) {
+        out.push({
+          platform: "youtube",
+          id: v.id,
+          title: v.snippet?.title || "",
+          publishedAt: v.snippet?.publishedAt || "",
+          permalink: `https://www.youtube.com/watch?v=${v.id}`,
+          views: num(v.statistics?.viewCount),
+          likes: num(v.statistics?.likeCount),
+          comments: num(v.statistics?.commentCount),
+        });
+      }
+    }
+    base.videos = out;
+    return base;
+  } catch (e) {
+    console.error("[youtube] 抓影片觀看數例外:", e);
+    base.error = e instanceof Error ? e.message : String(e);
+    return base;
   }
 }

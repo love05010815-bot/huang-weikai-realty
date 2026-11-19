@@ -1,0 +1,166 @@
+/* /admin/inbox/videos —— 影片觀看數排行。外殼（.page／.shell／.title／.filterRow…）用 ../inbox.module.css，
+   這個檔只管排行表。顏色一律 var(--adm-*)（見 feedback_admin_theme_tokens）。 */
+
+.sources {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin: 18px 0 6px;
+}
+
+.source {
+  padding: 12px 14px;
+  border: 1px solid var(--adm-card-border);
+  border-radius: 10px;
+  background: var(--adm-card);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.sourceName {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.sourceBig {
+  font-size: 22px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  color: var(--adm-text-mute);
+}
+
+.warnBox {
+  margin: 10px 0;
+  padding: 11px 14px;
+  border: 1px solid rgba(var(--adm-warn-rgb), 0.35);
+  border-radius: 10px;
+  background: rgba(var(--adm-warn-rgb), 0.1);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.warnBox a {
+  color: var(--adm-brand-soft);
+  font-weight: 800;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 4px 14px;
+  align-items: center;
+  padding: 12px 16px;
+  border: 1px solid var(--adm-card-border);
+  border-radius: 10px;
+  background: var(--adm-card);
+}
+
+.rank {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--adm-text-mute);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.rankTop {
+  color: var(--adm-accent);
+}
+
+.rowTitle {
+  font-size: 15.5px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.rowMeta {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--adm-text-mute);
+}
+
+.total {
+  text-align: right;
+  font-size: 22px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.totalUnit {
+  margin-left: 3px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--adm-text-mute);
+}
+
+.chips {
+  grid-column: 2 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.chipLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--adm-card-border);
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--adm-text-sub);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.chipLink:hover {
+  border-color: var(--adm-brand);
+  color: var(--adm-text);
+}
+
+.chipLink b {
+  color: var(--adm-text);
+}
+
+.footNote {
+  margin-top: 18px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--adm-text-mute);
+}
+
+@media (max-width: 640px) {
+  .row {
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    padding: 11px 12px;
+  }
+
+  .total {
+    font-size: 18px;
+  }
+}

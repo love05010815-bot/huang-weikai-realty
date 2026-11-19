@@ -29,6 +29,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { getConfig, setConfig } from "@/lib/google-calendar";
 import type { InboxComment, InboxReply, PlatformFetch } from "@/lib/inbox-types";
+import type { PlatformVideoFetch, VideoStat } from "@/lib/video-stats-types";
 
 const GRAPH = "https://graph.threads.net/v1.0";
 /** 換 token 的端點不在 v1.0 底下，是根目錄 —— 這是 Threads API 跟 Graph 不一樣的地方 */
@@ -47,12 +48,18 @@ export const THREADS_REDIRECT_URI = `${BASE_URL}/api/admin/threads/callback`;
  *   threads_read_replies     讀別人留在你貼文底下的回覆
  *   threads_manage_replies   回覆／管理留言
  *   threads_content_publish  發文 —— **回覆在 Threads 也算發文**，少了它回不出去
+ *   threads_manage_insights  讀貼文的觀看數（2026-11-19 加，/admin/inbox/videos 用；
+ *                            沒有它留言功能照常，只是 Threads 影片的觀看數會是「—」）
+ *
+ * 🔴 加了 threads_manage_insights 之後，**要先到 Meta 開發者後台的 Threads 使用案例把這個權限加進去**
+ *    才能重新綁定 —— 後台沒加就按綁定，授權頁會直接報 scope 錯誤。已經綁好的權杖不受影響。
  */
 const SCOPES = [
   "threads_basic",
   "threads_read_replies",
   "threads_manage_replies",
   "threads_content_publish",
+  "threads_manage_insights",
 ].join(",");
 
 const TOKEN_KEY = "threads_token";
@@ -507,5 +514,103 @@ export async function replyThreadsComment(
   } catch (e) {
     console.error("[threads] 回留言例外:", e);
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+// ---------------------------------------------------------------- 影片觀看數
+
+/** 一次最多幫幾支影片問觀看數（每支一次請求） */
+const VIDEO_INSIGHT_MAX = 40;
+
+type ThreadsMedia = ThreadsPost & { media_type?: string };
+
+/**
+ * Threads 上的影片貼文與觀看數。
+ *
+ * 他在 Threads 發的大多是物件照片（CAROUSEL_ALBUM），這裡只留 media_type=VIDEO 的。
+ *
+ * 🔴 觀看數要 `threads_manage_insights` 權限。2026-11-19 實測現有權杖沒有（回
+ *    「Application does not have permission for this action」）。第一支被拒就不再問剩下的，
+ *    影片清單照樣回、views 是 null、原因寫在 viewsMissing。
+ *    **拿得到數字的那條路還沒有用真權杖跑成功過**，他重新綁定後要看一下這欄。
+ */
+export async function fetchThreadsVideoStats(scan = 100): Promise<PlatformVideoFetch> {
+  const base: PlatformVideoFetch = {
+    platform: "threads",
+    bound: false,
+    accountName: null,
+    videos: [],
+    error: null,
+    viewsMissing: null,
+  };
+  if (!isThreadsConfigured()) return base;
+  const stored = await getConfig(TOKEN_KEY);
+  if (!stored) return base;
+  base.bound = true;
+  const bound = await getBoundThreads();
+  base.accountName = bound?.username ? `@${bound.username}` : (bound?.userId ?? null);
+  const token = await ensureFreshToken(stored);
+
+  try {
+    const listRes = await fetch(
+      `${GRAPH}/me/threads?${new URLSearchParams({
+        fields: "id,media_type,text,permalink,timestamp",
+        limit: String(Math.min(100, Math.max(1, scan))),
+        access_token: token,
+      })}`,
+      { cache: "no-store" },
+    );
+    if (!listRes.ok) {
+      base.error = await readError(listRes);
+      return base;
+    }
+    const posts = (((await listRes.json()) as { data?: ThreadsMedia[] }).data || [])
+      .filter((p) => p.media_type === "VIDEO")
+      .slice(0, VIDEO_INSIGHT_MAX);
+
+    const out: VideoStat[] = [];
+    for (const p of posts) {
+      const stat: VideoStat = {
+        platform: "threads",
+        id: p.id,
+        title: p.text || "",
+        publishedAt: p.timestamp || "",
+        permalink: p.permalink || null,
+        views: null,
+        likes: null,
+        comments: null,
+      };
+      out.push(stat);
+      if (base.viewsMissing) continue; // 已經知道沒權限，不要再打
+
+      const res = await fetch(
+        `${GRAPH}/${encodeURIComponent(p.id)}/insights?${new URLSearchParams({
+          metric: "views,likes,replies",
+          access_token: token,
+        })}`,
+        { cache: "no-store" },
+      );
+      if (!res.ok) {
+        base.viewsMissing = `Threads 不給觀看數：${await readError(res)}。要先在 Meta 開發者後台的 Threads 使用案例加上 threads_manage_insights 權限，再按下面的重新綁定。`;
+        continue;
+      }
+      const j = (await res.json()) as {
+        data?: Array<{ name?: string; values?: Array<{ value?: number }>; total_value?: { value?: number } }>;
+      };
+      const pick = (name: string): number | null => {
+        const d = j.data?.find((x) => x.name === name);
+        const v = d?.values?.[0]?.value ?? d?.total_value?.value;
+        return typeof v === "number" ? v : null;
+      };
+      stat.views = pick("views");
+      stat.likes = pick("likes");
+      stat.comments = pick("replies");
+    }
+    base.videos = out;
+    return base;
+  } catch (e) {
+    console.error("[threads] 抓影片觀看數例外:", e);
+    base.error = e instanceof Error ? e.message : String(e);
+    return base;
   }
 }

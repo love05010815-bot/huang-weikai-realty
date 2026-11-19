@@ -24,6 +24,7 @@
  */
 import { getConfig, setConfig } from "@/lib/google-calendar";
 import type { InboxComment, InboxReply, PlatformFetch } from "@/lib/inbox-types";
+import type { PlatformVideoFetch, VideoStat } from "@/lib/video-stats-types";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 const DIALOG = "https://www.facebook.com/v21.0/dialog/oauth";
@@ -41,6 +42,8 @@ export const META_REDIRECT_URI = `${BASE_URL}/api/admin/meta/callback`;
  *   pages_manage_engagement  回覆／管理留言
  *   instagram_basic          讀 IG 帳號與貼文
  *   instagram_manage_comments 讀 IG 留言、回 IG 留言
+ *   instagram_manage_insights 讀 IG 影片的觀看數（2026-11-19 加，/admin/inbox/videos 用；
+ *                             沒有它留言功能照常，只是 IG 影片的觀看數會是「—」）
  */
 const SCOPES = [
   "pages_show_list",
@@ -53,6 +56,9 @@ const SCOPES = [
   "pages_manage_engagement",
   "instagram_basic",
   "instagram_manage_comments",
+  // 2026-11-19：IG 影片觀看數。走商家版登入（config_id）時這個清單不會被送出去，
+  // 要到 Meta 後台那個「設定」裡自己勾這一項，再回來重新綁定。
+  "instagram_manage_insights",
 ].join(",");
 
 const PAGE_TOKEN_KEY = "meta_page_token";
@@ -528,5 +534,171 @@ export async function replyMetaComment(
   } catch (e) {
     console.error("[meta] 回留言例外:", e);
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+// ---------------------------------------------------------------- 影片觀看數
+
+const VIDEO_PAGE_SIZE = 100;
+
+/** 照 paging.next 一頁一頁往下拿，最多 maxPages 頁。第一頁就失敗才算失敗。 */
+async function graphPages<T>(
+  firstUrl: string,
+  maxPages: number,
+): Promise<{ ok: true; data: T[] } | { ok: false; error: string }> {
+  const data: T[] = [];
+  let url: string | undefined = firstUrl;
+  for (let i = 0; i < maxPages && url; i++) {
+    const res: Response = await fetch(url, { cache: "no-store" });
+    if (!res.ok) {
+      if (i === 0) return { ok: false, error: await readGraphError(res) };
+      break; // 後面的頁失敗就用已經拿到的，不要整包丟掉
+    }
+    const j = (await res.json()) as { data?: T[]; paging?: { next?: string } };
+    data.push(...(j.data || []));
+    url = j.paging?.next;
+  }
+  return { ok: true, data };
+}
+
+type FbVideo = {
+  id: string;
+  title?: string;
+  description?: string;
+  created_time?: string;
+  permalink_url?: string;
+  views?: number;
+};
+
+/**
+ * 粉專的影片（含 Reels）與觀看數。2026-11-19 實測：現有的粉專權杖就拿得到 `views`，不用重綁。
+ * （更細的 video_insights 要 read_insights 權限，沒有、也不需要。）
+ */
+export async function fetchFacebookVideoStats(max = 300): Promise<PlatformVideoFetch> {
+  const base: PlatformVideoFetch = {
+    platform: "facebook",
+    bound: false,
+    accountName: null,
+    videos: [],
+    error: null,
+    viewsMissing: null,
+  };
+  if (!isMetaConfigured()) return base;
+  const [token, bound] = await Promise.all([getConfig(PAGE_TOKEN_KEY), getBoundMeta()]);
+  if (!token || !bound) return base;
+  base.bound = true;
+  base.accountName = bound.pageName;
+
+  try {
+    const params = new URLSearchParams({
+      // 🔴 不要加 likes.summary／comments.summary：2026-11-19 實測 244 支影片帶那兩個彙總要 16 秒、
+      //    只要 views 是 8.5 秒。這頁的重點是觀看數，讚數留言數不值得多等一倍。
+      fields: "id,title,description,created_time,permalink_url,views",
+      limit: String(VIDEO_PAGE_SIZE),
+      access_token: token,
+    });
+    const r = await graphPages<FbVideo>(
+      `${GRAPH}/${bound.pageId}/videos?${params}`,
+      Math.ceil(max / VIDEO_PAGE_SIZE),
+    );
+    if (!r.ok) {
+      base.error = r.error;
+      return base;
+    }
+    base.videos = r.data.slice(0, max).map<VideoStat>((v) => ({
+      platform: "facebook",
+      id: v.id,
+      title: v.title || v.description || "",
+      publishedAt: v.created_time || "",
+      // permalink_url 是相對路徑（/reel/123/）
+      permalink: v.permalink_url
+        ? v.permalink_url.startsWith("http")
+          ? v.permalink_url
+          : `https://www.facebook.com${v.permalink_url}`
+        : null,
+      views: typeof v.views === "number" ? v.views : null,
+      likes: null,
+      comments: null,
+    }));
+    return base;
+  } catch (e) {
+    console.error("[meta] 抓 FB 影片觀看數例外:", e);
+    base.error = e instanceof Error ? e.message : String(e);
+    return base;
+  }
+}
+
+type IgVideoMedia = {
+  id: string;
+  caption?: string;
+  media_type?: string;
+  permalink?: string;
+  timestamp?: string;
+  like_count?: number;
+  comments_count?: number;
+  insights?: { data?: Array<{ name?: string; values?: Array<{ value?: number }> }> };
+};
+
+/**
+ * IG 的影片（Reels）與觀看數。
+ *
+ * 🔴 觀看數要 `instagram_manage_insights` 權限。2026-11-19 實測現有權杖沒有（回
+ *    「(#10) Application does not have permission for this action」），所以先帶 insights 問一次，
+ *    被拒就退回不帶 insights 的版本：影片、讚數、留言數照樣有，觀看數是 null，
+ *    並在 viewsMissing 講清楚要補什麼。**帶 insights 那條路還沒有用真權杖跑成功過**，
+ *    他重新綁定後第一次開頁面要看一下 IG 那欄是不是真的有數字。
+ */
+export async function fetchInstagramVideoStats(max = 200): Promise<PlatformVideoFetch> {
+  const base: PlatformVideoFetch = {
+    platform: "instagram",
+    bound: false,
+    accountName: null,
+    videos: [],
+    error: null,
+    viewsMissing: null,
+  };
+  if (!isMetaConfigured()) return base;
+  const [token, bound] = await Promise.all([getConfig(PAGE_TOKEN_KEY), getBoundMeta()]);
+  if (!token || !bound || !bound.igUserId) return base;
+  base.bound = true;
+  base.accountName = bound.igUsername ? `@${bound.igUsername}` : null;
+
+  const FIELDS = "id,caption,media_type,permalink,timestamp,like_count,comments_count";
+  const urlFor = (fields: string) =>
+    `${GRAPH}/${bound.igUserId}/media?${new URLSearchParams({ fields, limit: "50", access_token: token })}`;
+  const pages = Math.ceil(max / 50);
+
+  try {
+    let r = await graphPages<IgVideoMedia>(urlFor(`${FIELDS},insights.metric(views)`), pages);
+    if (!r.ok) {
+      const firstError = r.error;
+      r = await graphPages<IgVideoMedia>(urlFor(FIELDS), pages);
+      if (!r.ok) {
+        base.error = r.error;
+        return base;
+      }
+      base.viewsMissing = `Instagram 不給觀看數：${firstError}。要在 Meta 開發者後台把 instagram_manage_insights 權限加進這個 App（商家版登入是加進那個「設定」），再按下面的重新綁定。`;
+    }
+    base.videos = r.data
+      .filter((m) => m.media_type === "VIDEO")
+      .slice(0, max)
+      .map<VideoStat>((m) => {
+        const v = m.insights?.data?.find((d) => d.name === "views")?.values?.[0]?.value;
+        return {
+          platform: "instagram",
+          id: m.id,
+          title: m.caption || "",
+          publishedAt: m.timestamp || "",
+          permalink: m.permalink || null,
+          views: typeof v === "number" ? v : null,
+          likes: m.like_count ?? null,
+          comments: m.comments_count ?? null,
+        };
+      });
+    return base;
+  } catch (e) {
+    console.error("[meta] 抓 IG 影片觀看數例外:", e);
+    base.error = e instanceof Error ? e.message : String(e);
+    return base;
   }
 }

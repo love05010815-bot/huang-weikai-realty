@@ -123,6 +123,25 @@ export default async function InboxPage({
           <a href="/admin/line" style={{ color: CIS.blueSoft }}>「LINE 機器人」</a>那一頁。
         </p>
 
+        {/* 2026-11-19：收件匣第二個分頁「影片觀看數」（/admin/inbox/videos，五平台影片排行）。
+            做成子路由不是 ?tab=：那頁要打十幾次各平台 API，不該拖慢這頁，反過來也一樣。 */}
+        <div className={styles.filterRow} style={{ marginTop: 14 }}>
+          <a
+            className={styles.filterTab}
+            href="/admin/inbox"
+            style={{ background: "rgba(var(--adm-ink-rgb), .09)", borderColor: CIS.blue, color: CIS.text }}
+          >
+            留言
+          </a>
+          <a
+            className={styles.filterTab}
+            href="/admin/inbox/videos"
+            style={{ borderColor: CIS.cardBorder, color: CIS.textMute }}
+          >
+            影片觀看數
+          </a>
+        </div>
+
         {/* ── LINE 待回提醒 ──
             LINE 的對話不混進下面的清單（私訊 ≠ 公開留言），但「有人在等你」
             這件事一定要在這一頁看得到，否則你每天只開收件匣就會漏掉 LINE。 */}
