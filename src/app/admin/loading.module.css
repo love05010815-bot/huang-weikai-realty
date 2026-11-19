@@ -1,0 +1,112 @@
+/* 後台換頁骨架。顏色一律走 var(--adm-*)，明亮／深色都對。 */
+
+.wrap {
+  position: relative;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 20px 60px;
+}
+
+/* 最上面一條會跑的細線：一眼看得出「有在動」 */
+.bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  overflow: hidden;
+  background: rgba(var(--adm-brand-rgb), 0.12);
+}
+
+.bar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 35%;
+  background: var(--adm-brand);
+  animation: admLoadSlide 1.1s ease-in-out infinite;
+}
+
+.title,
+.line,
+.card,
+.block {
+  border-radius: 10px;
+  background: rgba(var(--adm-ink-rgb), 0.07);
+  animation: admLoadPulse 1.2s ease-in-out infinite;
+}
+
+.title {
+  width: 220px;
+  max-width: 60%;
+  height: 28px;
+}
+
+.line {
+  width: 460px;
+  max-width: 90%;
+  height: 14px;
+  margin-top: 12px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.card {
+  height: 72px;
+}
+
+.block {
+  height: 320px;
+  margin-top: 16px;
+}
+
+.text {
+  display: block;
+  margin-top: 14px;
+  color: var(--adm-text-mute);
+  font-size: 13px;
+}
+
+@keyframes admLoadSlide {
+  0% {
+    left: -35%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+@keyframes admLoadPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar::after,
+  .title,
+  .line,
+  .card,
+  .block {
+    animation: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+  .block {
+    height: 220px;
+  }
+}
