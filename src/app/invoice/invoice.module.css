@@ -1,0 +1,462 @@
+/* ---------- 統一發票兌獎（2026-11-19） ----------
+   配色變數在 home.module.css 的 .page；表單外框、輸入框、免責借 tax.module.css，
+   這裡只放這頁自己的：期別鈕、大輸入框、結果卡、中獎號碼表、對過的清單。
+   ⚠️ 專案沒有全域 box-sizing reset，有邊框又設寬度的都要自己寫。
+   中獎的紅色只用在號碼與中獎結果，跟官方號碼單一樣一眼認得。 */
+
+/* 期別 */
+.periodRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.periodLabel {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.periods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.periodBtn {
+  box-sizing: border-box;
+  flex: 1 1 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-family: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.periodBtn b {
+  font-size: 15.5px;
+  font-weight: 800;
+}
+
+.periodBtn small {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.periodBtn:hover,
+.periodBtn:focus-visible {
+  border-color: var(--primary);
+  outline: none;
+}
+
+.periodOn {
+  border-color: var(--primary);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.periodNote {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.expired {
+  margin-top: 14px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: #fff6e5;
+  border: 1px solid #f0d49a;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.6;
+  color: #7a5200;
+}
+
+/* 輸入 */
+.entry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 18px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px dashed var(--line);
+}
+
+.entryField {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.bigInput {
+  font-size: 30px !important;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-align: center;
+  padding: 12px 10px !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.bigInput::placeholder {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #b9b4ac;
+}
+
+.frontInput {
+  border-color: #d9534f !important;
+  background: #fffafa !important;
+}
+
+/* 結果：固定留一塊高度，打字時下面的內容不會上下跳 */
+.resultSlot {
+  margin-top: 16px;
+  min-height: 86px;
+}
+
+.hint {
+  margin: 0;
+  padding: 14px 4px;
+  font-size: 14.5px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.result {
+  border-radius: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+}
+
+.resultTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+.resultAmount {
+  margin: 2px 0 0;
+  font-size: clamp(28px, 7vw, 38px);
+  font-weight: 900;
+  line-height: 1.25;
+  color: #c0392b;
+}
+
+.resultBody {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--ink);
+}
+
+.resultMiss {
+  background: #f6f5f2;
+}
+
+.resultMiss .resultTitle {
+  color: var(--muted);
+}
+
+.resultMaybe {
+  background: #fff6e5;
+  border-color: #f0d49a;
+}
+
+.resultWin {
+  background: #fff1ef;
+  border-color: #efb1aa;
+}
+
+.resultWin .resultTitle {
+  color: #a5281b;
+}
+
+.nextBtn {
+  margin-top: 12px;
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.nextBtn:hover,
+.nextBtn:focus-visible {
+  background: var(--primary-dark);
+  outline: none;
+}
+
+/* 中獎號碼表 */
+.blockTitle {
+  margin: 34px 0 10px;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.board {
+  box-sizing: border-box;
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.boardRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px clamp(14px, 3vw, 24px);
+  border-bottom: 1px dashed var(--line);
+}
+
+.boardName {
+  flex: 0 0 84px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.boardName small {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.boardNums {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+
+.num {
+  font-size: clamp(20px, 5.4vw, 26px);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  border-radius: 8px;
+  padding: 1px 8px;
+  margin-left: -8px;
+}
+
+.num em {
+  font-style: normal;
+  color: #c0392b;
+}
+
+/* 現在這張發票對到的那一組 */
+.numHit {
+  background: #ffe9a8;
+  box-shadow: 0 0 0 2px #e8b93a;
+}
+
+.boardFoot {
+  padding: 12px clamp(14px, 3vw, 24px);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--primary-dark);
+  background: var(--accent-soft);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  line-height: 1.6;
+}
+
+.chip {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.chipOk {
+  background: #dff3e6;
+  color: #1c6b3a;
+}
+
+.chipWarn {
+  background: #ffe2c2;
+  color: #8a4b00;
+}
+
+.ladder {
+  margin: 12px 0 0;
+  padding: 0 0 0 20px;
+  font-size: 14px;
+  line-height: 1.9;
+  color: var(--ink);
+}
+
+.ladder code {
+  font-family: inherit;
+  font-weight: 800;
+  color: var(--primary-dark);
+  background: var(--accent-soft);
+  border-radius: 6px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
+/* 對過的清單 */
+.logHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.clearBtn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 10px;
+  padding: 7px 13px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.clearBtn:hover,
+.clearBtn:focus-visible {
+  border-color: var(--primary);
+  outline: none;
+}
+
+.total {
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.total b {
+  font-size: 1.15em;
+  font-weight: 900;
+  color: #c0392b;
+}
+
+.total small {
+  margin-left: 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.log {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 10px 0 0;
+  padding: 2px clamp(12px, 3vw, 20px);
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: var(--radius);
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.log li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 14.5px;
+}
+
+.log li:last-child {
+  border-bottom: 0;
+}
+
+.logNum {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.logNum b {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.logPeriod {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.logResult {
+  margin-left: auto;
+  color: var(--muted);
+  font-weight: 600;
+  text-align: right;
+}
+
+.logWin .logResult {
+  color: #c0392b;
+  font-weight: 800;
+}
+
+.logNote {
+  margin: 8px 2px 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+@media (max-width: 480px) {
+  .boardRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .boardName {
+    flex: none;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .num {
+    margin-left: 0;
+    padding: 1px 6px;
+  }
+}

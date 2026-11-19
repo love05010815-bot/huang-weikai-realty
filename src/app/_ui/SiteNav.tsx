@@ -119,6 +119,8 @@ const TOOLS_MENU: readonly { label: string; href: string }[] = [
   { label: "我的房子行情多少", href: "/estimate" },
   // 2026-11-11 賣方實拿速算（/seller-net），跟 config/tools.ts 的 TOOLS 同步加的
   { label: "賣方實拿速算", href: "/seller-net" },
+  // 2026-11-19 統一發票兌獎（/invoice），跟 config/tools.ts 的 TOOLS 同步加的
+  { label: "統一發票兌獎", href: "/invoice" },
 ];
 
 type Variant = "home" | "sub";
