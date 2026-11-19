@@ -10,7 +10,7 @@
  *    那些要他本人給答案，不能編。加題先問他。
  */
 
-export type FaqLink = { label: string; href: "/buy" | "/sell" | "/tax" };
+export type FaqLink = { label: string; href: "/buy" | "/sell" | "/tax" | "/map" | "/lvr" };
 
 export type FaqItem = {
   /** 網址錨點（/faq#buy），也是 React key */
@@ -18,9 +18,9 @@ export type FaqItem = {
   q: string;
   /** 答案第一段：一句話講整個輪廓 */
   intro: string;
-  /** 流程步驟。title 會加粗，text 接在後面 */
+  /** 流程步驟。title 會加粗，text 接在後面。沒有步驟的題給空陣列 */
   steps: { title: string; text: string }[];
-  /** 費用／稅費那一段 */
+  /** 費用／稅費那一段。沒有就給空字串 */
   costs: string;
   /** 答案最後的連結藥丸 */
   links: FaqLink[];
@@ -88,10 +88,23 @@ export const FAQ: FaqItem[] = [
       { label: "先算房地合一稅要繳多少", href: "/tax" },
     ],
   },
+  {
+    // 2026-11-19 他指定加的第三題：題目是他給的，答案他說「簡短說明可以從網站內的海線社區一覽以及實價登錄查看，下方做按鈕指引」。
+    id: "community",
+    q: "社區資料、位置與成交行情，要從哪裡查？",
+    intro:
+      "本站就查得到：「海線社區一覽」用地圖看各社區的位置與資料，「實價登錄」看海線最新一期的成交行情。點下面的按鈕直接過去。",
+    steps: [],
+    costs: "",
+    links: [
+      { label: "海線社區一覽", href: "/map" },
+      { label: "實價登錄", href: "/lvr" },
+    ],
+  },
 ];
 
 /** 答案攤平成純文字，給 FAQPage JSON-LD 用（Google 讀的那份，不含連結） */
 export function faqAnswerText(item: FaqItem): string {
   const steps = item.steps.map((s, i) => `${i + 1}. ${s.title}：${s.text}`).join(" ");
-  return `${item.intro} ${steps} ${item.costs}`;
+  return [item.intro, steps, item.costs].filter(Boolean).join(" ");
 }

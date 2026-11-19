@@ -34,14 +34,16 @@ export default function FaqList({ firstOpen = true }: { firstOpen?: boolean }) {
           </summary>
           <div className={css.answer}>
             <p>{item.intro}</p>
-            <ol className={css.steps}>
-              {item.steps.map((s) => (
-                <li key={s.title}>
-                  <strong>{s.title}</strong>｜{s.text}
-                </li>
-              ))}
-            </ol>
-            <p>{item.costs}</p>
+            {item.steps.length > 0 && (
+              <ol className={css.steps}>
+                {item.steps.map((s) => (
+                  <li key={s.title}>
+                    <strong>{s.title}</strong>｜{s.text}
+                  </li>
+                ))}
+              </ol>
+            )}
+            {item.costs && <p>{item.costs}</p>}
             <div className={css.links}>
               {item.links.map((l) => (
                 <Link key={l.href} className={css.link} href={l.href}>
