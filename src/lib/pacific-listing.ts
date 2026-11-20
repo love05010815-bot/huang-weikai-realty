@@ -22,9 +22,9 @@ import { catalogUrlFor } from "@/lib/houseol-catalog";
 import { extractPhotosFromHtml, houseolHtmlToText, isHouseolCatalogHtml, parseListing, sortHouseolPhotos, type Listing } from "@/lib/post591-parser";
 import { getListing, getListingByHouseolId } from "@/lib/match/store";
 import { houseolIdFromPic } from "@/lib/match/pacific-parse";
-import { detailFromShare, detailToCatalog, detailToPost591, type PacificDetail, type PacificExtra } from "@/lib/pacific-map";
+import { detailFromShareItem, detailToCatalog, detailToPost591, photosFromShareItem, type PacificDetail, type PacificExtra } from "@/lib/pacific-map";
 import { fetchPacificObject } from "@/lib/pacific-object";
-import { houseolContractIdFrom, fetchPrimShare, pacificDetailUrl, pacificSaleIdFrom, primShareCode, primShareUrl, type PrimShareItem } from "@/lib/prim-share";
+import { houseolContractIdFrom, fetchPrimShare, fetchPrimShareItem, pacificDetailUrl, pacificSaleIdFrom, primShareCode, primShareUrl, type PrimShareItem } from "@/lib/prim-share";
 
 export type PacificInput = { kind: "prim"; code: string } | { kind: "sale"; saleId: string } | { kind: "houseol"; houseolId: string };
 
@@ -51,6 +51,8 @@ export type PacificLoaded = {
   fullAddress: string | null;
   /** 照片為什麼不齊（官網照片清單沒回應、或官網整個讀不到只剩分享頁封面）；照片正常（含官網真的 0 張）是 null */
   photoNote: string | null;
+  /** 官網讀不到、改用分享頁單筆明細補的（樓層、實坪、特色、整組照片都有；門牌號、型態、謄本用途沒有） */
+  shareItem?: boolean;
 };
 
 export type PacificLoadResult = { ok: true; data: PacificLoaded } | { ok: false; error: string };
@@ -95,16 +97,21 @@ export async function loadPacificListing(input: string): Promise<PacificLoadResu
   let photos: string[];
   let fromOfficial: boolean;
   let photoNote: string | null;
+  let shareItem = false;
   if (obj.ok) {
     detail = obj.detail;
     photos = obj.photos;
     fromOfficial = true;
     photoNote = obj.photoError;
   } else if (share) {
-    detail = detailFromShare(share);
-    photos = share.coverPhoto ? [share.coverPhoto] : [];
+    // 官網沒有這一戶（多半還沒上架）：分享頁點進去那一頁的明細接口有樓層、實坪、特色、整組照片，拿它來補
+    const item = parsed.kind === "prim" ? await fetchPrimShareItem(parsed.code, share.index) : null;
+    detail = detailFromShareItem(share, item);
+    photos = photosFromShareItem(item);
+    if (photos.length === 0 && share.coverPhoto) photos = [share.coverPhoto];
     fromOfficial = false;
-    photoNote = `太平洋官網暫時讀不到（${obj.error}），照片只有分享頁的封面`;
+    shareItem = !!item;
+    photoNote = item ? null : `太平洋官網暫時讀不到（${obj.error}），照片只有分享頁的封面`;
   } else {
     return { ok: false, error: obj.error };
   }
@@ -129,7 +136,7 @@ export async function loadPacificListing(input: string): Promise<PacificLoadResu
     }
   }
 
-  return { ok: true, data: { saleId, linkHref, share, detail, fromOfficial, photos, houseolId, fullAddress, photoNote } };
+  return { ok: true, data: { saleId, linkHref, share, detail, fromOfficial, photos, houseolId, fullAddress, photoNote, shareItem } };
 }
 
 function extraOf(d: PacificLoaded): PacificExtra {
@@ -144,7 +151,8 @@ export function toCatalog(d: PacificLoaded) {
 /** → 591 刊登助手的 Listing */
 export function toPost591(d: PacificLoaded) {
   const listing = detailToPost591(d.detail, extraOf(d));
-  if (!d.fromOfficial) listing.warnings.unshift("太平洋官網讀不到這一戶（多半是官網還沒上架），這份只有分享頁的欄位（特色、樓層、車位、管理費、坪數明細都要自己補）。");
+  if (!d.fromOfficial && d.shareItem) listing.warnings.unshift("官網還沒有這一戶，資料是從分享頁帶的：樓層、坪數、特色、照片都有；門牌號、型態（大樓／華廈／透天）、謄本用途分享頁沒有，要自己補、自己核對。");
+  else if (!d.fromOfficial) listing.warnings.unshift("太平洋官網讀不到這一戶（多半是官網還沒上架），這份只有分享頁的欄位（特色、樓層、車位、管理費、坪數明細都要自己補）。");
   else if (d.photoNote) listing.warnings.unshift(`${d.photoNote}：照片沒帶到，等一下重貼一次連結或編號。`);
   return listing;
 }

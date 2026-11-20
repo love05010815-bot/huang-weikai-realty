@@ -10,7 +10,7 @@
  */
 import { register } from "node:module";
 register("./alias-hooks.mjs", import.meta.url);
-const { ageYearsFromText, detailFromShare, detailToCatalog, detailToPost591, parkingTypeFromTitle, sanitizeDetail, splitFeatureText } = await import("@/lib/pacific-map.ts");
+const { ageYearsFromText, detailFromShare, detailFromShareItem, photosFromShareItem, detailToCatalog, detailToPost591, parkingTypeFromTitle, sanitizeDetail, splitFeatureText } = await import("@/lib/pacific-map.ts");
 const { buildAdDraft, buildPoints } = await import("@/lib/houseol-catalog.ts");
 const { derive } = await import("@/lib/post591-map.ts");
 const { parseListing } = await import("@/lib/post591-parser.ts");
@@ -237,6 +237,32 @@ eq("🔴 輸入：pacific.com.tw.evil.com 不是", pacificSaleIdFrom("https://ww
 eq("輸入：愛屋連結不是太平洋", isPacificInput("https://es.houseol.com.tw/Ecatalog.aspx?No=AA1234567"), false);
 eq("輸入：空字串", isPacificInput(""), false);
 eq("官網物件頁網址", pacificDetailUrl("S1234567"), "https://www.pacific.com.tw/Object/ObjectDetail/?saleID=S1234567");
+
+/* 2026-11-20：官網還沒上架的那一戶，從分享頁單筆明細（/items/<index>）補樓層、實坪、特色、照片 */
+{
+  const sh = parsePrimShare({ status: "success", data: { total: 1, items: [{ index: 0, obj_no: "P0002494", obj_name: "租-測試之櫻高樓三房平車", sell_rent: 0, price: "18000.00", rent_price: "18000.00", address_short: "臺中市測試區測試三路", ping: "45.68", room: "3.0", living: "2.0", bathroom: "2.0", complete_date: "2025-10-02" }] } }).items[0];
+  const ITEM = {
+    obj_no: "P0002494", city: "臺中市", area: "測試區", road_name: "測試三路", build_ping: "45.680000", floor: 13, floor_to: null, up_floors: 15,
+    community: "測試之櫻", feature: "✨一層七戶配三梯。 \n✨高樓視野，傢俱家電全。", major_space: "22.802000", sub_space: "2.641000", public_space: "12.570000",
+    prv_parking_space: "7.669000", parking_spaces: 1, manage_fee: "3061.00", deposit: null, deposit_months: 2, park: "測試公園", market: "測試市場",
+    primary_school: "測試國小", junior_school: "測試國中", map_lat: 24.2, map_lng: 120.5,
+    photos: [{ category: "floor_plan", url: "https://pacblob.blob.core.windows.net/prim-public/w/plan.jpg" }, { category: "other", url: "https://pacblob.blob.core.windows.net/prim-public/w/a.jpg" }, { category: "other", url: "http://x/insecure.jpg" }],
+    agent: { emp_name: "不該出現", mobile_no: "0900000000", line_id: "不該出現" },
+  };
+  eq("分享清單：index 有帶到", sh.index, 0);
+  const di = detailFromShareItem(sh, ITEM);
+  eq("明細：樓層／總樓層", [di.floor, di.totalFloor], ["13", 15]);
+  eq("明細：主建物＋附屬＝實坪 25.443", [di.mainBuildArea, di.outbuildingArea, Math.round((di.mainBuildArea + di.outbuildingArea) * 1000) / 1000], [22.802, 2.641, 25.443]);
+  eq("明細：社區／特色／管理費／車位坪", [di.community, di.feature.includes("一層七戶"), di.adminFee, di.ownerStallArea, di.hasStall], ["測試之櫻", true, 3061, 7.669, true]);
+  eq("明細：出租、月租、押金＝月租×月數", [di.isRent, di.rent, di.deposit], [true, 18000, 36000]);
+  eq("🔴 明細：經紀人個資不進來", /不該出現|0900000000/.test(JSON.stringify(di)), false);
+  eq("明細：照片只收 https、格局圖排最後", photosFromShareItem(ITEM), ["https://pacblob.blob.core.windows.net/prim-public/w/a.jpg", "https://pacblob.blob.core.windows.net/prim-public/w/plan.jpg"]);
+  eq("明細讀不到 → 跟只有清單時一樣", detailFromShareItem(sh, null), detailFromShare(sh));
+  eq("明細編號對不上 → 不採用", detailFromShareItem(sh, { ...ITEM, obj_no: "S9999999" }).floor, "");
+  const pl = detailToPost591(di, { share: sh, photos: photosFromShareItem(ITEM), fullAddress: null, linkHref: "x", houseolId: "" });
+  const po = derive(pl, 2026);
+  eq("明細 → 591：出租樓層 13／總樓層 15／可使用坪數 25.44／特色兩行", [po.sellFloor, pl.total, po.usePing, pl.features.length, pl.deposit], [13, 15, 25.44, 2, "2個月"]);
+}
 
 if (fails.length) {
   console.error(`🔴 ${fails.length} 項不過（通過 ${pass}）：`);

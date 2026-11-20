@@ -142,6 +142,8 @@ export type PrimShareItem = {
   isRent: boolean;
   /** 月租（元）；買賣是 null */
   rentPrice: number | null;
+  /** 這一筆在分享連結裡排第幾（單筆明細接口 /items/<index> 要用）*/
+  index: number;
 };
 
 export type PrimShare = {
@@ -200,6 +202,7 @@ export function parsePrimShare(body: unknown): PrimShare | null {
       coverPhoto: /^https?:\/\//.test(cover) ? cover : null,
       isRent: sellRent === 2 || (sellRent !== 1 && (rentPrice !== null || /^[RC]/.test(objNo) || /^租s*[-－–—]/.test(String(it.obj_name ?? "").trim()))),
       rentPrice,
+      index: Number.isFinite(Number(it.index)) ? Math.max(0, Math.trunc(Number(it.index))) : items.length,
     });
   }
   const total = num(d.total);
@@ -379,4 +382,31 @@ export function primFactsFrom(it: PrimShareItem, m: PrimMatchExtra | null): Hous
     (v) => v !== null,
   ).length;
   return facts;
+}
+
+// ---------------------------------------------------------------- 分享頁的單筆明細（/s/<代碼>/<第幾筆>）
+
+/**
+ * 分享頁點進單一物件那一頁（網址尾巴的 /0）打的接口：`…/house-share/<代碼>/items/<index>`。
+ * 2026-11-20 他貼 eexz3XX9/0 說「樓別樓高、02 面積的實坪、06 物件特色都要帶」才發現有這一層 ——
+ * 清單那支只有標題／坪數／格局，這支有樓層（floor／up_floors）、主建物＋附屬（major_space／sub_space）、
+ * 公設、車位坪、社區、特色（feature）、整組照片、管理費、押金月數、學校公園市場。
+ * **官網還沒上架的物件只有這裡拿得到這些**。門牌號仍然沒有（只有 road_name）。
+ * 🔴 回傳的 data 裡有 agent（經紀人姓名手機 LINE）—— 這裡只把 data 原樣交給 pacific-map 的 detailFromShareItem 挑欄位，
+ *    不要整包往外傳、不要存。
+ */
+export async function fetchPrimShareItem(code: string, index: number, timeoutMs = 10000): Promise<Record<string, unknown> | null> {
+  try {
+    const res = await fetch(`${primApiUrl(code)}/items/${Math.max(0, Math.trunc(index) || 0)}`, {
+      headers: { "user-agent": UA, accept: "application/json" },
+      signal: AbortSignal.timeout(timeoutMs),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const b = (await res.json()) as { status?: unknown; data?: unknown } | null;
+    if (!b || b.status !== "success" || !b.data || typeof b.data !== "object") return null;
+    return b.data as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }

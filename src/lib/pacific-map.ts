@@ -257,6 +257,60 @@ export function detailFromShare(it: PrimShareItem): PacificDetail {
 }
 
 /**
+ * 分享頁單筆明細（prim-share.ts 的 fetchPrimShareItem）→ PacificDetail：先用清單那一筆打底，再把明細有的欄位補上。
+ * 🔴 只挑下面列的欄位 —— raw 裡的 agent（姓名手機 LINE）不碰。
+ * 代碼型欄位（build_struct／parking_type／manage_fee_way／current_usage 都是數字代碼）對照表沒驗過，不猜；
+ * 車位型式照舊從標題認（平車／機械），管理費週期留空（下游預設月繳）。
+ */
+export function detailFromShareItem(it: PrimShareItem, raw: Record<string, unknown> | null): PacificDetail {
+  const base = detailFromShare(it);
+  if (!raw || str(raw.obj_no).toUpperCase() !== it.objNo) return base;
+  const floorN = num(raw.floor);
+  const floorTo = num(raw.floor_to);
+  const prvStall = pos(raw.prv_parking_space);
+  const stalls = num(raw.parking_spaces);
+  const months = num(raw.deposit_months);
+  const depositYuan = pos(raw.deposit) ?? (base.rent !== null && months !== null && months > 0 ? Math.round(base.rent * months) : null);
+  return {
+    ...base,
+    community: str(raw.community) || base.community,
+    cityName: str(raw.city),
+    areaName: str(raw.area),
+    addressRoad: str(raw.road_name) ? `${str(raw.city)}${str(raw.area)}${str(raw.road_name)}` : base.addressRoad,
+    deposit: base.isRent ? depositYuan : null,
+    totalArea: pos(raw.build_ping) ?? base.totalArea,
+    mainBuildArea: pos(raw.major_space),
+    outbuildingArea: num(raw.sub_space) !== null && Number(raw.sub_space) >= 0 ? Number(raw.sub_space) : null,
+    pubFacilityArea: pos(raw.public_space),
+    ownerStallArea: prvStall,
+    pubStallArea: pos(raw.pub_parking_space),
+    landArea: pos(raw.land_ping),
+    hasStall: prvStall !== null || (stalls !== null && stalls > 0) ? true : stalls === 0 ? false : null,
+    floor: floorN !== null ? String(Math.trunc(floorN)) : "",
+    totalFloor: pos(raw.up_floors),
+    maxFloor: floorTo !== null && floorTo > 0 ? String(Math.trunc(floorTo)) : "",
+    adminFee: pos(raw.manage_fee),
+    school: [str(raw.primary_school), str(raw.junior_school)].filter(Boolean).join("、"),
+    park: str(raw.park),
+    market: str(raw.market),
+    feature: str(raw.feature),
+    lat: num(raw.map_lat),
+    lng: num(raw.map_lng),
+  };
+}
+
+/** 分享頁單筆明細的照片（格局圖排最後）。只收 https 網址 */
+export function photosFromShareItem(raw: Record<string, unknown> | null): string[] {
+  const list = raw && Array.isArray(raw.photos) ? (raw.photos as unknown[]) : [];
+  const rows = list
+    .map((p) => (p && typeof p === "object" ? (p as Record<string, unknown>) : null))
+    .filter((p): p is Record<string, unknown> => !!p && str(p.url).startsWith("https://"));
+  const plan = rows.filter((p) => str(p.category) === "floor_plan");
+  const rest = rows.filter((p) => str(p.category) !== "floor_plan");
+  return [...new Set([...rest, ...plan].map((p) => str(p.url)))];
+}
+
+/**
  * 官網的特色欄是一整串「①…➁…➂…」，拆成一行一條（FB 的 ✨ 行、591 的描述、單戶頁的特色區都吃這個）。
  * 認得圈數字、黑圈數字、換行、全半形分號、以及他自己打在官網特色欄裡的 ✨★☆（2026-10-20 實測有一戶
  * 整段用 ✨ 分隔、一個圈數字都沒有，不拆就是一整坨）；每條去頭尾的標點。短於 2 個字的丟掉（多半是拆壞的碎片）。
