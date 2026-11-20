@@ -13,6 +13,7 @@
 import { parseListing, photoLinkReport, extractPhotosFromHtml, listingNoFromUrl, houseolHtmlToText, isHouseolCatalogHtml, isHouseolPage, pickFloorPlan, sortHouseolPhotos } from "./lib/lib/post591-parser.js";
 import { derive, buildRows, titleCheck, post591Risks, buildPayload, joinDescParts } from "./lib/lib/post591-map.js";
 import { buildRakuya } from "./lib/lib/rakuya-map.js";
+import { applyPrimAddr } from "./prim-addr.js";
 import { DESC_HEAD, DESC_TAIL, POST591_DEFAULTS } from "./lib/config/post591-template.js";
 import { TAIL_COLORS, buildTailDescHtml, escapeHtml, lineStyleCss, normalizeLineStyle, normalizeTailStyle, tailStartIndex } from "./tail-style.js";
 
@@ -232,8 +233,20 @@ function requireLicense(where) {
 let listing = null, derived = null, rows = [];
 
 /** 解析（貼文字、或從型錄頁抓回來的文字都走這裡）。sourceUrl＝從型錄頁網址抓來的：⑤ 直接帶那條網址（頁面上嵌的照片一起抓） */
-function runWith(raw, sourceUrl) {
-  applyListing(parseListing(raw), sourceUrl);
+async function runWith(raw, sourceUrl) {
+  await applyWithAddr(parseListing(raw), sourceUrl);
+}
+/** 帶入前先看這一戶的門牌有沒有在 PRIM 記過（prim-capture.js 存在這台電腦的 chrome.storage.local）；沒有就原樣 */
+async function applyWithAddr(d, sourceUrl) {
+  if (hasChrome) {
+    try {
+      const o = await chrome.storage.local.get("p591:primAddr");
+      applyPrimAddr(d, o["p591:primAddr"]);
+    } catch {
+      /* 讀不到就當沒記過 */
+    }
+  }
+  applyListing(d, sourceUrl);
 }
 /** 一筆已經解析好的 Listing 進畫面（貼文字、抓型錄頁、太平洋連結三條路最後都走這裡） */
 function applyListing(d, sourceUrl) {
@@ -274,7 +287,7 @@ function applyListing(d, sourceUrl) {
 }
 function run() {
   if (!requireLicense($("parse-lock"))) return;
-  runWith($("raw").value, "");
+  return runWith($("raw").value, "");
 }
 
 /* ───────── 貼型錄頁網址就自動抓回來解析（2026-09-14 他要同事版也有；跟後台同一套：抓那一頁 → 重組成文字 → 同一個解析器）───────── */
@@ -322,7 +335,7 @@ async function fetchCatalog(force) {
     return;
   }
   scanned[url] = extractPhotosFromHtml(html, listingNoFromUrl(url)); // 同一份 HTML 順便把頁面上嵌的照片撈好，不用再抓第二次
-  runWith(houseolHtmlToText(html), url);
+  await runWith(houseolHtmlToText(html), url);
   const gotNumber = /號/.test(listing.addr || "");
   setFetchMsg(
     gotNumber
@@ -353,7 +366,7 @@ async function fetchPacific(force) {
     setFetchMsg(`帶不進來：${(r && r.error) || NO_REPLY}`, "bad");
     return;
   }
-  applyListing(r.listing, "");
+  await applyWithAddr(r.listing, "");
   const gotNumber = /號/.test(listing.addr || "");
   setFetchMsg(
     `${r.fromOfficial ? "官網資料帶進來了" : "官網暫時讀不到，只帶到分享頁的欄位"}（${r.caseId || ""}，${listing.photos.length} 張照片）。${gotNumber ? "門牌有帶到。" : "⚠️ 門牌只到路名，③ 自己補。"}下面核對一遍，紅底的補完再上架。`,

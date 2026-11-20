@@ -683,6 +683,32 @@ ZZ0000003
   eq("很白但有顏色（拍很亮的白牆房間）不算", pickFloorPlan([S("x.jpg", 0.45, 0.28)]), "");
   eq("沒照片就沒有", pickFloorPlan([]), "");
 }
+/* 2026-11-20：PRIM 物件頁記下的門牌對回帶入的那一戶（門牌一律用假的） */
+{
+  const { applyPrimAddr, findPrimAddr } = await import("../tools/post591-extension/prim-addr.js");
+  const LIST = [
+    { id: "AD0000001", title: "租-測試之櫻高樓三房平車", addr: "台中市測試區測試三路9號13樓之7", t: 1 },
+    { id: "", title: "測試花園兩房", addr: "台中市測試區別條路5號", t: 1 },
+  ];
+  const mk = (o) => ({ no: "", rawTitle: "", addr: "測試區測試三路", floor: null, floorRaw: "", floorSub: "", warnings: ["地址只到路名（官網與分享頁都不印門牌號）：③ 的門牌自己補。", "別的提醒"], ...o });
+  const a1 = mk({ rawTitle: "租-測試之櫻高樓三房平車" });
+  ok(!!applyPrimAddr(a1, LIST), "案名對到 → 有填", "有", "有");
+  eq("門牌到號、樓層 13、之 7", [a1.addr, a1.floor, a1.floorSub].join("|"), "台中市測試區測試三路9號|13|7");
+  eq("門牌的舊提醒拿掉、別的留著、最前面多一行請核對", [a1.warnings.length, /PRIM/.test(a1.warnings[0]), a1.warnings[1]].join("|"), "2|true|別的提醒");
+  const a2 = mk({ no: "ad0000001", rawTitle: "標題不一樣" });
+  eq("委託編號對到（不分大小寫）", (applyPrimAddr(a2, LIST) || {}).id, "AD0000001");
+  const a3 = mk({ rawTitle: "測試花園兩房" });
+  eq("🔴 案名對到但路名對不上 → 不填", [applyPrimAddr(a3, LIST), a3.addr].join("|"), "|測試區測試三路");
+  const a4 = mk({ rawTitle: "租-測試之櫻高樓三房平車", addr: "測試區測試三路88號" });
+  eq("已經有門牌號的不動", [applyPrimAddr(a4, LIST), a4.addr].join("|"), "|測試區測試三路88號");
+  const a5 = mk({ rawTitle: "租-測試之櫻高樓三房平車", floor: 5 });
+  applyPrimAddr(a5, LIST);
+  eq("資料已有樓層就不蓋", a5.floor, 5);
+  eq("沒記過 → null", applyPrimAddr(mk({ rawTitle: "沒看過的" }), LIST), null);
+  eq("清單不是陣列也不炸", findPrimAddr(mk({ rawTitle: "x" }), undefined), null);
+  const a6 = mk({ rawTitle: "租-測試之櫻高樓三房平車", addr: "臺中市測試區測試三路" });
+  ok(!!applyPrimAddr(a6, LIST), "「臺」「台」寫法不同也對得上", "有", "有");
+}
 console.log("");
 console.log(pass ? "✅ 591 刊登助手：辨識器與對應規則全部一致" : "❌ 有差異，不要往下做");
 process.exit(pass ? 0 : 1);
