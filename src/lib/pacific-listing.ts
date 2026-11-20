@@ -144,7 +144,7 @@ export function toCatalog(d: PacificLoaded) {
 /** → 591 刊登助手的 Listing */
 export function toPost591(d: PacificLoaded) {
   const listing = detailToPost591(d.detail, extraOf(d));
-  if (!d.fromOfficial) listing.warnings.unshift("太平洋官網暫時讀不到，這份只有分享頁的欄位（樓層、車位、管理費、坪數明細都要自己補）。");
+  if (!d.fromOfficial) listing.warnings.unshift("太平洋官網讀不到這一戶（多半是官網還沒上架），這份只有分享頁的欄位（特色、樓層、車位、管理費、坪數明細都要自己補）。");
   else if (d.photoNote) listing.warnings.unshift(`${d.photoNote}：照片沒帶到，等一下重貼一次連結或編號。`);
   return listing;
 }

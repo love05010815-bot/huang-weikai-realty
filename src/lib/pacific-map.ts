@@ -213,10 +213,10 @@ export function detailFromShare(it: PrimShareItem): PacificDetail {
     cityName: "",
     areaName: "",
     addressRoad: it.addressShort,
-    // 分享 API 的 price 一律當總價換成萬（50 萬以下會被 yuanToWan 丟掉）；出租物件的月租單位沒驗過，寧可留空讓他補
+    // 買賣：price 是總價（元）換成萬。出租：月租在 rent_price（元，2026-11-20 實測 P0002494 是 "18000.00"）
     price: it.isRent ? null : it.price,
     firstPrice: null,
-    rent: null,
+    rent: it.isRent ? it.rentPrice : null,
     deposit: null,
     rooms: it.rooms,
     halls: it.halls,

@@ -83,7 +83,7 @@ const RAW = {
   saleEmployeePhone: "0900000000",
 };
 const d = sanitizeDetail(RAW);
-const share = { objNo: "S1234567", title: RAW.objectName, price: 888, addressShort: RAW.address, ping: 45.67, rooms: 3, halls: 2, baths: 2, completeDate: "2019-01-30", coverPhoto: null, isRent: false };
+const share = { objNo: "S1234567", title: RAW.objectName, price: 888, addressShort: RAW.address, ping: 45.67, rooms: 3, halls: 2, baths: 2, completeDate: "2019-01-30", coverPhoto: null, isRent: false, rentPrice: null };
 
 /* ── 小工具 ── */
 eq("坪數格式", pingText(45.67), "45.67 坪");

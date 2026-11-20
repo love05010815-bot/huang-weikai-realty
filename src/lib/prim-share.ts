@@ -134,8 +134,14 @@ export type PrimShareItem = {
   /** 完工日 "2019-01-30"；沒有就 null */
   completeDate: string | null;
   coverPhoto: string | null;
-  /** sell_rent 2 是出租 */
+  /**
+   * 出租？sell_rent 2 是出租、1 是買賣。⚠️ 2026-11-20 實測官網還沒上架的出租（P0002494「租-市鎮之櫻…」）sell_rent 是 0、
+   * 只有 rent_price 有值（買賣那筆 rent_price 是 null）—— 只看 sell_rent 會把它當買賣，591／樂屋都開成出售表單。
+   * 所以 sell_rent 不是 1 的時候再看：有 rent_price、編號 R／C 開頭、或標題「租-」開頭，任一成立就是出租。
+   */
   isRent: boolean;
+  /** 月租（元）；買賣是 null */
+  rentPrice: number | null;
 };
 
 export type PrimShare = {
@@ -178,6 +184,9 @@ export function parsePrimShare(body: unknown): PrimShare | null {
     if (!PACIFIC_SALE_ID.test(objNo)) continue;
     const cover = String(it.cover_photo ?? "").trim();
     const complete = String(it.complete_date ?? "").trim();
+    const sellRent = Number(it.sell_rent);
+    const rentRaw = Number(it.rent_price);
+    const rentPrice = Number.isFinite(rentRaw) && rentRaw > 0 ? Math.round(rentRaw) : null;
     items.push({
       objNo,
       title: String(it.obj_name ?? "").trim(),
@@ -189,7 +198,8 @@ export function parsePrimShare(body: unknown): PrimShare | null {
       baths: num(it.bathroom),
       completeDate: /^\d{4}-\d{2}-\d{2}/.test(complete) ? complete.slice(0, 10) : null,
       coverPhoto: /^https?:\/\//.test(cover) ? cover : null,
-      isRent: Number(it.sell_rent) === 2,
+      isRent: sellRent === 2 || (sellRent !== 1 && (rentPrice !== null || /^[RC]/.test(objNo) || /^租s*[-－–—]/.test(String(it.obj_name ?? "").trim()))),
+      rentPrice,
     });
   }
   const total = num(d.total);

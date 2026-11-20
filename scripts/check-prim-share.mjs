@@ -84,6 +84,17 @@ eq("解析：封面在 pacblob", share?.items[0].coverPhoto?.startsWith("https:/
 eq("解析：total", share?.total, 1);
 eq("解析：沒有下架標記", share?.hasUnavailable, false);
 eq("解析：不是出租", share?.items[0].isRent, false);
+/* 2026-11-20：官網還沒上架的出租 sell_rent 是 0、只有 rent_price —— 當成買賣會讓 591／樂屋開出售表單 */
+{
+  const one = (it) => parsePrimShare({ status: "success", data: { total: 1, items: [{ obj_no: "P0002494", obj_name: "市鎮之櫻三房平車", price: "18000.00", ...it }] } })?.items[0];
+  const r = one({ obj_name: "租-市鎮之櫻高樓邊間三房平車", sell_rent: 0, rent_price: "18000.00" });
+  eq("🔴 sell_rent 0＋有 rent_price → 出租", [r?.isRent, r?.rentPrice, r?.price], [true, 18000, null]);
+  eq("sell_rent 2 → 出租", one({ sell_rent: 2 })?.isRent, true);
+  eq("sell_rent 0、沒 rent_price、標題「租-」→ 出租", one({ obj_name: "租-某社區", sell_rent: 0, rent_price: null })?.isRent, true);
+  eq("sell_rent 0、R 開頭 → 出租", one({ obj_no: "R1234567", sell_rent: 0 })?.isRent, true);
+  eq("sell_rent 1 → 買賣（就算有 rent_price、標題有租字）", one({ obj_name: "租-售並行", sell_rent: 1, rent_price: "18000" })?.isRent, false);
+  eq("sell_rent 0、什麼線索都沒有 → 買賣", [one({ sell_rent: 0, rent_price: null })?.isRent, one({ sell_rent: 0 })?.rentPrice], [false, null]);
+}
 eq("解析：error 回應 → null", parsePrimShare(GONE), null);
 eq("解析：null → null", parsePrimShare(null), null);
 eq("解析：items 不是陣列 → null", parsePrimShare({ status: "success", data: { items: "x" } }), null);
