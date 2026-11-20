@@ -111,11 +111,37 @@
   }
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   /** Summernote：直接寫 innerHTML，再發 input／keyup 讓它把內容同步進底下的 textarea */
+  /**
+   * 591 用的樣式 HTML → 樂屋編輯器自己的寫法（2026-11-20 他說「到樂屋以後固定尾段的字體顏色跟設計沒有跟我設定的一樣」）。
+   * 當天實開樂屋編輯器：工具列只有 粗體／底線／字型顏色，按出來的是 <font color="#c00000"><b><u>字</u></b></font>；
+   * 我們原本塞的是 591 那套 <span style="color:…"><strong>…（編輯器裡看得到，但不是樂屋認得的寫法）。
+   * 這裡把顏色換成 <font color>、<strong> 換成 <b>，樂屋自己按得出來的三樣就用它的寫法；
+   * 底色與字級樂屋的編輯器沒有這兩個功能，span 原樣留著（留得住就賺到，被濾掉也只是少那兩樣）。
+   */
+  function toRakuyaHtml(html) {
+    if (!html) return html;
+    const box = document.createElement("div");
+    box.innerHTML = html;
+    for (const sp of [...box.querySelectorAll("span[style]")]) {
+      const m = (sp.getAttribute("style") || "").match(/^\s*color\s*:\s*(#[0-9a-fA-F]{3,8})\s*;?\s*$/);
+      if (!m) continue;
+      const f = document.createElement("font");
+      f.setAttribute("color", m[1]);
+      while (sp.firstChild) f.appendChild(sp.firstChild);
+      sp.replaceWith(f);
+    }
+    for (const st of [...box.querySelectorAll("strong")]) {
+      const b = document.createElement("b");
+      while (st.firstChild) b.appendChild(st.firstChild);
+      st.replaceWith(b);
+    }
+    return box.innerHTML;
+  }
   function setSummernote(html, text) {
     const ed = document.querySelector(".note-editable");
     if (!ed) return false;
     ed.focus();
-    ed.innerHTML = html || (text || "").split("\n").map((l) => `<p>${esc(l) || "<br>"}</p>`).join("");
+    ed.innerHTML = toRakuyaHtml(html) ||(text || "").split("\n").map((l) => `<p>${esc(l) || "<br>"}</p>`).join("");
     fire(ed, ["input", "keyup", "change", "blur"]);
     return true;
   }
@@ -303,7 +329,8 @@
     try {
       if (p.desc) {
         setSummernote(p.descHtml, p.desc);
-        log(p.descHtml ? "文案已貼入（版型＋字級顏色）" : "文案已貼入（版型）", "ok");
+        log(p.descHtml ? "文案已貼入（版型＋顏色、粗體、底線）" : "文案已貼入（版型）", "ok");
+        if (p.descHtml && /background-color|font-size/.test(p.descHtml)) log("樂屋的編輯器沒有「底色」和「字級」這兩個功能，你設的底色／字級存檔後可能不會留（顏色、粗體、底線會）", "warn");
       }
       const env = r.env || {};
       for (const k of ["elementary", "market", "park", "transport", "mrt", "vital_function"]) if (env[k]) setText(k, env[k]);
