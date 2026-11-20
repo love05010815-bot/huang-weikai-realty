@@ -174,8 +174,11 @@
       await sleep(400);
       if (!(await setSelect("usecode", r.usecode))) log(`現況型式「${r.usecode}」沒選到`, "bad");
       await sleep(600);
-      if (!(await setSelect("typecode", r.typecode, 6000))) log(`現況類型「${r.typecode}」沒選到，請自己選`, "bad");
-      await waitFor(() => byName("surfloors") && visible(byName("surfloors")), 6000);
+      // 廠房沒有「現況類型」；土地的是土地類別、店面沒建物型態時也不知道 → 空的就不選，列給他自己選
+      if (r.typecode) {
+        if (!(await setSelect("typecode", r.typecode, 6000))) log(`現況類型「${r.typecode}」沒選到，請自己選`, "bad");
+      } else if (r.usecode !== "廠房") log(`現況類型（${r.usecode === "土地" ? "土地類別" : "建物型態"}）資料沒有，請自己選`, "warn");
+      await waitFor(() => byName("surfloors") && visible(byName("surfloors")), r.usecode === "土地" ? 1500 : 6000);
       await sleep(400);
       if (!rent && r.ageType) clickRadio("agetype", r.ageType);
       log("類型選好", "ok");
@@ -283,7 +286,8 @@
         clickRadio("sex", X.sex || "不限");
         clickRadio("ridentity", X.identity || "不限");
         clickRadio("landlord", X.landlord || "不與房東同住");
-        missing.push("提供設備、提供傢俱（照照片勾）");
+        if (!/^(店面|住辦|商用|廠房|土地)$/.test(r.usecode || "")) missing.push("提供設備、提供傢俱（照照片勾）");
+        else missing.push(`「${r.usecode}」表單專用的格子（外掛只填共通欄位，其餘自己補）`);
         log("租住條件填完", "ok");
       } else {
         setText("listprice", P.total ?? "");

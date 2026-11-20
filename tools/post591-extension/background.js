@@ -43,12 +43,15 @@ const KIND = { 住宅: 9 };
 const SHAPE = { 電梯大樓: 2, 透天厝: 3, 華廈: 5 }; // 2026-09-05 從他真實上架的網址學到華廈=5
 const PURPOSE = { 住家用: 3, 住商用: 4 };
 
-const KIND_RENT = { 整層住家: 1 }; // 2026-09-09 從第①頁點出來的網址學到：出租 kind=1 整層住家、shape 同出售
+// 2026-09-09 從第①頁點出來的網址學到：出租 kind=1 整層住家、shape 同出售；2026-11-20 實開：店面 kind=5（店面-透天厝＝kind=5&shape=3）、土地 kind=11（沒有 shape）。
+// 辦公／住辦／廠房的代碼沒看過 → 不猜，退回第①頁讓 content.js 用點的
+const KIND_RENT = { 整層住家: 1, 店面: 5 };
 
 function launchUrl(p) {
   const f = (p && p.first) || {};
   if (p && p.target === "rakuya") return p.deal === "rent" ? "https://member.rakuya.com.tw/rent/post/add" : "https://member.rakuya.com.tw/sell/post/add"; // 樂屋一頁式，沒有第①頁
   if (p && p.deal === "rent") {
+    if (f.status === "土地") return "https://user.591.com.tw/post/two/rent?is_use_first=1&kind=11&purpose=&purpose_custom=";
     const rk = KIND_RENT[f.status], rs = SHAPE[f.type];
     if (rk && rs) return "https://user.591.com.tw/post/two/rent?is_use_first=1&kind=" + rk + "&shape=" + rs + "&purpose=&purpose_custom=";
     return "https://user.591.com.tw/post/first";

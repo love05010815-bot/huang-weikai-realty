@@ -413,6 +413,38 @@ ZZ0000003
   const lab = (l) => (rows.find((r) => r.label === l) || {}).value;
   eq("出租樓層列", lab("出租樓層"), "24");
   eq("租金列", lab("租金"), "25000");
+  /* 2026-11-20：出租的店面／辦公／住辦／廠房／土地不再一律當「整層住家＋電梯大樓」。只換 kind，其餘同一筆 */
+  {
+    const chain = (kind, total = d.total) => {
+      const x = derive({ ...d, kind, total }, 2026);
+      return [x.adType, x.legal, x.status, x.type].filter(Boolean).join("→");
+    };
+    eq("出租 土地 → 沒有型態那層", chain("土地/空屋"), "出租→土地");
+    eq("出租 店面（不知道建物）", chain("店面/自助"), "出租→店面→店面（店鋪）");
+    eq("出租 店面（透天）", chain("透天店面"), "出租→店面→透天厝");
+    eq("出租 廠房 → 工廠", chain("廠房/空屋"), "出租→廠房→工廠");
+    eq("出租 廠辦", chain("廠辦"), "出租→廠房→廠辦");
+    eq("出租 倉庫", chain("倉庫"), "出租→廠房→倉庫");
+    eq("出租 辦公（4 層以下當透天）", chain("辦公/其他", 4), "出租→辦公→透天厝");
+    eq("出租 辦公（高樓）", chain("辦公", 13), "出租→辦公→電梯大樓");
+    eq("出租 住辦 華廈 → 電梯大樓", chain("住辦華廈"), "出租→住辦→電梯大樓");
+    eq("出租 套房 照舊", chain("套房/自助"), "出租→獨立套房→電梯大樓");
+    eq("出租 透天 照舊（標題有店面也不改判）", chain("透天厝/自助"), "出租→整層住家→透天厝");
+    eq("出售 店面 不受影響", (() => { const x = derive({ ...d, deal: "sale", kind: "店面" }, 2026); return x.status + "/" + x.type; })(), "住宅/電梯大樓");
+    const landD = { ...d, kind: "土地/空屋", landPing: 184 };
+    const landRows = buildRows(landD, derive(landD, 2026));
+    const has = (l) => landRows.some((r) => r.label === l);
+    eq("土地：有土地坪數、沒有格局／樓層／開伙／養寵物", [has("土地坪數"), has("格局 房"), has("出租樓層"), has("開伙"), has("養寵物"), has("租金")].join(), "true,false,false,false,false,true");
+    ok(landRows.some((r) => r.group && /土地.*出租表單/.test(r.group)), "土地：最上面有一行說明外掛只填共通格子", "有", "有");
+    const shopD = { ...d, kind: "店面" };
+    const shopRows = buildRows(shopD, derive(shopD, 2026));
+    eq("店面：沒有格局與身份要求、有可使用坪數", [shopRows.some((r) => r.label === "格局 房"), shopRows.some((r) => r.label === "身份要求"), shopRows.some((r) => r.label === "可使用坪數")].join(), "false,false,true");
+    const rk = (kind, total = d.total) => { const dd = { ...d, kind, total }; const oo = derive(dd, 2026); const b = buildRakuya(dd, oo, buildPayload(dd, oo, buildRows(dd, oo), "標題", "x"), 2026); return b.usecode + "/" + b.typecode; };
+    eq("樂屋：辦公 → 商用", rk("辦公", 13), "商用/電梯大廈");
+    eq("樂屋：店面（不知道建物）→ 型態留空", rk("店面"), "店面/");
+    eq("樂屋：廠房、土地沒有型態", [rk("廠房"), rk("土地")].join(), "廠房/,土地/");
+    eq("樂屋：整層住家照舊", rk("電梯大廈/自助"), "整層住家/電梯大廈");
+  }
   eq("身份三個", lab("身份要求"), "學生、上班族、家庭");
   ok(rows.some((r) => r.label === "提供設備" && r.need), "設備標紅給他勾", "ok", "ok");
   ok(!rows.some((r) => r.label === "售價" || r.label === "自備款"), "沒有售價／自備款列", "ok", "ok");

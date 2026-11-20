@@ -189,7 +189,35 @@ export function derive(d: Listing, nowYear: number = new Date().getFullYear()): 
     型錄環境特色有明寫（「禁寵」「含管」「含車」）就照型錄。
   */
   const rent = d.deal === "rent";
-  const rentType = rent && type === "華廈" ? "電梯大樓" : type;
+  /*
+    出租的非住宅（2026-11-20 他說「店面／土地／廠房／辦公室被當成整層住家＋電梯大樓，幫我修」）：
+    591 出租第①頁的類型還有 店面／辦公／住辦／廠房／土地，下一層各不相同（當天實開）：
+      店面／辦公／住辦 → 公寓／別墅／透天厝／店面（店鋪）／電梯大樓；廠房 → 工廠／廠辦／農舍／倉庫；土地 → 沒有下一層。
+    只看資料的「類型」欄（官網 kind／型錄類型），不看標題 —— 標題寫「金店面」但類型登記透天厝＋整層住家的不少，
+    那是資料本身這樣登記的，照資料走、不替他改判。
+  */
+  const hasShape = /透天|別墅|公寓|華廈|大樓/.test(k);
+  const shape = type === "華廈" ? "電梯大樓" : type;
+  let rentStatus = /套房/.test(k) ? "獨立套房" : "整層住家";
+  let rentType = shape;
+  if (rent) {
+    if (/土地|農地|建地|素地/.test(k)) {
+      rentStatus = "土地";
+      rentType = "";
+    } else if (/廠|倉庫|倉儲|農舍/.test(k)) {
+      rentStatus = "廠房";
+      rentType = /廠辦/.test(k) ? "廠辦" : /倉/.test(k) ? "倉庫" : /農舍/.test(k) ? "農舍" : "工廠";
+    } else if (/住辦/.test(k)) {
+      rentStatus = "住辦";
+      rentType = hasShape ? shape : d.total != null && d.total <= 5 ? "透天厝" : "電梯大樓";
+    } else if (/辦公|商辦|商用/.test(k)) {
+      rentStatus = "辦公";
+      rentType = hasShape ? shape : d.total != null && d.total <= 5 ? "透天厝" : "電梯大樓";
+    } else if (/店面|店舖|店鋪/.test(k)) {
+      rentStatus = "店面";
+      rentType = hasShape ? shape : "店面（店鋪）";
+    }
+  }
   const c = d.rentCond;
   const depositM = (d.deposit || "").match(/免押|(\d)\s*個月|面議/);
   const rentDeposit = !depositM ? "2個月" : /免押/.test(depositM[0]) ? "免押金" : /面議/.test(depositM[0]) ? "面議" : depositM[1] === "1" ? "1個月" : depositM[1] === "2" ? "2個月" : "其他";
@@ -198,7 +226,7 @@ export function derive(d: Listing, nowYear: number = new Date().getFullYear()): 
     deal: d.deal,
     adType: rent ? "出租" : "出售",
     legal: rent ? "" : legal,
-    status: rent ? (/套房/.test(k) ? "獨立套房" : "整層住家") : /套房/.test(k) ? "套房" : "住宅",
+    status: rent ? rentStatus : /套房/.test(k) ? "套房" : "住宅",
     type: rentType,
     elevator: /電梯大樓|華廈/.test(rentType) ? "有" : "無",
     rentDeposit,
@@ -221,6 +249,12 @@ export function derive(d: Listing, nowYear: number = new Date().getFullYear()): 
     fullAddr,
     parts,
   };
+}
+
+/** 出租的非住宅類型（591 第①頁：店面／辦公／住辦／廠房／土地）—— 表單跟整層住家、套房不同 */
+export const BIZ_RENT = ["店面", "辦公", "住辦", "廠房", "土地"] as const;
+export function isBizRent(status: string): boolean {
+  return (BIZ_RENT as readonly string[]).includes(status);
 }
 
 /* ───────── 確認表 ───────── */
@@ -351,6 +385,12 @@ function buildRentRows(d: Listing, o: Derived): Row[] {
   const f = (label: string, value: unknown, opt: Omit<Row, "label" | "value"> = {}) =>
     rows.push({ label, value: s(value), ...opt });
   const c = d.rentCond;
+  /* 店面／辦公／住辦／廠房／土地：591 的表單跟住家不同（沒有格局、開伙、養寵物、身份要求；土地連樓層都沒有），
+     住家才有的列不要亮紅底逼他補；外掛只填共通的格子，這一行先講清楚 */
+  const biz = isBizRent(o.status);
+  const land = o.status === "土地";
+  const home = !biz;
+  if (biz) grp(`⚠️ 這是「${o.status}」的出租表單：外掛只填地址、坪數、租金、押金、標題、文案、聯絡資料、照片；${land ? "地號、土地使用分區、土地類別" : o.status === "廠房" ? "規格、臨路路寬這些廠房專用的格子" : "類型、經營狀態、適合行業這些店面辦公專用的格子"}要你在 591 上自己選`);
 
   grp("出租地址（前三格是下拉，用選的；號旁邊的「隱藏門號」預設勾）");
   f("縣市", o.parts.city, { pick: true, req: true, note: d.addr && !/^[一-龥]{2}[縣市]/.test(d.addr) ? "資料沒寫縣市，先給台中市" : "" });
@@ -361,48 +401,55 @@ function buildRentRows(d: Listing, o: Derived): Row[] {
   f("號", o.parts.no, { req: true, need: !o.parts.no, note: o.parts.no ? "" : "門牌被藏起來了，要自己打" });
   f("之", o.parts.sub, { note: o.parts.sub ? "" : "沒有就留空" });
   f("整串地址", o.fullAddr, { note: "表單上方有「填寫地址」框時貼這串按「匯入地址」" });
-  f("出租樓層", o.sellFloor, { req: true, need: o.sellFloor === "", note: o.sellFloorNote });
-  if (d.floorSub) f("樓 之", d.floorSub, { note: "樓層旁邊的「之」" });
+  if (!land) f("出租樓層", o.sellFloor, { req: true, need: o.sellFloor === "", note: o.sellFloorNote });
+  if (!land && d.floorSub) f("樓 之", d.floorSub, { note: "樓層旁邊的「之」" });
 
   grp("基礎資料");
-  f("出租總樓層", d.total, { req: true, need: !d.total, note: "層" });
-  f("電梯", o.elevator, { pick: true, note: `照型態「${o.type}」給的` });
-  f("社區名稱", d.community, { note: d.community ? "" : "沒有就留空" });
-  f("格局 房", d.room, { req: true, need: !d.room });
-  f("格局 廳", d.hall);
-  f("格局 衛", d.bath);
-  f("可使用坪數", o.usePing, { req: true, need: o.usePing == null, note: d.mainAttPing != null ? "型錄的「主+附屬」" : "主建物＋附屬建物" });
-  f("權狀坪數", d.regPing, { req: true, need: !d.regPing, note: "型錄的「登記坪數」" });
-  f("車位", o.hasPark ? "有" : "無", { pick: true, note: c.parkIncluded ? "型錄寫「含車」" : d.parkNo ? `型錄車位 ${d.parkNo}` : "" });
-  f("完工 民國年", o.rocY, {
+  if (home) {
+    f("出租總樓層", d.total, { req: true, need: !d.total, note: "層" });
+    f("電梯", o.elevator, { pick: true, note: `照型態「${o.type}」給的` });
+  }
+  if (!land) f("社區名稱", d.community, { note: d.community ? "" : "沒有就留空" });
+  if (home) {
+    f("格局 房", d.room, { req: true, need: !d.room });
+    f("格局 廳", d.hall);
+    f("格局 衛", d.bath);
+  }
+  if (land) f("土地坪數", d.landPing ?? d.regPing, { req: true, need: !(d.landPing ?? d.regPing), note: "591 的「基地面積」" });
+  else {
+    f("可使用坪數", o.usePing ?? (biz ? d.regPing : null), { req: true, need: (o.usePing ?? (biz ? d.regPing : null)) == null, note: o.usePing == null && biz ? "資料沒有主建物明細，先放登記坪數，請核對" : d.mainAttPing != null ? "型錄的「主+附屬」" : "主建物＋附屬建物" });
+    f("權狀坪數", d.regPing, { req: true, need: !d.regPing, note: "型錄的「登記坪數」" });
+  }
+  if (!land) f("車位", o.hasPark ? "有" : "無", { pick: true, note: c.parkIncluded ? "型錄寫「含車」" : d.parkNo ? `型錄車位 ${d.parkNo}` : "" });
+  if (home) f("完工 民國年", o.rocY, {
     req: true,
     need: false,
     note: d.y ? `西元 ${d.y}/${d.m}/${d.dd}` : "租屋型錄沒竣工日：留空就點「屋齡不詳」，知道的話填民國年",
   });
-  if (d.y) {
+  if (home && d.y) {
     f("完工 月", d.m);
     f("完工 日", d.dd);
   }
-  if (o.facing) f("朝向", o.facing, { pick: true, note: `資料寫「${d.facing}」` });
+  if (!land && o.facing) f("朝向", o.facing, { pick: true, note: `資料寫「${d.facing}」` });
 
-  grp("租住說明");
+  grp(biz ? "租期" : "租住說明");
   f("最短租期", "1年", { pick: true });
-  f("可遷入日", "隨時可遷入", { pick: true });
-  f("提供設備", "", { pick: true, need: true, note: "洗衣機／冰箱／電視／冷氣／熱水器／網路／第四台／天然瓦斯 —— 你看照片自己勾" });
-  f("提供家具", "", { pick: true, need: true, note: "床／衣櫃／沙發／桌子／椅子 —— 你看照片自己勾" });
-  f("身份要求", "學生、上班族、家庭", { pick: true });
-  f("開伙", o.cook, { pick: true, note: c.cook == null ? "型錄沒寫，預設可" : "照型錄" });
-  f("養寵物", o.pets, { pick: true, note: c.noPets == null ? "型錄沒寫，預設不可" : c.noPets ? "型錄寫禁寵" : "型錄寫可養" });
-  f("裝潢時間", "？", { pick: true, need: true, note: "半年內／1年內／3年內／3年以上，591 要選一個" });
-  f("裝潢程度", "？", { pick: true, need: true, note: "尚未／簡易／中檔／高檔，你看過屋況再選" });
+  if (!land) f("可遷入日", "隨時可遷入", { pick: true });
+  if (home) f("提供設備", "", { pick: true, need: true, note: "洗衣機／冰箱／電視／冷氣／熱水器／網路／第四台／天然瓦斯 —— 你看照片自己勾" });
+  if (home) f("提供家具", "", { pick: true, need: true, note: "床／衣櫃／沙發／桌子／椅子 —— 你看照片自己勾" });
+  if (home) f("身份要求", "學生、上班族、家庭", { pick: true });
+  if (home) f("開伙", o.cook, { pick: true, note: c.cook == null ? "型錄沒寫，預設可" : "照型錄" });
+  if (home) f("養寵物", o.pets, { pick: true, note: c.noPets == null ? "型錄沒寫，預設不可" : c.noPets ? "型錄寫禁寵" : "型錄寫可養" });
+  if (home) f("裝潢時間", "？", { pick: true, need: true, note: "半年內／1年內／3年內／3年以上，591 要選一個" });
+  if (!land && o.status !== "廠房") f("裝潢程度", "？", { pick: true, need: true, note: "尚未／簡易／中檔／高檔，你看過屋況再選" });
 
   grp("房屋價格");
   f("租金", d.rent, { req: true, need: d.rent == null, note: "元／月" });
   f("押金", o.rentDeposit, { pick: true, note: d.deposit ? `型錄寫「${d.deposit}」` : "型錄沒寫，預設 2 個月" });
-  f("租金包含", o.rentIncludes.join("、") || "無", { pick: true, note: c.feeIncluded ? "型錄寫「含管」" : "預設不含，要含的話改成 管理費、水費… 用、隔開" });
-  f("水費", "台水繳費", { pick: true });
-  f("電費", "台電繳費", { pick: true });
-  f("管理費", feeMonthly(d), { note: d.fee != null ? feeNote(d) : c.feeIncluded ? "租金已含，591 仍會問金額，知道就填" : "有的話填每月金額（元），沒有留空" });
+  if (home) f("租金包含", o.rentIncludes.join("、") || "無", { pick: true, note: c.feeIncluded ? "型錄寫「含管」" : "預設不含，要含的話改成 管理費、水費… 用、隔開" });
+  if (home) f("水費", "台水繳費", { pick: true });
+  if (home) f("電費", "台電繳費", { pick: true });
+  if (!land) f("管理費", feeMonthly(d), { note: d.fee != null ? feeNote(d) : c.feeIncluded ? "租金已含，591 仍會問金額，知道就填" : "有的話填每月金額（元），沒有留空" });
 
   grp("生活機能（用勾的）");
   f("勾選這些", o.life.join("、") || "（資料沒明寫，不勾）", { pick: true, note: "只列資料明寫的「鄰近OO」，其他自己勾" });

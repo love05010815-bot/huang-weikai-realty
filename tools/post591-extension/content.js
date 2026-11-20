@@ -392,7 +392,8 @@
       return true;
     }
     // 出售：出售 → 法定用途 → 現況 → 型態；出租：出租 → 類型 → 型態（沒有法定用途那步）
-    const seq = [p.first.adType || (p.deal === "rent" ? "出租" : "出售"), ...(p.first.legal ? [p.first.legal] : []), p.first.status, p.first.type];
+    // 出租的土地沒有型態那一層（type 是空的）→ 點到「土地」就會跳第②頁
+    const seq = [p.first.adType || (p.deal === "rent" ? "出租" : "出售"), ...(p.first.legal ? [p.first.legal] : []), p.first.status, p.first.type].filter(Boolean);
     for (let i = 0; i < seq.length; i++) {
       if (!(await clickItem(seq[i]))) return;
     }
@@ -522,7 +523,7 @@
       else missing.push("管理費有／無");
       clickRadioAfter("帶租約", p.lease ? "是" : "否");
       if (p.deco) clickRadioAfter("裝潢程度", p.deco);
-      else missing.push("裝潢程度（要你看過屋況再選）");
+      else need("裝潢程度", "裝潢程度（要你看過屋況再選）");
       log("價格填完", "ok");
     } catch (e) {
       log(`價格區出錯：${e.message}`, "bad");
@@ -633,12 +634,20 @@
         log(`縣市彈窗：選了 ${want}`, "ok");
       } else log(`縣市彈窗裡找不到「${want}」，請自己點`, "bad");
     }
-    const ready = await waitFor(() => labelEl("出租總樓層") && labelEl("出租地址"), 20000);
+    // 店面／辦公／住辦／廠房／土地的表單沒有「出租總樓層」（2026-11-20 實開），等「租金」那一格出來就算表單好了
+    const kindName = (p.first && p.first.status) || "";
+    const biz = /^(店面|辦公|住辦|廠房|土地)$/.test(kindName);
+    const formHas = (t) => [...document.querySelectorAll(".ant-form-item-label")].some((e) => txt(e).trim().startsWith(t));
+    /** 這張表單有這一格才列進「還要你自己補」—— 住家才有的格子在店面／土地表單上不存在，列出來只是雜訊 */
+    const need = (label, msg) => {
+      if (!biz || formHas(label)) missing.push(msg);
+    };
+    const ready = await waitFor(() => labelEl("出租地址") && (biz ? formHas("租金") : labelEl("出租總樓層")), 20000);
     if (!ready) {
       log("等不到出租表單，重新整理一次再試", "bad");
       return;
     }
-    log("第②頁（出租）：開始填");
+    log(biz ? `第②頁（出租・${kindName}）：開始填。這種表單外掛只填共通的格子，其餘列在下面` : "第②頁（出租）：開始填");
 
     try {
       await fillAddress(p, missing);
@@ -648,14 +657,19 @@
 
     /* 基礎資料 */
     try {
+      const A0 = p.area || {};
       if (p.floor && p.floor.total != null) setNumAfter("出租總樓層", [p.floor.total]);
-      else missing.push("出租總樓層");
+      else need("出租總樓層", "出租總樓層");
       if (r.elevator) clickRadioAfter("電梯", r.elevator);
       setTxtAfter("社區名稱", p.community || "");
       const L = p.layout || {};
       setNumAfter("格局", [L.room, L.hall, L.bath, ""]);
       if (r.usePing != null) setNumAfter("可使用坪數", [r.usePing]);
-      else missing.push("可使用坪數");
+      else need("可使用坪數", "可使用坪數");
+      if (kindName === "土地") {
+        if (A0.land != null || A0.reg != null) setNumAfter("基地面積", [A0.land != null ? A0.land : A0.reg]);
+        else missing.push("基地面積");
+      }
       const A = p.area || {};
       setNumAfter("權狀坪數", [A.reg]);
       clickRadioAfter("車位", r.park ? "有" : "無");
@@ -667,7 +681,9 @@
         if (!(await pickSelect(after("車位", SEL, 1)[0], cands))) missing.push("車位型式（平面式／機械式）");
       }
       const D = p.done || {};
-      if (D.y != null) {
+      if (biz && !formHas("建築完工時間")) {
+        /* 這張表單沒有完工時間 */
+      } else if (D.y != null) {
         clickRadioAfter("建築完工時間", "成屋");
         setNumAfter("建築完工時間", [D.y, D.m, D.d]);
       } else {
@@ -676,7 +692,7 @@
       }
       if (p.facing && !(await pickSelect(after("朝向", SEL, 1)[0], p.facing))) log(`朝向「${p.facing}」沒選到`, "warn");
       if (r.decoTime) clickRadioAfter("裝潢時間", r.decoTime);
-      else missing.push("裝潢時間（半年內／1年內／3年內／3年以上）");
+      else need("裝潢時間", "裝潢時間（半年內／1年內／3年內／3年以上）");
       if (p.deco) clickRadioAfter("裝潢程度", p.deco);
       else missing.push("裝潢程度（要你看過屋況再選）");
       log("基礎資料填完", "ok");
@@ -691,7 +707,7 @@
       for (const who of ["學生", "上班族", "家庭"]) clickCheckAfter("身份要求", who, (r.identity || []).includes(who));
       if (r.cook) clickRadioAfter("開伙", r.cook);
       if (r.pets) clickRadioAfter("養寵物", r.pets);
-      missing.push("提供設備、提供家具（照照片勾）");
+      need("提供設備", biz ? "提供設備（照現況勾）" : "提供設備、提供家具（照照片勾）");
       log("租住說明填完", "ok");
     } catch (e) {
       log(`租住說明出錯：${e.message}`, "bad");
@@ -703,14 +719,16 @@
       else missing.push("租金");
       if (r.deposit) clickRadioAfter("押金", r.deposit);
       const inc = r.includes || [];
-      if (inc.length) for (const x of inc) clickCheckAfter("租金包含", x, true);
-      else clickCheckAfter("租金包含", "無", true);
+      if (!biz || formHas("租金包含")) {
+        if (inc.length) for (const x of inc) clickCheckAfter("租金包含", x, true);
+        else clickCheckAfter("租金包含", "無", true);
+      }
       if (r.water) clickRadioAfter("水費", r.water);
       if (r.power) clickRadioAfter("電費", r.power);
       const F = p.fee || {};
       if (F.amount != null) setTxtAfter("管理費", F.amount);
       else if (F.has === false) clickCheckAfter("管理費", "無", true);
-      else missing.push("管理費金額（租金已含，591 仍會問；不知道就勾「無」）");
+      else need("管理費", "管理費金額（租金已含，591 仍會問；不知道就勾「無」）");
       log("價格填完", "ok");
     } catch (e) {
       log(`價格區出錯：${e.message}`, "bad");
@@ -751,6 +769,7 @@
       missing.push("照片（自己上傳）");
     }
 
+    if (biz) missing.push(kindName === "土地" ? "地號、所有權、土地使用分區、土地類別、適合用途（土地表單專用）" : kindName === "廠房" ? "規格、臨路、適合用途這些廠房表單專用的格子" : `類型、經營狀態、適合行業這些「${kindName}」表單專用的格子`);
     showMissing(missing);
     log("✅ 填完。請從上往下核對一遍，再自己按「保存資料，下一步」。", "ok");
   }

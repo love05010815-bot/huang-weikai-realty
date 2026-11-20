@@ -63,8 +63,10 @@ export function buildRakuya(d, o, p, nowYear = new Date().getFullYear()) {
     const depositSel = /免押/.test(dep) ? "其他押金" : /面議/.test(dep) ? "面議" : /^1個月/.test(dep) ? "1個月租金" : /^2個月/.test(dep) ? "2個月租金" : "其他押金";
     return {
         legal: LEGAL_OK.includes(o.legal) ? o.legal : "住家用",
-        usecode: rent ? o.status : /套房/.test(o.status) ? "住宅" : "住宅",
-        typecode: !rent && /套房/.test(o.status) ? "套房" : typecode,
+        // 出租的非住宅（2026-11-20 實開樂屋出租表單）：現況型式有 店面／住辦／商用／廠房／土地，591 的「辦公」在樂屋叫「商用」。
+        // 下一層：店面＝建物型態；住辦／商用多「辦公／店面」；廠房沒有下一層；土地是土地類別（資料沒有，留給他選）
+        usecode: rent ? (o.status === "辦公" ? "商用" : o.status) : /套房/.test(o.status) ? "住宅" : "住宅",
+        typecode: !rent && /套房/.test(o.status) ? "套房" : rent && (o.status === "廠房" || o.status === "土地") ? "" : rent && /店面/.test(t) ? (o.status === "店面" ? "" : "店面") : typecode,
         ageType: ageYears != null && ageYears <= 3 ? "新屋" : "中古屋",
         isCommunity: !!p.community,
         floorsType: p.floor.sell === 0 ? "多層" : "單層",

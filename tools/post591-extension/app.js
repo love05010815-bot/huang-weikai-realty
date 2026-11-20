@@ -250,6 +250,7 @@ function applyListing(d, sourceUrl) {
   $("warns").innerHTML = listing.warnings.map((w) => `<li>${esc(w)}</li>`).join("");
 
   $("steps").innerHTML = [derived.adType, derived.legal, derived.status, derived.type]
+    .filter(Boolean)
     .map((s, i) => `${i ? '<span class="arrow">→</span>' : ""}<span class="step">${esc(s)}</span>`)
     .join("");
   $("steps-note").textContent = `依據：謄本用途「${derived.tengben || "資料沒有，先當住家用"}」→ 法定用途「${derived.legal}」；類型「${listing.kind || "—"}」＋樓高 ${listing.total ?? "—"} 層 → 型態「${derived.type}」。認得的組合會直接開 591 第②頁，不認得的外掛會在第①頁幫你點。`;
