@@ -18,6 +18,8 @@
  * 出口：`toCatalog()`（FB 廣告、地圖物件）與 `toPost591()`（591 刊登助手）—— 純規則在 lib/pacific-map.ts。
  */
 import { getHouseolAddressMap } from "@/lib/houseol-address";
+import { catalogUrlFor } from "@/lib/houseol-catalog";
+import { extractPhotosFromHtml, houseolHtmlToText, isHouseolCatalogHtml, parseListing, sortHouseolPhotos, type Listing } from "@/lib/post591-parser";
 import { getListing, getListingByHouseolId } from "@/lib/match/store";
 import { houseolIdFromPic } from "@/lib/match/pacific-parse";
 import { detailFromShare, detailToCatalog, detailToPost591, type PacificDetail, type PacificExtra } from "@/lib/pacific-map";
@@ -145,4 +147,73 @@ export function toPost591(d: PacificLoaded) {
   if (!d.fromOfficial) listing.warnings.unshift("太平洋官網暫時讀不到，這份只有分享頁的欄位（樓層、車位、管理費、坪數明細都要自己補）。");
   else if (d.photoNote) listing.warnings.unshift(`${d.photoNote}：照片沒帶到，等一下重貼一次連結或編號。`);
   return listing;
+}
+
+/* ───────── 591 刊登助手專用：官網這條路走不通時退回愛屋型錄 ───────── */
+
+export type Post591Loaded = { caseId: string; sourceUrl: string; fromOfficial: boolean; listing: Listing };
+
+/**
+ * 委託編號 → 直接抓愛屋型錄頁解析（跟外掛「貼型錄網址」同一個解析器）。
+ * 2026-11-20：他貼 AD5401518 回「在同步清單裡找不到」—— 同步表是照官網編號收的，**出租物件幾乎都沒對到委託編號**
+ * （當天 60 筆出租只有 5 筆有 houseol_id），剛簽的委託也還沒同步到。型錄頁本身是公開的、有編號就開得到，不必等同步。
+ * 讀不出租金也讀不出總價＝編號打錯或已下架（下架的型錄是空殼、照樣回 200），回 null 讓呼叫端維持原本的錯誤訊息。
+ */
+export async function loadFromHouseolCatalog(houseolId: string): Promise<Post591Loaded | null> {
+  const url = catalogUrlFor(houseolId);
+  let html = "";
+  try {
+    const res = await fetch(url, {
+      headers: { "user-agent": "Mozilla/5.0 (compatible; weikaihouse.com/1.0; +https://weikaihouse.com)", accept: "text/html" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    html = await res.text();
+  } catch {
+    return null;
+  }
+  if (!isHouseolCatalogHtml(html)) return null;
+  const listing = parseListing(houseolHtmlToText(html));
+  if (listing.rent == null && !listing.price) return null;
+  if (!listing.no) listing.no = houseolId;
+  const seen = new Set<string>();
+  listing.photos = sortHouseolPhotos(
+    [...listing.photos, ...extractPhotosFromHtml(html, houseolId)].filter((u) => {
+      const k = u.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    }),
+  );
+  // 型錄頁只印到路名；我們自己的門牌表有這個編號就補上
+  try {
+    const full = (await getHouseolAddressMap()).get(houseolId);
+    if (full && /號/.test(full) && !/號/.test(listing.addr)) {
+      listing.addr = full;
+      listing.warnings = listing.warnings.filter((w) => !/門牌/.test(w));
+    }
+  } catch {
+    /* 沒門牌就照型錄的 */
+  }
+  listing.warnings.unshift("這一戶官網那邊對不到（還沒同步或還沒上架），資料是從愛屋型錄帶的，請核對一遍。");
+  return { caseId: houseolId, sourceUrl: url, fromOfficial: false, listing };
+}
+
+/** 591 刊登助手（後台與同事版外掛）共用的入口：先走官網，委託編號走不通再退回愛屋型錄 */
+export async function loadPost591Listing(input: string): Promise<{ ok: true; data: Post591Loaded } | { ok: false; error: string }> {
+  const got = await loadPacificListing(input);
+  if (got.ok) {
+    const d = got.data;
+    return { ok: true, data: { caseId: d.houseolId || d.saleId, sourceUrl: d.linkHref, fromOfficial: d.fromOfficial, listing: toPost591(d) } };
+  }
+  const parsed = parsePacificInput(input);
+  if (parsed?.kind === "houseol") {
+    const viaCatalog = await loadFromHouseolCatalog(parsed.houseolId);
+    if (viaCatalog) return { ok: true, data: viaCatalog };
+    return {
+      ok: false,
+      error: `委託編號 ${parsed.houseolId} 帶不進來：官網同步清單裡沒有，愛屋型錄頁用這個編號開出來也是空的（編號打錯、愛屋那邊還沒上架、或已下架）。先核對編號；確定沒錯就改貼型錄頁網址、官網編號（R／P／S 開頭）或分享連結。`,
+    };
+  }
+  return { ok: false, error: got.error };
 }

@@ -12,7 +12,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { isCurrentUserAdmin } from "@/lib/admin-check";
-import { loadPacificListing, toPost591 } from "@/lib/pacific-listing";
+import { loadPost591Listing } from "@/lib/pacific-listing";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -29,8 +29,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch {
     return NextResponse.json({ ok: false, error: "讀不到你貼的連結" }, { status: 400 });
   }
-  const got = await loadPacificListing(input);
+  const got = await loadPost591Listing(input);
   if (!got.ok) return NextResponse.json({ ok: false, error: got.error }, { status: 400 });
   const d = got.data;
-  return NextResponse.json({ ok: true, caseId: d.houseolId || d.saleId, sourceUrl: d.linkHref, fromOfficial: d.fromOfficial, listing: toPost591(d) });
+  return NextResponse.json({ ok: true, caseId: d.caseId, sourceUrl: d.sourceUrl, fromOfficial: d.fromOfficial, listing: d.listing });
 }

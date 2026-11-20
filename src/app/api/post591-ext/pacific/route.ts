@@ -6,7 +6,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { fbExtAuth, fbExtJson, fbExtOptions } from "@/lib/fb-ext-auth";
-import { loadPacificListing, toPost591 } from "@/lib/pacific-listing";
+import { loadPost591Listing } from "@/lib/pacific-listing";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -21,8 +21,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const a = await fbExtAuth(req, "post591-ext:pacific", 30);
   if (!a.ok) return a.res;
   const input = String(a.body.input ?? "").slice(0, 500);
-  const got = await loadPacificListing(input);
+  const got = await loadPost591Listing(input);
   if (!got.ok) return fbExtJson({ ok: false, error: got.error }, 400);
   const d = got.data;
-  return fbExtJson({ ok: true, caseId: d.houseolId || d.saleId, sourceUrl: d.linkHref, fromOfficial: d.fromOfficial, listing: toPost591(d) });
+  return fbExtJson({ ok: true, caseId: d.caseId, sourceUrl: d.sourceUrl, fromOfficial: d.fromOfficial, listing: d.listing });
 }
