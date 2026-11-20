@@ -26,7 +26,7 @@
  *    `rent`／`deposit` 只給出租（元）—— 之前 isRent 用「沒售價」判，AD5358900 那間商辦被印成「💰 開價 20000 萬」。
  */
 import type { CatalogListing } from "@/lib/houseol-catalog";
-import type { Listing } from "@/lib/post591-parser";
+import { splitNumberedPoints, type Listing } from "@/lib/post591-parser";
 import { titleFeatures } from "@/lib/match/houseol-parse";
 import { pacificFloor } from "@/lib/match/pacific-parse";
 import { communityFromTitle, PACIFIC_SALE_ID, primAgeYears, stripCity, type PrimShareItem } from "@/lib/prim-share";
@@ -264,6 +264,7 @@ export function detailFromShare(it: PrimShareItem): PacificDetail {
 export function splitFeatureText(text: string): string[] {
   return String(text ?? "")
     .split(/[\r\n]+|[①-⑳➀-➉❶-❿⓵-⓾⑴-⒇]|[;；]|[✨★☆]/)
+    .flatMap(splitNumberedPoints)
     .map((s) => s.replace(/^[\s✨★☆▪•●◆◇\-–—、,，。.]+/, "").replace(/[\s。]+$/, "").trim())
     .filter((s) => s.length >= 2);
 }

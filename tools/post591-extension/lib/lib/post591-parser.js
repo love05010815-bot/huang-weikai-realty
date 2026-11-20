@@ -452,10 +452,35 @@ export function photoLinkReport(text, scanned = {}) {
     const perLink = links.map((l) => (isHouseolPage(l) ? (scanned[l] || []).length : combinePhotos(l).length));
     return { links, perLink, pages: links.filter(isHouseolPage), photos: combinePhotos(text, scanned) };
 }
+/**
+ * 一行裡擠著「1.精美裝潢2.家俱家電全附3.…」的，照編號拆成一點一行、編號拿掉（他 2026-11-20 說「各變成獨立的一個說明」）。
+ * 只認「從 1 開始、依序往上」的編號：找完 1 才找 2、找完 2 才找 3，所以「近國道3號」「2.5 米車道」「3房2廳」不會被切開
+ * （編號前後都不能緊貼數字）。只有 1 沒有 2 → 不算條列，原樣。
+ */
+export function splitNumberedPoints(line) {
+    const s = String(line ?? "");
+    const cuts = [];
+    let from = 0;
+    for (let n = 1; n <= 30; n++) {
+        const re = new RegExp(`(^|[^0-9０-９])[(（]?${n}[ \\t]*[.．、)）:：](?![0-9])`, "g");
+        re.lastIndex = from;
+        const m = re.exec(s);
+        if (!m)
+            break;
+        cuts.push({ at: m.index + m[1].length, end: m.index + m[0].length });
+        from = m.index + m[0].length;
+    }
+    if (cuts.length < 2)
+        return [s];
+    const out = [s.slice(0, cuts[0].at)];
+    cuts.forEach((c, i) => out.push(s.slice(c.end, i + 1 < cuts.length ? cuts[i + 1].at : s.length)));
+    return out.map((x) => x.replace(/^[\s、,，。;；]+|[\s、,，;；]+$/g, "")).filter(Boolean);
+}
 export function splitFeatureLines(text) {
     return text
         .split("\n")
         .map((L) => L.replace(/^[\s✨★☆▪•●◆◇①-⑳\-–—]+/, "").trim())
+        .flatMap(splitNumberedPoints)
         .filter((L) => L.length > 0)
         .filter((L) => !/^\[?(?:地圖|街景|更多照片|成交行情)\]?(?:[\s\[\]()（）]|$)/.test(L) && !/^地圖\s+街景/.test(L));
 }
@@ -520,6 +545,7 @@ export function parseFreeform(raw) {
         .split("\n")
         .filter((L) => /^\s*[✨★☆▪•●◆◇]/.test(L))
         .map((L) => L.replace(/^[\s✨★☆▪•●◆◇]+/, "").trim())
+        .flatMap(splitNumberedPoints)
         .filter(Boolean);
     /* 社區名：從第一行 ✨ 的「XXX，」猜；標成猜的，畫面上要人核對 */
     const first = d.features[0] || "";

@@ -118,6 +118,7 @@ eq("sanitize：ageYear 與字都沒有 → null", sanitizeDetail({ ...RAW, ageYe
 eq("特色：圈數字拆三行", splitFeatureText(RAW.objFeature1), ["稀有三房，格局方正", "近測試國小，接送方便", "社區管理好，出入單純"]);
 eq("特色：換行也拆", splitFeatureText("A社區很棒\n近公園"), ["A社區很棒", "近公園"]);
 eq("特色：✨ 分隔也拆（2026-10-20 實測官網有這種）", splitFeatureText("社區角間別墅。 ✨四房間間套房。 ✨配有電梯"), ["社區角間別墅", "四房間間套房", "配有電梯"]);
+eq("特色：一行 1.2.3. 拆開（2026-11-20）", splitFeatureText("1.精美裝潢2.家俱家電全附3.近國道3號、西濱交通方便"), ["精美裝潢", "家俱家電全附", "近國道3號、西濱交通方便"]);
 eq("特色：空 → 空陣列", splitFeatureText(""), []);
 eq("車位型式：平車 → 平面", parkingTypeFromTitle("三房平車"), "平面");
 eq("車位型式：機械", parkingTypeFromTitle("兩房附機械車位"), "機械");
