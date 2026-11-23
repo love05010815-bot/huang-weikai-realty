@@ -63,6 +63,13 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     ],
   },
   {
+    title: "成交紀錄",
+    items: [
+      // 每成交一件記一筆（金額／服務費／點數／業績＋買賣雙方資料），統計分頁自動算每月每年件數與金額。表 deal_record。
+      { href: "/admin/deals", label: "成交紀錄", icon: "money" },
+    ],
+  },
+  {
     title: "廣告助手",
     items: [
       // 貼上愛屋型錄／LINE 物件文字，一鍵交給 Chrome 外掛填進 591／樂屋網的刊登表單。純前端、不進資料庫。
