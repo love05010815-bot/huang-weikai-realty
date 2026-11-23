@@ -97,5 +97,26 @@ eq(sh.map((x) => [x.count, x.pct]), [[2, 67], [0, 0], [1, 33]], "成交方式件
 eq(T.methodShares([], ["dev"])[0].pct, 0, "0 件不除以 0");
 eq(T.rocYearOf("2026-11-02"), 115, "民國年");
 
+console.log("E. 歷年每月件數（只有件數、沒有明細）跟建檔的合併");
+{
+  const legacy = [
+    { ym: "2024-06", count: 8 },
+    { ym: "2025-12", count: 3 }, // 那個月建檔 1 件 → 取 3
+    { ym: "2026-01", count: 1 }, // 那個月建檔 2 件 → 取 2（不相加）
+    { ym: "2023-05", count: 0 }, // 0 件不該讓那一年冒出來
+  ];
+  eq(T.dealYears(rows, "2026-11-23", legacy), ["2026", "2025", "2024"], "年份含只有件數的年、不含 0 件的年");
+  const m25 = T.monthCounts(rows, legacy, "2025");
+  eq([m25.counts[11], m25.legacyOnly], [3, 2], "歷年件數比建檔多 → 取歷年件數");
+  const m26 = T.monthCounts(rows, legacy, "2026");
+  eq([m26.counts[0], m26.legacyOnly], [2, 0], "建檔比較多 → 取建檔的，不相加");
+  const ys = T.sumByYear(rows, "2026-11-23", legacy);
+  const y24 = ys.find((x) => x.key === "2024");
+  eq([y24.count, y24.recorded, y24.legacyOnly, y24.months[5]], [8, 0, 8, 8], "只有件數的年：件數有、建檔 0");
+  const y25 = ys.find((x) => x.key === "2025");
+  eq([y25.count, y25.recorded, y25.priceWan], [3, 1, 600], "混合的年：件數合併、金額只算建檔的");
+  eq(T.sumByYear(rows, "2026-11-23").map((x) => x.count), [3, 1], "不給歷年件數時跟原本一樣");
+}
+
 console.log(pass ? "\n全部通過" : "\n❌ 有沒過的");
 process.exit(pass ? 0 : 1);

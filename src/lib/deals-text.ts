@@ -89,11 +89,37 @@ export function sumDeals(rows: DealStatRow[], key = "all"): DealSum {
   return s;
 }
 
+/**
+ * 歷年每月件數（表 deal_legacy_count）：109～114 年他只有每月成交幾件、沒有一筆一筆的明細，
+ * 所以只存件數。ym 是 "2025-03"。
+ */
+export type LegacyCount = { ym: string; count: number };
+
 /** 有成交的年份（西元字串），新到舊；今年一定在裡面（年初還沒成交也要選得到今年） */
-export function dealYears(rows: DealStatRow[], today: string): string[] {
+export function dealYears(rows: DealStatRow[], today: string, legacy: LegacyCount[] = []): string[] {
   const set = new Set<string>([today.slice(0, 4)]);
   for (const r of rows) set.add(r.day.slice(0, 4));
+  for (const l of legacy) if (l.count > 0) set.add(l.ym.slice(0, 4));
   return [...set].sort().reverse();
+}
+
+/**
+ * 某一年 12 個月的件數：每個月取「建檔的筆數」與「歷年件數」**比較大的那個**。
+ * 不是相加——他哪天把 114 年的明細補建進來，同一個月才不會被算兩次；
+ * 補到跟歷年件數一樣多之後，數字就完全由建檔的接手。
+ */
+export function monthCounts(rows: DealStatRow[], legacy: LegacyCount[], year: string): { counts: number[]; legacyOnly: number } {
+  const recorded = sumByMonth(rows, year).map((m) => m.count);
+  const counts = [...recorded];
+  for (const l of legacy) {
+    if (l.ym.slice(0, 4) !== year) continue;
+    const i = Number(l.ym.slice(5, 7)) - 1;
+    if (i >= 0 && i < 12 && l.count > counts[i]) counts[i] = l.count;
+  }
+  const total = counts.reduce((a, b) => a + b, 0);
+  const rec = recorded.reduce((a, b) => a + b, 0);
+  // legacyOnly：只有件數、沒有明細的有幾件（畫面上要講清楚金額沒算到它們）
+  return { counts, legacyOnly: total - rec };
 }
 
 /** 某一年的 1～12 月，沒成交的月份也回一格 0（少一格他會以為漏了） */
@@ -107,14 +133,20 @@ export function sumByMonth(rows: DealStatRow[], year: string): DealSum[] {
   return out;
 }
 
-export type YearRow = DealSum & { months: number[] };
+export type YearRow = DealSum & {
+  months: number[];
+  /** 有明細（建過檔）的件數；金額只算得到這些 */
+  recorded: number;
+  /** 只有件數、沒有明細的件數 */
+  legacyOnly: number;
+};
 
-/** 歷年總表：每年一列，帶 12 個月的件數；新到舊 */
-export function sumByYear(rows: DealStatRow[], today: string): YearRow[] {
-  return dealYears(rows, today).map((y) => {
-    const months = sumByMonth(rows, y);
+/** 歷年總表：每年一列，帶 12 個月的件數（含歷年件數）；新到舊。count 是合併後的件數，金額只來自建檔的。 */
+export function sumByYear(rows: DealStatRow[], today: string, legacy: LegacyCount[] = []): YearRow[] {
+  return dealYears(rows, today, legacy).map((y) => {
     const total = sumDeals(rows.filter((r) => r.day.slice(0, 4) === y), y);
-    return { ...total, months: months.map((m) => m.count) };
+    const { counts, legacyOnly } = monthCounts(rows, legacy, y);
+    return { ...total, count: total.count + legacyOnly, months: counts, recorded: total.count, legacyOnly };
   });
 }
 

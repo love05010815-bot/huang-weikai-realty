@@ -27,7 +27,7 @@
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { DEAL_METHODS, type DealMethod } from "@/config/deals";
-import { calcFeePct, calcPerf, parseNum, roundTo } from "@/lib/deals-text";
+import { calcFeePct, calcPerf, parseNum, roundTo, type LegacyCount } from "@/lib/deals-text";
 import { cut } from "@/lib/owners-text";
 
 // ---------------------------------------------------------------- 型別
@@ -126,6 +126,43 @@ export async function ensureDealTable(): Promise<void> {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
   ensured = true;
+}
+
+// ---------------------------------------------------------------- 歷年每月件數（只有件數、沒有明細）
+
+/**
+ * 109～114 年他的 Excel 只有「每月成交幾件」、沒有一筆一筆的明細（2026-11-23 他選「只補每月件數」）。
+ * 存一張小表 deal_legacy_count（ym = "2025-03"），統計分頁跟建檔的件數合併顯示，
+ * 合併規則在 deals-text.ts 的 monthCounts（每月取較大的，不相加）。
+ * 放資料庫不放 config：repo 是公開的，他每年每月成交幾件是他的業績。
+ */
+let legacyEnsured = false;
+
+async function ensureLegacyTable(): Promise<void> {
+  if (legacyEnsured) return;
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS deal_legacy_count (
+      ym         CHAR(7)     NOT NULL,
+      cnt        INT         NOT NULL DEFAULT 0,
+      updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+      PRIMARY KEY (ym)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  legacyEnsured = true;
+}
+
+export async function listLegacyCounts(): Promise<LegacyCount[]> {
+  await ensureLegacyTable();
+  const rows = await db.$queryRawUnsafe<{ ym: string; cnt: number | bigint }[]>(`SELECT ym, cnt FROM deal_legacy_count ORDER BY ym`);
+  return rows.filter((r) => /^\d{4}-\d{2}$/.test(r.ym)).map((r) => ({ ym: r.ym, count: Number(r.cnt) }));
+}
+
+/** 寫一個月的件數（同一個月再寫就是覆蓋）。目前只有匯入腳本在用，後台沒有編輯畫面。 */
+export async function setLegacyCount(ym: string, count: number): Promise<void> {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(ym)) throw new Error(`月份格式不對：${ym}`);
+  if (!Number.isInteger(count) || count < 0 || count > 999) throw new Error(`件數不對：${count}`);
+  await ensureLegacyTable();
+  await db.$executeRaw`INSERT INTO deal_legacy_count (ym, cnt) VALUES (${ym}, ${count}) ON DUPLICATE KEY UPDATE cnt = ${count}`;
 }
 
 // ---------------------------------------------------------------- 驗證

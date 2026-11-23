@@ -612,6 +612,22 @@
   color: var(--adm-brand);
 }
 
+/* 「這一年有 N 件只有件數」：提醒金額沒算到它們，黃色不是紅色（不是錯誤） */
+.legacyNote {
+  margin: -8px 0 20px;
+  padding: 10px 14px;
+  border: 1px solid rgba(var(--adm-warn-rgb), 0.35);
+  border-radius: 10px;
+  background: rgba(var(--adm-warn-rgb), 0.1);
+  color: var(--adm-text-sub);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.legacyNote b {
+  color: var(--adm-warn);
+}
+
 .statSection {
   margin: 0 0 20px;
   padding: 14px 16px;

@@ -13,8 +13,8 @@ import { CIS } from "@/app/admin/_components/cis";
 import { Icon } from "@/app/admin/_ui/icons";
 import AdminGateNotice from "@/app/admin/appointments/AdminGateNotice";
 import { getAdminCheckArgs, isCurrentUserAdmin } from "@/lib/admin-check";
-import { listDeals } from "@/lib/deals";
-import type { DealStatRow } from "@/lib/deals-text";
+import { listDeals, listLegacyCounts } from "@/lib/deals";
+import type { DealStatRow, LegacyCount } from "@/lib/deals-text";
 import { taipeiDay } from "@/lib/site-visits";
 import DealsManager, { type AdminDeal } from "./DealsManager";
 import DealsStats from "./DealsStats";
@@ -33,10 +33,13 @@ export default async function DealsAdminPage() {
   if (!(await isCurrentUserAdmin())) return <AdminGateNotice kind="not_allowed" email={email} />;
 
   let deals: AdminDeal[] = [];
+  let legacy: LegacyCount[] = [];
   let loadError: string | null = null;
   try {
     // createdAt（Date）不往客戶端送，其餘欄位原樣
     deals = (await listDeals()).map(({ createdAt: _createdAt, ...d }) => d);
+    // 循序查（連線池只有 3 條）
+    legacy = await listLegacyCounts();
   } catch (e) {
     loadError = e instanceof Error ? e.message : String(e);
   }
@@ -70,7 +73,7 @@ export default async function DealsAdminPage() {
         </p>
       ) : (
         <Suspense fallback={null}>
-          <DealsTabs list={<DealsManager deals={deals} today={today} />} stats={<DealsStats rows={statRows} today={today} />} />
+          <DealsTabs list={<DealsManager deals={deals} today={today} />} stats={<DealsStats rows={statRows} legacy={legacy} today={today} />} />
         </Suspense>
       )}
     </main>
