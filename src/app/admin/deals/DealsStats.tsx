@@ -2,7 +2,8 @@
 
 /**
  * 「統計數據」分頁，照他 Excel 的三塊排：
- *   ① 選一年 → 四格合計（件數／成交金額／服務費／總業績）＋ 1～12 月每月件數與金額
+ *   ① 選一年 → 三格合計（件數／服務費／總業績）＋ 1～12 月每月件數與金額
+ *      （2026-11-23 他看了畫面說「成交總金額不用列入」：加總的地方都不放成交金額，單筆卡片上的照舊）
  *   ② 那一年的成交方式（開發／銷售／獨得 各幾件、占幾 %）
  *   ③ 歷年每月成交數量總表（年 × 12 個月，最右邊合計，最下面全部加總）
  * 年份畫面上一律民國；條狀圖是純 CSS 寬度，不拉圖表套件。
@@ -67,10 +68,6 @@ export default function DealsStats({ rows, legacy, today }: { rows: DealStatRow[
           <span>成交件數</span>
         </li>
         <li>
-          <b>{money(yearSum.priceWan)}</b>
-          <span>成交總金額（萬）</span>
-        </li>
-        <li>
           <b>{money(yearSum.feeWan)}</b>
           <span>服務費總額（萬）</span>
         </li>
@@ -95,7 +92,6 @@ export default function DealsStats({ rows, legacy, today }: { rows: DealStatRow[
               <tr>
                 <th>月份</th>
                 <th className={styles.barCol}>件數</th>
-                <th>成交金額（萬）</th>
                 <th>服務費（萬）</th>
                 <th>達成業績（萬）</th>
               </tr>
@@ -114,7 +110,6 @@ export default function DealsStats({ rows, legacy, today }: { rows: DealStatRow[
                         </i>
                       </span>
                     </td>
-                    <td>{m.count ? fmtNum(m.priceWan) : ""}</td>
                     <td>{m.count ? fmtNum(m.feeWan) : ""}</td>
                     <td>{m.count ? fmtNum(m.perfWan) : ""}</td>
                   </tr>
@@ -127,7 +122,6 @@ export default function DealsStats({ rows, legacy, today }: { rows: DealStatRow[
                 <td className={styles.barCol}>
                   <b>{yearCount}</b>
                 </td>
-                <td>{money(yearSum.priceWan)}</td>
                 <td>{money(yearSum.feeWan)}</td>
                 <td>{money(yearSum.perfWan)}</td>
               </tr>
@@ -189,7 +183,6 @@ export default function DealsStats({ rows, legacy, today }: { rows: DealStatRow[
                   <th key={i}>{i + 1}月</th>
                 ))}
                 <th>合計</th>
-                <th>成交金額（萬）</th>
                 <th>業績（萬）</th>
               </tr>
             </thead>
@@ -205,7 +198,6 @@ export default function DealsStats({ rows, legacy, today }: { rows: DealStatRow[
                   <td>
                     <b>{y.count}</b>
                   </td>
-                  <td>{y.recorded ? fmtNum(y.priceWan) : "—"}</td>
                   <td>{y.recorded ? fmtNum(y.perfWan) : "—"}</td>
                 </tr>
               ))}
@@ -217,7 +209,6 @@ export default function DealsStats({ rows, legacy, today }: { rows: DealStatRow[
                 <td>
                   <b>{allCount}</b>
                 </td>
-                <td>{fmtNum(all.priceWan)}</td>
                 <td>{fmtNum(all.perfWan)}</td>
               </tr>
             </tfoot>

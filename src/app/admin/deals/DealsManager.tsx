@@ -484,7 +484,7 @@ export default function DealsManager({ deals, today }: { deals: AdminDeal[]; tod
 
       <p className={styles.count}>
         {shown.length} 件{shown.length !== deals.length ? `（共 ${deals.length} 件）` : ""}
-        ｜成交金額 <b>{fmtWan(shownSum.priceWan)}</b>｜服務費 <b>{fmtWan(shownSum.feeWan)}</b>｜達成業績 <b>{fmtWan(shownSum.perfWan)}</b>
+        ｜服務費 <b>{fmtWan(shownSum.feeWan)}</b>｜達成業績 <b>{fmtWan(shownSum.perfWan)}</b>
       </p>
 
       {deals.length === 0 && editing !== "new" ? (

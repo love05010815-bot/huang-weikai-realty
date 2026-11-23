@@ -574,7 +574,7 @@
   margin: 0 0 20px;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -730,7 +730,7 @@
   text-align: center;
 }
 
-.matrix td:nth-last-child(-n + 2) {
+.matrix td:last-child {
   text-align: right;
 }
 
@@ -773,6 +773,10 @@
 
   .stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stats > .statHot {
+    grid-column: 1 / -1;
   }
 
   /* 手機：條狀圖收掉、表頭可換行，五欄才塞得進一個畫面（達成業績那欄不能被捲到畫面外） */
