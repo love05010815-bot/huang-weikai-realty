@@ -1,0 +1,213 @@
+/* /admin/rental-sheet 的樣式。
+ *
+ * 操作區（.panel）照後台規矩：顏色一律 var(--adm-*)，不寫死色碼。
+ *
+ * 🔴 **紙本預覽（.sheet 底下）是唯一例外：白底黑字黑框線寫死。**
+ *    那是要印出來跟租約一起簽的紙，深色版後台也必須是白紙，不能跟著主題變。
+ *    所以 .sheet 裡面的 #fff / #000 / #777 是刻意的，批次換色請跳過。
+ *
+ * 尺寸用 mm：螢幕上看到的比例就是印出來的比例。A4 可印寬 186mm（左右各留 12mm）。
+ * 照片格高度：6 張版 76mm、8 張版 57mm —— 都剛好讓照片頁落在一張 A4 裡，
+ * 改高度前先算：標題 9 ＋ 列數 ×（說明 7 ＋ 照片高）要 ≤ 273mm。
+ */
+
+.page { padding: 24px 18px 56px; }
+.head { margin-bottom: 16px; }
+.h1 { display: flex; align-items: center; gap: 8px; font-size: 26px; font-weight: 700; margin: 0 0 6px; }
+.lede { color: var(--adm-text-mute); font-size: 14px; margin: 0; line-height: 1.7; max-width: 760px; }
+.lede b { color: var(--adm-text-sub); }
+
+.wrap { display: flex; align-items: flex-start; gap: 20px; color: var(--adm-text); }
+.panel { flex: 0 0 372px; width: 372px; min-width: 0; }
+.stage { flex: 1 1 auto; min-width: 0; overflow-x: auto; padding-bottom: 8px; }
+
+/* 寬螢幕：操作區自己捲、黏在畫面上。傢俱表很長，不這樣做的話勾到下面幾組時，
+   右邊紙上的「項目列表」早就捲出畫面，勾了看不到有沒有出現。 */
+@media (min-width: 1241px) {
+  .panel { position: sticky; top: 12px; max-height: calc(100dvh - 24px); overflow-y: auto; padding-right: 4px; }
+}
+
+@media (max-width: 1240px) {
+  .wrap { display: block; }
+  .panel { width: auto; max-width: 560px; margin-bottom: 20px; }
+}
+
+.card {
+  background: var(--adm-card);
+  border: 1px solid var(--adm-card-border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.h2 { font-size: 16px; margin: 0 0 10px; display: flex; align-items: baseline; gap: 8px; }
+.count { font-size: 12px; font-weight: 400; color: var(--adm-text-mute); white-space: nowrap; }
+.hint { color: var(--adm-text-mute); font-size: 13px; line-height: 1.7; margin: 10px 0 0; }
+.hint b { color: var(--adm-text-sub); }
+.note {
+  font-size: 13px; line-height: 1.6; margin: 10px 0 0; padding: 8px 10px; border-radius: 8px;
+  background: rgba(var(--adm-warn-rgb), 0.14); color: var(--adm-warn);
+  border: 1px solid rgba(var(--adm-warn-rgb), 0.35);
+}
+
+.field { display: block; margin-bottom: 12px; }
+.fieldLabel { display: block; font-size: 13px; color: var(--adm-text-sub); margin-bottom: 4px; }
+.input {
+  box-sizing: border-box; width: 100%; min-width: 0;
+  border: 1px solid var(--adm-card-border-strong); border-radius: 8px;
+  padding: 8px 10px; font: inherit; font-size: 14px;
+  background: var(--adm-input); color: var(--adm-text);
+}
+.input:focus { outline: 2px solid var(--adm-brand); outline-offset: -1px; background: var(--adm-input-focus); }
+.input::placeholder { color: var(--adm-text-mute); opacity: 0.8; }
+
+.segRow { display: flex; gap: 8px; margin-top: 8px; }
+.seg {
+  flex: 1 1 0; min-height: 40px; border-radius: 10px; cursor: pointer; font: inherit; font-size: 14px;
+  border: 1px solid var(--adm-card-border-strong); background: transparent; color: var(--adm-text-sub);
+}
+.seg:hover { border-color: var(--adm-brand); color: var(--adm-text); }
+.segOn, .segOn:hover { background: var(--adm-brand-deep); border-color: var(--adm-brand-deep); color: #fff; font-weight: 700; }
+
+.primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+  min-height: 44px; border: none; border-radius: 10px; cursor: pointer; font: inherit; font-size: 15px; font-weight: 700;
+  background: var(--adm-brand-deep); color: #fff;
+}
+.primary:hover { background: var(--adm-brand-deeper); }
+.primary:disabled { opacity: 0.6; cursor: wait; }
+.ghost {
+  min-height: 40px; padding: 0 14px; border-radius: 10px; cursor: pointer; font: inherit; font-size: 14px;
+  border: 1px solid var(--adm-card-border-strong); background: transparent; color: var(--adm-text-sub);
+}
+.ghost:hover { border-color: var(--adm-brand); color: var(--adm-text); }
+.btnRow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.actions .ghost { width: 100%; margin-top: 8px; }
+
+/* ---- 傢俱表編輯 ---- */
+.cat { border: 1px solid var(--adm-card-border); border-radius: 10px; padding: 10px; margin-top: 10px; }
+.catOn { border-color: rgba(var(--adm-brand-rgb), 0.55); background: rgba(var(--adm-brand-rgb), 0.04); }
+.catHead { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+.catName { font-weight: 700; flex: 1 1 auto; }
+.itemRow { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.check { flex: 0 0 auto; width: 20px; height: 20px; margin: 0 2px; accent-color: var(--adm-brand-deep); cursor: pointer; }
+.itemName { flex: 1 1 auto; padding: 6px 8px; }
+.itemQty { flex: 0 0 76px; width: 76px; padding: 6px 8px; text-align: center; }
+.iconBtn {
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; padding: 0; border-radius: 8px; cursor: pointer;
+  border: none; background: transparent; color: var(--adm-text-mute);
+}
+.iconBtn:hover:not(:disabled) { background: var(--adm-card-hover); color: var(--adm-text); }
+.iconBtn:disabled { opacity: 0.3; cursor: default; }
+.linkBtn {
+  margin-top: 6px; padding: 4px 6px; border: none; background: transparent; cursor: pointer;
+  font: inherit; font-size: 13px; color: var(--adm-brand-soft);
+}
+.linkBtn:hover { text-decoration: underline; }
+
+/* ================= 紙本預覽（白紙黑字，寫死色碼是刻意的，見檔頭） ================= */
+.sheet {
+  width: 186mm;
+  color: #000;
+  font-family: "Microsoft JhengHei", "微軟正黑體", "PingFang TC", "Noto Sans TC", sans-serif;
+  font-size: 11pt;
+  line-height: 1.3;
+}
+.paper {
+  box-sizing: border-box; width: 186mm; background: #fff;
+  border: 0.5mm solid #000;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.18);
+}
+.paper2 { margin-top: 8mm; }
+
+.title {
+  box-sizing: border-box; height: 9mm; display: flex; align-items: center; justify-content: center;
+  font-size: 13pt; letter-spacing: 0.05em; border-bottom: 0.25mm solid #000;
+}
+
+.photos { display: grid; grid-template-columns: 1fr 1fr; }
+.photos6 { --ph-h: 76mm; }
+.photos8 { --ph-h: 57mm; }
+.cell { min-width: 0; border-bottom: 0.25mm solid #000; }
+.cell:nth-child(odd) { border-right: 0.25mm solid #000; }
+.cell:nth-last-child(-n + 2) { border-bottom: none; }
+
+.cap {
+  box-sizing: border-box; display: block; width: 100%; height: 7mm; padding: 0 2mm;
+  border: none; border-bottom: 0.25mm solid #000; border-radius: 0; outline: none;
+  background: #fff; color: #000; font: inherit; text-align: center;
+}
+.cap::placeholder { color: #999; font-size: 9pt; }
+.cap:focus { background: #fff8d6; }
+
+.ph { position: relative; height: var(--ph-h); padding: 1.5mm; box-sizing: border-box; background: #fff; }
+.phDrop { outline: 0.6mm dashed #c40000; outline-offset: -1.2mm; }
+.ph img { display: block; width: 100%; height: 100%; cursor: grab; }
+.imgCover { object-fit: cover; }
+.imgContain { object-fit: contain; }
+.phEmpty {
+  width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2mm;
+  border: 0.4mm dashed #b5b5b5; border-radius: 2mm; background: #fafafa; color: #777;
+  font: inherit; font-size: 10pt; cursor: pointer;
+}
+.phEmpty:hover, .phEmpty:focus-visible { border-color: #c40000; color: #c40000; background: #fff5f5; }
+.phTools { position: absolute; right: 3mm; bottom: 3mm; display: flex; gap: 1.5mm; }
+.phBtn {
+  border: none; border-radius: 1.5mm; padding: 1.2mm 2.6mm; cursor: pointer;
+  background: rgba(0, 0, 0, 0.72); color: #fff; font: inherit; font-size: 9pt;
+}
+.phBtn:hover, .phBtn:focus-visible { background: #c40000; }
+
+/* ---- 項目列表 ---- */
+.items { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.items td {
+  height: 7.5mm; padding: 0 1mm; text-align: center; vertical-align: middle;
+  border-right: 0.25mm solid #000; border-bottom: 0.25mm solid #000;
+  overflow-wrap: anywhere;
+}
+.items td:last-child { border-right: none; }
+.tdHead { font-weight: 700; background: #f1f1f1; }
+.tdQty { width: 34%; }
+.tableEmpty {
+  padding: 8mm 4mm; text-align: center; color: #777; font-size: 10pt;
+  border-bottom: 0.25mm solid #000;
+}
+
+.noteBox { position: relative; min-height: 24mm; border-bottom: 0.25mm solid #000; padding: 2mm 3mm; box-sizing: border-box; }
+.boxLabel { display: block; }
+.noteInput {
+  box-sizing: border-box; display: block; width: 100%; margin-top: 1mm; padding: 0; resize: vertical;
+  border: none; outline: none; background: #fff; color: #000; font: inherit; line-height: 1.5;
+}
+.noteInput::placeholder { color: #999; font-size: 9pt; }
+.noteInput:focus { background: #fff8d6; }
+.signRow { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 0.25mm solid #000; }
+.signBox { min-height: 30mm; padding: 2mm 3mm; box-sizing: border-box; }
+.signBox:first-child { border-right: 0.25mm solid #000; }
+.dateRow { display: grid; grid-template-columns: 30% 70%; }
+.dateLabel { min-height: 14mm; padding: 2mm 3mm; box-sizing: border-box; border-right: 0.25mm solid #000; display: flex; align-items: center; }
+.dateBlank { min-height: 14mm; }
+
+/* ================= 列印：只印那張紙 =================
+ * 後台外殼（左側選單）不是這個檔管的，類別名稱也拿不到，所以用「全部隱形、只讓紙現形」。
+ * 操作區直接 display:none，不然它的高度會多吐幾張白紙。
+ */
+@media print {
+  @page { size: A4 portrait; margin: 12mm; }
+
+  :global(body *) { visibility: hidden !important; }
+  .sheet, .sheet * { visibility: visible !important; }
+
+  .panel, .head { display: none !important; }
+  .page { padding: 0 !important; }
+  .stage { overflow: visible !important; padding: 0 !important; }
+  .sheet { position: absolute; left: 0; top: 0; }
+  .paper { box-shadow: none; break-inside: avoid; }
+  .paper2 { margin-top: 0; break-before: page; }
+
+  /* 沒填的東西印出來要是空白，不是灰色提示字 */
+  .cap::placeholder, .noteInput::placeholder { color: transparent !important; }
+  .phEmpty, .phTools, .tableEmpty { display: none !important; }
+  .noteInput { resize: none; }
+  .tdHead { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

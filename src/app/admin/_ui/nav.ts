@@ -70,6 +70,13 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     ],
   },
   {
+    title: "租賃",
+    items: [
+      // 租約附件「房屋內部傢俱項目」：放 6／8 張照片、勾傢俱品項，照他的 Excel 版面排好再列印／存 PDF。純前端、照片不上傳、不進資料庫。
+      { href: "/admin/rental-sheet", label: "租件圖片排版", icon: "image" },
+    ],
+  },
+  {
     title: "廣告助手",
     items: [
       // 貼上愛屋型錄／LINE 物件文字，一鍵交給 Chrome 外掛填進 591／樂屋網的刊登表單。純前端、不進資料庫。
