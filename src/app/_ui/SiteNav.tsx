@@ -121,6 +121,8 @@ const TOOLS_MENU: readonly { label: string; href: string }[] = [
   { label: "賣方實拿速算", href: "/seller-net" },
   // 2026-11-19 統一發票兌獎（/invoice），跟 config/tools.ts 的 TOOLS 同步加的
   { label: "統一發票兌獎", href: "/invoice" },
+  // 2026-11-25 垃圾車時間查詢（/garbage），跟 config/tools.ts 的 TOOLS 同步加的
+  { label: "垃圾車時間查詢", href: "/garbage" },
 ];
 
 type Variant = "home" | "sub";

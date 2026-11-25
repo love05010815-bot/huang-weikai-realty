@@ -1,0 +1,337 @@
+/* ---------- 垃圾車查詢 ----------
+   配色變數在 home.module.css 的 .page；輸入框、清單、結果外框借 tax／school 的，
+   這裡只放這頁自己的：查詢列、地圖、收運點卡片、一週時間格。
+   ⚠️ 專案沒有全域 box-sizing reset，有邊框又設寬度的都要自己寫。 */
+
+.inputRow {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.inputGrow {
+  flex: 1;
+  min-width: 0;
+}
+
+.goBtn {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 22px;
+  background: var(--primary);
+  color: #fff;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.goBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.tagCommunity {
+  background: #fff1dc;
+  color: #9a5b00;
+}
+
+.formFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 12px;
+}
+
+.footHint {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* 捲到結果時要避開黏在上面的 header＋標題列（比學區頁的 90px 高，窄螢幕量到 270px） */
+.results {
+  scroll-margin-top: 280px;
+}
+
+.body {
+  padding: clamp(14px, 3vw, 22px);
+  background: #fff;
+}
+
+.flush {
+  margin: 0 0 12px;
+}
+
+.map {
+  box-sizing: border-box;
+  width: 100%;
+  height: clamp(240px, 42vw, 360px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  /* Leaflet 的圖層 z-index 到 1000，不關起來會蓋過黏在上面的 header */
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+}
+
+.pin {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #c77700;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.pinOn {
+  background: #b3261e;
+  transform: scale(1.2);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.card {
+  box-sizing: border-box;
+  border: 1px solid var(--line-warm);
+  border-radius: 14px;
+  padding: 14px 16px;
+  background: #fff;
+  scroll-margin-top: 120px;
+}
+
+.cardOn {
+  border-color: #c77700;
+  box-shadow: 0 0 0 2px rgba(199, 119, 0, 0.18);
+}
+
+.cardTop {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.num {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #c77700;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  margin-top: 1px;
+}
+
+.cardMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.caption {
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--ink);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.where {
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.kind {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--accent-soft);
+}
+
+.kindFixed {
+  color: #1b6b3a;
+  background: #e6f4ea;
+}
+
+.next {
+  flex-shrink: 0;
+  text-align: right;
+  max-width: 46%;
+}
+
+.nextBig {
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--muted);
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+}
+
+.nextToday .nextBig {
+  font-size: 22px;
+  color: #b3261e;
+}
+
+.nextSub {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.day {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 6px 2px 7px;
+  border-radius: 8px;
+  background: var(--soft);
+  text-align: center;
+}
+
+.dayToday {
+  background: #fff1dc;
+  outline: 2px solid #e7b25a;
+}
+
+.dayOff {
+  opacity: 0.6;
+}
+
+.dayLabel {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.dayTime {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dayTime + .dayTime {
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px dashed var(--line);
+}
+
+.dayTime span {
+  display: block;
+}
+
+.dayEnd {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.dayNone {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.car {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.subTitle {
+  margin: 22px 0 4px;
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.subDesc {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.legend {
+  margin: 16px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+@media (max-width: 640px) {
+  .cardTop {
+    flex-wrap: wrap;
+  }
+
+  .next {
+    max-width: none;
+    width: 100%;
+    text-align: left;
+    padding-left: 40px;
+    box-sizing: border-box;
+  }
+
+  /* 375px 寬的手機一格只剩三十幾 px：卡片內距、格距都收，「–10:48」才放得下（量過 over=0） */
+  .card {
+    padding: 12px 10px;
+  }
+
+  .week {
+    gap: 2px;
+  }
+
+  .day {
+    padding: 6px 0 7px;
+  }
+
+  .dayTime {
+    font-size: 11.5px;
+    letter-spacing: -0.2px;
+  }
+
+  .dayEnd {
+    font-size: 10.5px;
+  }
+
+  .goBtn {
+    padding: 0 16px;
+  }
+}

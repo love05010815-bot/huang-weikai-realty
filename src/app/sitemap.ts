@@ -51,6 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: SITE_URL + "/estimate", lastModified, changeFrequency: "weekly", priority: 0.9 },
     // 2026-11-19 統一發票兌獎。「統一發票對獎」「發票中獎號碼」每逢單月 25 日開獎前後搜尋量很大；號碼每兩個月換一次
     { url: SITE_URL + "/invoice", lastModified, changeFrequency: "weekly", priority: 0.8 },
+    { url: SITE_URL + "/garbage", lastModified, changeFrequency: "monthly", priority: 0.8 },
     // 2026-10-26 首頁 hero「我是屋主／我是買方」分流頁，各放兩顆工具入口（內容在 config/roles.ts）
     { url: SITE_URL + "/owner", lastModified, changeFrequency: "monthly", priority: 0.6 },
     { url: SITE_URL + "/buyer", lastModified, changeFrequency: "monthly", priority: 0.6 },
