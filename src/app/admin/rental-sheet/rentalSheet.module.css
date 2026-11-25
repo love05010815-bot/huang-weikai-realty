@@ -105,7 +105,12 @@
 }
 .linkBtn:hover { text-decoration: underline; }
 
-/* ================= 紙本預覽（白紙黑字，寫死色碼是刻意的，見檔頭） ================= */
+/* ================= 紙本預覽（白紙黑字，寫死色碼是刻意的，見檔頭） =================
+ * 🔴 **紙裡面的格子不准加底色（連白色都不行），白底只有 .paper 那一層。**
+ *    2026-11-25 第一版 .cap／.ph／備註欄各自有 background:#fff，印成 PDF 後在 Chrome 的
+ *    PDF 檢視器裡，這些白色塊會把緊鄰的 0.25mm 格線蓋掉（中間直線、左框、標題底線都不見），
+ *    LibreOffice 開同一份卻是好的 —— 所以驗收要用 pdfium 轉圖看，不能用 soffice。
+ */
 .sheet {
   width: 186mm;
   color: #000;
@@ -135,12 +140,12 @@
 .cap {
   box-sizing: border-box; display: block; width: 100%; height: 7mm; padding: 0 2mm;
   border: none; border-bottom: 0.25mm solid #000; border-radius: 0; outline: none;
-  background: #fff; color: #000; font: inherit; text-align: center;
+  background: transparent; color: #000; font: inherit; text-align: center;
 }
 .cap::placeholder { color: #999; font-size: 9pt; }
 .cap:focus { background: #fff8d6; }
 
-.ph { position: relative; height: var(--ph-h); padding: 1.5mm; box-sizing: border-box; background: #fff; }
+.ph { position: relative; height: var(--ph-h); padding: 1.5mm; box-sizing: border-box; }
 .phDrop { outline: 0.6mm dashed #c40000; outline-offset: -1.2mm; }
 .ph img { display: block; width: 100%; height: 100%; cursor: grab; }
 .imgCover { object-fit: cover; }
@@ -166,7 +171,7 @@
   overflow-wrap: anywhere;
 }
 .items td:last-child { border-right: none; }
-.tdHead { font-weight: 700; background: #f1f1f1; }
+.tdHead { font-weight: 700; }
 .tdQty { width: 34%; }
 .tableEmpty {
   padding: 8mm 4mm; text-align: center; color: #777; font-size: 10pt;
@@ -177,7 +182,7 @@
 .boxLabel { display: block; }
 .noteInput {
   box-sizing: border-box; display: block; width: 100%; margin-top: 1mm; padding: 0; resize: vertical;
-  border: none; outline: none; background: #fff; color: #000; font: inherit; line-height: 1.5;
+  border: none; outline: none; background: transparent; color: #000; font: inherit; line-height: 1.5;
 }
 .noteInput::placeholder { color: #999; font-size: 9pt; }
 .noteInput:focus { background: #fff8d6; }
@@ -209,5 +214,5 @@
   .cap::placeholder, .noteInput::placeholder { color: transparent !important; }
   .phEmpty, .phTools, .tableEmpty { display: none !important; }
   .noteInput { resize: none; }
-  .tdHead { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .cap:focus, .noteInput:focus { background: transparent; }
 }
