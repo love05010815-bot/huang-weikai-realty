@@ -209,6 +209,13 @@ export function isExcludedHost(url: string): boolean {
   return (NEWS_CONFIG.excludeHosts as readonly string[]).some((h) => host === h || host.endsWith(`.${h}`));
 }
 
+/** 海線不限主題那批裡的選舉、車禍新聞。有房產用語的不算雜訊。見 `NEWS_CONFIG.coastExcludeTerms`。 */
+export function isCoastNoise(title: string, summary: string): boolean {
+  const head = `${title} ${summary}`;
+  if (!(NEWS_CONFIG.coastExcludeTerms as readonly string[]).some((t) => head.includes(t))) return false;
+  return !isHousingNews(title, summary);
+}
+
 export function isHousingNews(title: string, summary: string): boolean {
   const head = `${title} ${summary}`;
   const terms: readonly string[] = [...NEWS_CONFIG.housingTerms, ...NEWS_CONFIG.topicTerms];
@@ -331,6 +338,8 @@ export async function collectNews(log: LogFn): Promise<CollectResult> {
     // 2026-11-26 他說「只要是海線新聞，不論房市、交通、建設等都抓進來」——
     // 標題或摘要判得出是海線的，不用過房產相關性那一關；中部、全台照舊要是房產新聞。
     if (requireTopic && item.region !== "coast" && !isHousingNews(item.title, item.summary)) return "irrelevant";
+    // 海線不限主題，但選舉與車禍不要（有房產用語的不在此限）。
+    if (item.region === "coast" && isCoastNoise(item.title, item.summary)) return "irrelevant";
     const key = normalizeTitle(item.title);
     const existing = found.get(key);
     if (!existing) {
