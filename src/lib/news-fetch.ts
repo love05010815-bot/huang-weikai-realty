@@ -165,8 +165,10 @@ export function enrichPriority(item: Pick<FetchedNews, "title" | "summary" | "re
 
 /** 依內容判斷地區：先海線、再中部，都沒有就是全台。 */
 export function classifyRegion(item: Pick<FetchedNews, "title" | "summary" | "content">): NewsRegion {
-  const head = `${item.title} ${item.summary}`;
-  const body = item.content || "";
+  // 「清水模」是建材不是地名。海線不限主題之後，「落腳台中…清水模建築」會被當成台中清水。
+  const strip = (t: string) => t.split("清水模").join("").split("清水混凝土").join("");
+  const head = strip(`${item.title} ${item.summary}`);
+  const body = strip(item.content || "");
   const full = `${head} ${body}`;
   if (NEWS_CONFIG.coastPlaces.some((t) => placeHit(t, head, body, full))) return "coast";
   if (NEWS_CONFIG.centralPlaces.some((t) => placeHit(t, head, body, full))) return "central";
@@ -268,6 +270,16 @@ function buildQueries(): Query[] {
       query: `(${NEWS_CONFIG.coastPlaces.join(" OR ")}) (${topics})`,
       days: NEWS_CONFIG.regionDays.coast,
     },
+    // 海線不限主題：一個地名一條查詢（Google 新聞一條最多回 100 則，全部 OR 在一起會被截掉）。
+    // 收不收由 `add()` 決定 —— 標題判得出是海線才收，「清水模」「苗栗海線」這種不會因此混進來。
+    ...NEWS_CONFIG.coastPlaces.map(
+      (place): Query => ({
+        region: "coast",
+        label: `海線不限主題／${place}`,
+        query: place,
+        days: NEWS_CONFIG.regionDays.coast,
+      }),
+    ),
     {
       region: "central",
       label: "中部房市",
@@ -315,8 +327,10 @@ export async function collectNews(log: LogFn): Promise<CollectResult> {
     // 裝修設計這類「一定不是房產新聞」的擋在最前面，不管 requireTopic ——
     // 房產專區 RSS（requireTopic=false）也可能混進案例展示或風格特輯。
     if (isExcludedNews(item.title, item.summary)) return "irrelevant";
-    if (requireTopic && !isHousingNews(item.title, item.summary)) return "irrelevant";
     item.region = classifyRegion(item);
+    // 2026-11-26 他說「只要是海線新聞，不論房市、交通、建設等都抓進來」——
+    // 標題或摘要判得出是海線的，不用過房產相關性那一關；中部、全台照舊要是房產新聞。
+    if (requireTopic && item.region !== "coast" && !isHousingNews(item.title, item.summary)) return "irrelevant";
     const key = normalizeTitle(item.title);
     const existing = found.get(key);
     if (!existing) {

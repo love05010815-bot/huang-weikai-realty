@@ -62,7 +62,7 @@ export default async function NewsAdminPage({ searchParams }: { searchParams: Pr
             </h1>
             <p className={styles.subtitle} style={{ color: CIS.textMute }}>
               每天早上 {String(NEWS_CONFIG.startHour).padStart(2, "0")}:00 後自動抓進來，排序固定
-              <b>海線 → 中部 → 全台</b>；標題或摘要要有房市、建案、租金這類字才會收。
+              <b>海線 → 中部 → 全台</b>；<b>海線的新聞不限主題</b>（交通、建設、活動都收）；中部、全台要有房市、建案、租金這類字才會收。
               海線的新聞少，往回看 {NEWS_CONFIG.regionDays.coast} 天。看到想做的，按「拿去做」選
               <b>改寫成知識文章</b>或<b>翻拍成短影音</b>，就會排進左側的「待產文案」。
               清單預設只顯示最近 7 天；<b>要找更早的就用搜尋</b>，那會翻遍全部歷史、連內文一起找。

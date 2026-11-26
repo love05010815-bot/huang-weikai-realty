@@ -194,6 +194,16 @@ ok(NF.mentionsCoastPlace({ title: "青埔房市急凍", summary: "" }) === false
 const pri = (region, title) => NF.enrichPriority({ region, title, summary: "" });
 ok(pri("coast", "沙鹿房價") === 0 && pri("national", "清水房市弱爆") === 1 && pri("central", "台中七期") === 2 && pri("national", "青埔房市") === 3, "抓全文順序：海線 → 提到海線地名 → 中部 → 全台", `${pri("coast", "沙鹿房價")},${pri("national", "清水房市弱爆")},${pri("central", "台中七期")},${pri("national", "青埔房市")}`, "0,1,2,3");
 
+// 2026-11-26 他說「只要是海線新聞，不論房市、交通、建設等都抓進來」。收不收看 classifyRegion：
+// 標題判得出是海線就收（collectNews 的 add 對海線不過房產相關性那一關）。
+console.log("=== K 海線不限主題 ===");
+const clsK = (t) => NF.classifyRegion({ title: t, summary: "", content: null });
+ok(clsK("梧棲國小129歲生日迎新校舍") === "coast", "梧棲的學校新聞 → 海線（會收）", clsK("梧棲國小129歲生日迎新校舍"), "coast");
+ok(clsK("台中第2選區政見會 聚焦捷運延伸海線") === "coast", "台中＋海線的交通新聞 → 海線", clsK("台中第2選區政見會 聚焦捷運延伸海線"), "coast");
+ok(clsK("嘉義海線醫療再升級 義竹基督教醫院動土") !== "coast", "別縣市的海線 → 不算", clsK("嘉義海線醫療再升級 義竹基督教醫院動土"), "不是 coast");
+ok(clsK("苗栗綠營陳品安山、海線車掃衝刺") !== "coast", "苗栗海線 → 不算", clsK("苗栗綠營陳品安山、海線車掃衝刺"), "不是 coast");
+ok(clsK("安藤忠雄童書之森落腳台中！橢圓清水模建築") !== "coast", "清水模是建材不是清水區", clsK("安藤忠雄童書之森落腳台中！橢圓清水模建築"), "不是 coast");
+ok(clsK("臺中體育嘉年華920清水登場") === "coast", "台中清水的活動 → 海線（現在會收）", clsK("臺中體育嘉年華920清水登場"), "coast");
 if (process.argv.includes("--live")) {
   console.log("=== G 真的抓一次（不進資料庫）===");
   const { items, counts } = await NF.collectNews((l) => console.log("   ", l));
